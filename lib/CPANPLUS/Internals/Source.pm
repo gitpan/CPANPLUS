@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Source.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###
@@ -538,10 +538,10 @@ sub _get_checksums {
                     $mod->{path}
                 );
 
-    my $fetchdir = File::Spec->catdir(
-                                $conf->_get_build('base'),
-                                $path,
-                            );
+    my $fetchdir = $args{'fetchdir'} || File::Spec->catdir(
+                                            $conf->_get_build('base'),
+                                            $path,
+                                        );
 
     ### we always get a new file... ###
     my $file = $self->_fetch(

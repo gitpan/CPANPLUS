@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
+# $Revision: #5 $ $Change: 3190 $ $DateTime: 2003/01/04 20:52:07 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###
@@ -154,6 +154,8 @@ sub _fetch {
 
         $args{path} = $path;
         $args{uri}  = $uri;
+        $uri->{host} = '' unless defined $uri->{host};
+        $uri->{scheme} = '' unless defined $uri->{scheme};
 
         #print map { Data::Dumper->Dump([$args{$_}], [$_]) } keys %args;
 

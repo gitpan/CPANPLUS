@@ -21,6 +21,7 @@ lib/CPANPLUS/Error.pm		Error handling for the CPAN++ interface
 lib/CPANPLUS/FAQ.pod		Frequently Asked Questions
 lib/CPANPLUS/I18N.pm		Localization functions
 lib/CPANPLUS/I18N/CPANPLUS.pot	Localization lexicon
+lib/CPANPLUS/I18N/fr.po		Lexicon for French
 lib/CPANPLUS/Internals.pm	Internal processing code
 lib/CPANPLUS/Internals/Author.pm	Author objects
 lib/CPANPLUS/Internals/Extract.pm	Extract-related code
@@ -32,7 +33,7 @@ lib/CPANPLUS/Internals/Report.pm	CPAN Test reporting code
 lib/CPANPLUS/Internals/Search.pm	Search-related code
 lib/CPANPLUS/Internals/Source.pm	Source-related code
 lib/CPANPLUS/Internals/System.pm	Run-time flags for _run()
-lib/CPANPLUS/Internals/Utils.pm		Utility functions
+lib/CPANPLUS/Internals/Utils.pm	Utility functions
 lib/CPANPLUS/Shell.pm		Command-line interface for CPAN++
 lib/CPANPLUS/Shell/Classic.pm	Backwards compatible shell for CPAN++
 lib/CPANPLUS/Shell/Default.pm	The default shell

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -118,6 +118,10 @@ sub _make {
     ### set this flag and say 'last SCOPE' to exit the sub prematurely and have the
     ### startdir restored, as well as the proper RV returned and the proper report
     ### sent out, if the user wanted that
+    
+    my $Makefile_PL = 'Makefile.PL';
+    my $Makefile = 'Makefile';
+
     my $fail;
     SCOPE: {
         unless (chdir $dir) {
@@ -130,11 +134,32 @@ sub _make {
 
         ### try to install the module ###
 
+        my @makeargs = @{$self->_flags_arrayref($makeflags)};
+        my $make_prereq;
+
+        ### Here we take care of Module::Build installation ###
+        if ( -e 'Build.PL' ) {
+            my $req = { 'Module::Build' => '0.11' };
+
+            $make_prereq = $req unless -e File::Spec->catfile(
+                qw(. lib Module Build.pm)
+            ) or $self->_can_use(
+                modules  => $req,
+                no_cache => 1,
+                complain => 1,
+            );
+
+            $Makefile_PL = 'Build.PL';
+            $Makefile = 'Build';
+            $make = $perl;
+            unshift @makeargs, $Makefile;
+        }
+
         ### 'perl Makefile.PL' ###
         ### check if the makefile.pl exists
-        unless ( -e 'Makefile.PL' ) {
+        unless ( -e $Makefile_PL ) {
             $err->inform(
-                msg     => loc("Author did not supply a Makefile.PL - Attempting to generate one"),
+                msg     => loc("Author did not supply a %1 - Attempting to generate one", $Makefile_PL),
                 quiet   => !$verbose
             );
 
@@ -145,7 +170,7 @@ sub _make {
                 $self->{_todo}->{failed}->{ $data->{module} } = 1;
 
                 $err->trap(
-                    error => loc("Could not generate Makefile.PL - Aborting")
+                    error => loc("Could not generate %1 - Aborting", $Makefile_PL)
                 );
 
                 $fail = 1;
@@ -169,15 +194,18 @@ sub _make {
             ### we must fix _extract first so it won't have to delete the dir
             ### every time =/ -kane
 
-            if ( -e 'Makefile' && !$force ) {
-                $err->inform( msg => loc("Makefile already exists, not running 'perl Makefile.PL' again, unless you force!"), quiet => !$verbose );
+            ### if still missing essential make pieces, bail out here
+            last PERL_MAKEFILE if $make_prereq;
+
+            if ( -e $Makefile && !$force ) {
+                $err->inform( msg => loc("%1 already exists, not running 'perl %2' again, unless you force!", $Makefile, $Makefile_PL), quiet => !$verbose );
                 last PERL_MAKEFILE;
             }
 
             my @args = @{$self->_flags_arrayref($mmflags)};
 
             unless( $self->_run(
-                command => [$perl, 'Makefile.PL', @args],
+                command => [$perl, $Makefile_PL, @args],
                 buffer  => \$captured,
                 verbose => 1,
             ) ) {
@@ -186,7 +214,7 @@ sub _make {
 
                 $fail = 1;
 
-                $err->trap( error => loc("BUILDING MAKEFILE failed! - %1", $!) );
+                $err->trap( error => loc("BUILDING %1 failed! - %2", $Makefile, $!) );
 
                 last SCOPE;
                 ### failure, return overall => 0
@@ -209,8 +237,12 @@ sub _make {
         ### and install them accordingly.
         ### this probably needs some tidying up ###
 
-
-        my $prereq = $self->_find_prereq( dir => $dir );
+        my $prereq = $self->_find_prereq( dir => $dir, makefile => $Makefile, prereq => $make_prereq );
+        unless ($prereq) {
+            $err->trap( error => loc("Cannot determine prerequisites - Aborting") );
+            $fail = 1;
+            last SCOPE;
+        }
         $data->{status}->{make}->{prereq} = $prereq;
 
         ### check if the prereq this module wants is something we already tried to install
@@ -361,7 +393,7 @@ sub _make {
         ### no prereqs need doing, let's go on installing ###
         } else {
 
-            my @args = @{$self->_flags_arrayref($makeflags)};
+            my @args = @makeargs;
 
             INSTALL: {
 
@@ -460,6 +492,12 @@ sub _make {
 
     } ### end of SCOPE:
 
+    ### send an error report if the user wants that ###
+    $self->_send_report(
+        module => $data, buffer => $captured, failed => $fail
+    ) if $report and !$self->{_todo}->{failed};
+
+
     if($fail) {
 
         $self->{_todo}->{failed}->{ $data->{module} } = 1;
@@ -474,12 +512,6 @@ sub _make {
 
     ### set it back to the start dir we had when we entered this _make
     $self->_restore_startdir;
-
-    ### send an error report if the user wants that ###
-    $self->_send_report(
-        module => $data, buffer => $captured, failed => $fail
-    ) if $report;
-
 
     ### if we still have modules left to do in our _tomake list, this is the time to do it!
     if ( $self->{_todo}->{make} and @{$self->{_todo}->{make}} ) {
@@ -596,13 +628,67 @@ sub _make_makefile {
 sub _find_prereq {
     my $self = shift;
     my %args = @_;
+
+    return $args{prereq} if $args{prereq};
+
+    if ($args{makefile} eq 'Makefile') {
+        return $self->_find_prereq_makemaker(@_);
+    }
+    elsif ($args{makefile} eq 'Build') {
+        return $self->_find_prereq_module_build(@_);
+    }
+
+    return 0;
+}
+
+sub _find_prereq_module_build {
+    my $self = shift;
+    my %args = @_;
+    my $conf = $self->{_conf};
+    my $err  = $self->{_error};
+    my $fh = new FileHandle;
+
+    ### open the prereq
+    unless ( $fh->open(File::Spec->catfile($args{'dir'}, "_build", "prereqs") ) ) {
+        $err->trap( error => loc("Can't find %1: %2", '_build/prereqs', $!) );
+        return 0;
+    }
+
+    my %p;
+    my $section;
+    while (<$fh>) {
+        if (/^\s*'([^']+)' => \{(?:\}\,)?\s*$/) {
+            $section = $1;
+        }
+        elsif (/^\s*'([^']+)' => '?([^']+?)'?,?\s*$/) {
+            my ($mod, $ver) = ($1, $2);
+            next unless $section =~ /^(?:build_)requires$/;
+            next if $mod eq 'perl';
+
+            $p{$mod} = $self->_version_to_number($ver);
+        }
+    }
+
+    return \%p;
+}
+
+sub _version_to_number {
+    my ($self, $version) = @_;
+
+    return $version if ($version =~ /^\.?\d/);
+    return 0;
+}
+
+sub _find_prereq_makemaker {
+    my $self = shift;
+    my %args = @_;
     my $conf = $self->{_conf};
     my $err  = $self->{_error};
     my $fh = new FileHandle;
 
     ### open the Makefile
     unless ( $fh->open(File::Spec->catfile($args{'dir'}, "Makefile") ) ) {
-        $err->trap( error => loc("Can't find the Makefile: %1", $!) );
+        $err->trap( error => loc("Can't find %1: %2", "Makefile", $!) );
         return 0;
     }
 
@@ -627,7 +713,7 @@ sub _find_prereq {
                     quiet => !$conf->get_conf('verbose')
                 );
             }
-            $p{$1} = $2;
+            $p{$1} = $self->_version_to_number($2);
         }
         last;
     }

@@ -1,13 +1,13 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/t/0-signature.t $ $Author: autrijus $
-# $Revision: #2 $ $Change: 1939 $ $DateTime: 2002/11/04 14:34:37 $
+# $Revision: #3 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
 
 use strict;
 use lib 't/lib';
 use Test::More tests => 1;
 
 SKIP: {
-    if (!-e 'SIGNATURE') {
+    if (!-s 'SIGNATURE') {
 	skip("No signature file found", 1);
     }
     elsif (!eval { require Socket; Socket::inet_aton('pgp.mit.edu') }) {

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #3 $ $Change: 1916 $ $DateTime: 2002/11/04 13:01:10 $
+# $Revision: #5 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -264,6 +264,9 @@ sub _input_loop {
                 return;
             }
 
+            ### this option is just for the o command, not for the backend methods ###
+            my $short = delete $options->{short} if defined $options->{short};
+
             my $inst = $cpan->installed( %$options, modules => @list ? \@list : undef );
 
             if( !$inst->rv or (!$inst->ok && $input) ) {
@@ -275,9 +278,20 @@ sub _input_loop {
             my $res = $href->rv;
             $cache = [ undef ]; # most carbon-based life forms count from 1
 
+            ### keep a cache if --short was in effect ###
+            my $seen = {};
+
             for my $name ( sort keys %$res ) {
                 next unless $res->{$name}->{uptodate} eq '0';
-                push @{$cache}, $modtree->{$name};
+
+		### dont list more than one module belonging to a package
+		### blame H. Merijn Brand... -kane
+                my $pkg = $modtree->{$name}->package;
+                unless( $short && $seen->{$pkg} ) {
+                    $seen->{$pkg} = 1 if $short;
+
+                    push @{$cache}, $modtree->{$name};
+                }
             }
 
             $self->_pager_open if ($#{$cache} >= $self->_term_rowcount);
@@ -336,8 +350,9 @@ sub _input_loop {
             ### redo setup configuration?
             if ($name =~ m/^conf/i) {
                 CPANPLUS::Configure::Setup->init(
-                    conf => $cpan->configure_object,
-                    term => $self->term,
+                    conf    => $cpan->configure_object,
+                    term    => $self->term,
+                    backend => $cpan,
                 );
                 return;
             }
@@ -648,12 +663,19 @@ sub _input_loop {
             my $cwd = cwd();
 
             for my $mod (@list) {
-                my $obj = $cpan->module_tree->{$mod};
+                my $answer = $cpan->parse_module(modules => [$mod]);
+                $answer->ok or next;
+
+                my $mods = $answer->rv;
+                my ($name, $obj) = each %$mods;
 
                 my $dir = $obj->status->{extract};
 
                 unless( $dir ) {
-                    $obj->fetch();
+                    my $href = $cpan->fetch(
+                        fetchdir    => $cpan->configure_object->_get_build('startdir'),
+                        modules     => [ $obj ],
+                    );
                     $dir = $obj->extract();
                 }
 
@@ -767,10 +789,23 @@ sub _complete {
     ### rework command line. @args contains all the words already written ###
     ### $word has the string completion was requested for ###
     my ($key, @args) = split /\s+/, $line;
+
+    ### one-time flags ###
+    if ($args[-1] =~ /^--?(.*)/) {
+        my $conf = $cpan->configure_object;
+        my @options = sort $conf->subtypes('conf');
+        my $argname = qr<^(?i:$1)>;
+
+        @options = ('short') if $key eq 'o';
+
+        return map "--$_", grep { $_ =~ $argname } @options;
+    }
+
     if (@args && $args[-1] eq $word) {
         pop @args;
     }
 
+    ### TODO: completions missing for: e p
     ### command-specific completions ###
     if ($key =~ /^[itudlrc]/) { # cmds which expect modulenames as args
         ### XXX fixme, how better to express it's a "module" search? ###
@@ -828,7 +863,6 @@ sub _complete {
         return grep { $_ =~ $argname } 'conf', 'save', @options;
     }
 
-    ### TODO: completions missing for: e p
     ### Perhaps add completions for a m f and o, too?
 
     return;
@@ -1134,7 +1168,7 @@ documentation for the C<install> method in Backend.
 Options may be specified as just the option name, or as I<=1>
 to turn on the option, and prefaced with I<no-> or followed
 by I<=0> to set them off.  In short, these two commands are
-equivalent--they both turn on force: 
+equivalent--they both turn on force:
 
     --force
     --force=1

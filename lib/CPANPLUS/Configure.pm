@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -48,6 +48,7 @@ package CPANPLUS::Configure;
 use strict;
 use CPANPLUS::I18N;
 
+
 BEGIN {
     ### this will make cpanplus use an alternative config ###
     #$ENV{PERL5_CPANPLUS_CONFIG} = 'C:/Documents and Settings/Administrator/.cpanplus_config';
@@ -58,11 +59,14 @@ BEGIN {
         if ( defined $ENV{PERL5_CPANPLUS_CONFIG} ) {
             eval qq[require "$ENV{PERL5_CPANPLUS_CONFIG}"];
             $tried++;
+            $INC{'CPANPLUS/Config.pm'} = 1 unless $@;
         }
 
         my $ok;
         $@
-            ? warn loc("Could not load your personal config: %1: %2", $ENV{PERL5_CPANPLUS_CONFIG}, $@), "\n", loc("Falling back to system-wide config."), "\n"
+            ? warn  loc("Could not load your personal config: %1: %2",
+                        $ENV{PERL5_CPANPLUS_CONFIG}, $@), "\n",
+                    loc("Falling back to system-wide config."), "\n"
             : ($ok = 1) if $tried;
 
         unless($ok) {
@@ -74,8 +78,8 @@ BEGIN {
     _load_cpanplus_config();
 }
 
-#use CPANPLUS::Config; # making it overidable by an $ENV var
 use CPANPLUS::Configure::Setup;
+use CPANPLUS::Backend;          # setup loads it anyway...
 use CPANPLUS::Error;
 
 use Data::Dumper;
@@ -359,6 +363,8 @@ sub _save_pm {
 #last changed: $time GMT
 
 package CPANPLUS::Config;
+
+\$VERSION = $CPANPLUS::Internals::VERSION;
 
 use strict;
 

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #5 $ $Change: 1951 $ $DateTime: 2002/11/04 15:29:02 $
+# $Revision: #7 $ $Change: 2927 $ $DateTime: 2002/12/25 15:58:36 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -128,7 +128,7 @@ sub install {
         ### so right now, we just install the latest rather than guessing
         ### but this needs fixing  --kane
         if( my $is_file = -f $mod       # path to a file
-            or $mod =~ m|^$ab_prefix|   # looks like a autobundle
+            or ($ab_prefix and $mod =~ m|^$ab_prefix|)   # looks like a autobundle
         ) {
 
             my $file;
@@ -192,7 +192,7 @@ sub install {
                 if ($res->{uptodate}) {
                     my $do_install = ($args->{target} =~ /^install$/);
                     $err->inform(
-                        msg => loc("Module %1 already up to date; ", $mod).
+                        msg => loc("Module %1 already up to date; ", $name).
                             ($do_install ? loc("won't install without force!")
                                          : loc("continuing anyway."))
     		);
@@ -1240,6 +1240,7 @@ sub dist {
                                 );
     return $rv;
 }
+
 
 
 ### doesn't allow you to write your own filenames right now..

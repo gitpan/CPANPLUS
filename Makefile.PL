@@ -1,17 +1,24 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 use strict;
 
 use Cwd;
 use Config;
+
+# First, make sure we have a good File::Spec.
+use lib 't/lib';
+
 use File::Spec;
 use File::Copy      qw/copy/;
 use File::Basename  qw/dirname/;
 
-use lib File::Spec->catdir(dirname($0), 'inc'),
-        File::Spec->catdir(dirname($0), 'lib');
+use constant LIBS => [ map {
+    File::Spec->catdir(File::Spec->rel2abs(dirname($0)), $_)
+} ('inc', 'lib') ];
+
+use lib @{+LIBS};
 
 use CPANPLUS::I18N;
 
@@ -22,8 +29,8 @@ use constant BASIC_TESTS => join (' ', map { File::Spec->catfile('t', $_) } qw{
 
 {
     # set up include path to find CPANPLUS::Internals::System
-    local $ENV{PERL5LIB} .= $Config::Config{path_sep}
-                          . File::Spec->catdir(Cwd::cwd(), 'lib');
+    local $ENV{PERL5LIB} .= join($Config::Config{path_sep}, '', @{+LIBS});
+
     # not 'use' because we don't want to import it yet
     require ExtUtils::AutoInstall;
 }
@@ -148,6 +155,7 @@ sub setup_needed {
 
         if ($has_prev) {
             $CPANPLUS::Configure::Setup::AutoSetup = !$run_setup;
+            $CPANPLUS::Configure::Setup::SkipMirrors = 1;
             $run_setup = 1; # have to run setup anyway.
         }
     }
@@ -158,8 +166,8 @@ sub setup_needed {
 # determine if the user needs nmake.
 sub nmake_needed {
     return unless (
-        $Config{make} =~ /^nmake\b/ and
-        $^O eq 'MSWin32'            and
+        $Config{make} =~ /^nmake\b/i and
+        $^O eq 'MSWin32'             and
         !_can_run('nmake')
     );
 
@@ -200,7 +208,7 @@ sub write_makefile {
 
     ExtUtils::AutoInstall::Write(%args);
 
-    print loc("Now, please type '%1' to test, and %2 to install.", "$Config{make} test", "$Config{make} install"), "\n";
+    print loc("Now, please type '%1' to test, and '%2' to install.", "$Config{make} test", "$Config{make} install"), "\n";
 
     # make an educated guess of whether we'll need root permission.
     if (eval '$>' and $AutoInstall) {
@@ -249,7 +257,9 @@ that defaults to 'Y', there might be _unpredictable failures_!
             ### - LWP takes lots of time to finish.
             ### - Mail::Send will send out external emails.
             ### - Term::ReadLine::Perl's test is interactive.
+            ### - Compress::Zlib works but fails tests on Darwin.
             -skiptest           => 1,
+            -prereqs            => 1,
         ],
         loc('Uncompress .tar files')      => [
             -default            => (!_can_run('tar')),
@@ -277,6 +287,12 @@ that defaults to 'Y', there might be _unpredictable failures_!
         loc('PGP signatures')             => [
             -default            => $ConfigObj->get_conf('signature'),
             'Module::Signature' => 0.06,
+        ],
+    ) : (),
+    ($] >= 5.006) ? (
+        loc('Module::Build support')      => [
+            -default            => 0,
+            'Module::Build'     => 0.11,
         ],
     ) : (),
         loc('Net::FTP support')           => [
@@ -319,7 +335,11 @@ that defaults to 'Y', there might be _unpredictable failures_!
         loc('ReadLine support')           => [
             -default            => 0,
             'Term::ReadLine'    => 0,
+      $have_cc ? (
+            'Term::ReadLine::Gnu' => 1.00,
+      ) : (
             'Term::ReadLine::Perl' => 0.90,
+      ),
         ],
     ) : (),
     $term_mod ? (
@@ -331,7 +351,7 @@ that defaults to 'Y', there might be _unpredictable failures_!
         loc('Localized messages')         => [
             -default            => 0,
             'Locale::Maketext'  => 0.20,
-            'Locale::Maketext::Lexicon' => 0.09,
+            'Locale::Maketext::Lexicon' => 0.14,
         ],
     );
 }
@@ -377,13 +397,7 @@ sub _get_reply {
 
 sub _supports_readline {
     # determine whether readline support is potentially available.
-    # uses the same heuristic as the default shell's ReadLine prompt.
-
-    return (
-        ($^O ne 'MSWin32')              and
-        _can_use('Term::ReadLine')      and
-        Term::ReadLine->ReadLine ne 'Term::ReadLine::Stub'
-    );
+    return ( $^O ne 'MSWin32');
 }
 
 sub get_nmake {

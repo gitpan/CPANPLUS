@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/AUTHORS $
-# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
+# $Revision: #5 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 [Credits]
 
@@ -33,9 +33,9 @@ file and the mailing list archives.  These people have either submitted
 patches or suggestions, or their bug reports or comments have inspired
 the appropriate patches.  Corrections, additions, deletions welcome:
 
-Abe Timmerman
+Abe Timmerman		(ABELTJE)
 Antti Lankila
-Alain Barbet		(ALAIN)
+Alain Barbet		(ALIAN)
 Andy Lester		(PETDANCE)
 Andreas Marcel Riechert
 chemboy
@@ -51,15 +51,17 @@ Jost Krieger
 Kay Roepke
 Lee Goddard		(LGODDARD)
 Lupe Christoph		(LUPE)
-Mark Fowler
+Mark Fowler		(MARKF)
 Mark-Jason Dominus	(MJD)
 Matt Sergeant		(MSERGEANT)
-Peter Barabas
+Peter Barabas		(BARABAS)
 Peter Sergeant		(SARGIE)
 Phil Pennock
 Randy J. Ray		(RJRAY)
 Randy Kobes		(RKOBES)
-Robert S Creager
+Richard Clamp		(RCLAMP)
+Richard Soderberg
+Robert S Creager	(RCREAGER)
 Ton Hospel
 Tony Cook		(TONYC)
 Walt Mankowski

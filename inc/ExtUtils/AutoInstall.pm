@@ -1,8 +1,8 @@
 # $File: //depot/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 package ExtUtils::AutoInstall;
-$ExtUtils::AutoInstall::VERSION = '0.42';
+$ExtUtils::AutoInstall::VERSION = '0.44';
 
 use strict;
 
@@ -15,34 +15,36 @@ ExtUtils::AutoInstall - Automatic install of dependencies via CPAN
 
 =head1 VERSION
 
-This document describes version 0.42 of B<ExtUtils::AutoInstall>,
-released October 18, 2002.
+This document describes version 0.44 of B<ExtUtils::AutoInstall>,
+released December 25, 2002.
 
 =head1 SYNOPSIS
 
 In F<Makefile.PL>:
 
-    # ExtUtils::AutoInstall Bootstrap Code, version 4.
-    BEGIN{my$p='ExtUtils::AutoInstall';my$v=.30;eval"use $p $v;1"or
-    ($ENV{PERL_EXTUTILS_AUTOINSTALL}!~/--(?:default|skip|testonly)/
-    and(-t STDIN)or eval"use ExtUtils::MakeMaker;WriteMakefile('PR'
-    .'EREQ_PM'=>{'$p',$v});1"and exit)and print"==> $p $v needed. "
-    ."Install it from CPAN? [Y/n] "and<STDIN>!~/^n/i and print"***"
-    ." Fetching $p\n"and do{eval{require CPANPLUS;CPANPLUS::install
-    $p};eval"use $p $v;1"or eval{require CPAN;CPAN::install$p};eval
-    "use $p $v;1"or die"Please install $p $v manually first...\n"}}
+    # ExtUtils::AutoInstall Bootstrap Code, version 5.
+    BEGIN{my$p='ExtUtils::AutoInstall';my$v=0.40;eval"use $p $v;1
+    "or do{my$e=$ENV{PERL_EXTUTILS_AUTOINSTALL};(!defined($e)||$e
+    !~m/--(?:default|skip|testonly)/and-t STDIN or eval"use Ext".
+    "Utils::MakeMaker;WriteMakefile('PREREQ_PM'=>{'$p',$v});1"and
+    exit)and print"==> $p $v required. Install it from CPAN? [Y".
+    "/n] "and<STDIN>!~/^n/i and print"*** Installing $p\n"and do{
+    eval{require CPANPLUS;CPANPLUS::install $p};eval"use $p $v;1"
+    or eval{require CPAN;CPAN::install$p};eval"use $p $v;1"or die
+    "*** Please install $p $v manually from cpan.org first.\n"}}}
 
-    # pre-install handler; takes $module_name and $version
-    sub MY::preinstall  { return 1; }	# return false to skip install
-    # post-install handler; takes $module_name, $version, and $success
-    sub MY::postinstall { ... }
+    # optional pre-install handler; takes $module_name and $version
+    # sub MY::preinstall  { return 1; }	# return false to skip install
+
+    # optional post-install handler; takes $module_name, $version, $success
+    # sub MY::postinstall { return; }	# the return value doesn't matter
 
     # the above handlers must be declared before the 'use' statement
     use ExtUtils::AutoInstall (
 	-version	=> '0.40',	# required AutoInstall version
-	                                # usually 0.30 is sufficient
+	                                # usually 0.40 is sufficient
 	-config		=> {
-	    make_args	=> '--hello'	# option(s) for CPAN::Config 
+	    make_args	=> '--hello'	# option(s) for CPAN::Config
 	    force	=> 1,		# pseudo-option to force install
 	},
 	-core		=> [		# core modules; may also be 'all'
@@ -103,14 +105,14 @@ yes/no on each one's dependencies; the module writer may also supply a
 boolean value via C<-default> to specify the default choice.
 
 The B<Core Features> marked by the name C<-core> will double-check with
-the user, if the user chooses not to install the modules that belongs to
-it.  This differs with the pre-0.26 'silent install' behaviour.
+the user, if the user chooses not to install the mandatory modules.
+This differs from the pre-0.26 'silent install' behaviour.
 
 Starting from version 0.27, if C<-core> is set to the string C<all>
-(case-insensitive), every features will be considered mandatory.
+(case-insensitive), every feature will be considered mandatory.
 
 The dependencies are expressed as pairs of C<Module> => C<version>
-inside an a array reference.  If the order does not matter, and there
+inside an array reference.  If the order does not matter, and there
 are no C<-default>, C<-tests> or C<-skiptests> directives for that
 feature, you may also use a hash reference.
 
@@ -137,13 +139,31 @@ If you have the B<CPANPLUS> package installed in your system, it is
 preferred by default over B<CPAN>; it also accepts some extra options
 (e.g. C<-target =E<gt> 'skiptest', -skiptest =E<gt> 1> to skip testing).
 
-All modules scheduled to install will be deleted from C<%INC> first, so
-B<ExtUtils::MakeMaker> will check the newly installed modules.
+All modules scheduled to be installed will be deleted from C<%INC>
+first, so B<ExtUtils::MakeMaker> will check the newly installed modules.
 
 Additionally, you could use the C<make installdeps> target to install
 the modules, and the C<make checkdeps> target to check dependencies
 without actually installing them; the C<perl Makefile.PL --checkdeps>
 command has an equivalent effect.
+
+If the F<Makefile.PL> itself needs to use an independent module (e.g.
+B<Acme::KillarApp>, v1.21 or greater), then use something like below:
+
+    BEGIN {
+	require ExtUtils::AutoInstall;
+	# the first argument is an arrayref of the -config flags
+	ExtUtils::AutoInstall->install([], 'Acme::KillerApp' => 1.21);
+    }
+    use Acme::KillerApp 1.21;
+
+    ExtUtils::AutoInstall->import(
+	# ... arguments as usual ...
+    );
+
+Note the version test in the use clause; if you are so close to the
+cutting edge that B<Acme::KillerApp> 1.20 is the latest version on CPAN,
+this will prevent your module from going awry.
 
 =head2 User-Defined Hooks
 
@@ -157,12 +177,12 @@ F<Makefile.PL>), you have to declare those two handlers I<before> the
 C<use> statement for them to take effect.
 
 If the user did not choose to install a module or it already exists on
-the system, neither handlers are invoked.  Both handlers are invoked
-exactly once for each module's attempted installation.
+the system, neither of the handlers is invoked.  Both handlers are invoked
+exactly once for each module when installation is attempted.
 
 C<MY::preinstall> takes two arguments, C<$module_name> and C<$version>;
 if it returns a false value, installation for that module will be
-    skipped, and C<MY::postinstall> won't be called at all.
+skipped, and C<MY::postinstall> won't be called at all.
 
 C<MY::postinstall> takes three arguments, C<$module_name>, C<$version>
 and C<$success>.  The last one denotes whether the installation
@@ -170,6 +190,25 @@ succeeded or not: C<1> means installation completed successfully, C<0>
 means failure during install, and C<undef> means that the installation
 was not attempted at all, possibly due to connection problems, or that
 module does not exist on CPAN at all.
+
+=head2 Customized C<MY::postamble>
+
+Starting from version 0.43, B<ExtUtils::AutoInstall> supports modules
+that require a C<MY::postamble> subroutine in their F<Makefile.PL>.
+The user-defined C<MY::postamble>, if present, is responsible for
+calling C<ExtUtils::AutoInstall::postamble> and include the output in
+its return value.
+
+For example, the B<DBD::*> (database driver) modules for the Perl DBI
+are required to include the postamble generated by the function
+C<dbd_postamble>, so their F<Makefile.PL> may contain lines like this:
+
+    sub MY::postamble {
+	return &ExtUtils::AutoInstall::postamble . &dbd_postamble;
+    }
+
+Note that the B<ExtUtils::AutoInstall> module does not export the
+C<postamble> function, so the name should always be fully qualified.
 
 =head1 CAVEATS
 
@@ -186,9 +225,6 @@ used to compare the required version with the existing module's version
 and the CPAN module's.  Otherwise it silently falls back to use I<cmp>.
 This may cause inconsistent behaviours in pathetic situations.
 
-B<Inline::MakeMaker> is not happy with this module, since it prohibits
-competing C<MY::postamble> functions.  Patches welcome.
-
 =head1 NOTES
 
 Since this module is needed before writing F<Makefile>, it makes little
@@ -199,7 +235,7 @@ B<AppConfig>) is not very desirable either.
 
 The current compromise is to add the bootstrap code listed in the
 L</SYNOPSIS> before every script, but that does not look pretty, and
-will not work without an internet connection.
+will not work without an Internet connection.
 
 Since we do not want all future options of B<ExtUtils::AutoInstall> to
 be painfully detected manually like above, this module provides a
@@ -226,7 +262,8 @@ my %FeatureMap = (
 
 # various lexical flags
 my (@Missing, @Existing, %DisabledTests, $UnderCPAN, $HasCPANPLUS);
-my ($Config, $CheckOnly, $SkipInstall, $AcceptDefault, $TestOnly); 
+my ($Config, $CheckOnly, $SkipInstall, $AcceptDefault, $TestOnly);
+my ($PostambleActions, $PostambleUsed);
 
 $AcceptDefault = 1 unless -t STDIN; # non-interactive session
 _init();
@@ -300,7 +337,8 @@ sub import {
 
     while (my ($feature, $modules) = splice(@args, 0, 2)) {
 	my (@required, @tests, @skiptests);
-	my $default = 1;
+	my $default  = 1;
+	my $conflict = 0;
 
 	if ($feature =~ m/^-(\w+)$/) {
 	    my $option = lc($1);
@@ -330,6 +368,7 @@ sub import {
 		my $option = lc($1);
 
 		$default   = $arg    if ($option eq 'default');
+		$conflict  = $arg    if ($option eq 'conflict');
 		@tests     = @{$arg} if ($option eq 'tests');
 		@skiptests = @{$arg} if ($option eq 'skiptests');
 
@@ -338,6 +377,7 @@ sub import {
 
 	    printf("- %-${maxlen}s ...", $mod);
 
+	    # XXX: check for conflicts and uninstalls(!) them.
 	    if (defined(my $cur = _version_check(_load($mod), $arg ||= 0))) {
 		print "loaded. ($cur".($arg ? " >= $arg" : '').")\n";
 		push @Existing, $mod => $arg;
@@ -383,7 +423,7 @@ sub import {
     chdir $cwd;
 
     # import to main::
-    no strict 'refs'; 
+    no strict 'refs';
     *{'main::WriteMakefile'} = \&Write;
 }
 
@@ -416,31 +456,40 @@ sub install {
     my $i; # used below to strip leading '-' from config keys
     my @config = (map { s/^-// if ++$i; $_ } @{+shift});
 
-    my @modules;
-    my $installed = 0;
+    my (@modules, @installed);
     while (my ($pkg, $ver) = splice(@_, 0, 2)) {
 	# grep out those already installed
-	($installed++, next)
-	    if defined(_version_check(_load($pkg), $ver));
-	push @modules, $pkg, $ver;
+	if (defined(_version_check(_load($pkg), $ver))) {
+	    push @installed, $pkg;
+	}
+	else {
+	    push @modules, $pkg, $ver;
+	}
     }
 
-    return $installed unless @modules; # nothing to do
+    return @installed unless @modules; # nothing to do
 
     print "*** Installing dependencies...\n";
 
     return unless _connected_to('cpan.org');
 
     if (_has_cpanplus()) {
-	$installed += _install_cpanplus(\@modules, \@config);
+	_install_cpanplus(\@modules, \@config);
     }
     else {
-	$installed += _install_cpan(\@modules, \@config);
+	_install_cpan(\@modules, \@config);
     }
 
     print "*** $class installation finished.\n";
 
-    return $installed;
+    # see if we have successfully installed them
+    while (my ($pkg, $ver) = splice(@modules, 0, 2)) {
+	if (defined(_version_check(_load($pkg), $ver))) {
+	    push @installed, $pkg;
+	}
+    }
+
+    return @installed;
 }
 
 sub _install_cpanplus {
@@ -467,6 +516,10 @@ sub _install_cpanplus {
     }
     $conf->set_conf(makeflags => $makeflags);
 
+    while (my ($key, $val) = splice(@config, 0, 2)) {
+	eval { $conf->set_conf($key, $val) };
+    }
+
     my $modtree = $cp->module_tree;
     while (my ($pkg, $ver) = splice(@modules, 0, 2)) {
 	print "*** Installing $pkg...\n";
@@ -483,7 +536,7 @@ sub _install_cpanplus {
 		delete $INC{$inc};
 	    }
 
-	    my $rv = $cp->install( modules => [ $obj->{module} ], @config);
+	    my $rv = $cp->install( modules => [ $obj->{module} ]);
 
 	    if ($rv and ($rv->{$obj->{module}} or $rv->{ok})) {
 		print "*** $pkg successfully installed.\n";
@@ -589,7 +642,7 @@ sub _under_cpan {
 
     my $cwd  = File::Spec->canonpath(Cwd::cwd());
     my $cpan = File::Spec->canonpath($CPAN::Config->{cpan_home});
-    
+
     return (index($cwd, $cpan) > -1);
 }
 
@@ -700,7 +753,6 @@ sub Write {
 	return;
     }
 
-
     my %args = @_;
 
     $args{PREREQ_PM} = { %{$args{PREREQ_PM} || {} }, @Existing, @Missing }
@@ -710,14 +762,14 @@ sub Write {
 	require ExtUtils::Manifest;
 	my $manifest = ExtUtils::Manifest::maniread('MANIFEST');
 
-	$args{EXE_FILES} = [ 
-	    grep { exists $manifest->{$_} } @{$args{EXE_FILES}} 
+	$args{EXE_FILES} = [
+	    grep { exists $manifest->{$_} } @{$args{EXE_FILES}}
 	];
     }
 
     $args{test}{TESTS} ||= 't/*.t';
     $args{test}{TESTS} = join(' ', grep {
-	!exists($DisabledTests{$_}) 
+	!exists($DisabledTests{$_})
     } map { glob($_) } split(/\s+/, $args{test}{TESTS}));
 
     my $missing = join(',', @Missing);
@@ -725,17 +777,30 @@ sub Write {
 	UNIVERSAL::isa($Config, 'HASH') ? %{$Config} : @{$Config}
     ) if $Config;
 
-    my $action = (
+    $PostambleActions = (
 	$missing ? "\$(PERL) $0 --config=$config --installdeps=$missing"
 		 : "\$(NOOP)"
     );
 
     no strict 'refs';
 
-    my $old_postamble = defined(&MY::postamble) ? \&MY::postamble : sub { '' };
+    $PostambleUsed = 0;
+    local *MY::postamble = \&postamble unless defined &MY::postamble;
+    ExtUtils::MakeMaker::WriteMakefile(%args);
 
-    *{'MY::postamble'} = sub {
-	return &{$old_postamble} . << ".";
+    print << "." unless $PostambleUsed;
+*** WARNING: Makefile written with customized MY::postamble() without
+    including contents from ExtUtils::AutoInstall::postamble() --
+    auto installation features disabled.  Please contact the author.
+.
+
+    return 1;
+}
+
+sub postamble {
+    $PostambleUsed = 1;
+
+    return << ".";
 
 config :: installdeps
 
@@ -743,13 +808,9 @@ checkdeps ::
 	\$(PERL) $0 --checkdeps
 
 installdeps ::
-	$action
+	$PostambleActions
 .
-    } unless $TestOnly;
 
-    ExtUtils::MakeMaker::WriteMakefile(%args);
-
-    return 1;
 }
 
 1;
@@ -765,25 +826,10 @@ L<CPANPLUS>
 
 The test script included in the B<ExtUtils::AutoInstall> distribution
 contains code adapted from Michael Schwern's B<Test::More> under the
-I<Artistic License>.  Please refer to F<t/AutoInstall.t> for details.
+I<Perl License>.  Please consult to F<t/AutoInstall.t> for details.
 
-Thanks also to Jesse Vincent for suggesting the semantics of various
-F<make> targets, and Jos IBoumans for introducing me to his B<CPANPLUS>
-project.
-
-Eric Andreychek contributed to the C<-force> pseudo-option feature;
-Brian Ingerson suggested the non-intrusive handling of C<-core> and
-bootstrap installations, and let the user have total control.
-
-Bryan Dumm suggested the pre-/post-install handler features which
-makes up the 0.40 release.
-
-Rocco Caputo made me write compatibility code for F<cpansmoke> and
-other non-tty STDIN type installations.  Matt Cashner suggested the
-C<-skiptest> semantic and caught a subtle bug involving C<require>
-instead of C<use> of AutoInstall.  Chia-Liang Kao spotted the
-incompatibility between the use of C<$0> and CPANPLUS's C<eval()>
-munging.  Thanks!
+See the F<AUTHORS> file in this module's source distribution for the
+list of contributors.
 
 =head1 AUTHORS
 
@@ -793,7 +839,7 @@ Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>
 
 Copyright 2001, 2002 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
 
-This program is free software; you can redistribute it and/or 
+This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.
 
 See L<http://www.perl.com/perl/misc/Artistic.html>

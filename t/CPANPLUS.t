@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # $File: //depot/cpanplus/dist/t/CPANPLUS.t $
-# $Revision: #1 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 3187 $ $DateTime: 2003/01/04 20:45:36 $
 
 BEGIN { chdir 't' if -d 't' };
 
@@ -32,14 +32,14 @@ $result = CPANPLUS::install();
 
 ($method, $args) = $mock->next_call(2);
 is( $method, 'trap', 'install() should trap error without a module' );
-is( join('-', @$args), "$mock-error-No module specified!",
+is( join('-', ($args && @$args)), "$mock-error-No module specified!",
 	'... with the appropriate error message' );
 ok( !$result, '... returning false' );
 
 $result = CPANPLUS::install( $mock );
 ($method, $args) = $mock->next_call(2);
 is( $method, 'trap', 'install() should trap error given a reference argument' );
-like( join('-', @$args), qr/-error-You passed an object/,
+like( join('-', ($args && @$args)), qr/-error-You passed an object/,
 	'... with the appropriate error message' );
 ok( !$result, '... returning false' );
 
@@ -56,12 +56,12 @@ is( "$args->[1]-@{$args->[2]}", 'modules-foo', '... passing the module name' );
 is( $mock->next_call(),  'ok', '... checking the return value status' );
 ($method, $args) = $mock->next_call();
 is( $method, 'inform', '... registering a status message' );
-like( join('-', @$args), qr/msg-Installing of foo failed-quiet-0/,
+like( join('-', ($args && @$args)), qr/msg-Installing of foo failed-quiet-0/,
 	'... with the appropriate status message' );
 
 CPANPLUS::install( 'foo' );
 ($method, $args) = $mock->next_call( -1 );
-like( join('-', @$args), qr/msg-Installing of foo successful-quiet-0/,
+like( join('-', ($args && @$args)), qr/msg-Installing of foo successful-quiet-0/,
 	'... for success or failure' );
 
 is( $result, 'return value', '... returning the status' );
@@ -78,14 +78,14 @@ $result = CPANPLUS::fetch();
 
 ($method, $args) = $mock->next_call();
 is( $method, 'trap', 'fetch() should trap error without a module' );
-is( join('-', @$args), "$mock-error-No module specified!",
+is( join('-', ($args && @$args)), "$mock-error-No module specified!",
 	'... with the appropriate error message' );
 ok( !$result, '... returning false' );
 
 $result = CPANPLUS::fetch($mock);
 ($method, $args) = $mock->next_call();
 is( $method, 'trap', 'fetch() should trap error given a reference argument' );
-like( join('-', @$args), qr/-error-You passed an object/,
+like( join('-', ($args && @$args)), qr/-error-You passed an object/,
 	'... with the appropriate error message' );
 ok( !$result, '... returning false' );
 
@@ -95,7 +95,7 @@ is( $mock->next_call(), 'module_tree',
 	'fetch() should call module_tree() on backend given module name' );
 ($method, $args) = $mock->next_call();
 is( $method, 'trap', '... trapping an error if module is unknown' );
-like( join('-', @$args), qr/error-Unknown module 'bar'/,
+like( join('-', ($args && @$args)), qr/error-Unknown module 'bar'/,
 	'... with the appropriate error message' );
 ok( !$result, '... returning false' );
 
@@ -113,16 +113,16 @@ is( "$method-$args->[1]", '_get_build-startdir',
 ($method, $args) = $mock->next_call;
 is( $method, 'fetch',
 	'... call the backend fetch() if module is found' );
-is( "$args->[1]-@{$args->[2]}", 'modules-foo', '... passing the module name' );
+is( ($args && $args->[2] && "$args->[1]-@{$args->[2]}"), 'modules-foo', '... passing the module name' );
 is( $mock->next_call(),  'ok', '... checking the return value status' );
 ($method, $args) = $mock->next_call();
 is( $method, 'inform', '... registering a status message' );
-like( join('-', @$args), qr/msg-Fetching of foo failed-quiet-0/,
+like( join('-', ($args && @$args)), qr/msg-Fetching of foo failed-quiet-0/,
 	'... with the appropriate status message' );
 
 $result = CPANPLUS::fetch( 'foo' );
 ($method, $args) = $mock->next_call(-1);
-like( join('-', @$args), qr/msg-Fetching of foo successful-quiet-0/,
+like( join('-', ($args && @$args)), qr/msg-Fetching of foo successful-quiet-0/,
 	'... for success or failure' );
 
 is( $result, 'return value', '... returning the status' );
@@ -131,7 +131,7 @@ is( $result, 'return value', '... returning the status' );
 # Testing CPANPLUS::get() {{{
 
 {
-    no strict 'ref';
+    no strict 'refs';
     local $^W;
     local *{CPANPLUS::fetch} = sub { "fetch-@_" };
     $result = CPANPLUS::get( 'foo' );

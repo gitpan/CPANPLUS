@@ -1,5 +1,39 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #4 $ $Change: 1956 $ $DateTime: 2002/11/04 15:53:53 $
+# $Revision: #7 $ $Change: 3185 $ $DateTime: 2003/01/04 20:38:05 $
+
+[Changes for 0.041 - January 5, 2002]
+
+This "Happy New Year!" edition brought in numerous bugfixes and the
+French translation.
+
+* New Features
+
+ - Support for installing Module::Build-based distributions.
+
+ - The default shell now has auto-completion for command flags.
+
+ - Messages localized to French by Alain Barbet.
+
+ - 'o --short' now shows a reduced listing of outdated local files,
+   by listing only one module per distribution.
+
+* Bug fixes (and their first reporters):
+
+ - Mirror list won't be fetched during automatic upgrading. (Richard Soderberg)
+
+ - 'cpansmoke' was sending out duplicated reports for prereqs. (Alain Barbet)
+
+ - Personal config files was clobbered by the default one. (Richard Clamp)
+
+ - Upgrading was broken due to incompatible Config.pm. (Jost Krieger)
+
+ - All submodules now has proper version numbers. (Alain Barbet)
+
+ - The 'undef' and '' versions in PREREQ_PM is now correctly interpreted.
+
+ - The 'z' command can now handle distnames as arguments.
+
+ - 's conf' in shell was broken.
 
 [Changes for 0.040 - November 4, 2002]
 

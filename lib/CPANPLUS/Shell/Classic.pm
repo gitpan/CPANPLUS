@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Classic.pm $
-# $Revision: #1 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #2 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
 
 ##################################################
 ###            CPANPLUS/Shell/Classic.pm       ###
@@ -263,8 +263,9 @@ sub shell {
                     ### redo setup configuration?
                     if ($name eq 'init') {
                         CPANPLUS::Configure::Setup->init(
-                            conf => $cpan->configure_object,
-                            term => $self->term,
+                            conf    => $cpan->configure_object,
+                            term    => $self->term,
+                            backend => $cpan,
                         );
                         return;
 

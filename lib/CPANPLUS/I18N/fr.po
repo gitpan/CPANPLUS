@@ -1,4 +1,3 @@
-# SOME DESCRIPTIVE TITLE.
 # Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
 # This file is distributed under the same license as the PACKAGE package.
 # FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
@@ -6,10 +5,10 @@
 #, fuzzy
 msgid ""
 msgstr ""
-"Project-Id-Version: PACKAGE VERSION\n"
-"POT-Creation-Date: 2002-07-16 17:27+0800\n"
-"PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
-"Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
+"Project-Id-Version: $Version$\n"
+"POT-Creation-Date: 2002-11-01 17:27+0200\n"
+"PO-Revision-Date: 2002-11-12 19:00+0200\n"
+"Last-Translator: Alain BARBET <alian@cpan.org>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=CHARSET\n"
@@ -27,6 +26,15 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+""
+"CPAN est l'archive mondiale des ressources perl. Cela comprend"
+"100 sites qui répliquent le même contenu tout autour du globe."
+"Beaucoup de pays ont déjà au moins un site CPAN. Les ressources trouvées"
+"sur le CPAN sont facilement accessible avec les modules CPANPLUS. Si vous"
+"voulez utiliser CPANPLUS, vous devez d'abord le configurer"
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:1398
 msgid ""
@@ -53,6 +61,25 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+""
+"Si il y a des URL additionelles que vous voudriez utiliser, ajoutez-les"
+"maintenant. Vous pouvez les entrer manuellement ou séparé par des espaces"
+""
+"Nous fournissons une url par défault pour se rabattre, mais vous pouvez"
+"l'écraser avec ex 'http://www.cpan.org/' si LWP, wget ou lynx sont installés"
+""
+"(Entrez une chaine vide quand vous avez fini, ou simplement sautez cette"
+"étape.)"
+""
+"Remarquez que si vous voulez utiliser un repertory local, vous devez "
+"l'entrer comme suit:"
+""
+"file://server/path/to/cpan"
+""
+"si le fichier est sur votre disque local. Noter les 3 /// après le file:"
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:1132
 msgid ""
@@ -74,6 +101,21 @@ msgid ""
 "Note, the latter option requires a working net connection."
 ""
 msgstr ""
+"Maintenant nous avons besoin de savoir où se trouve vos sites CPAN"
+"préférés. Rentrez quelques sites dans le tableau (juste dans le cas"
+"où le premier ne fonctionnerait pas)"
+""
+"Si vous avez un mirroir du CPAN sur votre station de travail, spécifiez"
+"un fichier en utilisant l'option [c]."
+""
+"Sinon, nous allons récupérer la liste officielle des mirroirs CPAN et"
+"vous pourrez choisir celui qui convient le mieux dans la liste en "
+"utilisant l'option [m]. D'abord choisissez un continent et un pays proche"
+"de chez vous. Ensuite choisissez un mirroir dans la liste qui vous sera"
+"présenté. Choisissez une ou plusieurs URLs."
+""
+"Remarquez que vous devez avoir avoir une connection Internet valide"
+""
 
 #: Makefile.PL:212
 msgid ""
@@ -88,6 +130,17 @@ msgid ""
 "###################################################################"
 ""
 msgstr ""
+""
+"### ATTENTION ###################################################"
+""
+"Meme si les fonctionnalités de base de CPANPLUS ne nécessite pas de"
+"modules externes, il peut dépendre d'autres modules pour fonctionner"
+"en fonction de votre configuration. Si vous sauter la détection, ou"
+"répondez 'n' aux questions qui sont par défault à 'Y', il peut y"
+"avoir des _erreurs imprévisibles_ !"
+""
+"###################################################################"
+""
 
 #: Makefile.PL:31
 msgid ""
@@ -105,6 +158,20 @@ msgid ""
 "###################################################################"
 ""
 msgstr ""
+""
+"### ATTENTION ###################################################"
+""
+"CPANPLUS va remplacer CPAN.pm dans perl 5.10. Meme si il n'est"
+"pas censé fonctionner exactement comme CPAN.pm, il y a un shell "
+"compatible. Voir perldoc CPANPLUS::Shell après l'installation"
+""
+"Vous êtes vivement encouragé à configurer CPANPLUS maintenant, "
+"sinon les utilisateurs non privilégiés (non-root) peuvent être "
+"incapable d'utiliser CPANPLUS tant que vous ne l'aurez pas configuré"
+"correctement."
+""
+"###################################################################"
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:154
 msgid ""
@@ -114,6 +181,12 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Même si nous recommandons une session interactive pour la configuration"
+"vous pouvez entrez 'n' ici et utiliser les valeurs par défaut pour"
+"toutes les questions."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:462
 msgid ""
@@ -124,6 +197,12 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Par défaut, CPAN++ utilise son propre shell à l'invocation. Si vous"
+"préféré un shell différent, comme celui que vous avez écrit ou un"
+"autre que vous avez acquis, entrez son nom complet."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:515
 msgid ""
@@ -135,6 +214,12 @@ msgid ""
 ""
 ""
 msgstr ""
+"CPANPLUS supporte le module Test::Reporter, qui peut-être utilisé pour"
+"reporter les succès ou échecs des modules installé par CPANPLUS. Voulez"
+"vous l'utiliser? Remarquez que vous serez intérrogé avant d'envoyer"
+"chaque report."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:622
 msgid ""
@@ -144,6 +229,11 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Si vous êtes connecté à travers un firewall ou un proxy qui ne gère"
+"pas tous les FTP, vous pouvez utiliser le FTP passif."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:254
 msgid ""
@@ -155,6 +245,13 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Si vous le désirez, CPAN++ peut ajouter des répertoires supplémentaires à "
+"@INC au moment du démarrage. Entrez une liste séparées pas des espaces"
+"pour les ajouter à @INC, coter les espaces superflus voulus. (Pour effacer"
+"les répertoires existants, ajoutez un espace seul.)"
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:292
 msgid ""
@@ -164,6 +261,11 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"En temps normal, je donne juste des informations basiques sur ce que je"
+"fais, ou je peux être plus bavard et vous donnez tous les petits détails."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:322
 msgid ""
@@ -175,6 +277,13 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Dans un intêret de vistesse, nous gardons une trace de quel module a été"
+"installé avec succès and quel module a échoué dans sa version courante."
+"Nous pouvons vider ces données automatiquement, ou explicitement faire"
+"un 'flush' quand vous voulez le purger."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:230
 msgid ""
@@ -194,6 +303,24 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Comme pour le Makefile.PL, 'make' et 'make install' sont lancés dans "
+"des processus séparés. Si vous avez des paramêtres (ex '-j3' dans les "
+"systemes multi-processeurs) que vous voulez passer à l'appel de make, "
+"les spécifier ici."
+""
+"En particulier, 'UNINST=1' est recommandé pour l'utilisateur root, à moins"
+"que vous savez très bien où les modules vont être installés dans le chemin"
+"de \\@INC."
+""
+"Entrez une liste de nom=valeur séparée par des espaces, mais coter tous les"
+"espaces que vous voulez préserver. (Entrez un espace pour effacer tous les"
+"réglages.)"
+""
+"A nouveau, si vous ne comprenez pas cette questions, appuyez juste sur "
+"ENTER."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:204
 msgid ""
@@ -215,6 +342,24 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Makefile.PL est lancé par perl dans dans des processus différents, et accepte"
+"divers flags qui controlent l'installation des modules. Pour le moment, si"
+"vous voulez installer un module dans votre repertoire utilisateur, "
+"positionnez les FLAGS:"
+""
+"LIB=~/perl/lib INSTALLMAN1DIR=~/perl/man/man1 INSTALLMAN3DIR=~/perl/man/"
+"man3"
+""
+"et vérifiez que vous n'avez PAS postionné UNINST=1 dans ce flag."
+""
+"Entrez une liste de nom=valeur séparé par des espaces, mais coter tous les"
+"espaces que vous voulez préserver. (Entrez un espace pour effacer les"
+"réglages existants.)"
+""
+"Si vous ne comprenez pas cette question, appuyer seulement sur ENTER."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:1361
 msgid ""
@@ -224,6 +369,11 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Maintenant, nous allons récupérer une liste de mirroirs pour la première"
+"configuration. Cela peut prendre du temps..."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:384
 msgid ""
@@ -245,6 +395,25 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Parfois, un module va nécessiter que d'autres modules soient installés"
+"au préalable pour fonctionner. CPAN++ peut essayer d'installer ces modules"
+"pour vous automatiquement si vous voulez, ou vous pouvez faire le travail"
+"vous-même."
+""
+"Si vous préférez ne JAMAIS essayer d'installer les modules supplémentaires"
+"automatiquement, choisissez NO. (Habituellement, vous voulez YES.)"
+""
+"Si vous voulez construire les modules pour faire les tests ou satisfaire"
+"les prérequis, mais sans les installer, choisissez B[uild]."
+"Remarquez que cette fonctionnalité nécessite le flush du cache 'lib' pour"
+"un fonctionnement pérein des programmes. (référez vous à la documentation"
+"de CPANPLUS::Backend pour plus de détails)."
+""
+"Sinon, choisissez ASK pour que l'on vous demande la permission d'installer"
+"un module."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:732
 msgid ""
@@ -254,6 +423,11 @@ msgid ""
 "site-wide directory or a personal directory."
 ""
 msgstr ""
+""
+"Le module CPAN++ nécessite un répertoire pour cacher l'index de fichiers"
+"importants et peut-être garder un mirroir temporaire des fichiers du CPAN."
+"Cela peut-etre un répertoire serveur ou un répertoire personnel."
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:548
 msgid ""
@@ -266,6 +440,13 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Le module Module::Signature permet aux auteurs CPAN de signer leur"
+"distribution à l'aide de signatures PGP. Voulez-vous vérifiez l'intégrité"
+"des modules avant de les installer? Remarquez que cela nécessite que le"
+"programme 'gpg' ou le module Crypt::OpenPGP soit installé."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:432
 msgid ""
@@ -274,6 +455,10 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Les modules du CPAN sont protégés par des checksums MD5."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:484
 msgid ""
@@ -283,6 +468,11 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Pour accélerer le départ de CPAN++, nous pouvons utiliser Storable pour"
+"garder certaines informations. Voulez-vous faire cela?"
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:354
 msgid ""
@@ -292,6 +482,11 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Habituellement, lorsque un test échoue, je ne vais pas installer le module,"
+"mais si vous préférez, je peux forcer l'installation malgré tout."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:657
 msgid ""
@@ -303,6 +498,13 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Quelle adresse mail je peux envoyer comme mot de passe pour anonymous"
+"quand je récupère des modules depuis un serveur CPAN? Certains serveurs ne "
+"permettent pas de vous connecter sans une valide adresse mail, ou au moins"
+"quelque chose qui y ressemble."
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:69
 #. ($default, $home_conf)
@@ -327,6 +529,28 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Où voulez-vous sauver votre fichier de configuration de CPANPLUS?"
+""
+"Remarquez que si vous n'avez pas les privilèges administrateur, "
+"vous ne pouvez probablement pas écrire dans le répertoire "
+"système de perl. Dans ce cas, vous devez fournir un endroit différent"
+"(comme votre répertoire personnel) où vous avez des droits."
+""
+"Vous pouvez écraser le fichier de configueation système de CPANPLUS"
+"en positionnant "
+"     $ENV{PERL5_CPANPLUS_CONFIG}"
+"sur le répertoire de votre fichier personnel."
+""
+"Si vous ne comprenez pas cette question, appuyez seulement sur "
+"ENTREE et CPANPLUS va essayer de mettre votre fichier de "
+"configuration dans l'endroit par défaut."
+""
+"1) %1"
+"2) %2"
+"3) Autre part"
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:959
 #. ($pgm, $new_name, $pgm_name)
@@ -340,6 +564,14 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Quel executable '%1' je peux utiliser?"
+""
+"1) %2"
+"2) %3"
+"3) autre"
+""
+""
 
 #: lib/CPANPLUS/Configure/Setup.pm:670 lib/CPANPLUS/Configure/Setup.pm:765
 #. ($email, $cf_mail)
@@ -354,270 +586,277 @@ msgid ""
 ""
 ""
 msgstr ""
+""
+"Vous avez plusieurs choix:"
+""
+"1) 1%)"
+"2) 2%)"
+"3 autre chose"
+
 
 #: lib/CPANPLUS/Shell/Default.pm:1057
 msgid "    ! EXPR                 # evaluate a perl statement"
-msgstr ""
+msgstr "    ! EXPR                 # evalue une expression perl"
 
 #: lib/CPANPLUS/Shell/Default.pm:1039
 msgid "    a AUTHOR ...           # search by author(s)"
-msgstr ""
+msgstr "    a AUTHOR ...           # recherche par auteur(s)"
 
 #: lib/CPANPLUS/Shell/Default.pm:1051
 msgid "    c MODULE | NUMBER ...  # check for module report(s) from cpan-testers"
-msgstr ""
+msgstr "    c MODULE | NUMBER ...  # verifie les report(s) des cpan-testers sur le module"
 
 #: lib/CPANPLUS/Shell/Default.pm:1048
 msgid "    d MODULE | NUMBER ...  # download module(s) into current directory"
-msgstr ""
+msgstr "    d MODULE | NUMBER ...  # télécharge le(s) module(s) dans le répertoire courant"
 
 #: lib/CPANPLUS/Shell/Default.pm:1054
 msgid "    e DIR ...              # add directories to your @INC"
-msgstr ""
+msgstr "    e DIR ...              # ajoute des répertoires à @INC"
 
 #: lib/CPANPLUS/Shell/Default.pm:1041
 msgid "    f AUTHOR ...           # list all distributions by author(s)"
-msgstr ""
+msgstr "    f AUTHOR ...           # liste toutes les distributions par auteur(s)"
 
 #: lib/CPANPLUS/Shell/Default.pm:1035
 msgid "    h | ?                  # display help"
-msgstr ""
+msgstr "    h | ?                  # affiche l'aide"
 
 #: lib/CPANPLUS/Shell/Default.pm:1045
 msgid "    i MODULE | NUMBER ...  # install module(s), by name or by search number"
-msgstr ""
+msgstr "    i MODULE | NUMBER ...  # installe le(s) module(s), par nom ou par numero de recherche"
 
 #: lib/CPANPLUS/Shell/Default.pm:1049
 msgid "    l MODULE | NUMBER ...  # display detailed information about module(s)"
-msgstr ""
+msgstr "    l MODULE | NUMBER ...  # affiche des informations détaillées sur le(s) module(s)"
 
 #: lib/CPANPLUS/Shell/Default.pm:1040
 msgid "    m MODULE ...           # search by module(s)"
-msgstr ""
+msgstr "    m MODULE ...           # recherche par module(s)"
 
 #: lib/CPANPLUS/Shell/Default.pm:1042
 msgid "    o [ MODULE ... ]       # list installed module(s) that aren't up to date"
-msgstr ""
+msgstr "    o [ MODULE ... ]       # liste le(s) module(s)  installés qui ne sont pas à jour"
 
 #: lib/CPANPLUS/Shell/Default.pm:1058
 msgid "    p [FILE]               # print the error stack (optionally to a file)"
-msgstr ""
+msgstr "    p [FILE]               # affiche la pile d'erreurs (optionellement dans un fichier)"
 
 #: lib/CPANPLUS/Shell/Default.pm:1036
 msgid "    q                      # exit"
-msgstr ""
+msgstr "    q                      # sortie"
 
 #: lib/CPANPLUS/Shell/Default.pm:1050
 msgid "    r MODULE | NUMBER ...  # display README files of module(s)"
-msgstr ""
+msgstr "    r MODULE | NUMBER ...  # Affiche les fichiers README des module(s)"
 
 #: lib/CPANPLUS/Shell/Default.pm:1055
 msgid "    s [OPTION VALUE]       # set configuration options for this session"
-msgstr ""
+msgstr "    s [OPTION VALUE]       # positionne les options de configuration pour cette session"
 
 #: lib/CPANPLUS/Shell/Default.pm:1056
 msgid "    s conf | save          # reconfigure settings / save current settings"
-msgstr ""
+msgstr "    s conf | save          # reconfigure les options / sauve les options courantes"
 
 #: lib/CPANPLUS/Shell/Default.pm:1046
 msgid "    t MODULE | NUMBER ...  # test module(s), by name or by search number"
-msgstr ""
+msgstr "    t MODULE | NUMBER ...  # teste le(s) module(s), par nom ou par numero de recherche"
 
 #: lib/CPANPLUS/Shell/Default.pm:1047
 msgid "    u MODULE | NUMBER ...  # uninstall module(s), by name or by search number"
-msgstr ""
+msgstr "    u MODULE | NUMBER ...  # deinstalle le(s) module(s), par nom ou par numéro de recherche"
 
 #: lib/CPANPLUS/Shell/Default.pm:1037
 msgid "    v                      # version information"
-msgstr ""
+msgstr "    v                      # information sur le no de version"
 
 #: lib/CPANPLUS/Shell/Default.pm:1043
 msgid "    w                      # display the result of your last search again"
-msgstr ""
+msgstr "    w                      # re-affiche le résultat de votre dernière recherche"
 
 #: lib/CPANPLUS/Shell/Default.pm:1059
 msgid "    x                      # reload CPAN indices"
-msgstr ""
+msgstr "    x                      # recharge les indices CPAN"
 
 #: lib/CPANPLUS/Shell/Default.pm:1052
 msgid "    z MODULE | NUMBER ...  # extract module(s) and open command prompt in it"
-msgstr ""
+msgstr "    z MODULE | NUMBER ...  # extrait le(s) module(s) et ouvre un prompt dessus"
 
 #: lib/CPANPLUS/Error.pm:141 lib/CPANPLUS/Error.pm:60
 #. ($self->_who_was_it()
 msgid " in %1 at %2"
-msgstr ""
+msgstr "dans %1 à l'endroit %2"
 
 #: lib/CPANPLUS/Backend.pm:849
 #. ($author->{name}, $author->{email})
 msgid "%1 (%2)"
-msgstr ""
+msgstr "%1 (%2)"
 
 #: lib/CPANPLUS/Shell.pm:144
 #. ($self->which, $self->which->VERSION)
 msgid "%1 -- CPAN exploration and modules installation (v%2)"
-msgstr ""
+msgstr "%1 -- Exploration et installation de modules CPAN (v%2)"
 
 #: lib/CPANPLUS/Dist/PPM.pm:523
 #. ($item)
 msgid "%1 could not be added by Archive::Zip"
-msgstr ""
+msgstr "%1 ne peut être ajouté par Archive::Zip"
 
 #: lib/CPANPLUS/Internals.pm:710
 #. ($mod)
 msgid "%1 does not contain an author directory!"
-msgstr ""
+msgstr "%1 ne contient pas de repertoire d'auteurs"
 
 #: lib/CPANPLUS/Dist/PPM.pm:280
 #. ($dir)
 msgid "%1 does not exist, can not PPMify it!"
-msgstr ""
+msgstr "%1 n'existe pas, impossible d'en faire un PPM"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1611
 #. ($file)
 msgid "%1 has no size!"
-msgstr ""
+msgstr "%1 n'a pas de taille!"
 
 #: lib/CPANPLUS/Internals/Extract.pm:52
 #. ($file)
 msgid "%1 has zero size! Can not extract!"
-msgstr ""
+msgstr "%1 a une taille de 0! Impossible d'extraire!"
 
 #: lib/CPANPLUS/Dist/PPM.pm:77
 #. ($ppd)
 msgid "%1 installed succesfully"
-msgstr ""
+msgstr "%1 installé avec succès"
 
 #: lib/CPANPLUS/Internals.pm:513
 #. ($mod)
 msgid "%1 installed successfully"
-msgstr ""
+msgstr "%1 installé avec succès"
 
 #: lib/CPANPLUS/Shell.pm:280
 #. ($mod)
 msgid "%1 is a required module for this install."
-msgstr ""
+msgstr "%1 est un module necéssaire pour l'install"
 
 #: lib/CPANPLUS/Internals.pm:652
 #. ($mod)
 msgid "%1 is not a proper distribution name!"
-msgstr ""
+msgstr "%1 n'est pas un nom de distribution correct!"
 
 #: lib/CPANPLUS/Configure.pm:342
 #. ($file)
 msgid "%1 is not writable"
-msgstr ""
+msgstr "%1 n'a pas les droits en écriture"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:304
 #. ($args{path}->{local})
 msgid "%1 is up to date"
-msgstr ""
+msgstr "%1 est à jour"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:191
 #. ($method, $path->{local})
 msgid "%1 said it fetched %2, but it was not created!"
-msgstr ""
+msgstr "La méthode %1 dit que %2 a été retiré, mais il n'a pas été créé!"
 
 #: lib/CPANPLUS/Dist/PPM.pm:148
 #. ($ppd)
 msgid "%1 uninstalled succesfully"
-msgstr ""
+msgstr "desinstallation de %1 avec succès"
 
 #: lib/CPANPLUS/Shell.pm:265
 #. ($key, $set->{$key})
 msgid "%1 was set to %2"
-msgstr ""
+msgstr "%1 a été positionné à %2"
 
 #: lib/CPANPLUS/Shell.pm:253 lib/CPANPLUS/Shell.pm:261
 #. ($key)
 msgid "%1 was set to:"
-msgstr ""
+msgstr "%1 a été positionné à:"
 
 #: lib/CPANPLUS/Shell/Default.pm:385
 #. ($name)
 msgid "'%1' is not a valid configuration option!"
-msgstr ""
+msgstr "'%1' n'est pas une option de configuration valide!"
 
 #: lib/CPANPLUS/Backend/InputCheck.pm:94
 #. ($key, (caller(1)
 msgid "'%1' is not a valid option for %2"
-msgstr ""
+msgstr "'%1' n'est pas une option valide pour %2"
 
 #: lib/CPANPLUS/Backend/RV.pm:196
 #. ($name, $type)
 msgid "'%1' is not an existing accessor for '%2'"
-msgstr ""
+msgstr "'%1' n'est pas un nom existant pour atteindre '%2'"
 
 #: lib/CPANPLUS/Backend/InputCheck.pm:86
 #. ($key, (caller(1)
 msgid "'%1' is not of a valid type for %2, using default instead!"
-msgstr ""
+msgstr "'%1' n'est pas un type valide pour %2, utilisation valeur par défault à la place"
 
 #: lib/CPANPLUS/Configure/Setup.pm:132
 #. ($CPANPLUS::Internals::VERSION, $what)
 msgid "*** Error: CPANPLUS %1 was not configured properly, and we cannot write to\\n    %2"
-msgstr ""
+msgstr "*** Erreur: CPANPLUS %1 n'est pas configuré correctement, and je ne peux ecrire dans \\\\n   %2"
 
 #: lib/CPANPLUS/Configure/Setup.pm:133
 msgid "*** Please check its permission, or contact your administrator."
-msgstr ""
+msgstr "*** Vérifiez les droits, ou contactez votre administrateur."
 
 #: lib/CPANPLUS/Shell.pm:145
 msgid "*** Please report bugs to <cpanplus-bugs\\@lists.sourceforge.net>."
-msgstr ""
+msgstr "*** Merci de faire suivre les bugs à <cpanplus-bugs\\@lists.sourceforge.net>."
 
 #: lib/CPANPLUS/Shell.pm:146
 #. ($cpan->VERSION, $rl_avail)
 msgid "*** Using CPANPLUS::Backend v%1.  %2"
-msgstr ""
+msgstr "*** Utilisation de CPANPLUS::Backend v%1.  %2"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1028 lib/CPANPLUS/Configure/Setup.pm:282
 msgid "*nothing entered*"
-msgstr ""
+msgstr "*aucune entrée*"
 
 #: lib/CPANPLUS/Dist/PPM.pm:329
 msgid "/bin/tar solution not yet implemented, sorry!"
-msgstr ""
+msgstr "solution /bin/tar non encore implémenté, désolé!"
 
 #: Makefile.PL:110
 msgid "A previous installation detected. Use its settings? [Y/n]: "
-msgstr ""
+msgstr "Installation précédente détectée. Utiliser ses réglages? Y(/n): "
 
 #: lib/CPANPLUS/Internals/Make.pm:226
 #. ($mod)
 msgid "According to the cache, %1 failed to install before in this session.. returning!"
-msgstr ""
+msgstr "D'après le cache, %1 a échoué à l'installation auparavant dans cette cession.. Je rend la main!"
 
 #: lib/CPANPLUS/Internals/Make.pm:306
 #. ($mod)
 msgid "According to the cache, prerequisite %1 is already installed"
-msgstr ""
+msgstr "D'après le cache, le prérequis %1 est déjà installé"
 
 #: lib/CPANPLUS/Configure/Setup.pm:265
 #. ("@{$lib}")
 msgid "Additional @INC directories to add? [%1]"
-msgstr ""
+msgstr "Répertoires additionnels pour @INC? [%1]"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1425
 #. ($fallback_host)
 msgid "Additional host(s) to add [%1]: "
-msgstr ""
+msgstr "Machines supplémentaires à ajouter [%1]: "
 
 #: lib/CPANPLUS/Configure/Setup.pm:1426
 msgid "Additional host(s) to add: "
-msgstr ""
+msgstr "Nom de machine(s) à ajouter "
 
 #: lib/CPANPLUS/Backend.pm:745
 msgid "All cached data has been flushed"
-msgstr ""
+msgstr "Toutes les données en cache ont été écrites"
 
 #: lib/CPANPLUS/Shell/Default.pm:461
 msgid "All files downloaded successfully"
-msgstr ""
+msgstr "Tous les fichiers ont été téléchargés avec succès"
 
 #: lib/CPANPLUS/Shell/Default.pm:313
 msgid "All module(s) up to date."
-msgstr ""
+msgstr "Tous les modules sont à jour."
 
 #: lib/CPANPLUS/Shell/Default.pm:429
 #. ($target)
@@ -626,7 +865,7 @@ msgstr ""
 
 #: lib/CPANPLUS/Shell/Default.pm:629
 msgid "All modules uninstalled successfully"
-msgstr ""
+msgstr "Tous les modules ont été déinstallés avec succès"
 
 #: lib/CPANPLUS/Internals/Source.pm:328
 msgid "Alpha testing"
@@ -635,71 +874,71 @@ msgstr ""
 #: lib/CPANPLUS/Internals.pm:401
 #. ($m)
 msgid "Already attempted to use %1, which was unsuccessful"
-msgstr ""
+msgstr "J'ai déjà essayé d'utiliser %1, sans succès."
 
 #: lib/CPANPLUS/Internals/Fetch.pm:126
 #. ($path->{local})
 msgid "Already downloaded %1, won't download again without force"
-msgstr ""
+msgstr "Déjà téléchargé %1, je vais pas le retélécharger sans mode force"
 
 #: lib/CPANPLUS/Internals/Extract.pm:65
 #. ($file, $loc)
 msgid "Already extracted '%1' to '%2'. Won't extract again without force"
-msgstr ""
+msgstr "Déjà extrait '%1' dans '%2'. Je ne vais pas le faire à nouveau sans le mode force"
 
 #: lib/CPANPLUS/Internals/Make.pm:381
 msgid "Already ran 'make' for this module. Not running again unless you force!"
-msgstr ""
+msgstr "Déjà lancé 'make' pour ce module. Je ne vais le lancer à nouveau sans le mode force"
 
 #: lib/CPANPLUS/Dist/PPM.pm:239
 msgid "An error occurred while compressing the blib/ directory"
-msgstr ""
+msgstr "Une erreur est survenue en décompressant le répertoire blib/"
 
 #: lib/CPANPLUS/Dist/PPM.pm:245
 msgid "An error occurred while creating the README file"
-msgstr ""
+msgstr "Une erreur est survenue en créant le fichier README"
 
 #: lib/CPANPLUS/Internals/Install.pm:259
 #. ($file)
 msgid "An error occurred while installing bundles from %1"
-msgstr ""
+msgstr "Une erreur est survenue lors de l'installation de bundles pour %1"
 
 #: lib/CPANPLUS/Dist/PPM.pm:233
 msgid "An error occurred while writing the .pdd file"
-msgstr ""
+msgstr "Une erreur est survenue lors de l'écriture du fichier .ppd"
 
 #: lib/CPANPLUS/Dist/PPM.pm:250
 msgid "An error occurred while zipping a distribution"
-msgstr ""
+msgstr "Une erreur est survenue en zippant la distribution"
 
 #: lib/CPANPLUS/Configure/Setup.pm:161
 msgid "Are you ready for manual configuration?"
-msgstr ""
+msgstr "Etes-vous prêt pour une configuration manuelle?"
 
 #: lib/CPANPLUS/Backend.pm:1113
 msgid "Array reference passed, but 'to' only takes one argument."
-msgstr ""
+msgstr "Une reférence de tableau est passé, mais 'to' prend seulement un argument."
 
 #: lib/CPANPLUS/Internals/Source.pm:367
 msgid "Artistic license alone"
-msgstr ""
+msgstr "License Artistic seule"
 
 #: lib/CPANPLUS/Internals/Make.pm:137
 msgid "Author did not supply a Makefile.PL - Attempting to generate one"
-msgstr ""
+msgstr "L'auteur n'a pas fourni de Mafile.PL - On essaye d'en générer un"
 
 #: lib/CPANPLUS/Shell/Default.pm:386
 msgid "Available options and their current values are:"
-msgstr ""
+msgstr "Les options disponibles et leurs valeurs courantes sont:"
 
 #: lib/CPANPLUS/Internals/Source.pm:366
 msgid "BSD: The BSD License"
-msgstr ""
+msgstr "BSD: La License BSD"
 
 #: lib/CPANPLUS/Internals/Make.pm:189
 #. ($!)
 msgid "BUILDING MAKEFILE failed! - %1"
-msgstr ""
+msgstr "CONSTRUCTION MAKEFILE echoué! - %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:329
 msgid "Beta testing"
@@ -708,386 +947,386 @@ msgstr ""
 #: lib/CPANPLUS/Dist/RPM.pm:63
 #. ($builddir)
 msgid "Build directory %1 doesn't look like an RPM build root"
-msgstr ""
+msgstr "Le répertoire de build %1 ne ressemble à répertoire de build RPM"
 
 #: lib/CPANPLUS/Dist/RPM.pm:246
 #. ("perl-$name-$version-$release.$ARCH.rpm")
 msgid "Built %1"
-msgstr ""
+msgstr "Construction de %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:346
 msgid "C and perl, a C compiler will be needed"
-msgstr ""
+msgstr "C et perl, un compilateur C est nécessaire"
 
 #: lib/CPANPLUS/Internals/Source.pm:348
 msgid "C++ and perl, a C++ compiler will be needed"
-msgstr ""
+msgstr "C++ et perl, un compilateur C++ va être utilisé"
 
 #: lib/CPANPLUS/Shell/Default.pm:78
 msgid "CPAN Terminal"
-msgstr ""
+msgstr "Terminal CPAN"
 
 #: Makefile.PL:307
 msgid "CPAN Test reporting"
-msgstr ""
+msgstr "Report des tests CPAN"
 
 #: lib/CPANPLUS/Dist/RPM.pm:108
 #. ($infile)
 msgid "CPAN tells us the following about %1:"
-msgstr ""
+msgstr "CPAN nous raconte ce qui suit sur %1:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:472
 #. ($shell)
 msgid "CPAN++ 'shell' you want to use? [%1]: "
-msgstr ""
+msgstr "'shell' CPAN++ que vous voulez utiliser? [%1@: "
 
 #: Makefile.PL:267
 msgid "Cached metadata"
-msgstr ""
+msgstr "Métadonnées en cache"
 
 #: lib/CPANPLUS/Dist/PPM.pm:456
 #. ($dir, $!)
 msgid "Can not open %1: %2"
-msgstr ""
+msgstr "Impossible d'ouvrir %1: %2"
 
 #: lib/CPANPLUS/Internals/Install.pm:416
 #. ($args{module})
 msgid "Can't check version on %1... assuming it's up to date"
-msgstr ""
+msgstr "Ne peut vérifier la version de %1... On assume qu'il est à jour"
 
 #: lib/CPANPLUS/Internals/Extract.pm:378
 #. ($args{'file'})
 msgid "Can't find file %1"
-msgstr ""
+msgstr "Ne peut trouver le fichier %1"
 
 #: lib/CPANPLUS/Internals/Make.pm:605
 #. ($!)
 msgid "Can't find the Makefile: %1"
-msgstr ""
+msgstr "Ne peut trouver le Makefile: %1"
 
 #: lib/CPANPLUS/Internals/Install.pm:362 lib/CPANPLUS/Internals/Install.pm:372
 #. ($filename, $!)
 msgid "Can't open %1: %2"
-msgstr ""
+msgstr "Impossible d'ouvrir %1: %2"
 
 #: lib/CPANPLUS/Dist/PPM.pm:436
 #. ($file, $!)
 msgid "Can't open[r/w] %1: %2"
-msgstr ""
+msgstr "Impossible d'ouvrir%r(,/w) %1: %2"
 
 #: lib/CPANPLUS/Dist/PPM.pm:419
 #. ($file, $!)
 msgid "Can't rewind %1: %2"
-msgstr ""
+msgstr "Ne peut faire un rewind sur %1: %2"
 
 #: lib/CPANPLUS/Dist/PPM.pm:424
 #. ($file, $!)
 msgid "Can't truncate %1: %2"
-msgstr ""
+msgstr "Ne peut tronquer %1: %2"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1370
 msgid "Can't use Backend!"
-msgstr ""
+msgstr "Impossible d'utiliser Backend!"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:416
 msgid "Can't use File::* functions. They should be core modules!"
-msgstr ""
+msgstr "Ne peut utiliser les fonctions de File::*. Cela doit être des modules du core!"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:328
 msgid "Can't use LWP"
-msgstr ""
+msgstr "Impossible d'utiliser LWP"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:545
 msgid "Can't use Net::FTP"
-msgstr ""
+msgstr "Impossible d'utiliser Net::FTP"
 
 #: lib/CPANPLUS/Dist/PPM.pm:429
 #. ($file, $!)
 msgid "Can't write to %1: %2"
-msgstr ""
+msgstr "Impossible d'écrire dans %1: %2"
 
 #: lib/CPANPLUS/Internals/Install.pm:71
 #. ($m)
 msgid "Cannot fetch %1 (part of core perl distribution); skipping"
-msgstr ""
+msgstr "Ne peut récupérer %1 (partie du core de la distribution perl); non traité"
 
 #: Makefile.PL:436
 #. ('nmake', 'ftp')
 msgid "Cannot fetch %1 without a working '%2' executable!"
-msgstr ""
+msgstr "Ne peut récupérer %1 sans l'executable '%2' qui fonctionne!"
 
 #: Makefile.PL:393
 #. ('nmake', $host)
 msgid "Cannot fetch %1; '%2' resolve failed!"
-msgstr ""
+msgstr "Ne peut récupérer %1; résolution de '%2' échouée"
 
 #: lib/CPANPLUS/Internals.pm:754
 #. ($mod)
 msgid "Cannot find %1 in the module tree!"
-msgstr ""
+msgstr "Ne peut trouver %1 dans l'arbre des modules"
 
 #: lib/CPANPLUS/Backend.pm:1047
 #. ($mod)
 msgid "Cannot find distribution for %1, skipping"
-msgstr ""
+msgstr "Ne peut trouver une distribution pour %1, ignoré"
 
 #: lib/CPANPLUS/Internals/Install.pm:302
 #. ($name)
 msgid "Cannot install bundled module: %1 does not exist!"
-msgstr ""
+msgstr "Ne peut installer le module bundle: %1 n'exite pas!"
 
 #: Makefile.PL:67
 #. ($config)
 msgid "Cannot unlink old config file '%1', continuing anyway."
-msgstr ""
+msgstr "Ne peut suprimer l'ancien fichier de configuration '%1', poursuite quand même"
 
 #: Makefile.PL:96
 #. ('Config.pm')
 msgid "Cannot write to %1"
-msgstr ""
+msgstr "Impossible d'écrire dans %1"
 
 #: lib/CPANPLUS/Shell.pm:95
 msgid "Caught SIGINT"
-msgstr ""
+msgstr "Recu le signal SIGINT"
 
 #: lib/CPANPLUS/Configure/Setup.pm:559
 msgid "Check module signatures?"
-msgstr ""
+msgstr "Verifier les signatures des modules ?"
 
 #: lib/CPANPLUS/Shell.pm:53
 msgid "Check your installation!"
-msgstr ""
+msgstr "Vérifiez votre installation!"
 
 #: lib/CPANPLUS/Dist/PPM.pm:402
 msgid "Checking PPD..."
-msgstr ""
+msgstr "Vérification du PPD"
 
 #: lib/CPANPLUS/Internals/Source.pm:468
 msgid "Checking if source files are up to date"
-msgstr ""
+msgstr "Verification si les fichiers sources sont à jour"
 
 #: lib/CPANPLUS/Internals/Install.pm:548
 #. ($archive)
 msgid "Checksum for %1 OK"
-msgstr ""
+msgstr "Checksum pour %1 OK"
 
 #: lib/CPANPLUS/Internals/Install.pm:114
 #. ($file)
 msgid "Checksums did not match for %1"
-msgstr ""
+msgstr "Checksum ne correspond pas pour %1"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1315
 msgid "Choose another? [Y/n]: "
-msgstr ""
+msgstr "Choisir un autre? %Y(,/n): "
 
 #: lib/CPANPLUS/Configure/Setup.pm:107
 msgid "Configuration file name: "
-msgstr ""
+msgstr "Nom du fichier de configuration: "
 
 #: lib/CPANPLUS/Internals/Search.pm:192
 #. ($method, $mod, $@)
 msgid "Could no get %1 for %2: %3"
-msgstr ""
+msgstr "Ne peut récupérer %1 pour %2: %3"
 
 #: lib/CPANPLUS/Shell/Default.pm:692
 #. ($cwd, $dir, $!)
 msgid "Could not chdir back to %1 from %2: %3"
-msgstr ""
+msgstr "Impossible de revenir dans le répertoire %1 depuis %2:%3"
 
 #: lib/CPANPLUS/Shell/Default.pm:682
 #. ($cwd, $dir, $!)
 msgid "Could not chdir from %1 to %2: %3"
-msgstr ""
+msgstr "Impossible de faire un cd depuis %1 vers %2: %3"
 
 #: lib/CPANPLUS/Internals/Extract.pm:121
 #. ($orig)
 msgid "Could not chdir into %1"
-msgstr ""
+msgstr "Impossible de faire un cd dans %1"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:604
 #. ($args{path}->{local}, $!)
 msgid "Could not close %1: %2"
-msgstr ""
+msgstr "Ne peut fermer %1: %2"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:380
 #. ($remote, $local, $!, $@)
 msgid "Could not copy %1 to %2: %3 %4"
-msgstr ""
+msgstr "Ne peut copier %1 vers %2: %3 %4"
 
 #: lib/CPANPLUS/Dist/PPM.pm:224 lib/CPANPLUS/Internals/Extract.pm:90 lib/CPANPLUS/Internals/Fetch.pm:90
 #. ($path)
 #. ($base)
 #. ($local_path)
 msgid "Could not create %1"
-msgstr ""
+msgstr "Ne peut créer %1"
 
 #: lib/CPANPLUS/Dist/PPM.pm:512
 msgid "Could not create Archive::Zip object"
-msgstr ""
+msgstr "Ne peut créer un objet Archive::Zip"
 
 #: lib/CPANPLUS/Internals/Make.pm:575
 #. ($!)
 msgid "Could not create Makefile.PL - %1"
-msgstr ""
+msgstr "Ne peut créer Makefile.PL - %1"
 
 #: lib/CPANPLUS/Internals/Search.pm:174
 msgid "Could not create an ExtUtils::Installed object"
-msgstr ""
+msgstr "Ne peut créer un objet ExtUtils::Installed"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:119
 #. ($path->{local})
 msgid "Could not delete %1, some methods may fail to force a download"
-msgstr ""
+msgstr "Ne peut supprimer %1, certaines méthodes peuvent échouer un téléchargement forcé"
 
 #: lib/CPANPLUS/Dist/PPM.pm:190
 #. ($self->{module})
 msgid "Could not determine what dir %1 was built in"
-msgstr ""
+msgstr "Ne peut déterminer quel répertoire %1 a été construit dans"
 
 #: lib/CPANPLUS/Shell/Default.pm:677
 #. ($mod)
 msgid "Could not determine where %1 was extracted to"
-msgstr ""
+msgstr "Ne peut déterminer où %1 a été extrait"
 
 #: lib/CPANPLUS/Dist/PPM.pm:471
 #. ($dir)
 msgid "Could not find a .ppd file in %1!"
-msgstr ""
+msgstr "Ne peut trouver un fichier .ppd dans %1!"
 
 #: lib/CPANPLUS/Backend.pm:899
 #. ($auth)
 msgid "Could not find distributions for %1"
-msgstr ""
+msgstr "Ne peut trouver une distribution pour %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:273
 msgid "Could not find installation files for all the modules"
-msgstr ""
+msgstr "Ne peut trouver les fichiers d'installation pour tous les modules"
 
 #: lib/CPANPLUS/Internals/Make.pm:148
 msgid "Could not generate Makefile.PL - Aborting"
-msgstr ""
+msgstr "Ne peut générer Makefile.PL - Annulé"
 
 #: lib/CPANPLUS/Backend.pm:497
 #. ($name)
 msgid "Could not get files for %1"
-msgstr ""
+msgstr "Ne peut ramener les fichiers pour %1"
 
 #: lib/CPANPLUS/Configure.pm:65
 #. ($ENV{PERL5_CPANPLUS_CONFIG}, $@)
 msgid "Could not load your personal config: %1: %2"
-msgstr ""
+msgstr "Ne peut charger votre configuration personnelle: %1: %2"
 
 #: lib/CPANPLUS/Dist/PPM.pm:378
 #. ($current, $target, $@)
 msgid "Could not move %1 to %2: %3"
-msgstr ""
+msgstr "Ne peut déplacer %1 vers %2: %3"
 
 #: lib/CPANPLUS/Internals/Install.pm:126
 #. ($m)
 msgid "Could not obtain extraction directory for module %1"
-msgstr ""
+msgstr "Impossible d'obtenir le répertoire d'extraction pour le module %1"
 
 #: lib/CPANPLUS/Dist/PPM.pm:129
 #. ($ppd, $!)
 msgid "Could not open %1 for reading: %2"
-msgstr ""
+msgstr "Impossible d'ouvrir %1 en lecture: %2"
 
 #: lib/CPANPLUS/Dist/PPM.pm:570
 #. ($file, $!)
 msgid "Could not open %1 for writing: %2"
-msgstr ""
+msgstr "Impossible d'ouvrir %1 pour écriture: %2"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:592 lib/CPANPLUS/Internals/Install.pm:526 lib/CPANPLUS/Internals/Search.pm:255 lib/CPANPLUS/Internals/Source.pm:557
 #. ($args{path}->{local}, $!)
 #. ($archive, $!)
 #. ($file, $!)
 msgid "Could not open %1: %2"
-msgstr ""
+msgstr "Impossible d'ouvrir %1: %2"
 
 #: lib/CPANPLUS/Internals/Extract.pm:177 lib/CPANPLUS/Internals/Extract.pm:245 lib/CPANPLUS/Internals/Extract.pm:299 lib/CPANPLUS/Internals/Extract.pm:343
 #. ($file)
 msgid "Could not read dir name from %1"
-msgstr ""
+msgstr "Ne peut lire le nom du répertoire depuis %1"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:586
 #. ($!)
 msgid "Could not run command: %1"
-msgstr ""
+msgstr "Ne peut lancer la commande: %1"
 
 #: lib/CPANPLUS/Backend.pm:556
 #. ($name)
 msgid "Could not uninstall %1"
-msgstr ""
+msgstr "Ne peut déinstaller %1"
 
 #: lib/CPANPLUS/Internals/Utils.pm:25
 msgid "Could not use File::Path! This module should be core!"
-msgstr ""
+msgstr "Ne peut utiliser le File::Path! Ce module doit faire partie du core!"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:598
 #. ($args{path}->{local}, $!)
 msgid "Could not write to %1: %2"
-msgstr ""
+msgstr "Ne peut écrire dans %1: %2"
 
 #: lib/CPANPLUS/Internals/Source.pm:445
 #. ($file, $conf->_get_ftp('host')
 msgid "Couldn't fetch %1 from %2"
-msgstr ""
+msgstr "Impossible de récupérer %1 depuis %2"
 
 #: lib/CPANPLUS/Dist/RPM.pm:184
 #. ($source)
 msgid "Couldn't get a name for %1"
-msgstr ""
+msgstr "Impossible de récupérer un nom pour %1"
 
 #: lib/CPANPLUS/Dist/RPM.pm:185
 #. ($source)
 msgid "Couldn't get a version for %1"
-msgstr ""
+msgstr "Ne peut récupérer une version pour %1"
 
 #: lib/CPANPLUS/Dist/RPM.pm:192
 #. ("perl-$name.spec")
 msgid "Couldn't open %1 for writing."
-msgstr ""
+msgstr "Ne peut ouvrir %1 pour écriture"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1613
 #. ($file, $!)
 msgid "Couldn't open %1: %2"
-msgstr ""
+msgstr "Ne peut ouvrir %1: %2"
 
 #: lib/CPANPLUS/Internals/Source.pm:452
 #. ($file)
 msgid "Couldn't touch %1"
-msgstr ""
+msgstr "Ne peut faire un touch sur %1"
 
 #: lib/CPANPLUS/Configure.pm:384
 #. ($file, $!)
 msgid "Couldn't write to %1: %2"
-msgstr ""
+msgstr "Ne peut écrire dans %1: %2"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1311
 msgid "Currently selected hosts:"
-msgstr ""
+msgstr "Machines actuellement sélectionnées:"
 
 #: lib/CPANPLUS/Shell/Default.pm:529
 #. ($mod)
 msgid "Details for %1"
-msgstr ""
+msgstr "Détails pour %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:338
 msgid "Developer"
-msgstr ""
+msgstr "Développeur"
 
 #: lib/CPANPLUS/Backend/InputCheck.pm:170
 #. ((caller(1)
 msgid "Direct access to private method %1 is forbidden"
-msgstr ""
+msgstr "Accès direct à la méthode privée %1 est interdite"
 
 #: Makefile.PL:136
 msgid "Do you want to configure CPANPLUS now?"
-msgstr ""
+msgstr "Est-ce que vous voulez configurer CPANPLUS maintenant ?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:699
 msgid "Email address: "
-msgstr ""
+msgstr "Adresse mail:"
 
 #: lib/CPANPLUS/Shell/Default.pm:425
 #. ($target, $key)
@@ -1097,401 +1336,377 @@ msgstr ""
 #: lib/CPANPLUS/Backend.pm:244
 #. ($args->{type}, $name)
 msgid "Error creating %1 dist for %2"
-msgstr ""
+msgstr "Erreur en créant la distribution %1 pour %2"
 
 #: lib/CPANPLUS/Shell/Default.pm:687
 #. ($!)
 msgid "Error executing your subshell: %1"
-msgstr ""
+msgstr "Erreur à l'execution du sous-shell: %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:457
 #. ($key)
 msgid "Error fetching %1"
-msgstr ""
+msgstr "Erreur en récupérant %1"
 
 #: lib/CPANPLUS/Internals.pm:898
 #. ($!)
 msgid "Error from child: %1"
-msgstr ""
+msgstr "Erreur du fils: %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:288 lib/CPANPLUS/Internals/Source.pm:291
 #. ($@)
 msgid "Error in eval of dslip source files: %1"
-msgstr ""
+msgstr "Erreur dans l'évaluation de fichiers source dlisp: %1"
 
 #: lib/CPANPLUS/Internals/Install.pm:178
 #. ($m)
 msgid "Error installing bundle %1"
-msgstr ""
+msgstr "Erreur à l'installation du bundle %1"
 
 #: lib/CPANPLUS/Internals/Install.pm:156
 #. ($m)
 msgid "Error installing module %1"
-msgstr ""
+msgstr "Erreur en installant le module %1"
 
 #: lib/CPANPLUS/Internals/Report.pm:340
 msgid "Error parsing testers.cpan.org results"
-msgstr ""
+msgstr "Erreur au parsing du résultat de testers.cpan.org"
 
 #: lib/CPANPLUS/Backend.pm:1088
 msgid "Error rebuilding trees!"
-msgstr ""
+msgstr "Erreur dans la reconstruction de l'arborescence!"
 
 #: lib/CPANPLUS/Internals/Extract.pm:182
 #. ($dir, $@)
 msgid "Error removing %1: %2"
-msgstr ""
+msgstr "Erreur en supprimant %1: %2"
 
 #: lib/CPANPLUS/Backend/RV.pm:59
 msgid "Error validating input to 'CPANPLUS::Backend::RV'"
-msgstr ""
+msgstr "Erreur en validant l'entrée de ''CPANPLUS::Backend::RV'"
 
 #: lib/CPANPLUS/Internals/Search.pm:389
 #. ($mod, $@)
 msgid "Error while validating %1: %2"
-msgstr ""
+msgstr "Erreur en validant %1: %2"
 
 #: lib/CPANPLUS/Dist/RPM.pm:127
 #. ($id)
 msgid "Error: %1 is contained within Perl itself!"
-msgstr ""
+msgstr "Erreur: %1 est contenu dans Perl lui-même!"
 
 #: lib/CPANPLUS/Dist/RPM.pm:125
 #. ($id)
 msgid "Error: %1 says 'Contact Author'"
-msgstr ""
+msgstr "Erreur: %1 dit 'Contacter l'auteur'"
 
 #: lib/CPANPLUS/Dist/RPM.pm:123
 #. ($id)
 msgid "Error: No file for %1"
-msgstr ""
+msgstr "Erreur: Pas de fichier pour %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:1070
 msgid "Exiting CPANPLUS shell"
-msgstr ""
+msgstr "Sortie du shell CPANPLUS"
 
 #: lib/CPANPLUS/Internals/Extract.pm:186 lib/CPANPLUS/Internals/Extract.pm:234 lib/CPANPLUS/Internals/Extract.pm:332
 #. ($_)
 msgid "Extracting %1"
-msgstr ""
+msgstr "Extration de %1"
 
 #: lib/CPANPLUS/Internals/Extract.pm:308
 #. ($_, $file)
 msgid "Extraction of %1 from %2 failed"
-msgstr ""
+msgstr "Extraction de %1 depuis %2 échoué"
 
 #: lib/CPANPLUS/Internals/Report.pm:109
 msgid "FAIL status already reported. I won't cc the author."
-msgstr ""
+msgstr "Status FAIL déjà reporté. Je ne met pas l'auteur en cc."
 
 #: lib/CPANPLUS/Dist/PPM.pm:540
 #. ($ppd_file)
 msgid "Failed to create zip file for %1"
-msgstr ""
+msgstr "Impossible de créer un fichier zip pour %1"
 
 #: lib/CPANPLUS/Shell.pm:59
 #. ($SHELL, $@)
 msgid "Failed to use %1: %2"
-msgstr ""
+msgstr "Ne peut utiliser %1: %2"
 
 #: lib/CPANPLUS/Configure.pm:65
 msgid "Falling back to system-wide config."
-msgstr ""
+msgstr "Retour à la configuation système"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:318
 #. ($res->code,                             HTTP::Status::status_message($res->code)
 msgid "Fetch failed! HTTP response code: %1 [%2]"
-msgstr ""
+msgstr "Téléchargement échoué! Code réponse HTTP: %1 [%2]"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:232
 msgid "Fetch failed: host list exhausted - are you connected today?"
-msgstr ""
+msgstr "Récupération échouée: liste de machines épuisées - vous êtes connectés ?"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:219
 msgid "Fetch failed: no way to download source file!"
-msgstr ""
+msgstr "Récupération échoué: pas de moyen de télécharger le fichier source"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1375
 #. ($file)
 msgid "Fetch of %1 failed!"
-msgstr ""
+msgstr "Récupération de %1 échoué!"
 
 #: lib/CPANPLUS/Internals/Report.pm:332
 #. ($response->message)
 msgid "Fetch report failed: %1"
-msgstr ""
+msgstr "Récupération du report échoué: %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:439
 msgid "Fetching"
-msgstr ""
+msgstr "Récupération"
 
 #: Makefile.PL:401
 #. ('nmake', $host)
 msgid "Fetching '%1' from %2. It may take a few minutes... "
-msgstr ""
+msgstr "Récupération de '%1' depuis %2. Cela peut prendre quelques minutes..."
 
 #: lib/CPANPLUS/Shell/Default.pm:188
 msgid "Fetching new indices and rebuilding the module tree"
-msgstr ""
+msgstr "Récupération des nouveaux indices de module et reconstruction de l'arbre de modules"
 
 #: lib/CPANPLUS.pm:93
 #. ($mod)
 msgid "Fetching of %1 failed"
-msgstr ""
+msgstr "Récupération de %1 échoué"
 
 #: lib/CPANPLUS.pm:92
 #. ($mod)
 msgid "Fetching of %1 successful"
-msgstr ""
+msgstr "Récupération de %1 avec succès"
 
 #: lib/CPANPLUS/Internals/Report.pm:324
 #. ($url)
 msgid "Fetching: %1"
-msgstr ""
+msgstr "Recupération: %1"
 
 #: lib/CPANPLUS/Dist/PPM.pm:534
 #. ($zip, $!)
 msgid "File '%1' was not created: %2"
-msgstr ""
+msgstr "Fichier '%1' n'est pas créer: %2"
 
 #: lib/CPANPLUS/Internals/Extract.pm:395 lib/CPANPLUS/Internals/Extract.pm:427
 #. ($!)
 msgid "File creation failed: %1"
-msgstr ""
+msgstr "Création de fichier échoué: %1"
 
 #: lib/CPANPLUS/Configure/Setup.pm:800
 msgid "First of all, I'd like to create this directory.  Where?"
-msgstr ""
+msgstr "D'abord, je voudrais créer ce répertoire. Où?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:331
 msgid "Flush automatically?"
-msgstr ""
+msgstr "Vider le cache automatiquement?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:403
 msgid "Follow prereqs?"
-msgstr ""
+msgstr "Suivre les prérequis?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:361
 msgid "Force installs?"
-msgstr ""
+msgstr "Forcer les installations?"
 
 #: lib/CPANPLUS/Internals/Source.pm:364
 msgid "GPL: GNU General Public License"
-msgstr ""
+msgstr "GPL: GNU General Public License"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1022
 #. ($pgm_name)
 msgid "Good, I found '%1' in your PATH:"
-msgstr ""
+msgstr "Mon dieu, j'ai trouvé '%1' dans votre PATH:"
 
 #: lib/CPANPLUS/Shell.pm:97
 msgid "Got another SIGINT"
-msgstr ""
+msgstr "Recu un autre SIGINT"
 
 #: lib/CPANPLUS/Internals/Extract.pm:371
 #. ($args{'file'})
 msgid "Gunzipping %1"
-msgstr ""
+msgstr "Gunzip sur %1"
 
 #: lib/CPANPLUS/I18N.pm:92
 #. ('world')
 msgid "Hello, %1!"
-msgstr ""
+msgstr "Salut, %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:230
 msgid "Here is a listing of your previous search result:"
-msgstr ""
+msgstr "Voici un listing du résultat de votre précédente recherche:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1283
 #. ($host)
 msgid "Host %1 already selected!"
-msgstr ""
+msgstr "Machine %1 déjà sélectionné"
 
 #: lib/CPANPLUS/Internals/Source.pm:347
 msgid "Hybrid, written in perl with optional C code, no compiler needed"
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:505
-msgid "I am NOT going to use Storable."
-msgstr ""
+msgstr "Hybride, écrit en perl avec du code optionnel C, pas de compilateurnécessaire"
 
 #: lib/CPANPLUS/Configure/Setup.pm:120
 #. ($loc)
 msgid "I can not write to %1, I don't have permission."
-msgstr ""
+msgstr "Je ne peux écrire dans %1, je n'ai pas la permission"
 
 #: lib/CPANPLUS/Configure/Setup.pm:826
 msgid "I can't seem to write in this directory."
-msgstr ""
+msgstr "Je ne peux pas écrire dans ce répertoire."
 
 #: lib/CPANPLUS/Configure/Setup.pm:1016
 #. ($pgm_name)
 msgid "I couldn't find '%1' in your PATH."
-msgstr ""
+msgstr "Je ne peux trouver '%1' dans votre PATH"
 
 #: lib/CPANPLUS/Configure/Setup.pm:793
 msgid "I see you already have a directory:"
-msgstr ""
+msgstr "Je vois que vous avez déjà un répertoire:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:113
 msgid "I see you already have this file. It is writable. Shall I overwrite it?"
-msgstr ""
+msgstr "Je vois que vous avez déjà ce fichier. Il a les droits en écriture. Est-ce que je peux l'écraser ?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:839 lib/CPANPLUS/Configure/Setup.pm:847 lib/CPANPLUS/Configure/Setup.pm:854
 #. ($answer)
 #. ($autdir)
 #. ($moddir)
 msgid "I wasn't able to create %1."
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:416
-msgid "I will ask permission to install prereqs."
-msgstr ""
+msgstr "Je ne suis pas capable de créer %1."
 
 #: lib/CPANPLUS/Configure/Setup.pm:569
 msgid "I will attempt to check module signatures."
-msgstr ""
+msgstr "Je vais essayer de vérifier les signatures des modules."
 
 #: lib/CPANPLUS/Configure/Setup.pm:371
 msgid "I will force installs."
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:413
-msgid "I will install prereqs."
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:419
-msgid "I will only build and not install prereqs."
-msgstr ""
+msgstr "Je vais forcer les install"
 
 #: lib/CPANPLUS/Configure/Setup.pm:534
 msgid "I will prompt you to report test results."
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:502
-msgid "I will use Storable if you have it."
-msgstr ""
+msgstr "Je vous demanderai de reporter les résultats des tests"
 
 #: lib/CPANPLUS/Configure/Setup.pm:449
 msgid "I will use md5 if you have it."
-msgstr ""
+msgstr "Je vais utiliser md5 si vous l'avez."
 
 #: lib/CPANPLUS/Configure/Setup.pm:644
 msgid "I will use passive FTP."
-msgstr ""
+msgstr "Je vais utiliser le FTP passif."
 
 #: lib/CPANPLUS/Configure/Setup.pm:572
 msgid "I won't attempt to check module signatures."
-msgstr ""
+msgstr "Je n'essaierai pas de vérifier les signatures des modules."
 
 #: lib/CPANPLUS/Configure/Setup.pm:344
 msgid "I won't flush until you tell me to.  (It could get smelly in here! ;o)"
-msgstr ""
+msgstr "Je ne vais pas nettoyer tant que vous ne le dites pas (Ca va sentir mauvais! ;o)"
 
 #: lib/CPANPLUS/Configure/Setup.pm:374
 msgid "I won't force installs."
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:422
-msgid "I won't install prereqs."
-msgstr ""
+msgstr "Je ne vais pas forcer les installs."
 
 #: lib/CPANPLUS/Configure/Setup.pm:538
 msgid "I won't prompt you to report test results."
-msgstr ""
+msgstr "Je ne vous demanderai pas de reporter les résultats des tests."
 
 #: lib/CPANPLUS/Configure/Setup.pm:452
 msgid "I won't use md5 if you have it."
-msgstr ""
+msgstr "Je ne vais pas utiliser md5"
 
 #: lib/CPANPLUS/Configure/Setup.pm:647
 msgid "I won't use passive FTP."
-msgstr ""
+msgstr "Je ne vais pas utiliser de FTP passif."
 
 #: lib/CPANPLUS/Configure/Setup.pm:341
 msgid "I'll flush after every full module install."
-msgstr ""
+msgstr "Je vais nettoyer avec chaque installation complète de modules."
 
 #: lib/CPANPLUS/Configure/Setup.pm:312
 msgid "I'll try to be quiet."
-msgstr ""
+msgstr "Je vais essayer d'être discret."
 
 #: lib/CPANPLUS/Configure/Setup.pm:898
 #. ($answer)
 msgid "I'm sorry, '%1' is not a valid option, please try again"
-msgstr ""
+msgstr "Je suis désolé, '%1' n'est pas une option valide, réessayer"
 
 #: lib/CPANPLUS/Internals/Source.pm:521
 #. ($id, $self->{_id})
 msgid "IDs do not match: %1 != %2. Storage failed!"
-msgstr ""
+msgstr "Les ID ne correspondent pas: %1 != %2. Stockage échoué!"
 
 #: lib/CPANPLUS/Internals.pm:910
 msgid "IO::Select error"
-msgstr ""
+msgstr "Erreur dans IO::Select"
 
 #: Makefile.PL:302
 msgid "IPC::Run support"
-msgstr ""
+msgstr "Support IPS::Run"
 
 #: lib/CPANPLUS/Internals/Source.pm:326
 msgid "Idea, listed to gain consensus or as a placeholder"
-msgstr ""
+msgstr "Idée, listé pour obtenir un consensus ou un endroit quelque part"
 
 #: lib/CPANPLUS/Shell.pm:303
 msgid "Improper answer, please reply 'y[es]' or 'n[o]'"
-msgstr ""
+msgstr "Réponse incorrect, choisir 'yes' or 'no'"
 
 #: lib/CPANPLUS/Shell/Default.pm:331
 #. ($key)
 msgid "Improper command '%1'. Usage:"
-msgstr ""
+msgstr "Commande incorrecte '%1'. Usage:"
 
 #: lib/CPANPLUS/Dist.pm:28
 msgid "Improper module object passed to CPANPLUS::Dist::new()"
-msgstr ""
+msgstr "Module incorrect passé à CPANPLUS::Dist::new()"
 
 #: lib/CPANPLUS/Internals.pm:515
 #. ($mod, $subname)
 msgid "Install of %1 failed in %2"
-msgstr ""
+msgstr "Installation de %1 échoué dans %2"
 
 #: lib/CPANPLUS/Shell/Default.pm:408
 msgid "Installing"
-msgstr ""
+msgstr "Installation"
 
 #: lib/CPANPLUS/Backend.pm:218
 #. ($name)
 msgid "Installing %1 failed!"
-msgstr ""
+msgstr "Installation de %1 échoué!"
 
 #: lib/CPANPLUS/Internals/Make.pm:323
 #. ($mod)
 msgid "Installing %1 to satisfy dependency"
-msgstr ""
+msgstr "Installation de %1 pour satisfaire les dépendances"
 
 #: lib/CPANPLUS/Internals/Install.pm:307
 #. ($name)
 msgid "Installing bundled module: %1"
-msgstr ""
+msgstr "Installation du module bundle: %1"
 
 #: lib/CPANPLUS.pm:58
 #. ($mod)
 msgid "Installing of %1 failed"
-msgstr ""
+msgstr "Installation de %1 échoué"
 
 #: lib/CPANPLUS.pm:57
 #. ($mod)
 msgid "Installing of %1 successful"
-msgstr ""
+msgstr "Installation de %1 avec succès"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1577
 msgid "Invalid selection, please try again."
-msgstr ""
+msgstr "Sélection invalide, choisissez à nouveau."
 
 #: lib/CPANPLUS/Internals/Make.pm:557
 msgid "Invalid start dir!"
-msgstr ""
+msgstr "Réperoire de départ invalide!"
 
 #: lib/CPANPLUS/Internals/Source.pm:365
 msgid "LGPL: \"GNU Lesser General Public License\" (previously known as \"GNU Library General Public License\")"
@@ -1503,292 +1718,302 @@ msgstr ""
 
 #: Makefile.PL:225
 msgid "Let the installer probe for module dependencies?"
-msgstr ""
+msgstr "Laisser l'installeur vérifier les dépendances des modules?"
 
 #: Makefile.PL:296
 msgid "Local file support"
-msgstr ""
+msgstr "Support fichier local"
 
 #: Makefile.PL:331
 msgid "Localized messages"
-msgstr ""
+msgstr "Messages des langues"
 
 #: lib/CPANPLUS/Configure/Setup.pm:89
 msgid "Location of the Configuration file [1]: "
-msgstr ""
+msgstr "Répertoire du fichier de configuration [1]: "
 
 #: lib/CPANPLUS/Internals/Make.pm:440
 #. ($!)
 msgid "MAKE INSTALL failed! - %1"
-msgstr ""
+msgstr "MAKE INSTALL échoué! - %1"
 
 #: lib/CPANPLUS/Internals/Make.pm:418
 #. ($!)
 msgid "MAKE TEST failed! - %1"
-msgstr ""
+msgstr "MAKE TEST échoué! - %1"
 
 #: lib/CPANPLUS/Internals/Make.pm:392
 #. ($!)
 msgid "MAKE failed! - %1"
-msgstr ""
+msgstr "MAKE échoué - %1"
 
 #: Makefile.PL:271
 msgid "MD5 checksum"
-msgstr ""
+msgstr "checksum MD5"
 
 #: lib/CPANPLUS/Internals/Install.pm:569
 #. ($href->{package})
 msgid "MD5 sums did not add up for %1"
-msgstr ""
+msgstr "Le checksum MD5 ne convient pas pour %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:337
 msgid "Mailing-list"
-msgstr ""
+msgstr "Mailing-list"
 
 #: lib/CPANPLUS/Dist/PPM.pm:500 lib/CPANPLUS/Internals/Make.pm:125
 #. ($dir, cwd()
 msgid "Make couldn't chdir to %1! I am in %2 now"
-msgstr ""
+msgstr "Make de peut rentrer dans le rep %1! Je suis maintenant dans %2"
 
 #: lib/CPANPLUS/Internals/Make.pm:173
 msgid "Makefile already exists, not running 'perl Makefile.PL' again, unless you force!"
-msgstr ""
+msgstr "Makefile existant, je ne lance pas 'perl Makefile.PL' sans mode force!"
 
 #: lib/CPANPLUS/Backend.pm:421
 #. ($mod)
 msgid "Making %1 failed!"
-msgstr ""
+msgstr "Fabrication de %1 échoué"
 
 #: lib/CPANPLUS/Internals/Source.pm:578
 #. ($_)
 msgid "Malformed CHECKSUM line: %1"
-msgstr ""
+msgstr "CHECKSUM malformé ligne: %1"
 
 #: Makefile.PL:134
 msgid "Manually configure CPANPLUS based on previous settings?"
-msgstr ""
+msgstr "Configurer manuellement CPANPLUS en se basant sur les réglages précédents?"
 
 #: lib/CPANPLUS/Internals/Source.pm:331
 msgid "Mature (no rigorous definition)"
-msgstr ""
+msgstr "Mature (pas de définition rigoureuse)"
 
 #: lib/CPANPLUS/Internals/Module.pm:77
 #. ($key)
 msgid "Missing key %1"
-msgstr ""
+msgstr "Clef manquante %1"
 
 #: lib/CPANPLUS/Backend.pm:189
 #. ($mod)
 msgid "Module %1 already up to date; "
-msgstr ""
+msgstr "Module %1 est déjà à jour; "
 
 #: lib/CPANPLUS/Internals/Search.pm:376
 #. ($mod)
 msgid "Module %1 not installed! Can not validate!"
+msgstr "Module %1 non installé! Ne peut valider!"
+
+#: lib/CPANPLUS/I18N/CPANPLUS.pot:1970
+msgid "Module not found"
 msgstr ""
 
 #: lib/CPANPLUS/Dist/PPM.pm:372
 #. ($current, $target)
 msgid "Moving %1 to %2"
-msgstr ""
+msgstr "Déplacement de %1 vers %2"
 
 #: Makefile.PL:282
 msgid "Net::FTP support"
-msgstr ""
+msgstr "Support Net::FTP"
 
 #: lib/CPANPLUS/Shell/Default.pm:597
 #. ($mod)
 msgid "No README found for %1"
-msgstr ""
+msgstr "Pas de README trouvé pour %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:590
 msgid "No README found for your query"
-msgstr ""
+msgstr "Pas de README trouvé pour votre requête"
 
 #: lib/CPANPLUS/Shell/Default.pm:549
 msgid "No authors found for your query"
-msgstr ""
+msgstr "Pas d'auteurs trouvés pour votre requête."
 
 #: lib/CPANPLUS/Internals.pm:570
 msgid "No cache limit entered, ignoring dir size"
-msgstr ""
+msgstr "Pas de limite de cache entrée, taille du répertoire ignoré"
 
 #: lib/CPANPLUS/Shell/Default.pm:525
 #. ($mod)
 msgid "No details for %1 - it's probably outdated."
-msgstr ""
+msgstr "Pas de détails pour %1 - il est problablement obsolète"
 
 #: lib/CPANPLUS/Internals/Install.pm:449
 #. ($mod)
 msgid "No directory tree found for %1!"
-msgstr ""
+msgstr "Pas d'arborescence trouvée pour %1!"
 
 #: lib/CPANPLUS/Internals/Install.pm:442
 #. ($mod)
 msgid "No files found for %1!"
-msgstr ""
+msgstr "Pas de fichiers trouvés pour %1!"
 
 #: lib/CPANPLUS.pm:71
 msgid "No module specified!"
-msgstr ""
+msgstr "Pas de modules spécifiés!"
 
 #: lib/CPANPLUS/Internals/Install.pm:252
 #. ($file)
 msgid "No modules mentioned in %1"
-msgstr ""
+msgstr "Pas de modules mentionnés dans %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:263
 msgid "No modules to check."
-msgstr ""
+msgstr "Pas de modules à vérifier."
 
 #: lib/CPANPLUS/Internals/Fetch.pm:69
 msgid "No remote file given to download!"
-msgstr ""
+msgstr "Pas de fichier distant donné à télécharger!"
 
 #: lib/CPANPLUS/Shell/Default.pm:487
 msgid "No reports available for this distribution."
-msgstr ""
+msgstr "Pas de reports disponible pour cette distribution."
 
 #: lib/CPANPLUS/Shell/Default.pm:890
 msgid "No search was done yet!"
-msgstr ""
+msgstr "Pas de recherche effectuée pour le moment!"
 
 #: lib/CPANPLUS/Shell/Default.pm:231
 msgid "No search was done yet."
-msgstr ""
+msgstr "Aucune recherche effectuée actuellement."
 
 #: lib/CPANPLUS/Shell.pm:326
 #. ($AUTOLOAD)
 msgid "No such method %1"
-msgstr ""
+msgstr "Pas de méthode %1"
 
 #: lib/CPANPLUS/Shell/Default.pm:902 lib/CPANPLUS/Shell/Default.pm:917
 #. ($mod)
 msgid "No such module: %1"
-msgstr ""
+msgstr "Pas de module: %1"
 
 #: lib/CPANPLUS/Internals/Make.pm:291
 #. ($mod)
 msgid "No such module: %1, cannot satisfy dependency"
-msgstr ""
+msgstr "Pas de module: %1, ne peut satisfaire les dépendances"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1455
 msgid "No valid hostname entered!"
-msgstr ""
+msgstr "Pas de nom de machine valide entrée!"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1448
 msgid "No valid path or scheme entered!"
-msgstr ""
+msgstr "Pas de chemin valide ou module rentré!"
 
 #: lib/CPANPLUS/Backend.pm:854
 msgid "None"
-msgstr ""
+msgstr "Rien"
 
 #: lib/CPANPLUS/Backend.pm:851 lib/CPANPLUS/Backend.pm:853
 msgid "None given"
-msgstr ""
+msgstr "Rien n'a été donné"
 
 #: lib/CPANPLUS/Internals/Source.pm:340
 msgid "None known, try comp.lang.perl.modules"
-msgstr ""
+msgstr "Rien de connu, essayer comp.lang.perl.modules"
 
 #: Makefile.PL:203
 #. ("$Config{make} test", "$Config{make} install")
 msgid "Now, please type '%1' to test, and %2 to install."
 msgstr ""
+"Maintenant, essayez de taper '%1' pour les tests, et "
+"%2 pour l'installation."
 
 #: lib/CPANPLUS/Configure/Setup.pm:127
 msgid "OK, I will save your Configure file to:"
-msgstr ""
+msgstr "OK, Je vais sauver votre fichier de configuration dans:"
 
 #: lib/CPANPLUS/Internals/Source.pm:358
 msgid "Object oriented using blessed references and/or inheritance"
-msgstr ""
+msgstr "Orienté objet en utilisant les références consacrées et/ou l'héritage"
 
 #: lib/CPANPLUS/Configure/Setup.pm:367 lib/CPANPLUS/Configure/Setup.pm:409 lib/CPANPLUS/Configure/Setup.pm:445 lib/CPANPLUS/Configure/Setup.pm:530 lib/CPANPLUS/Configure/Setup.pm:565
 msgid "Ok, "
-msgstr ""
+msgstr "Ok, "
 
 #: Makefile.PL:146
 msgid "Okay, existing settings are preserved."
-msgstr ""
+msgstr "Ok, les réglages existants vont être préservés."
 
 #: Makefile.PL:135
 msgid "Old settings detected. Do you want to modify it?"
-msgstr ""
+msgstr "Ancienne configuration détectée, voulez-vous la modifier ?"
 
 #: lib/CPANPLUS/Shell/Default.pm:647
 msgid "Opening shell for module"
-msgstr ""
+msgstr "Ouverture d'un shell pour le module"
 
 #: Makefile.PL:277
 msgid "PGP signatures"
-msgstr ""
+msgstr "signatures PGP"
 
 #: Makefile.PL:258
 msgid "PPM and .zip files support"
-msgstr ""
+msgstr "Support des fichiers PPM et .zip"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1066
 #. ($name)
 msgid "Parameters for %1: "
-msgstr ""
+msgstr "Paramètres pour %1: "
 
 #: lib/CPANPLUS/Shell/Default.pm:657
 msgid "Perhaps you need to re-run your setup?"
-msgstr ""
+msgstr "Peut-être devriez-vous relancer votre setup?"
 
 #: lib/CPANPLUS/Internals/Source.pm:345
 msgid "Perl-only, no compiler needed, should be platform independent"
 msgstr ""
+"Seulement Perl, pas de compilateur nécessaire, peut-être plateforme"
+"indépendant"
 
 #: lib/CPANPLUS/Configure/Setup.pm:690 lib/CPANPLUS/Configure/Setup.pm:785 lib/CPANPLUS/Configure/Setup.pm:984
 msgid "Please choose 1, 2, or 3 [1]: "
-msgstr ""
+msgstr "Choisissez 1, 2, ou 3 [1]:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1206
 #. ($default)
 msgid "Please choose a continent [%1]: "
-msgstr ""
+msgstr "Choisissez un continent [%1]:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1236
 #. ($default)
 msgid "Please choose a country [%1]: "
-msgstr ""
+msgstr "Choisissez un pays [%1]:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:822
 msgid "Please choose a different location: "
-msgstr ""
+msgstr "Choisissez une localité diférrente:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1274
 #. ($default)
 msgid "Please choose a host [%1]: "
-msgstr ""
+msgstr "Choisissez un nom de machine [%1]:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1159
 #. ($default)
 msgid "Please choose an option [%1]: "
-msgstr ""
+msgstr "Choisissez une option [%1]: "
 
 #: Makefile.PL:58
 msgid "Please follow the instruction in README to install nmake first."
-msgstr ""
+msgstr "Suivez les instructions du README pour installer nmake d'abord."
 
 #: Makefile.PL:173
 msgid "Please follow the instruction in README to install nmake manually."
-msgstr ""
+msgstr "Suivez les instruction du README pour installer nmake d'abord"
 
 #: lib/CPANPLUS/Configure/Setup.pm:679 lib/CPANPLUS/Configure/Setup.pm:774 lib/CPANPLUS/Configure/Setup.pm:968
 msgid "Please pick one [1]: "
-msgstr ""
+msgstr "Choisissez en un [1]: "
 
 #: lib/CPANPLUS/Configure/Setup.pm:1017
 msgid "Please tell me where I can find it: "
-msgstr ""
+msgstr "Dites-moi où je peux trouver: "
 
 #: lib/CPANPLUS/Internals/Make.pm:282
 msgid "Prereqs are found, but not allowed to install! Returning list of prereqs"
 msgstr ""
+"Prérequis trouvés, mais non autorisé à les installer! Je retrourne la liste des"
+"prérequis."
 
 #: lib/CPANPLUS/Shell/Default.pm:430
 #. ($target)
@@ -1797,67 +2022,63 @@ msgstr ""
 
 #: lib/CPANPLUS/Shell/Default.pm:462
 msgid "Problem downloading one or more files"
-msgstr ""
+msgstr "Problême lors du téléchargement de l'un ou plusieurs fichiers"
 
 #: lib/CPANPLUS/Shell/Default.pm:630
 msgid "Problem uninstalling one or more modules"
-msgstr ""
+msgstr "Problêmes rencontrés lors de la déinstallation de un ou plusieurs modules"
 
 #: lib/CPANPLUS/Dist/RPM.pm:244
 #. ($source, $!)
 msgid "RPM of %1 could not be installed: %2"
-msgstr ""
+msgstr "RPM de %1 ne peut être installé: %2"
 
 #: lib/CPANPLUS/Dist/RPM.pm:241
 #. ($source, $!)
 msgid "RPM of %1 failed with : %2"
-msgstr ""
+msgstr "RPM de %1 échoué avec : %2"
 
 #: Makefile.PL:319
 msgid "ReadLine support"
-msgstr ""
+msgstr "Support de ReadLine"
 
 #: lib/CPANPLUS/Shell.pm:141
 #. ($rl_avail)
 msgid "ReadLine support %1."
-msgstr ""
+msgstr "Support de ReadLine %1."
 
 #: lib/CPANPLUS/Internals/Make.pm:296
 #. ($mod)
 msgid "Recursive dependency detected in %1, skipping"
-msgstr ""
+msgstr "Dépendance récursive détectée sur %1, on passe"
 
 #: lib/CPANPLUS/Internals/Source.pm:330
 msgid "Released"
-msgstr ""
+msgstr "Released"
 
 #: lib/CPANPLUS/Shell/Default.pm:952
 #. ($dist, uc($grade)
 msgid "Report %1's testing result (%2)? [y/N]: "
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:524
-msgid "Report tests results?"
-msgstr ""
+msgstr "Reporter le résultat du test de %1 (%2)? [y/N]: "
 
 #: Makefile.PL:167
 msgid "Required executable 'nmake' not found. Install it?"
-msgstr ""
+msgstr "Executable nécessaire 'nmake' non trouvé. L'installer ?"
 
 #: lib/CPANPLUS/Backend/InputCheck.pm:55
 #. ($key, (caller(1)
 msgid "Required option '%1' is not provided for %2"
-msgstr ""
+msgstr "Option nécessaire pour '%1' non fournie pour %2"
 
 #: lib/CPANPLUS/Internals/Source.pm:199 lib/CPANPLUS/Internals/Source.pm:261 lib/CPANPLUS/Internals/Source.pm:87
 #. ($stored)
 msgid "Retrieving %1"
-msgstr ""
+msgstr "Récupération de %1"
 
 #: lib/CPANPLUS/Internals.pm:801
 #. ("@cmd")
 msgid "Running [%1]..."
-msgstr ""
+msgstr "Lancement [%1]..."
 
 #: lib/CPANPLUS/Configure/Setup.pm:1291
 #. ($host, $total)
@@ -1866,32 +2087,32 @@ msgstr ""
 
 #: lib/CPANPLUS/Configure/Setup.pm:299
 msgid "Should I be verbose?"
-msgstr ""
+msgstr "Est-ce que je dois être bavard?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:795
 msgid "Should I use it? [Y/n]: "
-msgstr ""
+msgstr "Est-ce que je peux l'utiliser? [Y/n]: "
 
 #: lib/CPANPLUS/Internals/Install.pm:140
 #. ($file)
 msgid "Signature checking failed for %1"
-msgstr ""
+msgstr "Vérification de la signature échoué pour %1"
 
 #: Makefile.PL:81
 msgid "Skipping setup; advanced tests will be disabled."
-msgstr ""
+msgstr "On saute le setup; les tests avancés sont désactivés."
 
 #: lib/CPANPLUS/Shell/Default.pm:980
 msgid "Stack printed successfully"
-msgstr ""
+msgstr "Pile affichée avec succès"
 
 #: lib/CPANPLUS/Internals/Source.pm:332
 msgid "Standard, supplied with Perl 5"
-msgstr ""
+msgstr "Standart, fourni avec Perl 5"
 
 #: lib/CPANPLUS/Internals/Source.pm:363
 msgid "Standard-Perl: user may choose between GPL and Artistic"
-msgstr ""
+msgstr "Perl Standart: les utilisateurs doivent choisir entre la GPL et l'Artistic"
 
 #: lib/CPANPLUS/Shell/Default.pm:424
 #. ($target, $key)
@@ -1901,143 +2122,144 @@ msgstr ""
 #: lib/CPANPLUS/Shell/Default.pm:456
 #. ($key)
 msgid "Successfully fetched %1"
-msgstr ""
+msgstr "Récupération avec succès de %1"
 
 #: lib/CPANPLUS/Shell.pm:60
 #. ($DEFAULT)
 msgid "Switching to the default shell %1"
-msgstr ""
+msgstr "Retour au shell par défault %1"
 
 #: Makefile.PL:326
 msgid "Terminal size support"
-msgstr ""
+msgstr "Support taille du terminal"
 
 #: lib/CPANPLUS/Shell/Default.pm:408
 msgid "Testing"
-msgstr ""
+msgstr "Test"
 
 #: lib/CPANPLUS/Configure/Setup.pm:840 lib/CPANPLUS/Configure/Setup.pm:848 lib/CPANPLUS/Configure/Setup.pm:855
 #. ($@)
 #. ($!)
 msgid "The error I got was %1"
-msgstr ""
+msgstr "L'erreur que j'ai récupéré était %1"
 
 #: lib/CPANPLUS/Internals.pm:201
 #. ($ref)
 msgid "The object you passed has the wrong ref type: '%1'"
-msgstr ""
+msgstr "L'objet passé n'est pas une référence du bon type: '%1'"
 
 #: lib/CPANPLUS/Shell/Default.pm:189
 msgid "This may take a while..."
-msgstr ""
+msgstr "Cela peut prendre du temps..."
 
 #: lib/CPANPLUS/Internals/Fetch.pm:162
-#. ($args{'path'}->{'remote'},                             ($uri->{host} || loc('local disk')
+#. ($args{'path'}->{'remote'},($uri->{host} || loc('local disk')
 msgid "Trying to get %1 from %2"
-msgstr ""
+msgstr "Impossible de récupérer %1 depuis %2"
 
 #: lib/CPANPLUS/Internals/Report.pm:191
 msgid "UNKNOWN grades for Bundles are normal; skipped."
-msgstr ""
+msgstr "Le grade UNKNOWN est normal pour les Bundles; on passe"
 
 #: lib/CPANPLUS/Internals/Install.pm:560
 msgid "Unable to fetch checksums file! Can not verify this distribution is safe!"
 msgstr ""
+""
+"Impossible de récupérer le fichier de checksum! Ne peux vérifier si la "
+"distribution est saine!"
 
 #: lib/CPANPLUS/Backend/InputCheck.pm:162
 msgid "Unable to identify caller"
-msgstr ""
+msgstr "Impossible d'identifier l'appelant"
 
 #: lib/CPANPLUS/Dist/PPM.pm:73
 #. ($ppd, $PPM::PPMERR)
 msgid "Unable to install %1: %2"
-msgstr ""
+msgstr "Impossible d'installer %1: %2"
 
 #: lib/CPANPLUS/Internals/Extract.pm:290
 #. ($file)
 msgid "Unable to read %1"
-msgstr ""
+msgstr "Ne peut lire %1"
 
 #: lib/CPANPLUS/Dist/PPM.pm:144
 #. ($ppd, $PPM::PPMERR)
 msgid "Unable to uninstall %1: %2"
-msgstr ""
+msgstr "Ne peut deinstaller %1: %2"
 
 #: lib/CPANPLUS/Internals/Source.pm:401
 msgid "Unable to update source, attempting to get away with using old source file!"
 msgstr ""
+"Impossible de mettre à jour les sources, j'essaye de faire sans en utilisant"
+"l'ancien fichier source!"
 
 #: Makefile.PL:263
 msgid "Uncompress .gz files"
-msgstr ""
+msgstr "Decompression des fichiers .gz"
 
 #: Makefile.PL:254
 msgid "Uncompress .tar files"
-msgstr ""
+msgstr "Decompression des fichiers .tar"
 
 #: lib/CPANPLUS/Shell/Default.pm:624
 #. ($mod)
 msgid "Uninstalled %1 successfully"
-msgstr ""
+msgstr "Deinstallation de %1 avec succès."
 
 #: lib/CPANPLUS/Shell/Default.pm:612
 msgid "Uninstalling"
-msgstr ""
+msgstr "Deinstallation"
 
 #: lib/CPANPLUS/Shell/Default.pm:625
 #. ($mod)
 msgid "Uninstalling %1 failed"
-msgstr ""
+msgstr "Deinstallation %1 échouée"
 
 #: lib/CPANPLUS/Backend.pm:859
 msgid "Unknown"
-msgstr ""
+msgstr "Inconnu"
 
 #: lib/CPANPLUS/Shell/Default.pm:741
 #. ($key)
 msgid "Unknown command '%1'. Usage:"
-msgstr ""
+msgstr "Commande inconnue '%1'. Usage:"
 
 #: lib/CPANPLUS/Internals/Extract.pm:114
 #. ($file)
 msgid "Unknown file format for %1"
-msgstr ""
+msgstr "Format de fichier inconnu pour %1"
 
 #: lib/CPANPLUS.pm:49 lib/CPANPLUS.pm:82
 #. ($mod)
 msgid "Unknown module '%1'"
-msgstr ""
+msgstr "Module inconnu '%1'"
 
 #: lib/CPANPLUS/Internals/Extract.pm:217
 #. ($file)
 msgid "Untarring %1"
-msgstr ""
+msgstr "De-tar de %1"
 
 #: lib/CPANPLUS/Internals/Extract.pm:279 lib/CPANPLUS/Internals/Extract.pm:315
 #. ($file)
 msgid "Unzipping %1"
-msgstr ""
+msgstr "Unzip de %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:430
 #. ($file)
 msgid "Updating source file '%1'"
-msgstr ""
-
-#: lib/CPANPLUS/Configure/Setup.pm:492
-msgid "Use Storable?"
-msgstr ""
+msgstr "Mise à jour du fichier source '%1'"
 
 #: lib/CPANPLUS/Configure/Setup.pm:629
 msgid "Use passive FTP?"
-msgstr ""
+msgstr "Utiliser le FTP passif?"
 
 #: lib/CPANPLUS/Configure/Setup.pm:439
 msgid "Use the md5 checksums?"
-msgstr ""
+msgstr "Utiliser les checksums md5?"
 
 #: lib/CPANPLUS/Internals/Source.pm:339
 msgid "Usenet newsgroup comp.lang.perl.modules"
-msgstr ""
+msgstr "Newsgroup Usenet comp.lang.perl.modules"
 
 #: lib/CPANPLUS/Internals.pm:434 lib/CPANPLUS/Internals.pm:452
 #. ($m, $list[3], $@)
@@ -2053,43 +2275,43 @@ msgstr ""
 #: lib/CPANPLUS/Configure/Setup.pm:972
 #. ($pgm, $pgm_name)
 msgid "Where can I find your '%1' executable? [%2]: "
-msgstr ""
+msgstr "Où se trouve votre executable '%1' ? [%2]:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:992
 #. ($pgm)
 msgid "Where can I find your '%1' executable?: "
-msgstr ""
+msgstr "Où se trouve votre executable '%1' ?:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:816
 msgid "Where shall I put it then?: "
-msgstr ""
+msgstr "Où je peux le mettre?: "
 
 #: lib/CPANPLUS/Configure/Setup.pm:1006
 #. ($pgm)
 msgid "Without your '%1' executable I can't function!"
-msgstr ""
+msgstr "Sans votre executable '%1' je ne peux fonctionner!"
 
 #: lib/CPANPLUS/Shell.pm:283
 msgid "Would you like me to install it? [Y/n]: "
-msgstr ""
+msgstr "Est-ce que vous voulez que je l'installe? %Y(,/n): "
 
 #: lib/CPANPLUS/Dist/PPM.pm:324
 #. ($file, $Archive::Tar::error)
 msgid "Writing %1 failed with error: %2"
-msgstr ""
+msgstr "Ecriture de %1 échoué avec l'erreur: %2"
 
 #: lib/CPANPLUS/Dist/PPM.pm:159 lib/CPANPLUS/Dist/PPM.pm:88
 #. ($mods)
 msgid "You are missing at least one of these modules: %1"
-msgstr ""
+msgstr "Il vous manque au moins l'un de ces modules: %1"
 
 #: lib/CPANPLUS/Configure/Setup.pm:309
 msgid "You asked for it!"
-msgstr ""
+msgstr "Vous l'avez demandé!"
 
 #: lib/CPANPLUS/Configure/Setup.pm:695
 msgid "You did not enter a valid email address, please try again!"
-msgstr ""
+msgstr "Vous n'avez pas entré une adresse mail valide, essayez à nouveau!"
 
 #: lib/CPANPLUS/Internals/Install.pm:52
 #. ("@_", $href)
@@ -2098,22 +2320,22 @@ msgstr ""
 
 #: lib/CPANPLUS/Dist/PPM.pm:547
 msgid "You do not have Archive::Zip installed -- can not create .zip distribution"
-msgstr ""
+msgstr "Vous n'avez pas Archive::Zip d'installé - Ne peut créer de distribtion .zip"
 
 #: lib/CPANPLUS/Internals/Search.pm:355 lib/CPANPLUS/Internals/Search.pm:394
 msgid "You do not have ExtUtils::Installed available!"
-msgstr ""
+msgstr "Vous n'avez pas ExtUtils::Installed d'installé!"
 
 #: lib/CPANPLUS/Internals/Search.pm:314
 msgid "You do not have File::Spec installed!"
-msgstr ""
+msgstr "Vous n'avez pas File::Spec d'installé!"
 
 #: lib/CPANPLUS/Internals/Extract.pm:250 lib/CPANPLUS/Internals/Extract.pm:348 lib/CPANPLUS/Internals/Extract.pm:440
 #. ("Archive::Tar")
 #. ("Archive::Zip")
 #. ("Compress::Zlib")
 msgid "You don't have %1! Please install it as soon as possible!"
-msgstr ""
+msgstr "Vous n'avez pas %1! Installez-le le plus vite possible!"
 
 #: lib/CPANPLUS/Internals/Install.pm:578 lib/CPANPLUS/Internals/Install.pm:612
 #. ("Digest::MD5", $href->{package})
@@ -2133,10 +2355,12 @@ msgstr ""
 #: Makefile.PL:207
 msgid "You may need to do that as the 'root' user to install dependencies."
 msgstr ""
+"Vous devez faire cela en tant que l'utilisateur 'root' pour installer"
+"les dependances."
 
 #: lib/CPANPLUS.pm:39 lib/CPANPLUS.pm:77
 msgid "You passed an object. Use CPANPLUS::Backend for OO style interaction"
-msgstr ""
+msgstr "Vous avez passé un objet. Utilisez CPANPLUS::Backend pour un style OO"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1070
 #. ($name)
@@ -2146,27 +2370,27 @@ msgstr ""
 #: lib/CPANPLUS/Configure/Setup.pm:1027
 #. ($pgm)
 msgid "Your '%1' program has been set to:"
-msgstr ""
+msgstr "Le programme '%1' a été positionné à:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:703
 msgid "Your 'email' is now:"
-msgstr ""
+msgstr "Votre 'email' est maintenant:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:866
 msgid "Your CPAN++ build and cache directory has been set to:"
-msgstr ""
+msgstr "Votre répertoire CPAN++ cache et build a été positionné à:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:182 lib/CPANPLUS/Shell/Default.pm:360
 msgid "Your CPAN++ configuration info has been saved!"
-msgstr ""
+msgstr "Votre configuration CPAN++ a été sauvée!"
 
 #: lib/CPANPLUS/Configure/Setup.pm:277
 msgid "Your additional libs are now:"
-msgstr ""
+msgstr "Vos librairies additionnelles sont maintenant:"
 
 #: lib/CPANPLUS/Configure/Setup.pm:897
-msgid "Your command line shell has been set to:\\n    $prog\\n\\n"
-msgstr ""
+msgid "Your command line shell has been set to:\n    $prog\n\n"
+msgstr "Votre shell de ligne de commande a été positionné à:"
 
 #: lib/CPANPLUS/Shell/Default.pm:656
 msgid "Your config does not specify a subshell!"
@@ -2179,122 +2403,122 @@ msgstr ""
 
 #: lib/CPANPLUS/Configure/Setup.pm:1343
 msgid "Your current hosts are:"
-msgstr ""
+msgstr "Votre machine courante est:"
 
 #: lib/CPANPLUS/Shell.pm:52
 #. ($DEFAULT, $@)
 msgid "Your default shell %1 is not available: %2"
-msgstr ""
+msgstr "Votre shell par défaut %1 n'est pas disponible: %2"
 
 #: lib/CPANPLUS/Configure/Setup.pm:889
 msgid "Your favorite command line shell? "
-msgstr ""
+msgstr "Votre shell de ligne de commande préféré?"
 
 #: lib/CPANPLUS/Shell/Default.pm:737
 msgid "Your search generated no results"
-msgstr ""
+msgstr "Votre recherche n'a généré aucun résultat."
 
 #: lib/CPANPLUS/Configure/Setup.pm:802
 #. ($cpan_home)
 msgid "[%1]: "
-msgstr ""
+msgstr "[%1]: "
 
 #: lib/CPANPLUS/Shell/Default.pm:1034
 msgid "[General]"
-msgstr ""
+msgstr "[General]"
 
 #: lib/CPANPLUS/Shell/Default.pm:1053
 msgid "[Local Administration]"
-msgstr ""
+msgstr "[Local Administration]"
 
 #: lib/CPANPLUS/Shell/Default.pm:1044
 msgid "[Operations]"
-msgstr ""
+msgstr "[Operations]"
 
 #: lib/CPANPLUS/Shell/Default.pm:1038
 msgid "[Search]"
-msgstr ""
+msgstr "[Recherche]"
 
 #: lib/CPANPLUS/Shell.pm:133
 msgid "available (try 'i Term::ReadLine::Perl')"
-msgstr ""
+msgstr "disponible (essayez 'i Term::ReadLine::Perl')"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1233
 msgid "back to continents"
-msgstr ""
+msgstr "retourn aux continents"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1268
 msgid "back to countries"
-msgstr ""
+msgstr "retour aux pays"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1203
 msgid "back to main"
-msgstr ""
+msgstr "retour au menu principal"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:671 lib/CPANPLUS/Internals/Fetch.pm:739 lib/CPANPLUS/Internals/Fetch.pm:797 lib/CPANPLUS/Internals/Fetch.pm:862
 #. ($captured)
 msgid "command failed: %1"
-msgstr ""
+msgstr "commande échouée: %1"
 
 #: lib/CPANPLUS/Backend.pm:191
 msgid "continuing anyway."
-msgstr ""
+msgstr "continue quand même."
 
 #: lib/CPANPLUS/Internals/Extract.pm:419
 #. ($!)
 msgid "could not call gzip: %1"
-msgstr ""
+msgstr "impossible d'appeler gzip: %1"
 
 #: lib/CPANPLUS/Internals/Extract.pm:226
 #. ($!)
 msgid "could not call tar/gzip: %1"
-msgstr ""
+msgstr "impossible d'appeller tar/gzip: %1"
 
 #: lib/CPANPLUS/Internals/Extract.pm:324
 #. ($!)
 msgid "could not call unzip: %1"
-msgstr ""
+msgstr "impossible d'appeler unzip: %1"
 
 #: lib/CPANPLUS/Internals/Extract.pm:98
 #. ($base)
 msgid "could not cd into %1"
-msgstr ""
+msgstr "impossible de cd dans %1"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:530
 #. ($remote, $args{uri}->{host})
 msgid "could not fetch %1 from %2"
-msgstr ""
+msgstr "impossible de recupérer %1 depuis %2"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:504
 #. ($args{uri}->{host})
 msgid "could not log in to %1"
-msgstr ""
+msgstr "impossible de se logger sur %1"
 
 #: lib/CPANPLUS/Internals/Install.pm:245
 #. ($file)
 msgid "could not obtain required modules from %1"
-msgstr ""
+msgstr "impossible de recupérer les modules requis depuis %1"
 
 #: lib/CPANPLUS/Shell.pm:202
 #. ($cmd, $!)
 msgid "could not pipe to %1: %2\\n"
-msgstr ""
+msgstr "impossible de faire un pipe sur %1: %2"
 
 #: lib/CPANPLUS/Internals/Install.pm:486
 #. ($dir, $!)
 msgid "could not remove %1: %2"
-msgstr ""
+msgstr "impossible de supprimer %1: %2"
 
 #: lib/CPANPLUS/Internals/Source.pm:170 lib/CPANPLUS/Internals/Source.pm:229 lib/CPANPLUS/Internals/Source.pm:306
 #. ($stored)
 msgid "could not store %1!"
-msgstr ""
+msgstr "impossible de stoquer %1!"
 
 #: lib/CPANPLUS/Internals.pm:618 lib/CPANPLUS/Internals/Install.pm:462
 #. ($aref->[0], $!)
 #. ($file, $!)
 msgid "could not unlink %1: %2"
-msgstr ""
+msgstr "impossible de supprimer %1: %2"
 
 #: lib/CPANPLUS/Internals.pm:840
 #. ($!)
@@ -2308,113 +2532,117 @@ msgstr ""
 
 #: lib/CPANPLUS/Internals.pm:342
 msgid "couldn't locate current dir!"
-msgstr ""
+msgstr "impossible de trouver le répertoire courant!"
 
 #: lib/CPANPLUS/Internals.pm:842
 #. ($!)
 msgid "couldn't reopen STDERR: %1"
-msgstr ""
+msgstr "Ne peut reouvrir STDERR: %1"
 
 #: lib/CPANPLUS/Internals.pm:837
 #. ($!)
 msgid "couldn't reopen STDOUT: %1"
-msgstr ""
+msgstr "Ne peut reouvrir STDOUT: %1"
 
 #: lib/CPANPLUS/Internals.pm:849
 #. ($!)
 msgid "couldn't restore STDERR: %1"
-msgstr ""
+msgstr "Ne peut restaurer STDERR: %1"
 
 #: lib/CPANPLUS/Internals.pm:847
 #. ($!)
 msgid "couldn't restore STDOUT: %1"
-msgstr ""
+msgstr "Ne peut restaurer STDOUT: %1"
 
 #: lib/CPANPLUS/Internals.pm:880
 #. ($@)
 msgid "couldn't spawn process: %1"
-msgstr ""
+msgstr "Ne peut créer le processus: %1"
 
 #: lib/CPANPLUS/Dist/PPM.pm:214
 #. ($dir, cwd()
 msgid "create() couldn't chdir to %1! I am in %2 now"
-msgstr ""
+msgstr "create() ne peut faire un cd dans %1! Je suis dans %2 maintenant"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:875
 msgid "curl not available"
-msgstr ""
+msgstr "curl non disponible"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1156 lib/CPANPLUS/Configure/Setup.pm:1204 lib/CPANPLUS/Configure/Setup.pm:1234 lib/CPANPLUS/Configure/Setup.pm:1270
 msgid "custom host"
-msgstr ""
+msgstr "machine particulière"
 
 #: lib/CPANPLUS/Shell.pm:135
 msgid "disabled"
-msgstr ""
+msgstr "desactive"
 
 #: Makefile.PL:443
 msgid "done!"
-msgstr ""
+msgstr "fait!"
 
 #: lib/CPANPLUS/Internals/Report.pm:265
 msgid "done."
-msgstr ""
+msgstr "fait"
 
 #: lib/CPANPLUS/Shell.pm:131
 msgid "enabled"
-msgstr ""
+msgstr "activé"
 
 #: lib/CPANPLUS/Internals/Install.pm:222
 #. ($dir, $!)
 msgid "error opening dir %1: %2"
-msgstr ""
+msgstr "erreur d'ouverture du repertoire %1: %2"
 
 #: lib/CPANPLUS/Backend.pm:367
 #. ($file)
 msgid "extracting %1 failed!"
-msgstr ""
+msgstr "extraction de %1 echouée!"
 
 #: lib/CPANPLUS/Internals/Report.pm:265
 #. ($!)
 msgid "failed (%1)!"
-msgstr ""
+msgstr "echoué (%1)!"
 
 #: Makefile.PL:443
 #. ($!)
 msgid "failed! (%1)"
-msgstr ""
+msgstr "echoué (%1)"
 
 #: lib/CPANPLUS/Backend.pm:321
 #. ($name)
 msgid "fetching %1 failed!"
-msgstr ""
+msgstr "recupération de %1 échoué"
 
 #: lib/CPANPLUS/Backend.pm:998
 #. ($name)
 msgid "fetching readme for %1 failed!"
-msgstr ""
+msgstr "récupération du readme pour %1 échoué!"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1267
 msgid "finish"
-msgstr ""
+msgstr "fin"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:439 lib/CPANPLUS/Internals/Fetch.pm:498
 #. ($!)
 #. ($@)
 msgid "ftp creation failed: %1"
-msgstr ""
+msgstr "création ftp échoué: %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:355
 msgid "hybrid, object and function interfaces available"
+msgstr "hybride, interface d'objet et de fonction disponible"
+
+#: lib/CPANPLUS/I18N/CPANPLUS.pot:1865
+msgid "local disk"
 msgstr ""
 
 #: lib/CPANPLUS/Internals/Fetch.pm:616
 msgid "lynx not available"
-msgstr ""
+msgstr "lynx non disponible"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:810
 msgid "ncftp not available"
-msgstr ""
+msgstr "ncftp non disponible"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:780
 msgid "ncftp only works with ftp capable hosts"
@@ -2422,7 +2650,7 @@ msgstr ""
 
 #: lib/CPANPLUS/Internals/Fetch.pm:684
 msgid "ncftpget not available"
-msgstr ""
+msgstr "ncftpget non disponible"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:645
 msgid "ncftpget only works with ftp capable hosts"
@@ -2431,23 +2659,23 @@ msgstr ""
 #: lib/CPANPLUS/Internals/Install.pm:264
 #. ($dir)
 msgid "no .pm files found in %1!"
-msgstr ""
+msgstr "pas de fichier .pm trouvé dans %1!"
 
 #: lib/CPANPLUS/Internals/Source.pm:356
 msgid "no interface at all (huh?)"
-msgstr ""
+msgstr "pas d'interface finalement (huh?)"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1155
 msgid "official cpan mirror list"
-msgstr ""
+msgstr "liste officielle de mirroirs cpan"
 
 #: lib/CPANPLUS/Internals/Source.pm:368
 msgid "other (but distribution allowed without restrictions)"
-msgstr ""
+msgstr "autre (mais la distribution est autorisé sans restrictions)"
 
 #: lib/CPANPLUS/Internals/Source.pm:349
 msgid "perl and another language other than C or C++"
-msgstr ""
+msgstr "perl et un autre language comme le C ou le C++"
 
 #: lib/CPANPLUS/Internals/Source.pm:354
 msgid "plain Functions, no references used"
@@ -2455,12 +2683,12 @@ msgstr ""
 
 #: lib/CPANPLUS/Configure/Setup.pm:1154 lib/CPANPLUS/Configure/Setup.pm:1202 lib/CPANPLUS/Configure/Setup.pm:1232
 msgid "quit"
-msgstr ""
+msgstr "sortir"
 
 #: lib/CPANPLUS/Internals/Install.pm:481
 #. ($dir)
 msgid "removing %1"
-msgstr ""
+msgstr "suppression de %1"
 
 #: lib/CPANPLUS/Internals/Source.pm:357
 msgid "some use of unblessed References or ties"
@@ -2468,49 +2696,49 @@ msgstr ""
 
 #: lib/CPANPLUS/Shell.pm:137
 msgid "suppressed"
-msgstr ""
+msgstr "supprimé"
 
 #: lib/CPANPLUS/Shell.pm:139
 msgid "suppressed in batch mode"
-msgstr ""
+msgstr "supprimé en mode batch"
 
 #: lib/CPANPLUS/Internals/Extract.pm:385
 #. ($args{'file'}, $Compress::Zlib::gzerrno)
 msgid "unable to open %1: %2"
-msgstr ""
+msgstr "impossible d'ouvrir %1: %2"
 
 #: lib/CPANPLUS/Internals/Source.pm:327
 msgid "under construction but pre-alpha (not yet released)"
-msgstr ""
+msgstr "en construction mais en pre-alpha (pas encore de release)"
 
 #: lib/CPANPLUS/Backend.pm:795
 #. ($key)
 msgid "unknown key: %1"
-msgstr ""
+msgstr "clef inconnue: %1"
 
 #: lib/CPANPLUS/Internals/Search.pm:243
 #. ($mod->{package})
 msgid "unknown package %1"
-msgstr ""
+msgstr "package inconnu %1"
 
 #: lib/CPANPLUS/Internals/Install.pm:457
 #. ($file)
 msgid "unlinking %1"
-msgstr ""
+msgstr "suppression de %1"
 
 #: lib/CPANPLUS/Internals/Extract.pm:340
 #. ($!)
 msgid "unzip error: %1"
-msgstr ""
+msgstr "error de unzip: %1"
 
 #: lib/CPANPLUS/Configure/Setup.pm:1157 lib/CPANPLUS/Configure/Setup.pm:1269
 msgid "view list"
-msgstr ""
+msgstr "voir la liste"
 
 #: lib/CPANPLUS/Internals/Fetch.pm:752
 msgid "wget not available"
-msgstr ""
+msgstr "wget non disponible"
 
 #: lib/CPANPLUS/Backend.pm:190
 msgid "won't install without force!"
-msgstr ""
+msgstr "pas d'install sans la forcer"

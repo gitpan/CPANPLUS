@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -16,6 +16,8 @@ use File::Spec;
 use Data::Dumper;
 use File::Basename;
 use CPANPLUS::I18N;
+use Fcntl;
+use AnyDBM_File;
 
 BEGIN {
     use vars        qw( $VERSION );
@@ -78,7 +80,7 @@ sub _send_report {
     }
     elsif (
         $buffer =~ /^No tests defined for .* extension.\s*$/m and
-        $buffer !~ /^All tests successful\b/m
+        ($buffer !~ /\*\.t/m and $buffer !~ /test\.pl/m)
     ) {
         $grade = 'unknown';
     }
@@ -89,11 +91,11 @@ sub _send_report {
     $dist =~ s/(?:\.tar\.(?:gz|Z|bz2)|\.t[gb]z|\.zip)$//i;
 
     my $cpantest = (File::Spec->catfile(File::Basename::dirname($^X), 'cpantest'));
-
     return unless length $dist
               and (-e $cpantest or $self->_can_run('cpantest'))
               and $self->{_shell}
-              and $self->{_shell}->_ask_report(dist => $dist, grade => $grade);
+              and $self->{_shell}->_ask_report(dist => $dist, grade => $grade)
+              and $self->_not_already_sent($dist);
 
     my ($fh, $filename, @inform);
     my ($already_sent,$nb_send,$max_send) = (0,0,2);
@@ -171,12 +173,12 @@ Thanks! :-)
 
 ******************************** NOTE ********************************
 The comments above are created mechanically, possibly without manual
-checking by the sender.  Also, because many people performs automatic
+checking by the sender.  Also, because many people perform automatic
 tests on CPAN, chances are that you will receive identical messages
 about the same problem.
 
 If you believe that the message is mistaken, please reply to the first
-one with correction and/or additional informations, and do not take
+one with correction and/or additional information, and do not take
 it personally.  We appreciate your patience. :)
 **********************************************************************
 
@@ -356,6 +358,31 @@ sub _query_report {
     }
 
     return @ret ? \@ret : 0;
+}
+## Add to DBM database $dist if not exist and return 1, else return 0;
+sub _not_already_sent {
+  my ($self, $dist)=@_;
+  return 1 if ($self->{_conf}->get_conf('force'));
+  my $sdbm = $self->{_conf}->_get_build("base")."/reports_send.dbm";
+  my ($perlversion,$osversion) = (
+                                  $self->_perl_version(perl => $^X),
+                                  $self->_os_version(perl => $^X)
+                                 );
+  my $return = 0;
+  my %myreports;
+  # Initialize DBM hash with report send by user
+  # Open dbm file
+  tie (%myreports, 'AnyDBM_File', $sdbm, O_RDWR|O_CREAT, 0640) 
+    or die $sdbm.":".$!;
+  if (!$myreports{"$dist|$perlversion|$osversion"}) {
+    $myreports{"$dist|$perlversion|$osversion"} = localtime;
+    $return = 1;
+  }
+  untie %myreports;
+  if (!$return) {
+    print loc("You have already sent a report for %1, skipping.\n", $dist);
+  }
+  return $return;
 }
 
 1;

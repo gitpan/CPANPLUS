@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #4 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
+# $Revision: #8 $ $Change: 2933 $ $DateTime: 2002/12/25 16:08:51 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -12,6 +12,12 @@
 package CPANPLUS::Internals;
 
 use strict;
+
+BEGIN {
+    use vars        qw( @ISA $VERSION );
+    $VERSION    =   '0.041';
+}
+
 ### required files. I think we can now get rid of Carp, since we use Error.pm
 ### Data::Dumper is here just for debugging - both are core, so no worries -Kane
 use CPANPLUS::Configure;
@@ -35,13 +41,7 @@ use Data::Dumper;
 use FileHandle;
 use File::Path ();
 
-### can't use F::S::F - FreeBSD stable does not ship with it
-### no big worry, F::S::F is just a wrapper for F::S anyway
-#use File::Spec::Functions;
-
-
 BEGIN {
-    use vars        qw( @ISA $VERSION );
     @ISA        =   qw(
                         CPANPLUS::Internals::Utils
                         CPANPLUS::Internals::Extract
@@ -52,8 +52,7 @@ BEGIN {
                         CPANPLUS::Internals::Source
                         CPANPLUS::Internals::Report
                     );
-
-    $VERSION    =   '0.040';
+    $VERSION    =   '0.041';
 }
 
 ### ROUGH FLOW OF THE MODULE ###
@@ -385,15 +384,18 @@ sub _can_use {
     ### optional argument. if true, we will complain about not having these modules ###
     my $yell = $args{'complain'};
 
+    ### optional argument. if true, ignore the cached results ###
+    my $no_cache = $args{'no_cache'};
+
     for my $m (keys %$href) {
 
         ### check if we already successfully 'use'd this module ###
-        if ( $self->{_inc}->{$m}->{usable} ) {
+        if ( !$no_cache and $self->{_inc}->{$m}->{usable} ) {
             next;
 
         ### else, check if the hash key is defined already, meaning $mod => 0,
         ### indicating UNSUCCESSFUL prior attempt of usage
-        } elsif ( defined $self->{_inc}->{$m}->{usable}
+        } elsif ( !$no_cache and defined $self->{_inc}->{$m}->{usable}
                     && ($self->{_inc}->{$m}->{version} >= $href->{$m} )
                 ) {
 
@@ -937,6 +939,37 @@ sub _perl_version {
 
     return $perl_version;
 }
+### sub to find the os version of a certain perlbinary we've been passed ###
+sub _os_version {
+    my $self = shift;
+    my %args = @_;
+    my $conf = $self->{_conf};
+    my $err  = $self->{_error};
+
+    return 0 unless $args{perl};
+
+    ### there might be a more elegant way to do this... ###
+    my $cmd = $args{perl} . ' -MConfig -eprint+Config::config_vars+osvers';
+    my ($perl_version) = (`$cmd` =~ /osvers='(.*)'/);
+
+    return $perl_version;
+}
+
+
+sub _reconfigure {
+    my $self = shift;
+    my %args = @_;
+
+    if( $args{conf} ) {
+        $self->{_conf} = $args{conf};
+
+    } else {
+        $self->{_conf} = CPANPLUS::Configure->new( %args );
+    }
+
+    return 1;
+}
+
 1;
 
 # Local variables:
