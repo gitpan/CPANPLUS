@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #12 $ $Change: 8343 $ $DateTime: 2003/10/05 17:24:36 $
+# $Revision: #13 $ $Change: 8399 $ $DateTime: 2003/10/13 09:02:19 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -475,7 +475,28 @@ warn "SHOULD NOT GET HERE" if $flag;
 
                 } ### end of MAKE
 
+                MAKE_TEST: {
                 unless ($skiptest) {
+
+                    if( defined $self->status->make_test ) {
+                        
+                        if( $self->status->make_test && !$force ) {
+                            $err->inform(
+                                msg     => loc(q[Already tested this module - not running '%1' again unless you force],
+                                                'make test' ),
+                                quiet   => $verbose
+                            );
+                            last MAKE_TEST;                                     
+                        }
+                         
+                    } else {
+                        $err->trap(
+                                error   => loc(q['%1' failed before this session, no point in retrying], 'make test'),
+                                quiet   => !$verbose 
+                        );
+                        last MAKE_TEST;          
+                    }
+
 
                     unless ( $self->_run(
                         command => [$Make, @args, 'test'],
@@ -501,7 +522,7 @@ warn "SHOULD NOT GET HERE" if $flag;
                     last INSTALL if $target eq 'test';
                     ### all ok, set overall => 1
                     ### restore startdir
-                }
+                } }
 
                 ### run from sudo if that was in the conf ###
                 my $cmd     = [$Make, @args, 'install'];

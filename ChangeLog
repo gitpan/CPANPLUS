@@ -1,5 +1,19 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #12 $ $Change: 8348 $ $DateTime: 2003/10/05 22:27:35 $
+# $Revision: #13 $ $Change: 8891 $ $DateTime: 2003/11/15 16:59:11 $
+
+[Changes for 0.046 - November 16, 2003]
+
+This release merely fixes some trivial bugs. :-)
+
+* Bug fixes
+
+  - Once any of install failed, the subsequent modules were also
+    marked as failure, even if they really succeeded.
+
+  - The make_test cache is now used to skip over previously tested modules.
+
+  - Fixed an infinite loop bug during Configure that prevents ActiveState
+    from building PPMs.
 
 [Changes for 0.045 - October 5, 2003]
 

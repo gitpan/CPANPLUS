@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #25 $ $Change: 8313 $ $DateTime: 2003/10/02 14:57:49 $
+# $Revision: #26 $ $Change: 8891 $ $DateTime: 2003/11/15 16:59:11 $
 
 use strict;
 BEGIN { require 5.00503; }
@@ -461,7 +461,7 @@ sub get_nmake {
         $ftp->login("anonymous", 'cpanplus@example.com');
         $ftp->cwd("/Softlib/MSLFILES");
         $ftp->binary;
-        $ftp->get("nmake15.exe") or die $!;
+        $ftp->get("NMAKE15.EXE") or die $!;
         $ftp->quit;
     }
     elsif (_can_run('ftp')) {
@@ -480,7 +480,7 @@ open ftp.microsoft.com
 user anonymous cpanplus@example.com
 cd /Softlib/MSLFILES/
 binary
-get nmake15.exe nmake15.exe
+get NMAKE15.EXE NMAKE15.EXE
 quit
 .
 
@@ -492,8 +492,8 @@ quit
         chdir $dir; return;
     }
 
-    system('nmake15.exe /o > nul') if -s 'nmake15.exe' == 51928;
-    unlink('nmake15.exe') if -e 'nmake15.exe';
+    system('NMAKE15.EXE /o > nul') if -s 'NMAKE15.EXE' == 51928;
+    unlink('NMAKE15.EXE') if -e 'NMAKE15.EXE';
 
     print (((-e 'nmake.exe') ? loc("done!") : loc("failed! (%1)", $!)), "\n");
     chdir $dir; return !$?;

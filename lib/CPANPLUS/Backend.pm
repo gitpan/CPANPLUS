@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #16 $ $Change: 7779 $ $DateTime: 2003/08/29 17:16:26 $
+# $Revision: #17 $ $Change: 8351 $ $DateTime: 2003/10/07 06:40:41 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -217,7 +217,7 @@ sub install {
                         msg => loc("Module %1 already up to date; ", $name).
                             ($do_install ? loc("won't install without force!")
                                          : loc("continuing anyway."))
-    		    );
+                    );
                     next if $do_install;
                 }
             }
@@ -248,12 +248,14 @@ sub install {
 
         for my $mod ( sort keys %$rv ) {
             my $mobobj = $self->module_tree->{$mod};
+            $modobj->status->install(1);
 
             #unless ( $rv->{$mod}->install ) {
             unless ( $modobj->status->make_overall ) {
                 $args->{target} eq 'test'
                     ? $err->trap( error => loc("Testing %2 failed!", $name) )
                     : $err->trap( error => loc("Installing %2 failed!", $name) );
+                $modobj->status->install(0);
                 $flag = 1;
             }
 
@@ -269,6 +271,7 @@ sub install {
 
                 unless($rv2->ok) {
                     $err->trap( error => loc("Error creating %1 from %2", $format, $mod) );
+                    $modobj->status->install(0);
                     $flag = 1;
                     next;
                 }
@@ -277,13 +280,12 @@ sub install {
 
                 unless( $modobj->status->$meth()->install ) {
                     $err->trap( error => loc("Error installing %1 as %2", $mod, $format) );
+                    $modobj->status->install(0);
                     $flag = 1;
                     next;
 
                 }
             }
-
-            $modobj->status->install(!$flag);
 
             ### set the return value ###
             $href->{$mod} = $modobj->status->install;

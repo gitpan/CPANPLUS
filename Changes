@@ -1,4 +1,24 @@
 ____________________________________________________________________________
+[  8891] By: autrijus                              on 2003/11/15  16:59:11
+        Log: * This be CPANPLUS, version 0.046.
+	   ! ChangeLog Makefile.PL lib/CPANPLUS.pm
+	   ! lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  8890] By: autrijus                              on 2003/11/15  16:50:36
+        Log: * avoid infinite loop in setup.
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  8399] By: hydo                                  on 2003/10/13  09:02:19
+        Log: * make sure the make_test cache is also used to skip over
+	       previous tests
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  8351] By: autrijus                              on 2003/10/07  06:40:41
+        Log: * Richard Clamp reports that once any of install failed,
+             the subsequent modules are also makred as failure even 
+             if they really succeeded.
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
 [  8348] By: autrijus                              on 2003/10/05  22:27:35
         Log: * This be CPANPLUS, version 0.045.
 	   ! ChangeLog

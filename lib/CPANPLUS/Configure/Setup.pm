@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #22 $ $Change: 8339 $ $DateTime: 2003/10/05 16:11:41 $
+# $Revision: #23 $ $Change: 8890 $ $DateTime: 2003/11/15 16:50:36 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -1245,6 +1245,7 @@ sub _setup_hosts {
 
     my $next = 'main';
     my $came_from;
+    my $repeated;
     LOOP: { while (1) {
 
         last if $SkipMirrors;
@@ -1405,6 +1406,7 @@ Note, the latter option requires a working net connection.
                 for my $host (@{$pick}[1..$#{$pick}]) {
                     if (exists $host_list->{$host}) {
                         print "\n", loc("Host %1 already selected!", $host), "\n";
+			last LOOP if $repeated++ > 3;
                         last LOOP if $AutoSetup; next;
                     }
 
