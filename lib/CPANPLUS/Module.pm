@@ -379,9 +379,7 @@ with C<Bundle::>.
 
         return $core;
     }
-}
 
-{
     sub is_bundle {
         return shift->module =~ /^bundle::/i ? 1 : 0;
     }
@@ -640,7 +638,7 @@ sub install {
 
     ### check if it's already upto date ###
     if( $target eq 'install' and !$args->{'force'} and
-        !$self->package_is_perl_core() and         # seperate rules apply
+        !$self->package_is_perl_core() and         # separate rules apply
         ( $self->status->installed() or $self->is_uptodate ) and
         !INSTALL_VIA_PACKAGE_MANAGER->($format)
     ) {
@@ -752,7 +750,7 @@ sub install {
 
     return 1 if $target ne 'install';
 
-    my $ok = $dist->install() ? 1 : 0;
+    my $ok = $dist->install( %$args ) ? 1 : 0;
 
     $self->status->installed($ok);
 
@@ -1239,6 +1237,65 @@ sub _extutils_installed {
     }
 }
 
+=pod
+
+=head2 $path = $self->best_path_to_module_build();
+
+If a newer version of Module::Build is found in your path, it will
+return this C<special> path. If the newest version of C<Module::Build>
+is found in your regular C<@INC>, the method will return false. This
+indicates you do not need to add a special directory to your C<@INC>.
+
+Note that this is only relevant if you're building your own
+C<CPANPLUS::Dist::*> plugin -- the built-in dist types already have
+this taken care of.
+
+=cut
+
+### make sure we're always running 'perl Build.PL' and friends
+### against the highest version of module::build available
+sub best_path_to_module_build {
+    my $self = shift;
+
+    ### Since M::B will actually shell out and run the Build.PL, we must
+    ### make sure it refinds the proper version of M::B in the path.
+    ### that may be either in our cp::inc or in site_perl, or even a
+    ### new M::B being installed.
+    ### don't add anything else here, as that might screw up prereq checks
+
+    ### XXX this might be needed for Dist::MM too, if a makefile.pl is
+    ###	masquerading as a Build.PL
+
+    ### did we find the most recent module::build in our installer path?
+
+    ### XXX can't do changes to @INC, they're being ignored by
+    ### new_from_context when writing a Build script. see ticket:
+    ### #8826 Module::Build ignores changes to @INC when writing Build
+    ### from new_from_context
+    ### XXX applied schwern's patches (as seen on CPANPLUS::Devel 10/12/04)
+    ### and upped the version to 0.26061 of the bundled version, and things
+    ### work again
+
+    require Module::Build;
+    if( CPANPLUS::inc->path_to('Module::Build') eq
+        CPANPLUS::inc->installer_path
+    ) {
+
+        ### if the module being installed is *not* Module::Build
+        ### itself -- as that would undoubtedly be newer -- add
+        ### the path to the installers to @INC
+        ### if it IS module::build itself, add 'lib' to its path,
+        ### as the Build.PL would do as well, but the API doesn't.
+        ### this makes self updates possible
+        return $self->module eq 'Module::Build'
+                        ? 'lib'
+                        : CPANPLUS::inc->installer_path;
+    }
+
+    ### otherwise, the path was found through a 'normal' way of
+    ### scanning @INC.
+    return;
+}
 
 
 # Local variables:

@@ -24,7 +24,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_02';
+    $VERSION    =   '0.050_03';
 }
 
 load CPANPLUS::Shell;
@@ -53,7 +53,7 @@ my $map = {
     'u'     => '_uninstall',
     '/'     => '_meta',         # undocumented for now
     'c'     => '_reports',
-};    
+};
 ### free letters: e g j k n y ###
 
 
@@ -77,19 +77,19 @@ CPANPLUS::Shell::Default;
     ### loading the shell:
     $ cpanp                     # run 'cpanp' from the command line
     $ perl -MCPANPLUS -eshell   # load the shell from the command line
-    
-    
+
+
     use CPANPLUS::Shell qw[Default];    # load this shell via the API
                                         # always done via CPANPLUS::Shell
-    
+
     my $ui = CPANPLUS::Shell->new;
     $ui->shell;                         # run the shell
     $ui->dispatch_on_input('x');        # update the source using the
                                         # dispatch method
 
-    ### when in the shell: 
-    ### Note that all commands can also take options. 
-    ### Look at their underlying CPANPLUS::Backend methods to see 
+    ### when in the shell:
+    ### Note that all commands can also take options.
+    ### Look at their underlying CPANPLUS::Backend methods to see
     ### what options those are.
     cpanp> h                # show help messages
     cpanp> ?                # show help messages
@@ -97,7 +97,7 @@ CPANPLUS::Shell::Default;
     cpanp> m Acme           # find acme modules, allows regexes
     cpanp> a KANE           # find modules by kane, allows regexes
     cpanp> f Acme::Foo      # get a list of all releases of Acme::Foo
-    
+
     cpanp> i Acme::Foo      # install Acme::Foo
     cpanp> i Acme-Foo-1.3   # install version 1.3 of Acme::Foo
     cpanp> i 1 3..5         # install search results 1, 3, 4 and 5
@@ -122,11 +122,11 @@ CPANPLUS::Shell::Default;
     cpanp> s reconfigure    # go through initial configuration again
     cpanp> s save           # save config to disk
 
-    cpanp> ! [PERL CODE]    # execute the following perl code    
+    cpanp> ! [PERL CODE]    # execute the following perl code
     cpanp> /source FILE     # read in commands from FILE
 
     cpanp> b                # create an autobundle for this computers
-                            # perl installation    
+                            # perl installation
     cpanp> x                # reload index files
     cpanp> p [FILE]         # print error stack (to a file)
     cpanp> v                # show the banner
@@ -145,7 +145,7 @@ can start it via the C<cpanp> binary, or as detailed in the L<SYNOPSIS>.
 
 sub new {
     my $class   = shift;
-    
+
     my $cb      = new CPANPLUS::Backend;
     my $self    = $class->SUPER::_init(
                             brand   => $Brand,
@@ -153,51 +153,51 @@ sub new {
                             prompt  => $Prompt,
                             backend => $cb,
                             format  => "%5s %-50s %8s %-10s\n",
-                        );        
+                        );
     ### make it available package wide ###
     $Shell = $self;
-  
-    my $rc_file = File::Spec->catfile( 
+
+    my $rc_file = File::Spec->catfile(
                         $cb->configure_object->get_conf('base'),
                         DOT_SHELL_DEFAULT_RC,
                     );
-                
-  
+
+
     if( -e $rc_file && -r _ ) {
-        $rc = _read_configuration_from_rc( $rc_file );                               
+        $rc = _read_configuration_from_rc( $rc_file );
     }
-  
+
     ### register install callback ###
     $cb->_register_callback(
             name    => 'install_prerequisite',
             code    => \&__ask_about_install,
-    );         
+    );
 
     ### execute any login commands specified ###
-    $self->dispatch_on_input( input => $rc->{'login'} ) 
-            if defined $rc->{'login'}; 
-  
+    $self->dispatch_on_input( input => $rc->{'login'} )
+            if defined $rc->{'login'};
+
     ### register test report callbacks ###
     $cb->_register_callback(
             name    => 'edit_test_report',
             code    => \&__ask_about_edit_test_report,
-    );         
-  
+    );
+
     $cb->_register_callback(
             name    => 'send_test_report',
             code    => \&__ask_about_send_test_report,
-    );         
+    );
 
-  
+
     return $self;
-}  
+}
 
-sub shell { 
+sub shell {
     my $self = shift;
     my $term = $self->term;
-   
+
     $self->_show_banner;
-    $self->_input_loop && print "\n"; 
+    $self->_input_loop && print "\n";
     $self->_quit;
 }
 
@@ -210,7 +210,7 @@ sub _input_loop {
     while (
         defined (my $input = eval { $term->readline($self->prompt) } )
         or $self->_signals->{INT}{count} == 1
-    ) { 
+    ) {
         ### re-initiate all signal handlers
         while (my ($sig, $entry) = each %{$self->_signals} ) {
             $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
@@ -220,12 +220,12 @@ sub _input_loop {
 
         ### flush the lib cache ###
         $cb->_flush( list => [qw|lib|] );
-                   
-    } continue {            
+
+    } continue {
         $self->_signals->{INT}{count}--
             if $self->_signals->{INT}{count}; # clear the sigint count
-    }   
-    
+    }
+
     return 1;
 }
 
@@ -235,98 +235,98 @@ sub dispatch_on_input {
     my $conf = $self->backend->configure_object();
     my $term = $self->term;
     my %hash = @_;
-    
+
     my($string, $noninteractive);
     my $tmpl = {
         input          => { required => 1, store => \$string },
         noninteractive => { required => 0, store => \$noninteractive },
     };
-    
+
     check( $tmpl, \%hash ) or return;
- 
+
     ### indicates whether or not the user will receive a shell
     ### prompt after the command has finished.
     $self->noninteractive($noninteractive) if defined $noninteractive;
-        
+
     my @cmds =  split ';', $string;
     while( my $input = shift @cmds ) {
-        
+
         ### to send over the socket ###
         my $org_input = $input;
 
-        my $key; my $options; 
-        {   ### make whitespace not count when using special chars 
+        my $key; my $options;
+        {   ### make whitespace not count when using special chars
             { $input =~ s|^\s*([!?/])|$1 |; }
-            
+
             ### get the first letter of the input
             $input =~ s|^\s*([\w\?\!/])\w*\s*||;
-            
+
             chomp $input;
             $key =  lc($1);
-            
+
             ### allow overrides from the config file ###
             if( defined $rc->{$key} ) {
                 $input = $rc->{$key} . $input;
             }
-            
+
             ### grab command line options like --no-force and --verbose ###
-            ($options,$input) = $term->parse_options($input) 
+            ($options,$input) = $term->parse_options($input)
                 unless $key eq '!';
-        }    
+        }
 
         ### emtpy line? ###
         return unless $key;
-    
+
         ### time to quit ###
         return 1 if $key eq 'q';
-        
+
         my $method = $map->{$key};
-    
+
         ### dispatch meta locally at all times ###
-        $self->$method(input => $input, options => $options), next 
+        $self->$method(input => $input, options => $options), next
             if $key eq '/';
-            
+
         ### flush unless we're trying to print the stack
         CPANPLUS::Error->flush unless $key eq 'p';
-    
+
         ### connected over a socket? ###
         if( $self->remote ) {
-            
+
             ### unsupported commands ###
             if( $key eq 'z' or
                 ($key eq 's' and $input =~ /^\s*edit/)
             ) {
                 print "\n", loc("Command not supported over remote connection"),
                         "\n\n";
-            
+
             } else {
                 my($status,$buff) = $self->__send_remote_command($org_input);
 
                 print "\n", loc("Command failed!"), "\n\n" unless $status;
-        
+
                 $self->_pager_open if $buff =~ tr/\n// > $self->_term_rowcount;
                 print $buff;
                 $self->_pager_close;
             }
-            
-        ### or just a plain local shell? ###    
+
+        ### or just a plain local shell? ###
         } else {
-        
+
             unless( $self->can($method) ) {
                 print loc("Unknown command '%1'. Usage:", $key), "\n";
                 $self->_help;
-            
+
             } else {
-                 
+
                 ### some methods don't need modules ###
                 my @mods;
-                @mods = $self->_select_modules($input) 
+                @mods = $self->_select_modules($input)
                         unless grep {$key eq $_} qw[! m a v w x p s b / ? h];
-                
-                eval { $self->$method(  modules => \@mods, 
+
+                eval { $self->$method(  modules => \@mods,
                                         options => $options,
                                         input   => $input,
-                                        choice  => $key ) 
+                                        choice  => $key )
                 };
                 warn $@ if $@;
             }
@@ -334,60 +334,60 @@ sub dispatch_on_input {
     }
 
     return;
-}        
+}
 
 sub _select_modules {
     my $self    = shift;
     my $input   = shift or return;
     my $cache   = $self->cache;
     my $cb      = $self->backend;
-    
+
     ### expand .. in $input
     $input =~ s{\b(\d+)\s*\.\.\s*(\d+)\b}
                {join(' ', ($1 < 1 ? 1 : $1) .. ($2 > $#{$cache} ? $#{$cache} : $2))}eg;
 
     $input = join(' ', 1 .. $#{$cache}) if $input eq '*';
     $input =~ s/'/::/g; # perl 4 convention
-    
+
     my @rv;
     for my $mod (split /\s+/, $input) {
-        
+
         ### it's a cache look up ###
-        if( $mod =~ /^\d+/ and $mod > 0 ) {  
+        if( $mod =~ /^\d+/ and $mod > 0 ) {
             unless( scalar @$cache ) {
                 print loc("No search was done yet!"), "\n";
-            
-            } elsif ( my $obj = $cache->[$mod] ) {        
+
+            } elsif ( my $obj = $cache->[$mod] ) {
                 push @rv, $obj;
-            
-            } else {      
+
+            } else {
                 print loc("No such module: %1", $mod), "\n";
             }
-        
+
         } else {
             my $obj = $cb->parse_module( module => $mod );
-            
+
             unless( $obj ) {
                 print loc("No such module: %1", $mod), "\n";
-            
-            } else {         
+
+            } else {
                 push @rv, $obj;
             }
         }
     }
-    
+
     unless( scalar @rv ) {
         print loc("No modules found to operate on!\n");
         return;
-    } else {      
-        return @rv;    
+    } else {
+        return @rv;
     }
 }
 
 sub _format_version {
     my $self    = shift;
     my $version = shift;
-    
+
     ### fudge $version into the 'optimal' format
     $version = 0 if $version eq 'undef';
     $version =~ s/_//g; # everything after gets stripped off otherwise
@@ -405,37 +405,37 @@ sub __display_results {
     my @rv = @$cache;
 
     if( scalar @rv ) {
-    
+
         $self->_pager_open if $#{$cache} >= $self->_term_rowcount;
-        
+
         my $i = 1;
-        for my $mod (@rv) {    
+        for my $mod (@rv) {
             next unless $mod;   # first one is undef
                                 # humans start counting at 1
-        
-            printf $self->format, 
-                            $i, 
-                            $mod->module, 
+
+            printf $self->format,
+                            $i,
+                            $mod->module,
                             $self->_format_version($mod->version),
                             $mod->author->cpanid();
             $i++;
         }
-        
+
         $self->_pager_close;
-    
+
     } else {
         print loc("No results to display"), "\n";
     }
 }
 
 
-sub _quit { 
+sub _quit {
     my $self = shift;
-    
+
     $self->dispatch_on_input( input => $rc->{'logout'} )
             if defined $rc->{'logout'};
-            
-    print loc("Exiting CPANPLUS shell"), "\n"; 
+
+    print loc("Exiting CPANPLUS shell"), "\n";
 }
 
 ###########################
@@ -455,11 +455,11 @@ sub _help {
 
         my $tmpl = {
             input   => { required => 0, store => \$input }
-        };     
-     
+        };
+
         my $args = check( $tmpl, \%hash ) or return;
     }
-    
+
     @Help = (
 loc('[General]'                                                                     ),
 loc('    h | ?                  # display help'                                     ),
@@ -513,11 +513,11 @@ sub _bang {
 
         my $tmpl = {
             input   => { required => 1, store => \$input }
-        };     
-     
+        };
+
         my $args = check( $tmpl, \%hash ) or return;
     }
-    
+
     eval $input;
     error( $@ ) if $@;
     print "\n";
@@ -528,177 +528,177 @@ sub _search_module {
     my $self    = shift;
     my $cb      = $self->backend;
     my %hash    = @_;
-    
+
     my $args;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             input   => { required => 1, },
             options => { default => { } },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
+
+        $args = check( $tmpl, \%hash ) or return;
     }
-    
+
     my @regexes = map { qr/$_/i } split /\s+/, $args->{'input'};
-    
-    ### XXX this is rather slow, because (probably) 
-    ### of the many method calls 
+
+    ### XXX this is rather slow, because (probably)
+    ### of the many method calls
     ### XXX need to profile to speed it up =/
-    
+
     ### find the modules ###
     my @rv = sort { $a->module cmp $b->module }
-                    $cb->search(   
+                    $cb->search(
                         %{$args->{'options'}},
                         type    => 'module',
                         allow   => \@regexes,
-                    );                
-  
+                    );
+
     ### store the result in the cache ###
-    $self->cache([undef,@rv]);  
-    
+    $self->cache([undef,@rv]);
+
     $self->__display_results;
-    
+
     return 1;
-}    
-    
+}
+
 sub _search_author {
     my $self    = shift;
     my $cb      = $self->backend;
     my %hash    = @_;
-    
+
     my $args;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             input   => { required => 1, },
             options => { default => { } },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    }    
-    
-    my @regexes = map { qr/$_/i } split /\s+/, $args->{'input'};    
-    
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
+    my @regexes = map { qr/$_/i } split /\s+/, $args->{'input'};
+
     my @rv;
     for my $type (qw[author cpanid]) {
-        push @rv, $cb->search(   
+        push @rv, $cb->search(
                         %{$args->{'options'}},
                         type    => $type,
                         allow   => \@regexes,
-                    );      
+                    );
     }
-    
+
     my %seen;
     my @list =  sort { $a->module cmp $b->module }
-                grep { defined } 
-                map  { $_->modules } 
-                grep { not $seen{$_}++ } @rv;    
-    
+                grep { defined }
+                map  { $_->modules }
+                grep { not $seen{$_}++ } @rv;
+
     $self->cache([undef,@list]);
-    
+
     $self->__display_results;
     return 1;
-}        
+}
 
 sub _readme {
     my $self    = shift;
     my $cb      = $self->backend;
     my %hash    = @_;
-    
+
     my $args; my $mods; my $opts;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             modules => { required => 1,  store => \$mods },
             options => { default => { }, store => \$opts },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    }          
-    
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
     return unless scalar @$mods;
-    
-    $self->_pager_open; 
+
+    $self->_pager_open;
     for my $mod ( @$mods ) {
         print $mod->readme( %$opts );
     }
-    
-    $self->_pager_close;       
-    
-    return 1;    
+
+    $self->_pager_close;
+
+    return 1;
 }
 
 sub _fetch {
     my $self    = shift;
     my $cb      = $self->backend;
     my %hash    = @_;
-    
+
     my $args; my $mods; my $opts;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             modules => { required => 1,  store => \$mods },
             options => { default => { }, store => \$opts },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    } 
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
 
     $self->_pager_open if @$mods >= $self->_term_rowcount;
     for my $mod (@$mods) {
         my $where = $mod->fetch( %$opts );
-        
-        print $where 
-                ? loc("Succesfully fetched '%1' to '%2'", 
+
+        print $where
+                ? loc("Succesfully fetched '%1' to '%2'",
                         $mod->module, $where )
-                : loc("Failed to fetch '%1'", $mod->module);           
+                : loc("Failed to fetch '%1'", $mod->module);
         print "\n";
     }
     $self->_pager_close;
-    
-}    
- 
+
+}
+
 sub _shell {
     my $self    = shift;
     my $cb      = $self->backend;
     my $conf    = $cb->configure_object;
     my %hash    = @_;
-    
+
     my $shell = $conf->get_program('shell');
     unless( $shell ) {
         print   loc("Your config does not specify a subshell!"), "\n",
                 loc("Perhaps you need to re-run your setup?"), "\n";
         return;
-    }     
-    
+    }
+
     my $args; my $mods; my $opts;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             modules => { required => 1,  store => \$mods },
             options => { default => { }, store => \$opts },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    } 
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
 
     my $cwd = Cwd::cwd();
     for my $mod (@$mods) {
         $mod->fetch(    %$opts )    or next;
         $mod->extract(  %$opts )    or next;
-        
+
         $cb->_chdir( dir => $mod->status->extract() )   or next;
-        
+
         local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
         if( system($shell) and $! ) {
-            print loc("Error executing your subshell '%1': %2", 
+            print loc("Error executing your subshell '%1': %2",
                         $shell, $!),"\n";
             next;
         }
-    }       
+    }
     $cb->_chdir( dir => $cwd );
- 
+
     return 1;
 }
 
@@ -707,47 +707,47 @@ sub _distributions {
     my $cb      = $self->backend;
     my $conf    = $cb->configure_object;
     my %hash    = @_;
-    
+
     my $args; my $mods; my $opts;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             modules => { required => 1,  store => \$mods },
             options => { default => { }, store => \$opts },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    } 
-    
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
     my @list;
     for my $mod (@$mods) {
-        push @list, sort { $a->version <=> $b->version } 
-                    grep { defined } $mod->distributions( %$opts );    
+        push @list, sort { $a->version <=> $b->version }
+                    grep { defined } $mod->distributions( %$opts );
     }
-    
+
     my @rv = sort { $a->module cmp $b->module } @list;
-    
+
     $self->cache([undef,@rv]);
     $self->__display_results;
-    
-    return; 1; 
-}   
-    
+
+    return; 1;
+}
+
 sub _reload_indices {
     my $self = shift;
     my $cb   = $self->backend;
     my %hash = @_;
-    
+
     my $args; my $opts;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    }     
-    
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
     return $cb->reload_indices( %$opts );
 }
 
@@ -756,54 +756,54 @@ sub _install {
     my $cb      = $self->backend;
     my $conf    = $cb->configure_object;
     my %hash    = @_;
-    
+
     my $args; my $mods; my $opts; my $choice;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             modules => { required => 1,     store => \$mods },
             options => { default  => { },   store => \$opts },
-            choice  => { required => 1,     store => \$choice, 
+            choice  => { required => 1,     store => \$choice,
                          allow    => [qw|i t|] },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    } 
-    
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
     unless( scalar @$mods ) {
         print loc("Nothing done\n");
         return;
-    }     
-    
+    }
+
     my $target = $choice eq 'i' ? 'install' : 'create';
     my $prompt = $choice eq 'i' ? loc('Installing ') : loc('Testing ');
-    
+
     my $status = {};
     ### first loop over the mods to install them ###
     for my $mod (@$mods) {
         print $prompt, $mod->module, "\n";
-        
+
         ### store the status for look up when we're done with all
-        ### install calls     
-        $status->{$mod} = $mod->install( %$opts, target => $target ); 
+        ### install calls
+        $status->{$mod} = $mod->install( %$opts, target => $target );
     }
-    
+
     my $flag;
     ### then report whether all this went ok or not ###
     for my $mod (@$mods) {
     #    if( $mod->status->installed ) {
         if( $status->{$mod} ) {
-            print loc("Module '%1' %tense(%2,past) successfully\n", 
+            print loc("Module '%1' %tense(%2,past) successfully\n",
                         $mod->module, $target)
         } else {
             $flag++;
-            print loc("Error %tense(%1,present) '%2'\n",  
+            print loc("Error %tense(%1,present) '%2'\n",
                         $target, $mod->module);
         }
     }
-            
-    
-    
+
+
+
     if( !$flag ) {
         print loc("No errors %tense(%1,present) all modules", $target), "\n";
     } else {
@@ -813,7 +813,7 @@ sub _install {
                 unless $conf->get_conf('verbose') || $self->noninteractive;
     }
     print "\n";
-    
+
     return !$flag;
 }
 
@@ -821,9 +821,9 @@ sub __ask_about_install {
     my $mod     = shift or return;
     my $prereq  = shift or return;
     my $term    = $Shell->term;
-    
+
     print "\n";
-    print loc(  "Module '%1' requires '%2' to be installed", 
+    print loc(  "Module '%1' requires '%2' to be installed",
                 $mod->module, $prereq->module );
     print "\n\n";
     print loc(  "If you don't wish to see this question anymore\n".
@@ -831,19 +831,19 @@ sub __ask_about_install {
                 "commands on the prompt:\n    '%1'",
                 's conf prereqs 1; s save' );
     print "\n\n";
-    
+
     my $bool =  $term->ask_yn(
                     prompt  => loc("Should I install this module?"),
                     default => 'y'
                 );
-                
-    return $bool;               
-}    
+
+    return $bool;
+}
 
 sub __ask_about_send_test_report {
     my $mod     = shift or return;
     my $term    = $Shell->term;
-    
+
     print "\n";
     print loc(  "Test report prepared for module '%1'\n. Would you like to ".
                 "send it? (You can edit it if you like)", $mod->module );
@@ -852,14 +852,14 @@ sub __ask_about_send_test_report {
                     prompt  => loc("Would you like to send the test report?"),
                     default => 'n'
                 );
-                
-    return $bool;               
-}  
+
+    return $bool;
+}
 
 sub __ask_about_edit_test_report {
     my $mod     = shift or return;
     my $term    = $Shell->term;
-    
+
     print "\n";
     print loc(  "Test report prepared for module '%1'. You can edit this ".
                 "report if you would like", $mod->module );
@@ -868,9 +868,9 @@ sub __ask_about_edit_test_report {
                     prompt  => loc("Would you like to edit the test report?"),
                     default => 'y'
                 );
-                
-    return $bool;               
-}    
+
+    return $bool;
+}
 
 
 
@@ -879,38 +879,38 @@ sub _details {
     my $cb      = $self->backend;
     my $conf    = $cb->configure_object;
     my %hash    = @_;
-    
+
     my $args; my $mods; my $opts;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             modules => { required => 1,  store => \$mods },
             options => { default => { }, store => \$opts },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    }     
- 
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
     ### every module has about 10 lines of details
     ### maybe more later with Module::CPANTS etc
     $self->_pager_open if scalar @$mods * 10 > $self->_term_rowcount;
-    
+
     for my $mod (@$mods) {
         my $href = $mod->details( %$opts );
-        
+
         unless( $href ) {
-            print loc("No details for %1 - it might be outdated.", 
+            print loc("No details for %1 - it might be outdated.",
                         $mod->module), "\n";
             next;
-        
+
         } else {
             print loc( "Details for '%1'\n", $mod->module );
             for my $item ( sort keys %$href ) {
                 printf "%-30s %-30s\n", $item, $href->{$item};
             }
             print "\n";
-        }             
-    }     
+        }
+    }
     $self->_pager_close;
     print "\n";
 
@@ -920,113 +920,113 @@ sub _details {
 sub _print {
     my $self = shift;
     my %hash = @_;
-    
+
     my $args; my $opts; my $file;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             input   => { default => '',  store => \$file },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    }   
-    
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
     my $old; my $fh;
     if( $file ) {
-        $fh = FileHandle->new( ">$file" ) 
+        $fh = FileHandle->new( ">$file" )
                     or( warn loc("Could not open '%1': '%2'", $file, $!),
                         return
-                    );          
+                    );
         $old = select $fh;
-    }      
-    
-    
+    }
+
+
     $self->_pager_open if !$file;
 
     print CPANPLUS::Error->stack_as_string;
 
     $self->_pager_close;
-    
+
     select $old if $old;
     print "\n";
-    
+
     return 1;
-}    
+}
 
 sub _set_conf {
     my $self    = shift;
     my %hash    = @_;
     my $cb      = $self->backend;
     my $conf    = $cb->configure_object;
-    
+
     ### possible options
     ### XXX hard coded, not optimal :(
     my @types   = qw[reconfigure save edit program conf];
-    
-    
+
+
     my $args; my $opts; my $input;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             input   => { default => '',  store => \$input },
         };
-        
-        $args = check( $tmpl, \%hash ) or return;       
-    }  
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
 
     my ($type,$key,$value) = $input =~ m/(\w+)\s*(\w*)\s*(.*?)\s*$/;
     $type = lc $type;
-    
+
     if( $type eq 'reconfigure' ) {
         my $setup = CPANPLUS::Configure::Setup->new(
                         conf    => $conf,
-                        term    => $self->term,   
+                        term    => $self->term,
                         backend => $cb,
                     );
         return $setup->init;
-    
+
     } elsif ( $type eq 'save' ) {
-        my $rv = $cb->configure_object->save();                            
-    
+        my $rv = $cb->configure_object->save();
+
         print $rv
                 ? loc("Configuration successfully saved\n")
                 : loc("Failed to save configuration\n" );
-        return $rv;           
-    
+        return $rv;
+
     } elsif ( $type eq 'edit' ) {
-    
+
         my $editor  = $conf->get_program('editor')
                         or( print(loc("No editor specified")), return );
-        
+
         my $env     = ENV_CPANPLUS_CONFIG;
         my $where   = $ENV{$env} || $INC{'CPANPLUS/Config.pm'};
-        
+
         system("$editor $where");
-        
-        ### now reload it 
+
+        ### now reload it
         ### disable warnings for this
         {   local $^W;
-            delete $INC{'CPANPLUS/Config.pm'};     
+            delete $INC{'CPANPLUS/Config.pm'};
             $conf->_load_cpanplus_config;
         }
-        
+
         ### and use the new config ###
         $conf->conf( CPANPLUS::Config->new() );
-        
+
         return 1;
-    
+
     } else {
-        
+
         if ( $type eq 'program' or $type eq 'conf' ) {
-            
-            unless( $key ) {       
-                my @list =  grep { $_ ne 'hosts' } 
+
+            unless( $key ) {
+                my @list =  grep { $_ ne 'hosts' }
                             $conf->options( type => $type );
-                
+
                 my $method = 'get_' . $type;
-                
+
                 local $Data::Dumper::Indent = 0;
                 for my $name ( @list ) {
                     my $val = $conf->$method($name);
@@ -1035,27 +1035,27 @@ sub _set_conf {
                                 : "'$val'";
                     printf  "    %-25s %s\n", $name, $val;
                 }
-                
+
             } elsif ( $key eq 'hosts' ) {
                 print loc(  "Setting hosts is not trivial.\n" .
                             "It is suggested you use '%1' and edit the " .
                             "configuration file manually", 's edit');
-            } else {         
+            } else {
                 my $method = 'set_' . $type;
                 $conf->$method( $key => defined $value ? $value : '' )
-                    and print loc("Key '%1' was set to '%2'", $key, 
+                    and print loc("Key '%1' was set to '%2'", $key,
                                   defined $value ? $value : 'EMPTY STRING');
-            }        
-        
+            }
+
         } else {
             print loc("Unknown type '%1'",$type || 'EMPTY' );
             print $/;
             print loc("Try one of the following:");
             print $/, join $/, map { "\t'$_'" } sort @types;
-        }     
+        }
     }
     print "\n";
-    return 1;                 
+    return 1;
 }
 
 sub _uptodate {
@@ -1063,18 +1063,18 @@ sub _uptodate {
     my %hash = @_;
     my $cb   = $self->backend;
     my $conf = $cb->configure_object;
-    
+
     my $opts; my $mods;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             modules => { required => 1,  store => \$mods },
         };
-        
-        check( $tmpl, \%hash ) or return;       
-    }  
-    
+
+        check( $tmpl, \%hash ) or return;
+    }
+
     ### long listing? short is default ###
     my $long = $opts->{'long'} ? 1 : 0;
 
@@ -1086,20 +1086,20 @@ sub _uptodate {
         next if $mod->is_uptodate;
         ### skip this mod if it's core ###
         next if $mod->package_is_perl_core;
-        
+
         if( $long or !$seen{$mod->package}++ ) {
             push @rv, $mod;
         }
     }
-    
+
     @rv = sort { $a->module cmp $b->module } @rv;
-    
+
     $self->cache([undef,@rv]);
-    
+
     $self->_pager_open if scalar @rv >= $self->_term_rowcount;
-    
+
     my $format = "%5s %10s %10s %-40s %-10s\n";
-    
+
     my $i = 1;
     for my $mod ( @rv ) {
         printf $format,
@@ -1108,10 +1108,10 @@ sub _uptodate {
                 $self->_format_version( $mod->version ),
                 $mod->module,
                 $mod->author->cpanid();
-        $i++;           
+        $i++;
     }
-    $self->_pager_close;            
-                
+    $self->_pager_close;
+
     return 1;
 }
 
@@ -1120,28 +1120,28 @@ sub _autobundle {
     my %hash = @_;
     my $cb   = $self->backend;
     my $conf = $cb->configure_object;
-    
+
     my $opts; my $input;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             input   => { default => '',  store => \$input },
         };
-        
-         check( $tmpl, \%hash ) or return;       
-    }  
-    
+
+         check( $tmpl, \%hash ) or return;
+    }
+
     $opts->{'path'} = $input if $input;
-    
+
     my $where = $cb->autobundle( %$opts );
-    
-    print $where 
+
+    print $where
             ? loc("Wrote autobundle to '%1'", $where)
             : loc("Could not create autobundle" );
     print "\n";
-    
-    return $where ? 1 : 0;           
+
+    return $where ? 1 : 0;
 }
 
 sub _uninstall {
@@ -1150,23 +1150,23 @@ sub _uninstall {
     my $cb   = $self->backend;
     my $term = $self->term;
     my $conf = $cb->configure_object;
-    
+
     my $opts; my $mods;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             modules => { default => [],  store => \$mods },
         };
-        
-         check( $tmpl, \%hash ) or return;       
+
+         check( $tmpl, \%hash ) or return;
     }
-    
+
     my $force = $opts->{'force'} || $conf->get_conf('force');
-    
+
     unless( $force ) {
         my $list = join "\n", map { '    ' . $_->module } @$mods;
-        
+
         print loc("
 This will uninstall the following modules:
 %1
@@ -1174,33 +1174,33 @@ This will uninstall the following modules:
 Note that if you installed them via a package manager, you probably
 should use the same package manager to uninstall them
 
-", $list);        
-        
+", $list);
+
         return unless $term->ask_yn(
                         prompt  => loc("Are you sure you want to continue?"),
                         default => 'n',
-                    );     
-    }                
+                    );
+    }
 
     ### first loop over all the modules to uninstall them ###
     for my $mod (@$mods) {
         print loc("Uninstalling '%1'", $mod->module), "\n";
-        
-        $mod->uninstall( %$opts ); 
+
+        $mod->uninstall( %$opts );
     }
-    
+
     my $flag;
     ### then report whether all this went ok or not ###
     for my $mod (@$mods) {
         if( $mod->status->uninstall ) {
-            print loc("Module '%1' %tense(uninstall,past) successfully\n", 
+            print loc("Module '%1' %tense(uninstall,past) successfully\n",
                        $mod->module )
         } else {
             $flag++;
             print loc("Error %tense(uninstall,present) '%1'\n", $mod->module);
         }
     }
-    
+
     if( !$flag ) {
         print loc("All modules %tense(uninstall,past) successfully"), "\n";
     } else {
@@ -1210,7 +1210,7 @@ should use the same package manager to uninstall them
                     "***\n", 'p') unless $conf->get_conf('verbose');
     }
     print "\n";
-    
+
     return !$flag;
 }
 
@@ -1223,20 +1223,20 @@ sub _reports {
 
     my $opts; my $mods;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             modules => { default => '',  store => \$mods },
         };
-        
-         check( $tmpl, \%hash ) or return;       
+
+         check( $tmpl, \%hash ) or return;
     }
-    
+
     ### XXX might need to be conditional ###
     $self->_pager_open;
-    
+
     for my $mod (@$mods) {
-        my @list = $mod->fetch_report( %$opts ) 
+        my @list = $mod->fetch_report( %$opts )
                     or( print(loc("No reports available for this distribution.")),
                         next
                     );
@@ -1244,32 +1244,32 @@ sub _reports {
         @list = reverse
                 map  { $_->[0] }
                 sort { $a->[1] cmp $b->[1] }
-                map  { [$_, $_->{'dist'}.':'.$_->{'platform'}] } @list; 
-      
-        
-                    
+                map  { [$_, $_->{'dist'}.':'.$_->{'platform'}] } @list;
+
+
+
         ### XXX this may need to be sorted better somehow ###
         my $url;
         my $format = "%8s %s %s\n";
-        
+
         my %seen;
         for my $href (@list ) {
             print "[" . $mod->author->cpanid .'/'. $href->{'dist'} . "]\n"
                 unless $seen{ $href->{'dist'} }++;
-            
+
             printf $format, $href->{'grade'}, $href->{'platform'},
                             ($href->{'details'} ? '(*)' : '');
-            
-            $url ||= $href->{'details'};                          
+
+            $url ||= $href->{'details'};
         }
-    
+
         print "\n==> $url\n" if $url;
         print "\n";
     }
     $self->_pager_close;
 
     return 1;
-}        
+}
 
 sub _meta {
     my $self = shift;
@@ -1280,24 +1280,24 @@ sub _meta {
 
     my $opts; my $input;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my $tmpl = {
             options => { default => { }, store => \$opts },
             input   => { default => '',  store => \$input },
         };
-        
-         check( $tmpl, \%hash ) or return;       
+
+         check( $tmpl, \%hash ) or return;
     }
-    
+
     my @parts   = split /\s+/, $input;
     my $cmd     = lc(shift @parts);
-    
+
     if( $cmd eq 'connect' ) {
         my $host = shift @parts || 'localhost';
-        my $port = shift @parts || $conf->_get_daemon('port'); 
-    
+        my $port = shift @parts || $conf->_get_daemon('port');
+
         load IO::Socket;
-    
+
         my $remote = IO::Socket::INET->new(
                             Proto       => "tcp",
                             PeerAddr    => $host,
@@ -1306,54 +1306,54 @@ sub _meta {
                             error( loc( "Cannot connect to port '%1' ".
                                         "on host '%2'", $port, $host ) ),
                             return
-                        );                     
+                        );
         my $user; my $pass;
         {   local $Params::Check::ALLOW_UNKNOWN = 1;
-            
+
             my $tmpl = {
-                user => { default => $conf->_get_daemon('username'), 
+                user => { default => $conf->_get_daemon('username'),
                             store => \$user },
-                pass => { default => $conf->_get_daemon('password'), 
+                pass => { default => $conf->_get_daemon('password'),
                             store => \$pass },
             };
-            
-             check( $tmpl, $opts ) or return;       
+
+             check( $tmpl, $opts ) or return;
         }
-        
+
         my $con = {
             connection  => $remote,
             username    => $user,
             password    => $pass,
         };
-        
+
         ### store the connection
         $self->remote( $con );
-        
+
         my($status,$buffer) = $self->__send_remote_command("VERSION=$VERSION");
-        
+
         if( $status ) {
             print "\n$buffer\n\n";
 
             print loc(  "Succesfully connected to '%1' on port '%2'",
                         $host, $port );
-            print "\n\n";                        
+            print "\n\n";
             print loc(  "Note that no output will appear until a command ".
                         "has completed\n-- this may take a while" );
             print "\n\n";
-        
+
             $self->prompt( $Brand .'@'. $host .'> ' );
-        
+
         } else {
             print "\n$buffer\n\n";
 
             print loc(  "Failed to connect to '%1' on port '%2'",
                         $host, $port );
-            print "\n\n";    
-            
+            print "\n\n";
+
             $self->remote( undef );
         }
-    
-        
+
+
     } elsif ( $cmd eq 'disconnect' ) {
         print "\n", ($self->remote
                         ? loc( "Disconnecting from remote host" )
@@ -1362,25 +1362,25 @@ sub _meta {
 
         $self->remote( undef );
         $self->prompt( $Prompt );
-    
+
     } elsif ( $cmd eq 'source' ) {
         while( my $file = shift @parts ) {
             my $fh = FileHandle->new("$file")
-                        or( error(loc("Could not open file '%1': %2", 
+                        or( error(loc("Could not open file '%1': %2",
                             $file, $!)),
                             return
                         );
             while( my $line = <$fh> ) {
                 chomp $line;
-                return 1 if $self->dispatch_on_input( input => $line );                        
+                return 1 if $self->dispatch_on_input( input => $line );
             }
         }
     } else {
         error( loc( "Unknown command '%1'", $cmd ) );
         return;
     }
-    return 1;       
-}   
+    return 1;
+}
 
 ### send a command to a remote host, retrieve the answer;
 sub __send_remote_command {
@@ -1392,13 +1392,13 @@ sub __send_remote_command {
     my $conn    = $remote->{'connection'};
     my $end     = "\015\012";
     my $answer;
-    
+
     my $send = join "\0", $user, $pass, $cmd;
-    
+
     print $conn $send . $end;
 
     ### XXX why doesn't something like this just work?
-    #1 while recv($conn, $answer, 1024, 0);   
+    #1 while recv($conn, $answer, 1024, 0);
     while(1) {
         my $buff;
         $conn->recv( $buff, 1024, 0 );
@@ -1414,20 +1414,20 @@ sub __send_remote_command {
 
 sub _read_configuration_from_rc {
     my $rc_file = shift;
-   
+
     my $href;
     if( can_load( modules => { 'Config::Auto' => '0.0' } ) ) {
         $Config::Auto::DisablePerl = 1;
-        
+
         eval { $href = Config::Auto::parse( $rc_file, format => 'space' ) };
-    
+
         print loc(  "Unable to read in config file '%1': %2",
                     $rc_file, $@ ) if $@;
-    }        
+    }
 
     return $href || {};
 }
-    
+
 1;
 
 __END__
@@ -1451,11 +1451,9 @@ terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<CPANPLUS::Shell>, L<cpanp>
+L<CPANPLUS::Shell::Classic>, L<CPANPLUS::Shell>, L<cpanp>
 
 =cut
-
-### XXX note cpanplus::shell::classic when implemented
 
 # Local variables:
 # c-indentation-style: bsd

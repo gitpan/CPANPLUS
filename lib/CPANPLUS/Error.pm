@@ -13,25 +13,25 @@ CPANPLUS::Error
 =head1 SYNOPSIS
 
     use CPANPLUS::Error qw[msg error];
-    
+
 =head1 DESCRIPTION
 
-This module provides the error handling code for the CPANPLUS 
+This module provides the error handling code for the CPANPLUS
 libraries, and is mainly intended for internal use.
 
 =head1 FUNCTIONS
 
 =head2 msg("message string" [,VERBOSE])
 
-Records a message on the stack, and prints it to C<STDOUT> (or actually 
-C<$MSG_FH>, see the C<GLOBAL VARIABLES> section below), if the 
+Records a message on the stack, and prints it to C<STDOUT> (or actually
+C<$MSG_FH>, see the C<GLOBAL VARIABLES> section below), if the
 C<VERBOSE> option is true.
 The C<VERBOSE> option defaults to false.
 
 =head2 error("error string" [,VERBOSE])
 
 Records an error on the stack, and prints it to C<STDERR> (or actually
-C<$ERROR_FH>, see the C<GLOBAL VARIABLES> sections below), if the 
+C<$ERROR_FH>, see the C<GLOBAL VARIABLES> sections below), if the
 C<VERBOSE> option is true.
 The C<VERBOSE> options defaults to true.
 
@@ -39,22 +39,22 @@ The C<VERBOSE> options defaults to true.
 
 =head2 CPANPLUS::Error->stack()
 
-Retrieves all the items on the stack. Since C<CPANPLUS::Error> is 
-implemented using C<Log::Message>, consult its manpage for the 
+Retrieves all the items on the stack. Since C<CPANPLUS::Error> is
+implemented using C<Log::Message>, consult its manpage for the
 function C<retrieve> to see what is returned and how to use the items.
 
 =head2 CPANPLUS::Error->stack_as_string([TRACE])
 
 Returns the whole stack as a printable string. If the C<TRACE> option is
 true all items are returned with C<Carp::longmess> output, rather than
-just the message. 
+just the message.
 C<TRACE> defaults to false.
 
 =head2 CPANPLUS::Error->flush()
 
-Removes all the items from the stack and returns them. Since 
-C<CPANPLUS::Error> is  implemented using C<Log::Message>, consult its 
-manpage for the function C<retrieve> to see what is returned and how 
+Removes all the items from the stack and returns them. Since
+C<CPANPLUS::Error> is  implemented using C<Log::Message>, consult its
+manpage for the function C<retrieve> to see what is returned and how
 to use the items.
 
 =cut
@@ -63,24 +63,24 @@ BEGIN {
     use Exporter;
     use Params::Check   qw[check];
     use vars            qw[@EXPORT @ISA $ERROR_FH $MSG_FH];
-    
+
     @ISA        = 'Exporter';
     @EXPORT     = qw[error msg];
 
     my $log     = new Log::Message;
-    
+
     for my $func ( @EXPORT ) {
         no strict 'refs';
-        *$func = sub { 
+        *$func = sub {
                         my $msg     = shift;
-                        $log->store( 
-                                message => $msg, 
-                                tag     => uc $func, 
+                        $log->store(
+                                message => $msg,
+                                tag     => uc $func,
                                 level   => $func,
-                                extra   => [@_] 
+                                extra   => [@_]
                         );
                 };
-    }         
+    }
 
     sub flush {
         return reverse $log->flush;
@@ -88,18 +88,18 @@ BEGIN {
 
     sub stack {
         return $log->retrieve( chrono => 1 );
-    }    
+    }
 
     sub stack_as_string {
         my $class = shift;
         my $trace = shift() ? 1 : 0;
-        
-        return join $/, map { 
+
+        return join $/, map {
                         '[' . $_->tag . '] [' . $_->when . '] ' .
-                        ($trace ? $_->message . ' ' . $_->longmess 
+                        ($trace ? $_->message . ' ' . $_->longmess
                                 : $_->message);
-                    } __PACKAGE__->stack;        
-    }                    
+                    } __PACKAGE__->stack;
+    }
 }
 
 =head1 GLOBAL VARIABLES
@@ -108,7 +108,7 @@ BEGIN {
 
 =item $ERROR_FH
 
-This is the filehandle all the messages sent to C<error()> are being 
+This is the filehandle all the messages sent to C<error()> are being
 printed. This defaults to C<*STDERR>.
 
 =item $MSG_FH
@@ -124,46 +124,46 @@ $MSG_FH     = \*STDOUT;
 package Log::Message::Handlers;
 use Carp ();
 
-{   
+{
 
-    sub msg { 
+    sub msg {
         my $self    = shift;
         my $verbose = shift;
 
         ### so you don't want us to print the msg? ###
-        return if defined $verbose && $verbose == 0; 
-        
+        return if defined $verbose && $verbose == 0;
+
         my $old_fh = select $CPANPLUS::Error::MSG_FH;
         print '['. $self->tag (). '] ' . $self->message . "\n";
         select $old_fh;
-        
+
         return;
     }
-    
-    sub error { 
+
+    sub error {
         my $self    = shift;
         my $verbose = shift;
-        
+
         ### so you don't want us to print the error? ###
-        return if defined $verbose && $verbose == 0; 
-        
+        return if defined $verbose && $verbose == 0;
+
         my $old_fh = select $CPANPLUS::Error::ERROR_FH;
-        
+
         ### is only going to be 1 for now anyway ###
         my $cb      = (CPANPLUS::Internals->_return_all_objects)[0];
-        
+
         ### maybe we didn't initialize an internals object (yet) ###
-        my $debug   = $cb ? $cb->configure_object->get_conf('debug') : 0;          
+        my $debug   = $cb ? $cb->configure_object->get_conf('debug') : 0;
         my $msg     = '['. $self->tag . '] ' . $self->message;
-        
+
         ### i'm getting this warning in the test suite:
-        ### Ambiguous call resolved as CORE::warn(), qualify as such or 
+        ### Ambiguous call resolved as CORE::warn(), qualify as such or
         ### use & at CPANPLUS/Error.pm line 57.
         ### no idea where it's coming from, since there's no 'sub warn'
         ### anywhere to be found, but i'll mark it explicitly nonetheless
         ### --kane
         print $debug ? Carp::shortmess($msg) : $msg . "\n";
-        
+
         select $old_fh;
 
         return;

@@ -13,6 +13,7 @@ use CPANPLUS::Configure;
 use CPANPLUS::Backend;
 use CPANPLUS::Module::Fake;
 use CPANPLUS::Module::Author::Fake;
+use CPANPLUS::Internals::Constants;
 
 use Test::More 'no_plan';
 use Data::Dumper;
@@ -120,7 +121,7 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
 {   ### installer type tests ###
     my $installer  = $mod->get_installer_type;
     ok( $installer,         "Installer found" );
-    is( $installer, 'makemaker',
+    is( $installer, INSTALLER_MM,
                             "   Proper installer found" );
 }
 
@@ -207,8 +208,12 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
 {   my $core = $cb->module_tree('B::Deparse');
     isa_ok( $core,                  'CPANPLUS::Module' );
     ok($core->package_is_perl_core, "Package found in perl core" );
-    ok($core->module_is_supplied_with_perl_core,
+    
+    {   local $] = '5.006001';
+        ok($core->module_is_supplied_with_perl_core,
                                     "   Module also found in perl core");
+    }
+    
     ok(! $core->install,            "   Package not installed" );
     like( CPANPLUS::Error->stack_as_string, qr/core Perl/,
                                     "   Error properly logged" );

@@ -24,7 +24,7 @@ CPANPLUS::Module::Author::Fake
                     cpanid  => 'FOO',
                     _id     => $cpan->id,
                 );
-                
+
 =head1 DESCRIPTION
 
 A class for creating fake author objects, for shortcut use internally
@@ -37,28 +37,28 @@ Inherits from C<CPANPLUS::Module::Author>.
 =head2 new( _id => DIGIT )
 
 Creates a dummy author object. It can take the same options as
-C<< CPANPLUS::Module::Author->new >>, but will fill in default ones 
-if none are provided. Only the _id key is required.               
+C<< CPANPLUS::Module::Author->new >>, but will fill in default ones
+if none are provided. Only the _id key is required.
 
 =cut
 
 sub new {
     my $class = shift;
     my %hash  = @_;
-    
+
     my $tmpl = {
         author  => { default    => 'CPANPLUS Internals' },
         email   => { default    => 'cpanplus-info@lists.sf.net' },
         cpanid  => { default    => 'CPANPLUS' },
         _id     => { required   => 1 },
     };
-    
+
     my $args = check( $tmpl, \%hash ) or return;
-    
+
     my $obj = CPANPLUS::Module::Author->new( %$args ) or return;
-    
+
     ### rebless object ###
-    return bless $obj, $class;  
+    return bless $obj, $class;
 }
 
 1;
@@ -69,4 +69,4 @@ sub new {
 # c-basic-offset: 4
 # indent-tabs-mode: nil
 # End:
-# vim: expandtab shiftwidth=4:    
+# vim: expandtab shiftwidth=4:

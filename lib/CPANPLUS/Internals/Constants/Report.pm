@@ -10,17 +10,20 @@ BEGIN {
 
     require Exporter;
     use vars    qw[$VERSION @ISA @EXPORT];
-  
+
     $VERSION    = 0.01;
     @ISA        = qw[Exporter];
-    @EXPORT     = qw[   
+    @EXPORT     = qw[
                     CPAN_MAIL_ACCOUNT RELEVANT_TEST_RESULT GRADE_FAIL GRADE_NA
                     GRADE_PASS GRADE_UNKNOWN NO_TESTS_DEFINED MAX_REPORT_SEND
                     REPORT_MESSAGE_HEADER REPORT_MESSAGE_FAIL_HEADER
-                    TEST_FAIL_STAGE REPORT_MISSING_TESTS CPAN_TESTERS_EMAIL 
+                    TEST_FAIL_STAGE REPORT_MISSING_TESTS CPAN_TESTERS_EMAIL
                     REPORT_MISSING_PREREQS MISSING_PREREQS_LIST
                 ];
 }
+
+### for the version
+require CPANPLUS::Internals;
 
 ### OS to regex map ###
 my %OS = (
@@ -68,36 +71,36 @@ use constant CPAN_TESTERS_EMAIL
                             => 'cpan-testers@perl.org';
 
 ### the cpan mail account for this user ###
-use constant CPAN_MAIL_ACCOUNT  
+use constant CPAN_MAIL_ACCOUNT
                             => sub {
                                 my $username = shift or return;
-                                return $username . '@cpan.org'; 
-                            };      
+                                return $username . '@cpan.org';
+                            };
 
 ### check if this module is platform specific and if we're on that
 ### specific platform. Alternately, the module is not platform specific
 ### and we're always OK to send out test results.
-use constant RELEVANT_TEST_RESULT 
+use constant RELEVANT_TEST_RESULT
                             => sub {
-                                my $mod  = shift or return;   
+                                my $mod  = shift or return;
                                 my $name = $mod->module;
-                                my $specific;   
+                                my $specific;
                                 for my $platform (keys %OS) {
                                     if( $name =~ /\b$platform\b/i ) {
                                         $specific++;
-                                        return 1 if 
+                                        return 1 if
                                             $^O =~ /^(?:$OS{$platform})$/
-                                    }    
+                                    }
                                 };
-                                return $specific ? 0 : 1; 
-                            };      
+                                return $specific ? 0 : 1;
+                            };
 
 use constant NO_TESTS_DEFINED
                             => sub {
                                 my $buffer = shift or return;
-                                return $buffer =~ 
-                                  /^'?No tests defined for .* extension.\s*$/m 
-                                  and ( $buffer !~ /\*\.t/m and 
+                                return $buffer =~
+                                  /^'?No tests defined for .* extension.\s*$/m
+                                  and ( $buffer !~ /\*\.t/m and
                                         $buffer !~ /test\.pl/m);
 
                             };
@@ -106,30 +109,30 @@ use constant NO_TESTS_DEFINED
 use constant TEST_FAIL_STAGE
                             => sub {
                                 my $buffer = shift or return;
-                                return $buffer =~ /(MAKE [A-Z]+).*/ 
-                                    ? lc $1 : 
-                                    'fetch'; 
+                                return $buffer =~ /(MAKE [A-Z]+).*/
+                                    ? lc $1 :
+                                    'fetch';
                             };
 
 use constant MISSING_PREREQS_LIST
                             => sub {
-                                my $buffer = shift; 
-                                my @list = map { s/.pm$//; s|/|::|g; $_ } 
-                                    ($buffer =~ 
+                                my $buffer = shift;
+                                my @list = map { s/.pm$//; s|/|::|g; $_ }
+                                    ($buffer =~
                                         m/\bCan\'t locate (\S+) in \@INC/g);
-                                
-                                return @list;           
-                            };    
-                              
-use constant REPORT_MESSAGE_HEADER               
+
+                                return @list;
+                            };
+
+use constant REPORT_MESSAGE_HEADER
                             => sub {
                                 my ($author,$email) = @_;
-                                return << ".";                                
-                                
+                                return << ".";
+
 ******************************** NOTE ********************************
 The comments below are created mechanically, possibly without manual
 checking by the sender.  As there are many people performing automatic
-tests on each upload to CPAN, it is likely that you will receive 
+tests on each upload to CPAN, it is likely that you will receive
 identical messages about the same problem.
 
 If you believe that the message is mistaken, please reply to the first
@@ -138,11 +141,11 @@ it personally.  (We appreciate your patience. :)
 **********************************************************************
 
 Hello, $author! This is a computer-generated error report created
-automatically by CPANPLUS, version $VERSION.  Comments from the tester
-may appear at the end of this report, as well.
+automatically by CPANPLUS, version $CPANPLUS::Internals::VERSION.  
+Comments from the tester may appear at the end of this report, as well.
 
 .
-                            };                                       
+                            };
 
 use constant REPORT_MESSAGE_FAIL_HEADER
                             => sub {
@@ -159,7 +162,7 @@ Below is the error stack from stage '$stage':
 $buffer
 
 .
-                            };                                
+                            };
 
 use constant REPORT_MISSING_PREREQS
                             => sub {
@@ -167,11 +170,11 @@ use constant REPORT_MISSING_PREREQS
                                 my $modules = join "\n", @missing;
                                 my $prereqs = join "\n", map {"\t'$_'\t=> '0',".
                                     " # or a minimum working version"} @missing;
-                                
+
                                 return << ".";
 
 MISSING PREREQUISITES:
- 
+
 It was observed that the test suite seem to fail without these modules:
 
 $modules
@@ -192,7 +195,7 @@ probe for missing dependencies and install them, ExtUtils::AutoInstall
 at <http://search.cpan.org/dist/ExtUtils-AutoInstall/> may be
 worth a look.
 
-Thanks! 
+Thanks!
 
 .
                             };
@@ -219,13 +222,13 @@ would be appreciated.  If you are interested in making a more robust
 test suite, please see the Test::Simple, Test::More and Test::Tutorial
 manpages at <http://search.cpan.org/dist/Test-Simple/>.
 
-Thanks!                       
+Thanks!
 
 .
                             };
 
 
-1;  
+1;
 
 # Local variables:
 # c-indentation-style: bsd

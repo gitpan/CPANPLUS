@@ -37,11 +37,11 @@ CPANPLUS::Backend
 
     my $cb      = CPANPLUS::Backend->new( );
     my $conf    = $cb->configure_object;
-    
+
     my $author  = $cb->author_tree('KANE');
     my $mod     = $cb->module_tree('Some::Module');
-    my $mod     = $cb->parse_module( module => 'Some::Module' );    
-    
+    my $mod     = $cb->parse_module( module => 'Some::Module' );
+
     my @objs    = $cb->search(  type    => TYPE,
                                 allow   => [...] );
 
@@ -49,7 +49,7 @@ CPANPLUS::Backend
     $cb->reload_indices;
     $cb->local_mirror;
 
-    
+
 =head1 DESCRIPTION
 
 This module provides the programmer's interface to the C<CPANPLUS>
@@ -58,12 +58,12 @@ libraries.
 =head1 ENVIRONMENT
 
 When C<CPANPLUS::Backend> is loaded, which is necessary for just
-about every <CPANPLUS> operation, the environment variable 
+about every <CPANPLUS> operation, the environment variable
 C<PERL5_CPANPLUS_IS_RUNNING> is set to the current process id.
 
 This information might be useful somehow to spawned processes.
 
-=head1 METHODS 
+=head1 METHODS
 
 =head2 new( [CONFIG_OBJ | config => { ... }] )
 
@@ -96,17 +96,17 @@ failure.
 sub new {
     my $class   = shift;
     my $conf;
-    
+
     if( $_[0] && IS_CONFOBJ->( conf => $_[0] ) ) {
         $conf = shift;
     } else {
-        $conf = CPANPLUS::Configure->new( @_ );
+        $conf = CPANPLUS::Configure->new( @_ ) or return;
     }
-          
+
     my $self = $class->SUPER::_init( _conf => $conf );
 
     return $self;
-}    
+}
 
 =pod
 
@@ -118,7 +118,7 @@ If you give it any arguments, they will be treated as module names
 and C<module_tree> will try to look up these module names and
 return the corresponding module objects instead.
 
-See L<CPANPLUS::Module> for the operations you can perform on a 
+See L<CPANPLUS::Module> for the operations you can perform on a
 module object.
 
 =cut
@@ -126,16 +126,16 @@ module object.
 sub module_tree {
     my $self    = shift;
     my $modtree = $self->_module_tree;
-    
+
     if( @_ ) {
         my @rv;
         for my $name (@_) {
             push @rv, $modtree->{$name} || '';
         }
-        return @rv == 1 ? $rv[0] : @rv; 
+        return @rv == 1 ? $rv[0] : @rv;
     } else {
         return $modtree;
-    }                     
+    }
 }
 
 =pod
@@ -148,7 +148,7 @@ If you give it any arguments, they will be treated as author names
 and C<author_tree> will try to look up these author names and
 return the corresponding author objects instead.
 
-See L<CPANPLUS::Module::Author> for the operations you can perform on 
+See L<CPANPLUS::Module::Author> for the operations you can perform on
 an author object.
 
 =cut
@@ -156,16 +156,16 @@ an author object.
 sub author_tree {
     my $self        = shift;
     my $authtree    = $self->_author_tree;
-    
+
     if( @_ ) {
         my @rv;
         for my $name (@_) {
             push @rv, $authtree->{$name} || '';
         }
-        return @rv == 1 ? $rv[0] : @rv; 
+        return @rv == 1 ? $rv[0] : @rv;
     } else {
         return $authtree;
-    }                     
+    }
 }
 
 =pod
@@ -186,12 +186,12 @@ sub configure_object { return shift->_conf() };
 =head2 search( type => TYPE, allow => AREF, [data => AREF, verbose => BOOL] )
 
 C<search> enables you to search for either module or author objects,
-based on their data. The C<type> you can specify is any of the 
-accessors specified in C<CPANPLUS::Module::Author> or 
-C<CPANPLUS::Module>. C<search> will determine by the C<type> you 
+based on their data. The C<type> you can specify is any of the
+accessors specified in C<CPANPLUS::Module::Author> or
+C<CPANPLUS::Module>. C<search> will determine by the C<type> you
 specified whether to search by author object or module object.
 
-You have to specify an array reference of regular expressions or 
+You have to specify an array reference of regular expressions or
 strings to match against. The rules used for this array ref are the
 same as in C<Params::Check>, so read that manpage for details.
 
@@ -205,9 +205,9 @@ entire module or author tree.  This is how you do C<and> searches.
 Returns a list of module or author objects on success and false
 on failure.
 
-See L<CPANPLUS::Module> for the operations you can perform on a 
+See L<CPANPLUS::Module> for the operations you can perform on a
 module object.
-See L<CPANPLUS::Module::Author> for the operations you can perform on 
+See L<CPANPLUS::Module::Author> for the operations you can perform on
 an author object.
 
 =cut
@@ -216,12 +216,12 @@ sub search {
     my $self = shift;
     my $conf = $self->configure_object;
     my %hash = @_;
-    
+
     local $Params::Check::ALLOW_UNKNOWN = 1;
-    
+
     my ($data,$type);
     my $tmpl = {
-        type    => { required => 1, allow => [CPANPLUS::Module->accessors(), 
+        type    => { required => 1, allow => [CPANPLUS::Module->accessors(),
                         CPANPLUS::Module::Author->accessors()], store => \$type },
         allow   => { required => 1, default => [ ], strict_type => 1 },
     };
@@ -232,11 +232,11 @@ sub search {
     ### when ambiguous, it'll be an author search.
     my $aref;
     if( grep { $type eq $_ } CPANPLUS::Module::Author->accessors() ) {
-        $aref = $self->_search_author_tree( %$args ); 
+        $aref = $self->_search_author_tree( %$args );
     } else {
         $aref = $self->_search_module_tree( %$args );
     }
-    
+
     return @$aref if $aref;
     return;
 }
@@ -249,10 +249,10 @@ Fetches a list of modules. C<@mods> can be a list of distribution
 names, module names or module objects--basically anything that
 L<parse_module> can understand.
 
-See the equivalent method in C<CPANPLUS::Module> for details on 
+See the equivalent method in C<CPANPLUS::Module> for details on
 other options you can pass.
 
-Since this is a multi-module method call, the return value is 
+Since this is a multi-module method call, the return value is
 implemented as a C<CPANPLUS::Backend::RV> object. Please consult
 that module's documentation on how to interpret the return value.
 
@@ -262,10 +262,10 @@ Extracts a list of modules. C<@mods> can be a list of distribution
 names, module names or module objects--basically anything that
 L<parse_module> can understand.
 
-See the equivalent method in C<CPANPLUS::Module> for details on 
+See the equivalent method in C<CPANPLUS::Module> for details on
 other options you can pass.
 
-Since this is a multi-module method call, the return value is 
+Since this is a multi-module method call, the return value is
 implemented as a C<CPANPLUS::Backend::RV> object. Please consult
 that module's documentation on how to interpret the return value.
 
@@ -275,36 +275,36 @@ Installs a list of modules. C<@mods> can be a list of distribution
 names, module names or module objects--basically anything that
 L<parse_module> can understand.
 
-See the equivalent method in C<CPANPLUS::Module> for details on 
+See the equivalent method in C<CPANPLUS::Module> for details on
 other options you can pass.
 
-Since this is a multi-module method call, the return value is 
+Since this is a multi-module method call, the return value is
 implemented as a C<CPANPLUS::Backend::RV> object. Please consult
 that module's documentation on how to interpret the return value.
 
 =head2 $backend_rv = readme( modules => \@mods )
 
 Fetches the readme for a list of modules. C<@mods> can be a list of
-distribution names, module names or module objects--basically 
+distribution names, module names or module objects--basically
 anything that L<parse_module> can understand.
 
-See the equivalent method in C<CPANPLUS::Module> for details on 
+See the equivalent method in C<CPANPLUS::Module> for details on
 other options you can pass.
 
-Since this is a multi-module method call, the return value is 
+Since this is a multi-module method call, the return value is
 implemented as a C<CPANPLUS::Backend::RV> object. Please consult
 that module's documentation on how to interpret the return value.
 
 =head2 $backend_rv = files( modules => \@mods )
 
-Returns a list of files used by these modules if they are installed. 
-C<@mods> can be a list of distribution names, module names or module 
+Returns a list of files used by these modules if they are installed.
+C<@mods> can be a list of distribution names, module names or module
 objects--basically anything that L<parse_module> can understand.
 
-See the equivalent method in C<CPANPLUS::Module> for details on 
+See the equivalent method in C<CPANPLUS::Module> for details on
 other options you can pass.
 
-Since this is a multi-module method call, the return value is 
+Since this is a multi-module method call, the return value is
 implemented as a C<CPANPLUS::Backend::RV> object. Please consult
 that module's documentation on how to interpret the return value.
 
@@ -312,13 +312,13 @@ that module's documentation on how to interpret the return value.
 
 Returns a list of module objects representing all releases for this
 module on success.
-C<@mods> can be a list of distribution names, module names or module 
+C<@mods> can be a list of distribution names, module names or module
 objects, basically anything that L<parse_module> can understand.
 
-See the equivalent method in C<CPANPLUS::Module> for details on 
+See the equivalent method in C<CPANPLUS::Module> for details on
 other options you can pass.
 
-Since this is a multi-module method call, the return value is 
+Since this is a multi-module method call, the return value is
 implemented as a C<CPANPLUS::Backend::RV> object. Please consult
 that module's documentation on how to interpret the return value.
 
@@ -327,33 +327,33 @@ that module's documentation on how to interpret the return value.
 ### XXX add direcotry_tree, packlist etc? or maybe remove files? ###
 for my $func (qw[fetch extract install readme files distributions]) {
     no strict 'refs';
-    
+
     *$func = sub {
         my $self = shift;
         my $conf = $self->configure_object;
         my %hash = @_;
-        
+
         local $Params::Check::NO_DUPLICATES = 1;
         local $Params::Check::ALLOW_UNKNOWN = 1;
-        
+
         my ($mods);
         my $tmpl = {
-            modules     => { default  => [],    strict_type => 1, 
+            modules     => { default  => [],    strict_type => 1,
                              required => 1,     store => \$mods },
         };
-        
+
         my $args = check( $tmpl, \%hash ) or return;
-        
+
         ### make them all into module objects ###
         my %mods = map {$_ => $self->parse_module(module => $_) || ''} @$mods;
-    
+
         my $flag; my $href;
         while( my($name,$obj) = each %mods ) {
             $href->{$name} = IS_MODOBJ->( mod => $obj )
                                 ? $obj->$func( %$args )
                                 : undef;
-                                
-            $flag++ unless $href->{$name};                         
+
+            $flag++ unless $href->{$name};
         }
 
         return CPANPLUS::Backend::RV->new(
@@ -361,15 +361,15 @@ for my $func (qw[fetch extract install readme files distributions]) {
                     ok          => !$flag,
                     rv          => $href,
                     args        => \%hash,
-                );       
-    }    
+                );
+    }
 }
 
 =pod
-            
+
 =head2 parse_module( module => $modname|$distname|$modobj )
 
-C<parse_module> tries to find a C<CPANPLUS::Module> object that 
+C<parse_module> tries to find a C<CPANPLUS::Module> object that
 matches your query. Here's a list of examples you could give to
 C<parse_module>;
 
@@ -390,17 +390,17 @@ C<parse_module>;
 =back
 
 These items would all come up with a C<CPANPLUS::Module> object for
-C<Text::Bastardize>. The ones marked explicitly as being version 1.06 
-would give back a C<CPANPLUS::Module> object of that version. 
+C<Text::Bastardize>. The ones marked explicitly as being version 1.06
+would give back a C<CPANPLUS::Module> object of that version.
 Even if the version on CPAN is currently higher.
 
 If C<parse_module> is unable to actually find the module you are looking
-for in its module tree, but you supplied it with an author, module 
-and version part in a distribution name, it will create a fake 
-C<CPANPLUS::Module> object for you, that you can use just like the 
+for in its module tree, but you supplied it with an author, module
+and version part in a distribution name, it will create a fake
+C<CPANPLUS::Module> object for you, that you can use just like the
 real thing.
 
-See L<CPANPLUS::Module> for the operations you can perform on a 
+See L<CPANPLUS::Module> for the operations you can perform on a
 module object.
 
 If even this fancy guessing doesn't enable C<parse_module> to create
@@ -417,7 +417,7 @@ sub parse_module {
     my $mod;
     my $tmpl = {
         module  => { required => 1, store => \$mod },
-    };      
+    };
 
     my $args = check( $tmpl, \%hash ) or return;
 
@@ -426,120 +426,120 @@ sub parse_module {
     ### ok, so it's not a module object, but a ref nonetheless?
     ### what are you smoking?
     return if ref $mod;
-    
-    ### check only for allowed characters in a module name 
+
+    ### check only for allowed characters in a module name
     unless( $mod =~ /[^\w:]/ ) {
         my $maybe = $self->module_tree($mod);
-        return $maybe if IS_MODOBJ->( module => $maybe ); 
+        return $maybe if IS_MODOBJ->( module => $maybe );
     }
-    
-    
+
+
     ### ok, so it looks like a distribution then?
     my @parts   = split '/', $mod;
     my $dist    = pop @parts;
     my $author  = pop @parts || '';
-    
+
     unless( $dist ) {
         error( loc("%1 is not a proper distribution name!", $mod) );
         return;
     }
-    
+
     ### translate a distribution into a module name ###
     my $guess   = $dist;
     $guess      =~ s/([.\d_]*)(?:\.[\w.]*)?$//; # strip version plus .tgz & co
     my $version = $1 || '';
     $guess      =~ s/-$//;                      # strip trailing -
     my $pkg     = $guess;
-    $guess      =~ s/-/::/g;                
+    $guess      =~ s/-/::/g;
 
     my $maybe = $self->module_tree( $guess );
     if( IS_MODOBJ->( module => $maybe ) ) {
-             
+
         ### maybe you asked for a package instead
         if ( $maybe->package eq $mod ) {
             return $maybe;
-    
+
         ### perhaps an outdated version instead?
         } elsif (   ($maybe->package_name eq $pkg)
                     and $version
         ) {
             my $auth_obj; my $path;
-            
+
             ### did you give us an author part? ###
             if( $author ) {
                 $auth_obj   = CPANPLUS::Module::Author::Fake->new(
                                     _id     => $maybe->_id,
                                     cpanid  => uc $author,
                                     author  => uc $author,
-                                );      
+                                );
                 $path       = File::Spec::Unix->catdir(
                                     $conf->_get_mirror('base'),
-                                    substr(uc $author, 0, 1), 
-                                    substr(uc $author, 0, 2), 
+                                    substr(uc $author, 0, 1),
+                                    substr(uc $author, 0, 2),
                                     uc $author
-                                ); 
+                                );
             } else {
                 $auth_obj   = $maybe->author;
                 $path       = $maybe->path;
-            }                
-                 
+            }
+
             my $modobj = CPANPLUS::Module::Fake->new(
                 module  => $maybe->module,
                 version => $version,
-                package => $pkg . '-' . $version . '.' . 
+                package => $pkg . '-' . $version . '.' .
                                 $maybe->package_extension,
-                path    => $path,                                     
+                path    => $path,
                 author  => $auth_obj,
-                _id     => $maybe->_id    
+                _id     => $maybe->_id
             );
             return $modobj;
-        
+
         ### you didn't care about a version, so just return the object then
         } elsif ( !$version ) {
-            return $maybe;   
+            return $maybe;
         }
-        
+
     ### ok, so we can't find it, and it's not an outdated dist either
     ### perhaps we can fake one based on the author name and so on
-    } elsif ( $author and $version ) { 
+    } elsif ( $author and $version ) {
 
         ### be extra friendly and pad the .tar.gz suffix where needed
         ### it's just a guess of course, but most dists are .tar.gz
         $dist .= '.tar.gz' unless $dist =~ /\.[A-Za-z]+$/;
-        
+
         my $modobj = CPANPLUS::Module::Fake->new(
             module  => $guess,
             version => $version,
             package => $dist,
-            author  => CPANPLUS::Module::Author::Fake->new( 
+            author  => CPANPLUS::Module::Author::Fake->new(
                             author  => uc $author,
                             cpanid  => uc $author,
                             _id     => $self->_id,
                         ),
             path    => File::Spec::Unix->catdir(
                             $conf->_get_mirror('base'),
-                            substr(uc $author, 0, 1), 
-                            substr(uc $author, 0, 2), 
+                            substr(uc $author, 0, 1),
+                            substr(uc $author, 0, 2),
                             uc $author
-                        ),                       
-            _id     => $self->_id,                             
+                        ),
+            _id     => $self->_id,
         );
-        
+
         return $modobj;
-    
-    ### face it, we have /no/ idea what he or she wants... 
+
+    ### face it, we have /no/ idea what he or she wants...
     ### let's start putting the blame somewhere
     } else {
-        
+
         unless( $author ) {
             error( loc( "'%1' does not contain an author part", $mod ) );
         }
-        
+
         error( loc( "Cannot find '%1' in the module tree", $mod ) );
     }
-        
+
     return;
-} 
+}
 
 =pod
 
@@ -547,13 +547,13 @@ sub parse_module {
 
 This method reloads the source files.
 
-If C<update_source> is set to true, this will fetch new source files 
-from your CPAN mirror. Otherwise, C<reload_indices> will do its 
+If C<update_source> is set to true, this will fetch new source files
+from your CPAN mirror. Otherwise, C<reload_indices> will do its
 usual cache checking and only update them if they are out of date.
 
 By default, C<update_source> will be false.
 
-The verbose setting defaults to what you have specified in your 
+The verbose setting defaults to what you have specified in your
 config file.
 
 Returns true on success and false on failure.
@@ -576,17 +576,17 @@ sub reload_indices {
     ### file age
     my $uptodate = $self->_check_trees( %$args );
 
-    
-    return 1 if $self->_build_trees(  
+
+    return 1 if $self->_build_trees(
                                 uptodate    => $uptodate,
                                 use_stored  => 0,
                                 verbose     => $conf->get_conf('verbose'),
-                            );   
-    
+                            );
+
     error( loc( "Error rebuilding source trees!" ) );
-    
+
     return;
-}    
+}
 
 =pod
 
@@ -630,7 +630,7 @@ Flush all of the aforementioned caches.
 sub flush {
     my $self = shift;
     my $type = shift or return;
-    
+
     my $cache = {
         methods => [ qw( methods ) ],
         hosts   => [ qw( hosts ) ],
@@ -638,13 +638,13 @@ sub flush {
         lib     => [ qw( lib ) ],
         all     => [ qw( hosts lib modules methods ) ],
     };
-    
+
     my $aref = $cache->{$type}
                     or (
                         error( loc("No such cache '%1'", $type) ),
                         return
-                    );      
-    
+                    );
+
     return $self->_flush( list => $aref );
 }
 
@@ -655,7 +655,7 @@ sub flush {
 Returns a list of module objects of all your installed modules.
 If an error occurs, it will return false.
 
-See L<CPANPLUS::Module> for the operations you can perform on a 
+See L<CPANPLUS::Module> for the operations you can perform on a
 module object.
 
 =cut
@@ -663,18 +663,18 @@ module object.
 sub installed {
     my $self = shift;
     my $aref = $self->_all_installed;
-    
+
     return @$aref if $aref;
     return;
 }
 
 =pod
-  
+
 =head2 local_mirror([path => '/dir/to/save/to', index_files => BOOL, force => BOOL, verbose => BOOL] )
 
 Creates a local mirror of CPAN, of only the most recent sources in a
 location you specify. If you set this location equal to a custom host
-in your C<CPANPLUS::Config> you can use your local mirror to install 
+in your C<CPANPLUS::Config> you can use your local mirror to install
 from.
 
 It takes the following arguments:
@@ -687,8 +687,8 @@ The location where to create the local mirror.
 
 =item index_files
 
-Enable/disable fetching of index files. This is ok if you don't plan 
-to use the local mirror as your primary sites, or if you'd like 
+Enable/disable fetching of index files. This is ok if you don't plan
+to use the local mirror as your primary sites, or if you'd like
 up-to-date index files be fetched from elsewhere.
 
 Defaults to true.
@@ -712,21 +712,21 @@ Defaults to whatever setting you have in your C<CPANPLUS::Config>.
 sub local_mirror {
     my $self = shift;
     my $conf = $self->configure_object;
-    my %hash = @_;  
-    
-    my($path, $index, $force, $verbose);              
+    my %hash = @_;
+
+    my($path, $index, $force, $verbose);
     my $tmpl = {
-        path        => { default => $conf->get_conf('base'), 
+        path        => { default => $conf->get_conf('base'),
                             store => \$path },
         index_files => { default => 1, store => \$index },
-        force       => { default => $conf->get_conf('force'), 
+        force       => { default => $conf->get_conf('force'),
                             store => \$force },
-        verbose     => { default => $conf->get_conf('verbose'), 
+        verbose     => { default => $conf->get_conf('verbose'),
                             store => \$verbose },
-    };  
-    
+    };
+
     check( $tmpl, \%hash ) or return;
-                            
+
     unless( -d $path ) {
         $self->_mkdir( dir => $path )
                 or( error( loc( "Could not create '%1', giving up", $path ) ),
@@ -734,26 +734,26 @@ sub local_mirror {
                 );
     } elsif ( ! -w _ ) {
         error( loc( "Could not write to '%1', giving up", $path ) );
-        return;                      
-    }                           
-    
+        return;
+    }
+
     my $flag;
-    AUTHOR: { 
-    for my $auth (  sort { $a->cpanid cmp $b->cpanid } 
+    AUTHOR: {
+    for my $auth (  sort { $a->cpanid cmp $b->cpanid }
                     values %{$self->author_tree}
     ) {
-        
+
         MODULE: {
         my $i;
         for my $mod ( $auth->modules ) {
             my $fetchdir = File::Spec->catdir( $path, $mod->path );
-            
+
             my %opts = (
                 verbose     => $verbose,
                 force       => $force,
                 fetchdir    => $fetchdir,
             );
-          
+
             ### only do this the for the first module ###
             unless( $i++ ) {
                 $mod->_get_checksums_file(
@@ -763,16 +763,16 @@ sub local_mirror {
                                         "skipping author '%2'",
                                         CHECKSUMS, $auth->cpanid ) ),
                             $flag++, next AUTHOR
-                        );                      
-            }                              
-            
-            $mod->fetch( %opts ) 
+                        );
+            }
+
+            $mod->fetch( %opts )
                     or( error( loc( "Could not fetch '%1'", $mod->module ) ),
                         $flag++, next MODULE
                     );
-        } }       
-    } }    
-    
+        } }
+    } }
+
     if( $index ) {
         for my $name (qw[auth dslip mod]) {
             $self->_update_source(
@@ -782,7 +782,7 @@ sub local_mirror {
                     ) or ( $flag++, next );
         }
     }
-          
+
     return !$flag;
 }
 
@@ -791,11 +791,11 @@ sub local_mirror {
 =head2 autobundle([path => OUTPUT_PATH, force => BOOL, verbose => BOOL])
 
 Writes out a snapshot of your current installation in C<CPAN> bundle
-style. This can then be used to install the same modules for a 
+style. This can then be used to install the same modules for a
 different or on a different machine.
 
 It will, by default, write to an 'autobundle' directory under your
-cpanplus homedirectory, but you can override that by supplying a 
+cpanplus homedirectory, but you can override that by supplying a
 C<path> argument.
 
 It will return the location of the output file on success and false on
@@ -807,67 +807,67 @@ sub autobundle {
     my $self = shift;
     my $conf = $self->configure_object;
     my %hash = @_;
-    
-    my($path,$force,$verbose); 
+
+    my($path,$force,$verbose);
     my $tmpl = {
         force   => { default => $conf->get_conf('force'), store => \$force },
         verbose => { default => $conf->get_conf('verbose'), store => \$verbose },
         path    => { default => File::Spec->catdir(
                                         $conf->get_conf('base'),
                                         $self->_perl_version( perl => $^X ),
-                                        $conf->_get_build('distdir'), 
+                                        $conf->_get_build('distdir'),
                                         $conf->_get_build('autobundle') ),
                     store => \$path },
-    };                                     
-    
+    };
+
     check($tmpl, \%hash) or return;
-    
+
     unless( -d $path ) {
-        $self->_mkdir( dir => $path ) 
+        $self->_mkdir( dir => $path )
                 or( error(loc("Could not create directory '%1'", $path ) ),
                     return
                 );
-    }                                                 
-    
+    }
+
     my $name; my $file;
     {   ### default filename for the bundle ###
         my($year,$month,$day) = (localtime)[5,4,3];
-        $year += 1900; $month++; 
-        
+        $year += 1900; $month++;
+
         my $ext = 0;
-    
+
         my $prefix  = $conf->_get_build('autobundle_prefix');
         my $format  = "${prefix}_%04d_%02d_%02d_%02d";
 
         BLOCK: {
-            $name = sprintf( $format, $year, $month, $day, $ext);    
+            $name = sprintf( $format, $year, $month, $day, $ext);
 
             $file = File::Spec->catfile( $path, $name . '.pm' );
-       
+
             -f $file ? ++$ext && redo BLOCK : last BLOCK;
         }
     }
-    my $fh;       
+    my $fh;
     unless( $fh = FileHandle->new( ">$file" ) ) {
         error( loc( "Could not open '%1' for writing: %2", $file, $! ) );
         return;
     }
-    
+
     my $string = join "\n\n",
                     map {
                         join ' ',
-                            $_->module, 
-                            ($_->installed_version(verbose => 0) || 'undef')                   
-                    } sort { 
-                        $a->module cmp $b->module 
+                            $_->module,
+                            ($_->installed_version(verbose => 0) || 'undef')
+                    } sort {
+                        $a->module cmp $b->module
                     }  $self->installed;
-    
+
     my $now     = scalar localtime;
     my $head    = '=head1';
     my $pkg     = __PACKAGE__;
     my $version = $self->VERSION;
     my $perl_v  = join '', `$^X -V`;
-    
+
     print $fh <<EOF;
 package $name
 
@@ -875,8 +875,8 @@ package $name
 
 1;
 
-__END__        
-       
+__END__
+
 $head NAME
 
 $name - Snapshot of your installation at $now
@@ -900,11 +900,11 @@ This bundle has been generated autotomatically by
 
 EOF
 
-    close $fh;     
-    
+    close $fh;
+
     return $file;
 }
-                                                     
+
 1;
 
 =pod
@@ -940,7 +940,7 @@ L<CPANPLUS::Configure>, L<CPANPLUS::Module>, L<CPANPLUS::Module::Author>
 __END__
 
 todo:
-sub dist {          # not sure about this one -- probably already done 
+sub dist {          # not sure about this one -- probably already done
                       enough in Module.pm
 sub reports {       # in Module.pm, wrapper here
 

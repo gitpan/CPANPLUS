@@ -24,22 +24,22 @@ CPANPLUS::Shell
 
 =head1 SYNOPSIS
 
-    use CPANPLUS::Shell;             # load the shell indicated by your 
+    use CPANPLUS::Shell;             # load the shell indicated by your
                                      # config -- defaults to
                                      # CPANPLUS::Shell::Default
-    
+
     use CPANPLUS::Shell qw[Classic]  # load CPANPLUS::Shell::Classic;
-    
+
     my $ui      = CPANPLUS::Shell->new();
     my $name    = $ui->which;        # Find out what shell you loaded
 
     $ui->shell;                      # run the ui shell
 
-    
+
 =head1 DESCRIPTION
 
 This module is the generic loading (and base class) for all C<CPANPLUS>
-shells. Through this module you can load any installed C<CPANPLUS> 
+shells. Through this module you can load any installed C<CPANPLUS>
 shell.
 
 Just about all the functionality is provided by the shell that you have
@@ -54,34 +54,34 @@ sub import {
     my $class   = shift;
     my $option  = shift;
     my $conf    = CPANPLUS::Configure->new();
-    
+
     ### find out what shell we're supposed to load ###
-    $SHELL      = $option 
-                    ? $class . '::' . $option 
-                    : $conf->get_conf('shell') || $DEFAULT; 
+    $SHELL      = $option
+                    ? $class . '::' . $option
+                    : $conf->get_conf('shell') || $DEFAULT;
 
     ### load the shell, fall back to the default if required
     ### and die if even that doesn't work
     EVAL: {
         eval { load $SHELL };
-        
+
         if( $@ ) {
             my $err = $@;
 
-            die loc("Your default shell '%1' is not available: %2", 
+            die loc("Your default shell '%1' is not available: %2",
                     $DEFAULT, $err) .
-                loc("Check your installation!") . "\n" 
+                loc("Check your installation!") . "\n"
                     if $SHELL eq $DEFAULT;
 
             warn loc("Failed to use '%1': %2", $SHELL, $err),
-                 loc("Switching back to the default shell '%1'", $DEFAULT), 
+                 loc("Switching back to the default shell '%1'", $DEFAULT),
                  "\n";
-           
+
             $SHELL = $DEFAULT;
-            redo EVAL;         
-        }                
+            redo EVAL;
+        }
     }
-    @ISA = ($SHELL);                       
+    @ISA = ($SHELL);
 }
 
 sub which { return $SHELL }
@@ -119,7 +119,7 @@ $TMPL = {
     _old_sigpipe    => { default => '', no_override => 1 },
     _old_outfh      => { default => '', no_override => 1 },
     _signals        => { default => { INT => { } }, no_override => 1 },
-};    
+};
 
 ### autogenerate accessors ###
 for my $key ( keys %$TMPL ) {
@@ -134,11 +134,11 @@ for my $key ( keys %$TMPL ) {
 sub _init {
     my $class   = shift;
     my %hash    = @_;
-    
+
     my $self    = check( $TMPL, \%hash ) or return;
-    
+
     bless $self, $class;
-    
+
     ### signal handler ###
     $SIG{INT} = $self->_signals->{INT}->{handler} =
         sub {
@@ -149,14 +149,14 @@ sub _init {
             }
         };
     ### end sig handler ###
-    
+
     return $self;
-}    
-    
+}
+
 ### display shell's banner, takes the Backend object as argument
 sub _show_banner {
     my $self = shift;
-    my $cpan = $self->backend; 
+    my $cpan = $self->backend;
     my $term = $self->term;
 
     ### Tries to probe for our ReadLine support status
@@ -182,18 +182,18 @@ sub _show_banner {
     $rl_avail = loc("ReadLine support %1.", $rl_avail);
     $rl_avail = "\n*** $rl_avail" if (length($rl_avail) > 45);
 
-    print loc("%1 -- CPAN exploration and modules installation (v%2)", 
+    print loc("%1 -- CPAN exploration and modules installation (v%2)",
                 $self->which, $self->which->VERSION()), "\n",
           loc("*** Please report bugs to <cpanplus-bugs\@lists.sourceforge.net>."), "\n",
-          loc("*** Using CPANPLUS::Backend v%1.  %2", 
+          loc("*** Using CPANPLUS::Backend v%1.  %2",
                 $cpan->VERSION, $rl_avail), "\n\n";
-}    
+}
 
 ### checks whether the Term::ReadLine is broken and needs to fallback to Stub
 sub __is_bad_terminal {
     my $self = shift;
     my $term = $self->term;
-    
+
     return unless $^O eq 'MSWin32';
 
     ### replace the term with the default (stub) one
@@ -234,7 +234,7 @@ sub _pager_close {
 
     select $self->_old_outfh;
     $SIG{PIPE} = $self->_old_sigpipe;
-    
+
     return 1;
 }
 
@@ -249,12 +249,12 @@ sub _pager_close {
         my $self = shift;
         my $cpan = $self->backend;
         my %hash = @_;
-        
+
         my $default;
         my $tmpl = {
-            default => { default => 25, allow => qr/^\d$/, 
+            default => { default => 25, allow => qr/^\d$/,
                          store => \$default }
-        };     
+        };
 
         check( $tmpl, \%hash ) or return;
 

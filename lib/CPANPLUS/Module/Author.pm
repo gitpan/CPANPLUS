@@ -16,24 +16,24 @@ CPANPLUS::Module
 
 =head1 SYNOPSIS
 
-    my $author = CPANPLUS::Author->new( 
+    my $author = CPANPLUS::Author->new(
                     author  => 'Jack Ashton',
                     cpanid  => 'JACKASH',
                     _id     => INTERNALS_OBJECT_ID,
                 );
-    
+
     $author->cpanid;
     $author->author;
     $author->email;
-    
+
     @dists  = $author->distributions;
     @mods   = $author->modules;
-    
+
     @accessors = CPANPLUS::Author->accessors;
-    
+
 =head1 DESCRIPTION
 
-C<CPANPLUS::Author> creates objects from the information in the 
+C<CPANPLUS::Author> creates objects from the information in the
 source files. These can then be used to query on.
 
 These objects should only be created internally. For C<fake> objects,
@@ -85,7 +85,7 @@ for my $key ( keys %$tmpl ) {
 sub parent {
     my $self = shift;
     my $obj  = CPANPLUS::Internals->_retrieve_id( $self->_id );
-    
+
     return $obj;
 }
 
@@ -105,13 +105,13 @@ Returns false on failure.
 sub new {
     my $class   = shift;
     my %hash    = @_;
-    
-    ### don't check the template for sanity 
-    ### -- we know it's good and saves a lot of performance 
+
+    ### don't check the template for sanity
+    ### -- we know it's good and saves a lot of performance
     local $Params::Check::SANITY_CHECK_TEMPLATE = 0;
-    
+
     my $object = check( $tmpl, \%hash ) or return;
-    
+
     return bless $object, $class;
 }
 
@@ -126,7 +126,7 @@ Return a list of module objects this author has released.
 sub modules {
     my $self    = shift;
     my $cb      = $self->parent;
-    
+
     my $aref = $cb->_search_module_tree(
                     type    => 'author',
                     allow   => [$self],
@@ -147,17 +147,17 @@ this author has released.
 sub distributions {
     my $self = shift;
     my %hash = @_;
-    
+
     local $Params::Check::ALLOW_UNKNOWN = 1;
     local $Params::Check::NO_DUPLICATES = 1;
-    
+
     my $mod;
     my $tmpl = {
         module  => { default => '', store => \$mod },
-    };       
+    };
 
     my $args = check( $tmpl, \%hash ) or return;
-    
+
     ### if we didn't get a module object passed, we'll find one ourselves ###
     unless( $mod ) {
         my @list = $self->modules;
@@ -168,23 +168,23 @@ sub distributions {
             return;
         }
     }
-    
+
     my $file = $mod->checksums( %hash );
     my $href = $mod->_parse_checksums_file( file => $file ) or return;
-   
+
     my @rv;
     for my $dist ( keys %$href ) {
         my $clone = $mod->clone;
-        
+
         $clone->package( $dist );
         $clone->module( $clone->package_name );
         $clone->version( $clone->package_version );
-        push @rv, $clone;       
+        push @rv, $clone;
     }
-    
-    return @rv;        
-}    
-    
+
+    return @rv;
+}
+
 
 =pod
 

@@ -37,8 +37,8 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Search
             CPANPLUS::Internals::Report
         ];
-        
-$VERSION = '0.050_02';
+
+$VERSION = '0.050_03';
 
 =pod
 
@@ -50,12 +50,12 @@ CPANPLUS::Internals
 
     my $internals   = CPANPLUS::Internals->_init( _conf => $conf );
     my $backend     = CPANPLUS::Internals->_retrieve_id( $ID );
-    
+
 =head1 DESCRIPTION
 
-This module is the guts of CPANPLUS -- it inherits from all other 
+This module is the guts of CPANPLUS -- it inherits from all other
 modules in the CPANPLUS::Internals::* namespace, thus defying normal
-rules of OO programming -- but if you're reading this, you already 
+rules of OO programming -- but if you're reading this, you already
 know what's going on ;)
 
 Please read the C<CPANPLUS::Backend> documentation for the normal API.
@@ -86,7 +86,7 @@ is reset to this after each install.
 
 ### autogenerate accessors ###
 for my $key ( qw[_conf _id _lib _perl5lib _modules _hosts _methods _status
-                 _callbacks] 
+                 _callbacks]
 ) {
     no strict 'refs';
     *{__PACKAGE__."::$key"} = sub {
@@ -108,18 +108,18 @@ You have to pass it a valid C<CPANPLUS::Configure> object.
 Returns the object on success, or dies on failure.
 
 =cut
-{   
-    
+{
+
     my $status = Object::Accessor->new;
     $status->mk_accessors(qw[pending_prereqs]);
-    
+
     my $callback = Object::Accessor->new;
     $callback->mk_accessors(qw[install_prerequisite edit_test_report
                                 send_test_report]);
-    
+
     my $conf;
     my $Tmpl = {
-        _conf       => { required => 1, store => \$conf, 
+        _conf       => { required => 1, store => \$conf,
                             allow => IS_CONFOBJ },
         _id         => { default => '',                 no_override => 1 },
         _lib        => { default => [ @INC ],           no_override => 1 },
@@ -127,15 +127,15 @@ Returns the object on success, or dies on failure.
         _authortree => { default => '',                 no_override => 1 },
         _modtree    => { default => '',                 no_override => 1 },
         _hosts      => { default => {},                 no_override => 1 },
-        _methods    => { default => {},                 no_override => 1 },        
+        _methods    => { default => {},                 no_override => 1 },
         _status     => { default => '<empty>',          no_override => 1 },
         _callbacks  => { default => '<empty>',          no_override => 1 },
-    };   
- 
+    };
+
     sub _init {
         my $class   = shift;
         my %hash    = @_;
-        
+
         ### temporary warning until we fix the storing of multiple id's
         ### and their serialization:
         ### probably not going to happen --kane
@@ -143,50 +143,50 @@ Returns the object on success, or dies on failure.
             # make it a singleton.
             warn loc(q[%1 currently only supports one %2 object per ] .
                      q[running program], 'CPANPLUS', $class);
-                        
+
             return $class->_retrieve_id( $id );
         }
-    
-        my $args = check($Tmpl, \%hash) 
+
+        my $args = check($Tmpl, \%hash)
                     or die loc(qq[Could not initialize '%1' object], $class);
-        
+
         bless $args, $class;
-        
+
         $args->{'_id'}          = $args->_inc_id;
         $args->{'_status'}      = $status;
         $args->{'_callbacks'}   = $callback;
-     
+
         ### initialize callbacks to default state ###
         for my $name ( $callback->ls_accessors ) {
-            $args->_callbacks->$name( 
+            $args->_callbacks->$name(
                 sub { error(loc("DEFAULT HANDLER")); 1 } );
-        }   
- 
+        }
+
         ### initalize it as an empty hashref ###
         $args->_status->pending_prereqs( {} );
-        
-        ### allow for dirs to be added to @INC at runtime, 
+
+        ### allow for dirs to be added to @INC at runtime,
         ### rather then compile time
         push @INC, @{$conf->get_conf('lib')};
-        
+
         ### add any possible new dirs ###
         $args->_lib( [@INC] );
-        
+
         $conf->_set_build( startdir => cwd() ),
             or error( loc("couldn't locate current dir!") );
-    
-        $ENV{FTP_PASSIVE} = 1, if $conf->get_conf('passive');    
-        
+
+        $ENV{FTP_PASSIVE} = 1, if $conf->get_conf('passive');
+
         my $id = $args->_store_id( $args );
-     
+
         unless ( $id == $args->_id ) {
-            error( loc("IDs do not match: %1 != %2. Storage failed!", 
+            error( loc("IDs do not match: %1 != %2. Storage failed!",
                         $id, $args->_id) );
         }
-        
+
         return $args;
     }
-    
+
 =pod
 
 =head2 _flush( list => \@caches )
@@ -201,44 +201,44 @@ be flushed.
     sub _flush {
         my $self = shift;
         my %hash = @_;
-        
+
         my $aref;
         my $tmpl = {
-            list    => { required => 1, default => [], 
+            list    => { required => 1, default => [],
                             strict_type => 1, store => \$aref },
-        };                        
+        };
 
         my $args = check( $tmpl, \%hash ) or return;
 
         my $flag = 0;
         for my $what (@$aref) {
             my $cache = '_' . $what;
-            
+
             ### set the include paths back to their original ###
             if( $what eq 'lib' ) {
-                $ENV{PERL5LIB}  = $self->_perl5lib || '';   
+                $ENV{PERL5LIB}  = $self->_perl5lib || '';
                 @INC            = @{$self->_lib};
-            
+
             ### give all modules a new status object -- this is slightly
             ### costly, but the best way to make sure all statusses are
             ### forgotten --kane
             } elsif ( $what eq 'modules' ) {
                 for my $modobj ( values %{$self->module_tree} ) {
                     $modobj->_flush;
-                }        
-            
-            ### blow away the methods cache... currently, that's only 
+                }
+
+            ### blow away the methods cache... currently, that's only
             ### File::Fetch's method fail list
             } elsif ( $what eq 'methods' ) {
-                
+
                 ### still fucking p4 :( ###
                 $File'Fetch::METHOD_FAIL = $File'Fetch::METHOD_FAIL = {};
-            
-            } else {          
+
+            } else {
                 unless ( exists $self->{$cache} && exists $Tmpl->{$cache} ) {
                     error( loc( "No such cache: '%1'", $what ) );
                     $flag++;
-                    next;    
+                    next;
                 } else {
                     $self->$cache( {} );
                 }
@@ -261,7 +261,7 @@ Here is a list of the currently used callbacks:
 
 =item install_prerequisite
 
-Is called when the user wants to be C<asked> about what to do with 
+Is called when the user wants to be C<asked> about what to do with
 prerequisites.
 
 =item edit_test_report
@@ -276,24 +276,24 @@ about to be sent out by Test::Reporter
     sub _register_callback {
         my $self = shift or return;
         my %hash = @_;
-        
+
         my ($name,$code);
         my $tmpl = {
             name    => { required => 1, store => \$name,
                          allow => [$callback->ls_accessors] },
-            code    => { required => 1, allow => IS_CODEREF, 
+            code    => { required => 1, allow => IS_CODEREF,
                          store => \$code },
-        };                       
-    
+        };
+
         check( $tmpl, \%hash ) or return;
-    
+
         $self->_callbacks->$name( $code ) or return;
-        
+
         return 1;
     }
 }
 
-=pod 
+=pod
 
 =head2 _add_to_includepath( directories => \@dirs )
 
@@ -307,24 +307,24 @@ Returns true on success, false on failure.
 sub _add_to_includepath {
     my $self = shift;
     my %hash = @_;
-    
+
     my $dirs;
     my $tmpl = {
         directories => { required => 1, default => [], store => \$dirs,
                          strict_type => 1 },
-    };                       
+    };
 
     check( $tmpl, \%hash ) or return;
-    
+
     for my $lib (@$dirs) {
         push @INC, $lib unless grep { $_ eq $lib } @INC;
     }
-    
+
     {   local $^W;  ### it will be complaining if $ENV{PERL5LIB]
                     ### is not defined (yet).
-        $ENV{'PERL5LIB'} .= join '', map { $Config{'path_sep'} . $_ } @$dirs;    
+        $ENV{'PERL5LIB'} .= join '', map { $Config{'path_sep'} . $_ } @$dirs;
     }
-    
+
     return 1;
 }
 
@@ -353,8 +353,8 @@ Return all stored objects.
 =cut
 
 
-### code for storing multiple objects 
-### -- although we only support one right now 
+### code for storing multiple objects
+### -- although we only support one right now
 ### XXX when support for multiple objects comes, saving source will have
 ### to change
 {
@@ -370,7 +370,7 @@ Return all stored objects.
         my $obj     = shift or return;
 
        unless( IS_INTERNALS_OBJ->($obj) ) {
-            error( loc("The object you passed has the wrong ref type: '%1'", 
+            error( loc("The object you passed has the wrong ref type: '%1'",
                         ref $obj) );
             return;
         }
@@ -393,7 +393,7 @@ Return all stored objects.
 
         return delete $idref->{$id};
     }
-    
+
     sub _return_all_objects { return values %$idref }
 }
 
@@ -403,7 +403,7 @@ sub END {
     $obs[0]->_save_source() if scalar @obs;
 }
 
-    
+
 1;
 
 # Local variables:

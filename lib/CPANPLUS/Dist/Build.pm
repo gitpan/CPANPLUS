@@ -28,19 +28,19 @@ CPANPLUS::Dist::Build
 
 =head1 SYNOPSIS
 
-    my $build = CPANPLUS::Dist->new( 
+    my $build = CPANPLUS::Dist->new(
                                 format  => 'build',
-                                module  => $modobj, 
+                                module  => $modobj,
                             );
     $build->create;     # runs build && build test
     $build->install;    # runs build install
 
-    
+
 =head1 DESCRIPTION
 
-C<CPANPLUS::Dist::Build> is a distribution class for C<Module::Build> 
+C<CPANPLUS::Dist::Build> is a distribution class for C<Module::Build>
 related modules.
-Using this package, you can create, install and uninstall perl 
+Using this package, you can create, install and uninstall perl
 modules. It inherits from C<CPANPLUS::Dist>.
 
 =head1 ACCESSORS
@@ -58,7 +58,7 @@ this module.
 
 =back
 
-=head1 STATUS ACCESSORS 
+=head1 STATUS ACCESSORS
 
 All accessors can be accessed as follows:
     $build->status->ACCESSOR
@@ -67,7 +67,7 @@ All accessors can be accessed as follows:
 
 =item build_pl ()
 
-Location of the Build file. 
+Location of the Build file.
 Set to 0 explicitly if something went wrong.
 
 =item build ()
@@ -105,7 +105,7 @@ Storage of the C<Module::Build> object we used for this installation.
 
 =cut
 
- 
+
 =head1 METHODS
 
 =head2 format_available();
@@ -113,24 +113,24 @@ Storage of the C<Module::Build> object we used for this installation.
 Returns a boolean indicating whether or not you can use this package
 to create and install modules in your environment.
 
-=cut 
- 
+=cut
+
 ### check if the format is available ###
 sub format_available {
     my $mod = "Module::Build";
     unless( can_load( modules => { $mod => 0.0 } ) ) {
         error( loc( "You do not have '%1' -- '%2' not available",
-                    $mod, __PACKAGE__ ) ); 
+                    $mod, __PACKAGE__ ) );
         return;
     }
-    
-    return 1;     
-} 
- 
- 
+
+    return 1;
+}
+
+
 =pod $bool = $dist->init();
 
-Sets up the C<CPANPLUS::Dist::Build> object for use. 
+Sets up the C<CPANPLUS::Dist::Build> object for use.
 Effectively creates all the needed status accessors.
 
 Called automatically whenever you create a new C<CPANPLUS::Dist> object.
@@ -140,26 +140,26 @@ Called automatically whenever you create a new C<CPANPLUS::Dist> object.
 sub init {
     my $dist    = shift;
     my $status  = $dist->status;
-   
+
     $status->mk_accessors(qw[build_pl build test created installed uninstalled
                              _create_args _install_args _mb_object _buildflags
                             ]);
-    
+
     return 1;
-}     
+}
 
 =pod
 
-=head2 $dist->create([perl => '/path/to/perl', buildflags => 'EXTRA=FLAGS', prereq_target => TARGET, force => BOOL, verbose => BOOL])
+=head2 $dist->create([perl => '/path/to/perl', buildflags => 'EXTRA=FLAGS', prereq_target => TARGET, force => BOOL, verbose => BOOL, skiptest => BOOL])
 
-C<create> preps a distribution for installation. This means it will 
-run C<perl Build.PL>, C<Build> and C<Build test>. 
-This will also satisfy any prerequisites the module may have. 
+C<create> preps a distribution for installation. This means it will
+run C<perl Build.PL>, C<Build> and C<Build test>.
+This will also satisfy any prerequisites the module may have.
 
 If you set C<skiptest> to true, it will skip the C<Build test> stage.
-If you set C<force> to true, it will go over all the stages of the 
-C<Build> process again, ignoring any previously cached results. It 
-will also ignore a bad return value from C<Build test> and still allow 
+If you set C<force> to true, it will go over all the stages of the
+C<Build> process again, ignoring any previously cached results. It
+will also ignore a bad return value from C<Build test> and still allow
 the operation to return true.
 
 Returns true on success and false on failure.
@@ -168,19 +168,19 @@ You may then call C<< $dist->install >> on the object to actually
 install it.
 Returns true on success and false on failure.
 
-=cut 
-   
+=cut
+
 sub create {
     ### just in case you already did a create call for this module object
     ### just via a different dist object
     my $dist = shift;
     my $self = $dist->parent;
-    
+
     ### we're also the cpan_dist, since we don't need to have anything
     ### prepared from another installer
-    $dist    = $self->status->dist_cpan if      $self->status->dist_cpan;     
-    $self->status->dist_cpan( $dist )   unless  $self->status->dist_cpan;  
-   
+    $dist    = $self->status->dist_cpan if      $self->status->dist_cpan;
+    $self->status->dist_cpan( $dist )   unless  $self->status->dist_cpan;
+
     my $cb   = $self->parent;
     my $conf = $cb->configure_object;
     my %hash = @_;
@@ -190,35 +190,35 @@ sub create {
         error( loc( "No dir found to operate on!" ) );
         return;
     }
-   
+
     my $args;
     my( $force, $verbose, $buildflags, $skiptest, $prereq_target,
         $perl, $prereq_format);
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
-            force           => {    default => $conf->get_conf('force'), 
+            force           => {    default => $conf->get_conf('force'),
                                     store   => \$force },
-            verbose         => {    default => $conf->get_conf('verbose'), 
+            verbose         => {    default => $conf->get_conf('verbose'),
                                     store   => \$verbose },
             perl            => {    default => $^X, store => \$perl },
-            buildflags      => {    default => $conf->get_conf('buildflags'), 
+            buildflags      => {    default => $conf->get_conf('buildflags'),
                                     store   => \$buildflags },
-            skiptest        => {    default => $conf->get_conf('skiptest'), 
+            skiptest        => {    default => $conf->get_conf('skiptest'),
                                     store   => \$skiptest },
-            prereq_target   => {    default => '', store => \$prereq_target },                     
+            prereq_target   => {    default => '', store => \$prereq_target },
             ### don't set the default format to 'build' -- that is wrong!
             prereq_format   => {    #default => $self->status->installer_type,
                                     default => '',
                                     store   => \$prereq_format },
-        };                                            
+        };
 
         $args = check( $tmpl, \%hash ) or return;
-    }    
-    
+    }
+
     return 1 if $dist->status->created && !$force;
-    
+
     $dist->status->_create_args( $args );
-    
+
     ### chdir to work directory ###
     my $orig = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
@@ -233,53 +233,26 @@ sub create {
     ### included in make test -- it should build without.
     ### also, modules that run in taint mode break if we leave
     ### our code ref in perl5opt
-    local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
-    local $ENV{PERL5LIB} = CPANPLUS::inc->original_perl5lib;
+    ### XXX we've removed the ENV settings from cp::inc, so only need
+    ### to reset the @INC
+    #local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
+    #local $ENV{PERL5LIB} = CPANPLUS::inc->original_perl5lib;
     local @INC           = CPANPLUS::inc->original_inc;
 
-    ### but don't do it *before* the new_from_context, as M::B seems
+    ### but do it *before* the new_from_context, as M::B seems
     ### to be actually running the file...
-   
-    ### Since M::B will actually shell out and run the Build.PL, we must
-    ### make sure it refinds the proper version of M::B in the path.
-    ### that may be eitehr in our cp::inc or in site_perl, or even a
-    ### new M::B being installed. 
-    ### don't add anything else here, as that might screw up prereq checks
-    ### XXX this might be needed for Dist::MM too, if a makefile.pl is
-	###	masquerading as a Build.PL
-    
-    ### did we find the most recent module::build in our installer path?
-    ### XXX can't do changes to @INC, they're being ignored by 
-    ### new_from_context when writing a Build script. see ticket:
-    ### #8826 Module::Build ignores changes to @INC when writing Build 
-    ### from new_from_context 
-    ### XXX applied schwern's patches (as seen on CPANPLUS::Devel 10/12/04)
-    ### and upped the version to 0.26061 of the bundled version, and things
-    ### work again
-    {   if( CPANPLUS::inc->path_to('Module::Build') eq
-            CPANPLUS::inc->installer_path 
-        ) {
-            
-            ### if the module being installed is *not* Module::Build
-            ### itself -- as that would undoubtedbly be newer -- add
-            ### the path to the installers to @INC
-            ### if it IS module::build itself, add 'lib' to it's path,
-            ### as the Build.PL would do as well, but the API doesn't
-            ### this makes self updates possible
-            unshift @INC, $self->module eq 'Module::Build'
-                            ? 'lib'
-                            : CPANPLUS::inc->installer_path;
-        } 
-        
-        ### otherwise, just leave @INC untouched -- normal @INC loading
-        ### will find the proper module
-    }
+    ### an unshift in the block seems to be ignored.. somehow...
+    #{   my $lib = $self->best_path_to_module_build;
+    #    unshift @INC, $lib if $lib;
+    #}
+    unshift @INC, $self->best_path_to_module_build
+                if $self->best_path_to_module_build;
 
     ### this will generate warnings under anything lower than M::B 0.2606
     my %buildflags = $dist->_buildflags_as_hash( $buildflags );
-    $dist->status->_buildflags( $buildflags );                    
+    $dist->status->_buildflags( $buildflags );
 
-    my $fail; my $prereq_fail; 
+    my $fail; my $prereq_fail;
     RUN: {
         ### piece of sh*t, stop DYING! --kane
         my $mb = eval { Module::Build->new_from_context( %buildflags ) };
@@ -290,10 +263,10 @@ sub create {
         }
 
         $dist->status->_mb_object( $mb );
-        
+
         ### resolve prereqs ###
         my $prereqs = $dist->_find_prereqs( verbose => $verbose );
-        
+
         ### XXX mangle prereqs because our uptodate() function can't
         ### handle M::B version ranges -- perhaps always use M::B to
         ### verify if modules are up to date, but that would cause a
@@ -309,7 +282,7 @@ sub create {
                 ### is not in the index, but it's part of core...
                 #error(loc("Unable to find '%1' in the module tree ".
                 #          "-- unable to satisfy prerequisites", $mod));
-                #$fail++; last RUN;     
+                #$fail++; last RUN;
                 next;
             }
 
@@ -333,43 +306,43 @@ sub create {
             ### eh, some sort of range...??
             } else {
                 $wanted = 0;
-            }                
-                
+            }
+
             $mangled_prereqs->{ $mod } = $wanted;
-        }            
-        
+        }
+
         ### this will set the directory back to the start
-        ### dir, so we must chdir /again/  
+        ### dir, so we must chdir /again/
         my $ok = $dist->_resolve_prereqs(
                         format  => $prereq_format,
                         verbose => $verbose,
                         prereqs => $mangled_prereqs,
                         target  => $prereq_target,
-                    );             
-        
+                    );
+
         unless( $cb->_chdir( dir => $dir ) ) {
             error( loc( "Could not chdir to build directory '%1'", $dir ) );
             return;
-        }       
-        
+        }
+
         unless( $ok ) {
             #### use $dist->flush to reset the cache ###
             error( loc( "Unable to satisfy prerequisites for '%1' " .
-                        "-- aborting install", $self->module ) );    
+                        "-- aborting install", $self->module ) );
             $dist->status->build(0);
             $fail++; $prereq_fail++;
             last RUN;
-        } 
-        
+        }
+
         eval { $mb->dispatch('build', %buildflags) };
         if( $@ ) {
             error(loc("Could not run '%1': %2", 'Build', "$@"));
             $dist->status->build(0);
             $fail++; last RUN;
-        }   
-        
-        $dist->status->build(1);     
-   
+        }
+
+        $dist->status->build(1);
+
         ### add this directory to your lib ###
         $cb->_add_to_includepath(
             directories => [ BLIB_LIBDIR->( $self->status->extract ) ]
@@ -379,24 +352,24 @@ sub create {
             eval { $mb->dispatch('test', %buildflags) };
             if( $@ ) {
                 error(loc("Could not run '%1': %2", 'Build test', "$@"));
-                
+
                 unless($force) {
                     $dist->status->test(0);
                     $fail++; last RUN;
                 }
             } else {
-                $dist->status->test(1);      
+                $dist->status->test(1);
             }
-        }      
+        }
     }
- 
+
     unless( $cb->_chdir( dir => $orig ) ) {
         error( loc( "Could not chdir back to start dir '%1'", $orig ) );
-    } 
-    
+    }
+
     ### send out test report? ###
     if( $conf->get_conf('cpantest') and not $prereq_fail ) {
-        $cb->_send_report( 
+        $cb->_send_report(
             module  => $self,
             failed  => $fail,
             buffer  => CPANPLUS::Error->stack_as_string,
@@ -405,91 +378,94 @@ sub create {
         ) or error(loc("Failed to send test report for '%1'",
                     $self->module ) );
     }
-    
+
     return $dist->status->created( $fail ? 0 : 1 );
-}     
- 
+}
+
 sub _find_prereqs {
     my $dist = shift;
     my $mb   = $dist->status->_mb_object;
     my $self = $dist->parent;
-    
-    ### Lame++, at least return an empty hashref...
-    my $prereqs = $mb->requires || {};   
-    $self->status->prereqs( $prereqs );
-      
-    return $prereqs;
-}    
 
-=head2 $dist->install([verbose => BOOL, perl => /path/to/perl]) 
+    ### Lame++, at least return an empty hashref...
+    my $prereqs = $mb->requires || {};
+    $self->status->prereqs( $prereqs );
+
+    return $prereqs;
+}
+
+=head2 $dist->install([verbose => BOOL, perl => /path/to/perl])
 
 Actually installs the created dist.
 
 Returns true on success and false on failure.
 
 =cut
- 
+
 sub install {
     ### just in case you already did a create call for this module object
     ### just via a different dist object
     my $dist = shift;
     my $self = $dist->parent;
-    
+
     ### we're also the cpan_dist, since we don't need to have anything
     ### prepared from another installer
-    $dist    = $self->status->dist_cpan if $self->status->dist_cpan;  
+    $dist    = $self->status->dist_cpan if $self->status->dist_cpan;
     my $mb   = $dist->status->_mb_object;
-   
+
     my $cb   = $self->parent;
     my $conf = $cb->configure_object;
     my %hash = @_;
+
     
-    my $verbose; my $perl;
-    my $tmpl ={
-        verbose => { default => $conf->get_conf('verbose'),
-                     store   => \$verbose },
-        perl    => { default => $conf->get_program('perl') || $^X, 
-                     store   => \$perl },
-    };
+    my $verbose; my $perl; my $force;
+    {   local $Params::Check::ALLOW_UNKNOWN = 1;
+        my $tmpl ={
+            verbose => { default => $conf->get_conf('verbose'),
+                         store   => \$verbose },
+            force   => { default => $conf->get_conf('force'),
+                         store   => \$force },
+            perl    => { default => $conf->get_program('perl') || $^X,
+                         store   => \$perl },
+        };
     
-    my $args = check( $tmpl, \%hash ) or return;
-    $dist->status->_install_args( $args );
-    
+        my $args = check( $tmpl, \%hash ) or return;
+        $dist->status->_install_args( $args );
+    }
+
     my $dir;
     unless( $dir = $self->status->extract ) {
         error( loc( "No dir found to operate on!" ) );
         return;
     }
-    
+
     my $orig = cwd();
-    
+
     unless( $cb->_chdir( dir => $dir ) ) {
         error( loc( "Could not chdir to build directory '%1'", $dir ) );
         return;
-    }  
-   
+    }
+
     ### value set and false -- means failure ###
-    if( defined $self->status->installed && !$self->status->installed ) {
+    if( defined $self->status->installed && 
+        !$self->status->installed && !$force
+    ) {
         error( loc( "Module '%1' has failed to install before this session " .
                     "-- aborting install", $self->module ) );
         return;
     }
-   
+
     my $fail;
     my $buildflags = $dist->status->_buildflags;
     ### hmm, how is this going to deal with sudo?
     ### for now, check effective uid, if it's not root,
     ### shell out, otherwise use the method
     if( $> ) {
-        ### we need to load Module::build here now, or perl might
-        ### load the wrong version
-        
-        ### perl5opt is too late =/
-        ### add it explicitly 
-        my @opts = split /\s+/, $ENV{'PERL5OPT'};
-       
-        my $cmd     = [$perl, @opts, '-MModule::Build', 
-                        BUILD->($dir), 'install', $buildflags];
+
+        ### don't worry about loading the right version of M::B anymore
+        ### the 'new_from_context' already added the 'right' path to
+        ### M::B at the top of the build.pl
+        my $cmd     = [$perl, BUILD->($dir), 'install', $buildflags];
         my $sudo    = $conf->get_program('sudo');
         unshift @$cmd, $sudo if $sudo;
 
@@ -497,61 +473,54 @@ sub install {
         my $buffer;
         unless( scalar run( command => $cmd,
                             buffer  => \$buffer,
-                            verbose => $verbose ) 
+                            verbose => $verbose )
         ) {
             error(loc("Could not run '%1': %2", 'Build install', $buffer));
             $fail++;
-        }    
+        }
     } else {
         my %buildflags = $dist->_buildflags_as_hash($buildflags);
-    
-        eval { $mb->dispatch('install', %buildflags) };       
+
+        eval { $mb->dispatch('install', %buildflags) };
         if( $@ ) {
             error(loc("Could not run '%1': %2", 'Build install', "$@"));
             $fail++;
-        }   
+        }
     }
 
-    
+
     unless( $cb->_chdir( dir => $orig ) ) {
         error( loc( "Could not chdir back to start dir '%1'", $orig ) );
-    }   
-    
+    }
+
     return $dist->status->installed( $fail ? 0 : 1 );
-}   
- 
-### returns the string 'foo=bar zot=quux' as (foo => bar, zot => quux) 
+}
+
+### returns the string 'foo=bar zot=quux' as (foo => bar, zot => quux)
 sub _buildflags_as_hash {
     my $self    = shift;
     my $flags   = shift or return;
-    
+
     my @argv    = Module::Build->split_like_shell($flags);
     my ($argv)  = Module::Build->read_args(@argv);
 
     return %$argv;
 }
-   
-   
+
+
 =head1 KNOWN ISSUES
 
-There are some known issues with Module::Build, that we hope the 
+There are some known issues with Module::Build, that we hope the
 authors will resolve at some point, so we can make full use of
 Module::Build's power.
 
 =over 4
 
-=item * Passing build flags to 'new_from_context'
-
-This is sadly not possible until Module::Build is patched to support
-the parsing of stringified arguments as options to its 
-C<new_from_context> method. This means you are stuck with the default 
-behaviour of the Build.PL in the distribution.
-
 =item * Uninstall modules installed by Module::Build
 
-Module::Build doesn't write a so called C<packlist> file, which holds 
+Module::Build doesn't write a so called C<packlist> file, which holds
 a list of all files installed by a distribution. Without this file we
-don't know what to remove. Until Module::Build generates this 
+don't know what to remove. Until Module::Build generates this
 C<packlist>, we are unable to remove any installations done by it.
 
 =item * Module::Build's version comparison is not supported.
@@ -559,7 +528,7 @@ C<packlist>, we are unable to remove any installations done by it.
 Module::Build has its own way of defining what versions are considered
 satisfactory for a prerequisite, and which ones aren't. This syntax is
 something specific to Module::Build and we currently have no way to see
-if a module on disk, on cpan or something similar is satisfactory 
+if a module on disk, on cpan or something similar is satisfactory
 according to Module::Build's version comparison scheme.
 As a work around, we now simply assume that the most recent version on
 CPAN satisfies a dependency.
@@ -567,7 +536,7 @@ CPAN satisfies a dependency.
 =back
 
 =cut
-   
+
 1;
 
 # Local variables:

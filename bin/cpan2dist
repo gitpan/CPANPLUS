@@ -1,0 +1,121 @@
+#!/usr/bin/perl -w
+use strict;
+use CPANPLUS::Backend;
+use CPANPLUS::Dist;
+use Getopt::Std;
+
+my $opts    = {};
+my $cb      = CPANPLUS::Backend->new
+                or die "Could not create new CPANPLUS::Backend object\n";
+my %formats = map { $_ => $_ } CPANPLUS::Dist->dist_types;
+
+
+getopts('f:hvS', $opts) or die usage();
+
+die usage() unless @ARGV;
+die usage() if $opts->{'h'};
+
+my $format      = $opts->{'f'};
+my $verbose     = $opts->{'v'} ? 1 : 0;
+my $skiptest    = $opts->{'S'} ? 1 : 0;
+
+die "Invalid format: $format\n".usage() unless $formats{$format};
+
+$cb->configure_object->set_conf( verbose => $verbose );
+
+my %done;
+for my $name (@ARGV) {
+
+    ### find the corresponding module object ###
+    my $obj = $cb->parse_module( module => $name ) or (
+            warn "Cannot make a module object out of '$name' -- skipping\n",
+            next );
+
+    my $dist = $obj->install(   format          => $format,
+                                prereq_target   => 'create',
+                                target          => 'create',
+                                skiptest        => $skiptest,
+                ) or die "Unable to create '$format' dist of '".
+                            $obj->module ."'\n";
+
+    print "Created '$format' distribution for ", $obj->module,
+                " to:\n\t", $obj->status->dist->status->distdir, "\n";
+}
+
+
+sub usage {
+    my $formats = join "\n", map { "\t\t$_" } sort keys %formats;
+
+    qq[
+Usage:  $0 -f FORMAT Module::Name [Module::Name, ...]
+
+    Will create a distribution of type FORMAT of the modules
+    specified on the command line, and all their prerequisites.
+
+    Possible formats are:
+$formats
+
+    \n]
+}
+
+__END__
+
+=head1 NAME
+
+cpan2dist - The CPANPLUS distribution creator
+
+=head1 SYNOPSIS
+
+    ### create a debian package from 'Some::Module', and all
+    ### its prerequisites
+    cpan2dist -f CPANPLUS::Dist::Deb Some::Module
+
+    ### skip tests, enable verbose, create ports packages of
+    ### Some::Module and Other::Module and its prerequisites
+    cpan2dist -S -v -f CPANPLUS::Dist::Ports Some::Module Other::Module
+
+    ### show usage message, also lists available formats
+    cpan2dist -h
+
+    ### set a certain format to be your default, using the default shell:
+    CPAN Terminal> s conf dist_type CPANPLUS::Dist::SomeFormat; s save;
+
+=head1 DESCRIPTION
+
+This scripts will create distributions of C<CPAN> modules of the format
+you specify, including its prerequisites. These packages can then be
+installed using the corresponding package manager for this format.
+
+Note, you can also do this interactively from the default shell, C<CPANPLUS::Shell::Default>. See the C<CPANPLUS::Dist> documentation,
+as well as the documentation of your format of choice for any format
+specific documentation.
+
+=head1 SEE ALSO
+
+L<CPANPLUS::Dist>, L<CPANPLUS::Module>, L<CPANPLUS::Shell::Default>,
+C<cpanp>
+
+=head1 AUTHOR
+
+This module by
+Jos Boumans E<lt>kane@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+The CPAN++ interface (of which this module is a part of) is
+copyright (c) 2001, 2002, 2003, 2004, Jos Boumans E<lt>kane@cpan.orgE<gt>.
+All rights reserved.
+
+This library is free software;
+you may redistribute and/or modify it under the same
+terms as Perl itself.
+
+
+=cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

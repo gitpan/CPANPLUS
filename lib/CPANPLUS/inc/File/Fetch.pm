@@ -21,7 +21,7 @@ use vars    qw[ $VERBOSE $PREFER_BIN $FROM_EMAIL $USER_AGENT
                 $FTP_PASSIVE $DEBUG $WARN
             ];
 
-$VERSION        = 0.05;
+$VERSION        = 0.06;
 $PREFER_BIN     = 0;        # XXX TODO implement
 $FROM_EMAIL     = 'File-Fetch@example.com';
 $USER_AGENT     = 'File::Fetch/$VERSION';
@@ -36,7 +36,7 @@ $METHODS = {
     http    => [ qw|lwp wget curl lynx| ],
     ftp     => [ qw|lwp netftp wget curl ncftp ftp| ],
     file    => [ qw|lwp file| ],
-    #rsync   => [ qw|rsync| ], # XXX TODO
+    rsync   => [ qw|rsync| ]
 };
 
 ### silly warnings ###
@@ -80,8 +80,8 @@ File::Fetch -- A generic file fetching mechanism
 
 File::Fetch is a generic file fetching mechanism.
 
-It allows you to fetch any file pointed to by a C<ftp>, C<http> or 
-C<file> uri by a number of different means.
+It allows you to fetch any file pointed to by a C<ftp>, C<http>,
+C<file>, or C<rsync> uri by a number of different means.
 
 See the C<HOW IT WORKS> section further down for details.
 
@@ -196,7 +196,7 @@ sub fetch {
         my $sub =  '_'.$method.'_fetch';
         
         unless( __PACKAGE__->can($sub) ) {
-            $self->_error(loc("Can not call method for '%1' -- WEIRD!",
+            $self->_error(loc("Cannot call method for '%1' -- WEIRD!",
                         $method));
             next;
         }
@@ -625,6 +625,42 @@ sub _file_fetch {
     return $to;
 }
 
+### use /usr/bin/rsync to fetch files
+sub _rsync_fetch {
+    my $self = shift;
+    my %hash = @_;
+    
+    my ($to);
+    my $tmpl = {
+        to  => { required => 1, store => \$to }
+    };     
+    check( $tmpl, \%hash ) or return;
+    
+    if (my $rsync = can_run('rsync')) {
+
+        my $cmd = [ $rsync ];
+
+        push(@$cmd, '--quiet') unless $DEBUG;
+
+        push @$cmd, $self->uri, $to;
+
+        my $captured;
+        unless(run( command => $cmd,
+                    buffer  => \$captured,
+                    verbose => $DEBUG ) 
+        ) {
+        
+            return $self->_error(loc("Command failed: %1",$captured));
+        }
+
+        return $to;
+
+    } else {
+        $METHOD_FAIL->{'rsync'} = 1;
+        return;
+    }
+}
+
 #################################
 #
 # Error code 
@@ -682,6 +718,7 @@ for what schemes, if available:
     file    => LWP, file
     http    => LWP, wget, curl, lynx
     ftp     => LWP, Net::FTP, wget, curl, ncftp, ftp
+    rsync   => rsync
 
 If you'd like to disable the use of one or more of these utilities 
 and/or modules, see the C<$BLACKLIST> variable further down.
@@ -699,8 +736,7 @@ that, see the C<$FTP_PASSIVE> variable further down.
 Furthermore, ftp uris only support anonymous connections, so no
 named user/password pair can be passed along.
 
-Also, C</bin/ftp> is rather unreliable, so it is blacklisted by default
-but you may enable it if you wish; see the C<$BLACKLIST> variable 
+C</bin/ftp> is blacklisted by default; see the C<$BLACKLIST> variable
 further down.
 
 =head1 GLOBAL VARIABLES
@@ -763,7 +799,7 @@ set $File::Fetch::BLACKLIST to:
     
     $File::Fetch::BLACKLIST = [qw|lwp netftp|]
     
-Default is a ['ftp'].
+The default blacklist is [qw|ftp|], as C</bin/ftp> is rather unreliable.
 
 See the note on C<MAPPING> below.
 
@@ -790,6 +826,7 @@ the $BLACKLIST, $METHOD_FAIL and other internal functions.
     ncftp       => ncftp
     ftp         => ftp
     curl        => curl
+    rsync       => rsync
 
 =head1 FREQUENTLY ASKED QUESTIONS
 
@@ -810,10 +847,6 @@ Refer to the LWP::UserAgent manpage for more details.
 =item Implement $PREFER_BIN
 
 To indicate to rather use commandline tools than modules
-
-=item Implement rsync://
-
-To allow copying of files over rsync
 
 =head1 AUTHORS
 

@@ -27,14 +27,14 @@ CPANPLUS::Internals::Search
                         type    => 'package',
                         allow   => [qr/DBI/],
                     );
-    
+
     my $aref = $cpan->_search_author_tree(
                         type    => 'cpanid',
                         data    => \@old_results,
                         verbose => 1,
                         allow   => [qw|KANE AUTRIJUS|],
                     );
-                                                     
+
     my $aref = $cpan->_all_installed( );
 
 =head1 DESCRIPTION
@@ -71,7 +71,7 @@ This is a required argument.
 =item data
 
 An arrayref of previous search results. This is the way to do an C<AND>
-search -- C<_search_module_tree> will only search the module objects 
+search -- C<_search_module_tree> will only search the module objects
 specified in C<data> if provided, rather than the moduletree itself.
 
 =back
@@ -79,17 +79,17 @@ specified in C<data> if provided, rather than the moduletree itself.
 =cut
 
 # Although the Params::Check solution is more graceful, it is WAY too slow.
-# 
+#
 # This sample script:
-#     
+#
 #     use CPANPLUS::Backend;
 #     my $cb = new CPANPLUS::Backend;
 #     $cb->module_tree;
 #     my @list = $cb->search( type => 'module', allow => [qr/^Acme/] );
 #     print $_->module, $/ for @list;
-# 
+#
 # Produced the following output using Dprof WITH params::check code
-#     
+#
 #     Total Elapsed Time = 3.670024 Seconds
 #       User+System Time = 3.390373 Seconds
 #     Exclusive Times
@@ -111,9 +111,9 @@ specified in C<data> if provided, rather than the moduletree itself.
 #      6.49   0.220  0.086  20653   0.0000 0.0000  Params::Check::_iskey
 #      6.19   0.210  0.077  20488   0.0000 0.0000  Params::Check::_store_error
 #      5.01   0.170  0.036  20680   0.0000 0.0000  CPANPLUS::Module::__ANON__
-# 
-# and this output /without/ 
-#       
+#
+# and this output /without/
+#
 #     Total Elapsed Time = 2.803426 Seconds
 #       User+System Time = 2.493426 Seconds
 #     Exclusive Times
@@ -134,37 +134,37 @@ specified in C<data> if provided, rather than the moduletree itself.
 #      0.80   0.020  0.359     12   0.0017 0.0299  CPANPLUS::Backend::BEGIN
 #      0.40   0.010  0.010     30   0.0003 0.0003  Config::FETCH
 #      0.40   0.010  0.010     18   0.0006 0.0005  Locale::Maketext::Simple::load_loc
-#     
+#
 
-sub _search_module_tree { 
+sub _search_module_tree {
     my $self = shift;
     my $conf = $self->configure_object;
     my %hash = @_;
-    
+
     my($mods,$list,$verbose,$type);
     my $tmpl = {
-        data    => { default    => [values %{$self->module_tree}], 
-                     strict_type=> 1, store     => \$mods }, 
+        data    => { default    => [values %{$self->module_tree}],
+                     strict_type=> 1, store     => \$mods },
         allow   => { required   => 1, default   => [ ], strict_type => 1,
                      store      => \$list },
-        verbose => { default    => $conf->get_conf('verbose'), 
+        verbose => { default    => $conf->get_conf('verbose'),
                      store      => \$verbose },
         type    => { required   => 1, allow => [CPANPLUS::Module->accessors()],
                      store      => \$type },
-    };       
-   
+    };
+
     my $args = check( $tmpl, \%hash ) or return;
-    
+
     {   local $Params::Check::VERBOSE = 0;
-        
+
         my @rv;
         for my $mod (@$mods) {
             #push @rv, $mod if check(
             #                        { $type => { allow => $list } },
             #                        { $type => $mod->$type() }
-            #                    );                      
+            #                    );
             push @rv, $mod if allow( $mod->$type() => $list );
-            
+
         }
         return \@rv;
     }
@@ -200,7 +200,7 @@ This is a required argument.
 =item data
 
 An arrayref of previous search results. This is the way to do an C<and>
-search -- C<_search_author_tree> will only search the author objects 
+search -- C<_search_author_tree> will only search the author objects
 specified in C<data> if provided, rather than the authortree itself.
 
 =back
@@ -211,34 +211,34 @@ sub _search_author_tree {
     my $self = shift;
     my $conf = $self->configure_object;
     my %hash = @_;
-    
+
     my($authors,$list,$verbose,$type);
     my $tmpl = {
-        data    => { default    => [values %{$self->author_tree}], 
-                     strict_type=> 1, store     => \$authors }, 
+        data    => { default    => [values %{$self->author_tree}],
+                     strict_type=> 1, store     => \$authors },
         allow   => { required   => 1, default   => [ ], strict_type => 1,
                      store      => \$list },
-        verbose => { default    => $conf->get_conf('verbose'), 
+        verbose => { default    => $conf->get_conf('verbose'),
                      store      => \$verbose },
         type    => { required   => 1, allow => [CPANPLUS::Module::Author->accessors()],
                      store      => \$type },
-    }; 
-    
+    };
+
     my $args = check( $tmpl, \%hash ) or return;
-    
+
     {   local $Params::Check::VERBOSE = 0;
-        
+
         my @rv;
         for my $auth (@$authors) {
             #push @rv, $auth if check(
             #                        { $type => { allow => $list } },
             #                        { $type => $auth->$type }
-            #                    );                      
+            #                    );
             push @rv, $auth if allow( $auth->$type() => $list );
         }
         return \@rv;
     }
-    
+
 
 }
 
@@ -255,38 +255,52 @@ sub _all_installed {
     my $self = shift;
     my $conf = $self->configure_object;
     my %hash = @_;
-    
+
     my %seen; my @rv;
+
+
+    ### File::Find uses lstat, which quietly becomes stat on win32
+    ### it then uses -l _ which is not allowed by the statbuffer because
+    ### you did a stat, not an lstat (duh!). so don't tell win32 to
+    ### follow symlinks, as that will break badly
+    my %find_args = ();
+    $find_args{'follow_fast'} = 1 unless $^O eq 'MSWin32';
 
     ### never use the @INC hooks to find installed versions of
     ### modules -- they're just there in case they're not on the
     ### perl install, but the user shouldn't trust them for *other*
     ### modules!
-    local @INC = CPANPLUS::inc->original_inc; 
+    local @INC = CPANPLUS::inc->original_inc;
 
     for my $dir (@INC ) {
         next if $dir eq '.';
-        
+
         ### not a directory after all ###
         next unless -d $dir;
-        
-        File::Find::find( sub {
-            return unless /\.pm$/i;
-            
-            my $mod = $File::Find::name;
-            $mod = substr($mod, length($dir) + 1, -3);
-            $mod = join '::', File::Spec->splitdir($mod);
-            
-            return if $seen{$mod}++;
 
-            my $modobj = $self->module_tree($mod) or return;
-            push @rv, $modobj;
-        }, $dir); 
-    }               
-    
+
+        File::Find::find(
+            {   %find_args,
+                wanted      => sub {
+
+                    return unless /\.pm$/i;
+                    my $mod = $File::Find::name;
+
+                    $mod = substr($mod, length($dir) + 1, -3);
+                    $mod = join '::', File::Spec->splitdir($mod);
+
+                    return if $seen{$mod}++;
+                    my $modobj = $self->module_tree($mod) or return;
+
+                    push @rv, $modobj;
+                },
+            }, $dir
+        );
+    }
+
     return \@rv;
 }
-    
+
 1;
 
 # Local variables:

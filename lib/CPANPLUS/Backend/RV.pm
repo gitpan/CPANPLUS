@@ -24,28 +24,28 @@ CPANPLUS::Backend::RV
 =head1 SYNOPSIS
 
     ### create a CPANPLUS::Backend::RV object
-    $backend_rv     = CPANPLUS::Backend::RV->new(   
+    $backend_rv     = CPANPLUS::Backend::RV->new(
                                 ok          => $boolean,
                                 args        => $args,
                                 rv          => $return_value
                                 function    => $calling_function );
-    
+
     ### if you have a CPANPLUS::Backend::RV object
     $passed_args    = $backend_rv->args;    # args passed to function
     $ok             = $backend_rv->ok;      # boolean indication overall
                                             # result of the call
-    $function       = $backend_rv->fucntion # name of the calling           
-                                            # function     
+    $function       = $backend_rv->fucntion # name of the calling
+                                            # function
     $rv             = $backend_rv->rv       # the actual return value
                                             # of the calling function
-    
+
 =head1 DESCRIPTION
 
 This module provides return value objects for multi-module
 calls to CPANPLUS::Backend. In boolean context, it returns the status
 of the overall result (ie, the same as the C<ok> method would).
 
-=head1 METHODS 
+=head1 METHODS
 
 =head2 new( ok => BOOL, args => DATA, rv => DATA, [function => $method_name] )
 
@@ -72,7 +72,7 @@ in case of an error.
 
 =item rv
 
-An arbitrary data structure that has the detailed return values of each 
+An arbitrary data structure that has the detailed return values of each
 of your multi-module calls.
 
 =item function
@@ -88,19 +88,19 @@ from C<caller()> information.
 sub new {
     my $class   = shift;
     my %hash    = @_;
-    
+
     my $tmpl = {
         ok          => { required => 1, allow => BOOLEANS },
         args        => { required => 1 },
         rv          => { required => 1 },
         function    => { default => CALLING_FUNCTION->() },
     };
-    
+
     my $args    = check( $tmpl, \%hash ) or return;
     my $self    = bless {}, $class;
-    
+
     $self->mk_accessors( qw[ok args function rv] );
-    
+
     ### set the values passed in the struct ###
     while( my($key,$val) = each %$args ) {
         $self->$key( $val );

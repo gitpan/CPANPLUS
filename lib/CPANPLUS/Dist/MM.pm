@@ -155,7 +155,7 @@ sub init {
 
 =pod
 
-=head2 $bool = $dist->create([perl => '/path/to/perl', makemakerflags => 'EXTRA=FLAGS', make => '/path/to/make', makeflags => 'EXTRA=FLAGS', prereq_target => TARGET, force => BOOL, verbose => BOOL])
+=head2 $bool = $dist->create([perl => '/path/to/perl', makemakerflags => 'EXTRA=FLAGS', make => '/path/to/make', makeflags => 'EXTRA=FLAGS', prereq_target => TARGET, skiptest => BOOL, force => BOOL, verbose => BOOL])
 
 C<create> preps a distribution for installation. This means it will 
 run C<perl Makefile.PL>, C<make> and C<make test>. 
@@ -284,7 +284,9 @@ sub create {
             ### included in the makefile.pl -- it should build without
             ### also, modules that run in taint mode break if we leave
             ### our code ref in perl5opt
-            local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt || ''; 
+            ### XXX we've removed the ENV settings from cp::inc, so only need
+            ### to reset the @INC
+            #local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt || ''; 
     
             ### make sure it's a string, so that mmflags that have more than
             ### one key value pair are passed as is, rather than as:
@@ -524,13 +526,6 @@ sub install {
         return;
     }
     
-    ### value set and false -- means failure ###
-    if( defined $self->status->installed && !$self->status->installed ) {
-        error( loc( "Module '%1' has failed to install before this session " .
-                    "-- aborting install", $self->module ) );
-        return;
-    }
-    
     my $args;
     my($force,$verbose,$make,$makeflags);
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
@@ -547,6 +542,16 @@ sub install {
     
         $args = check( $tmpl, \%hash ) or return;
     }
+
+    ### value set and false -- means failure ###
+    if( defined $self->status->installed && 
+        !$self->status->installed && !$force 
+    ) {
+        error( loc( "Module '%1' has failed to install before this session " .
+                    "-- aborting install", $self->module ) );
+        return;
+    }
+
             
     $dist->status->_install_args( $args );
     

@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   "0.050_02";     #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   "0.050_03";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -34,9 +34,9 @@ sub install {
                         error(loc("No such module '%1'", $mod)),
                         return
                     );
-        
+
         my $ok = $obj->install;
-        
+
         $ok
             ? msg(loc("Installing of %1 successful", $mod),1)
             : msg(loc("Installing of %1 failed", $mod),1);
@@ -63,9 +63,9 @@ sub fetch {
                         error(loc("No such module '%1'", $mod)),
                         return
                     );
-        
+
         my $ok = $obj->fetch( fetchdir => '.' );
-        
+
         $ok
             ? msg(loc("Fetching of %1 successful", $mod),1)
             : msg(loc("Fetching of %1 failed", $mod),1);
@@ -108,7 +108,7 @@ CPANPLUS - Command-line access to the CPAN interface
 
     cpanp
     cpanp -i Some::Module
-    
+
     perl -MCPANPLUS -eshell
     perl -MCPANPLUS -e'fetch Some::Module'
 
@@ -116,7 +116,7 @@ CPANPLUS - Command-line access to the CPAN interface
 
 =head1 DESCRIPTION
 
-The C<CPANPLUS> library is an API to the C<CPAN> mirrors and a 
+The C<CPANPLUS> library is an API to the C<CPAN> mirrors and a
 collection of interactive shells, commandline programs, daemons, etc,
 that use this API.
 
@@ -125,7 +125,7 @@ the appropriate tool to use for the job at hand.
 
 =head1 INTERFACES
 
-=head2 COMMAND LINE 
+=head2 COMMAND LINE
 
 The C<CPANPLUS> library comes with several command line tools;
 
@@ -165,14 +165,14 @@ one is not to your liking.
 =item CPANPLUS::Shell::Default
 
 This is the standard shell shipped with C<CPANPLUS>. The commands
-    
+
     cpanp
 
-and 
+and
 
     perl -MCPANPLUS -eshell
 
-should fire it up for you. Type C<h> at the prompt to see how to use it.       
+should fire it up for you. Type C<h> at the prompt to see how to use it.
 
 =item CPANPLUS::Shell::Classic
 
@@ -184,7 +184,7 @@ C<CPAN.pm> shell.
 =head2 API
 
 All the above tools are written using the C<CPANPLUS> API. If you have
-any needs that aren't already covered by the above tools, you might 
+any needs that aren't already covered by the above tools, you might
 consider writing your own. To do this, use the C<CPANPLUS::Backend>
 module. It implements the full C<CPANPLUS> API.
 
@@ -199,7 +199,7 @@ listing of just a few of these plugins;
 
 =item Various shells
 
-As already available in the C<0.04x> series, C<CPANPLUS> provides 
+As already available in the C<0.04x> series, C<CPANPLUS> provides
 various shells (as described in the C<SHELL> section above). There
 are also 3rd party shells you might get from a C<cpan> mirror near
 you, such as:
@@ -227,7 +227,7 @@ or by saying, to create for example, debian distributions:
 
     cpanp -i Acme::Bleach --format=debian
 
-There are a few package manager plugins available and/or planned 
+There are a few package manager plugins available and/or planned
 already; they include, but are not limited to:
 
 =over 8
@@ -246,7 +246,7 @@ Allows you to create packages for C<MandrakeLinux>.
 
 =item CPANPLUS::Dist::PPM
 
-Allows you to create packages in the C<PPM> format, commonly 
+Allows you to create packages in the C<PPM> format, commonly
 used by C<ActiveState Perl>.
 
 =back
@@ -255,7 +255,7 @@ used by C<ActiveState Perl>.
 
 New in the C<0.05x> series is the C<CPANPLUS Daemon>. This application
 allows you to remotely control several machines running the C<CPANPLUS
-Daemon>, thus enabling you to update several machines at once, or 
+Daemon>, thus enabling you to update several machines at once, or
 updating machines from the comfort of your own desktop. This is done
 using C<CPANPLUS::Shell::Default>'s C<dispatch_on_input> method. See
 the C<CPANPLUS::Shell::Default> manpage for details on that method.
@@ -266,22 +266,22 @@ New in the C<0.05x> series is the possibility of scripting the default
 shell. This can be done by using its C<dispatch_on_input> method.
 See the C<CPANPLUS::Shell::Default> manpage for details on that method.
 
-Also, soon it will be possible to have a C<.rc> file for the default 
+Also, soon it will be possible to have a C<.rc> file for the default
 shell, making aliases for all your commonly used functions. For exmpale,
 you could alias 'd' to do this:
-    
+
     d --fetchdir=/my/downloads
 
 or you could make the re-reading of your sourcefiles force a refetch
 of those files at all times:
     x --update_source
-    
+
 =back
 
 =head1 FUNCTIONS
 
-For quick access to common commands, you may use this module, 
-C<CPANPLUS> rather than the full programmatic API situated in 
+For quick access to common commands, you may use this module,
+C<CPANPLUS> rather than the full programmatic API situated in
 C<CPANPLUS::Backend>. This module offers the following functions:
 
 =head2 install(NAME)
@@ -311,10 +311,10 @@ Shell starts the default CPAN shell.  You can also start the shell
 by using the C<cpanp> command, which will be installed in your
 perl bin.
 
-See L<CPANPLUS::Shell::Default> for instructions on using the default 
-shell.  Note that if you have changed your default shell in your 
-configuration, that shell will be used instead. If for some reason 
-there was an error with your specified shell, you will be given the 
+See L<CPANPLUS::Shell::Default> for instructions on using the default
+shell.  Note that if you have changed your default shell in your
+configuration, that shell will be used instead. If for some reason
+there was an error with your specified shell, you will be given the
 default shell.
 
 You may also optionally specify another shell to use for this invocation
@@ -326,7 +326,7 @@ of shells for scripting is discouraged and completely unsupported.
 
 =head1 FAQ
 
-For frequently asked questions and answers, please consult the 
+For frequently asked questions and answers, please consult the
 C<CPANPLUS::FAQ> manual.
 
 =head1 AUTHOR

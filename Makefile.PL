@@ -61,7 +61,8 @@ my $JFDI;           # just write the bloody makefile.pl already
     
     }
 
-    ### removes the SETUP=* and AUTOINSTALL=*, JFDI=* to make MakeMaker happier
+    ### removes the SETUP=* and AUTOINSTALL=*, JFDI=* to make 
+    ### MakeMaker happier
     @ARGV = grep { $_ !~ /^(?:SETUP|AUTOINSTALL|JFDI)=./i } @ARGV;
 }
 
@@ -140,6 +141,12 @@ unless( $HasPrev = is_configured() ) {
 my $term = Term::ReadLine->new('');
 if( setup_needed() ) {
     $ConfigObj = CPANPLUS::Configure->new;
+
+    unless( CPANPLUS::Configure->_config_version_sufficient ) {
+        die "\n\nConfig and CPANPLUS version are non-compatible!\n" .
+            "Please remove your config (". $INC{'CPANPLUS/Config.pm'} .
+            ") and try again!\n\n";
+    }
 
     my $setup = CPANPLUS::Configure::Setup->new(
                     term                => $term,

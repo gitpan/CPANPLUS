@@ -7,7 +7,9 @@
 
 package CPANPLUS::Config;
 
-$VERSION = "0.050_02";
+$VERSION = "0.050_03";
+
+$MIN_CPANPLUS_VERSION = '0.050_03';
 
 use strict;
 
@@ -94,6 +96,7 @@ sub new {
                                 'mod' => '02packages.details.txt.gz'
                               },
                  '_build' => {
+                               'plugins' => 'plugins/',
                                'moddir' => 'build/',
                                'startdir' => '',
                                'distdir' => 'dist/',
@@ -109,11 +112,11 @@ sub new {
                                 'mod' => 'modules/02packages.details.txt.gz'
                               },
                  '_dist' => {
-                              ### these are seperate installs
+                              ### these are separate installs
                               #'debian' => 'CPANPLUS::Dist::Deb',
                               #'ports' => 'CPANPLUS::Dist::Ports',
-                              'makemaker' => 'CPANPLUS::Dist::MM',
-                              'build' => 'CPANPLUS::Dist::Build',
+                              'CPANPLUS::Dist::MM' => 1,
+                              'CPANPLUS::Dist::Build' => 1,
                             }
     };
 

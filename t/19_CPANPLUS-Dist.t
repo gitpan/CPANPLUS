@@ -3,7 +3,7 @@
 BEGIN { chdir 't' if -d 't' };
 
 ### this is to make devel::cover happy ###
-BEGIN { 
+BEGIN {
     use File::Spec;
     require lib;
     for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
@@ -15,13 +15,16 @@ BEGIN {
     package CPANPLUS::Dist::_Test;
     use strict;
     use vars qw[$Available $Create $Install $Init @ISA];
-    
+
     @ISA        = qw[CPANPLUS::Dist];
     $Available  = 1;
     $Create     = 1;
     $Install    = 1;
     $Init       = 1;
-    
+
+    require CPANPLUS::Dist;
+    CPANPLUS::Dist->_add_dist_types( __PACKAGE__ );
+
     sub init                { $_[0]->status->mk_accessors( qw[created installed
                                      _install_args _create_args]); $Init };
     sub format_available    { return $Available }
@@ -40,7 +43,7 @@ use Cwd;
 use Data::Dumper;
 use File::Basename ();
 use File::Spec ();
-use Module::Load::Conditional ();
+use Module::Load::Conditional qw[check_install];
 
 BEGIN { require 'conf.pl'; }
 
@@ -51,7 +54,8 @@ my $cb   = CPANPLUS::Backend->new( $conf );
 local $CPANPLUS::Error::ERROR_FH = output_handle() unless @ARGV;
 local $CPANPLUS::Error::MSG_FH   = output_handle() unless @ARGV;
 
-my $Format = '_test';
+### obsolete
+#my $Format = '_test';
 my $Module = 'CPANPLUS::Dist::_Test';
 
 ### XXX this version doesn't exist, but we don't check for it either ###
@@ -65,7 +69,7 @@ $Module::Load::Conditional::CACHE->{$Module}->{usable} = 1;
 use_ok('CPANPLUS::Dist');
 
 ### start with fresh sources ###
-ok( $cb->reload_indices( update_source => 0 ),  
+ok( $cb->reload_indices( update_source => 0 ),
                                 "Rebuilding trees" );
 
 my $Mod  = $cb->module_tree('Text::Bastardize');
@@ -74,18 +78,18 @@ ok( $Mod,                       "Got module object" );
 
 
 ### register new format ###
-{   my $ok = $conf->_add_dist( $Format => $Module );
+{   my $ok = $conf->_add_dist( $Module => 1 );
     ok( $ok,                    "New dist format registered" );
-    
-    my $class = $conf->_get_dist($Format);
-    is( $class, $Module,        "   Proper format found" );
+
+    my $class = $conf->_get_dist($Module);
+    ok( $class,                 "   Proper format found" );
 }
 
-### straight forward dist create 
+### straight forward dist create
 {   my $dist = CPANPLUS::Dist->new(
-                            format  => $Format,
+                            format  => $Module,
                             module  => $Mod
-                        );           
+                        );
 
     ok( $dist,                  "New dist object created" );
     isa_ok( $dist,              'CPANPLUS::Dist' );
@@ -97,7 +101,7 @@ ok( $Mod,                       "Got module object" );
 
     ok( $dist->create,          "Create call" );
     ok( $dist->status->created, "   Status registered OK" );
-    
+
     ok( $dist->install,         "Install call" );
     ok( $dist->status->installed,
                                 "   Status registered OK" );
@@ -105,31 +109,31 @@ ok( $Mod,                       "Got module object" );
 
 ### check 'sanity check' option ###
 {   local $CPANPLUS::Dist::_Test::Available = 0;
-    
+
     ok( !$Module->format_available,
                                 "Format availabillity turned off" );
-    
+
     {   $conf->_set_build('sanity_check' => 0);
 
-        my $dist = CPANPLUS::Dist->new( 
-                                format => $Format, 
-                                module => $Mod 
-                            );     
+        my $dist = CPANPLUS::Dist->new(
+                                format => $Module,
+                                module => $Mod
+                            );
 
         ok( $dist,              "Dist created with sanity check off" );
         isa_ok( $dist,          $Module );
-        
+
     }
-    
+
     {   $conf->_set_build('sanity_check' => 1);
-        my $dist = CPANPLUS::Dist->new( 
-                                format => $Format, 
-                                module => $Mod 
-                            );     
-        
+        my $dist = CPANPLUS::Dist->new(
+                                format => $Module,
+                                module => $Mod
+                            );
+
         ok( !$dist,             "Dist not created with sanity check on" );
-        like( CPANPLUS::Error->stack_as_string, 
-                qr/Format '$Format' provided by '$Module' is not available/,
+        like( CPANPLUS::Error->stack_as_string,
+                qr/Format '$Module' is not available/,
                                 "   Error recorded as expected" );
     }
 }
@@ -137,10 +141,10 @@ ok( $Mod,                       "Got module object" );
 ### undef the status hash, make sure it complains ###
 {   local $CPANPLUS::Dist::_Test::Init = 0;
 
-    my $dist = CPANPLUS::Dist->new( 
-                        format => $Format, 
-                        module => $Mod 
-                    );     
+    my $dist = CPANPLUS::Dist->new(
+                        format => $Module,
+                        module => $Mod
+                    );
 
     ok( !$dist,                 "No dist created by failed init" );
     like( CPANPLUS::Error->stack_as_string,
@@ -155,13 +159,13 @@ ok( $Mod,                       "Got module object" );
     my $map = {
         0 => {
             'Previous install failed' => [
-                sub { $cb->module_tree($Mod_prereq)->status->installed(0);  
+                sub { $cb->module_tree($Mod_prereq)->status->installed(0);
                                                                 'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/failed to install before in this session/s,
                             "   Previous install failed recorded ok" ) },
             ],
-           
+
             "Set $Module->create to false" => [
                 sub { $CPANPLUS::Dist::_Test::Create = 0;       'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
@@ -171,27 +175,27 @@ ok( $Mod,                       "Got module object" );
                       qr/Failed to install '$Mod_prereq' as prerequisite/s,
                             "   Dist creation failed recorded ok" ) },
             ],
-            
+
             "Set $Module->install to false" => [
-                sub { $CPANPLUS::Dist::_Test::Install = 0;      'install' },                
+                sub { $CPANPLUS::Dist::_Test::Install = 0;      'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/Failed to install '$Mod_prereq' as/s,
                             "   Dist installation failed recorded ok" ) },
             ],
-            
+
             "Set dependency to be perl-core" => [
-                sub { $cb->module_tree( $Mod_prereq )->package( 
+                sub { $cb->module_tree( $Mod_prereq )->package(
                                         'perl-5.8.1.tar.gz' );  'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/Prerequisite '$Mod_prereq' is perl-core/s,
                             "   Dist installation failed recorded ok" ) },
-            ],                                        
-            'Simple ignore'     => [ 
-                sub { 'ignore' },  
+            ],
+            'Simple ignore'     => [
+                sub { 'ignore' },
                 sub { ok( !$_[0]->status->created,
                             "   Module status says not created" ) },
                 sub { ok( !$_[0]->status->installed,
-                            "   Module status says not installed" ) },    
+                            "   Module status says not installed" ) },
             ],
             'Ignore from conf'  => [
                 sub { $conf->set_conf(prereqs => PREREQ_IGNORE);    '' },
@@ -204,21 +208,21 @@ ok( $Mod,                       "Got module object" );
             ],
         },
         1 => {
-            'Simple create'     => [ 
+            'Simple create'     => [
                 sub { 'create' },
                 sub { ok( $_[0]->status->created,
                             "   Module status says created" ) },
                 sub { ok( !$_[0]->status->installed,
                             "   Module status says not installed" ) },
             ],
-            'Simple install'    => [ 
-                sub { 'install' }, 
+            'Simple install'    => [
+                sub { 'install' },
                 sub { ok( $_[0]->status->created,
-                            "   Module status says created" ) },                
+                            "   Module status says created" ) },
                 sub { ok( $_[0]->status->installed,
                             "   Module status says installed" ) },
             ],
-    
+
             'Install from conf' => [
                 sub { $conf->set_conf(prereqs => PREREQ_INSTALL);   '' },
                 sub { ok( $_[0]->status->created,
@@ -235,7 +239,7 @@ ok( $Mod,                       "Got module object" );
                 ### set the conf back ###
                 sub { $conf->set_conf(prereqs => PREREQ_INSTALL); },
             ],
-            
+
             'Ask from conf'     => [
                 sub { $cb->_register_callback(
                             name => 'install_prerequisite',
@@ -262,30 +266,30 @@ ok( $Mod,                       "Got module object" );
                             "   Install skipped, recorded ok" ) },
                 ### set the conf back ###
                 sub { $conf->set_conf(prereqs => PREREQ_INSTALL); },
-            ],               
+            ],
 
             "Set recursive dependency" => [
                 sub { $cb->_status->pending_prereqs({ $Mod_prereq => 1 });
-                                                                'install' },  
+                                                                'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/Recursive dependency detected/,
                             "   Recursive dependency recorded ok" ) },
             ],
 
           },
-    };        
+    };
 
     for my $bool ( sort keys %$map ) {
-    
+
         diag("Running ". ($bool?'success':'fail') . " tests") if @ARGV;
-    
+
         my $href = $map->{$bool};
         while ( my($txt,$aref) = each %$href ) {
 
             ### reset everything ###
-            ok( $cb->reload_indices( update_source => 0 ),  
+            ok( $cb->reload_indices( update_source => 0 ),
                                 "Rebuilding trees" );
-        
+
             $CPANPLUS::Dist::_Test::Available   = 1;
             $CPANPLUS::Dist::_Test::Create      = 1;
             $CPANPLUS::Dist::_Test::Install     = 1;
@@ -294,32 +298,42 @@ ok( $Mod,                       "Got module object" );
             $cb->_status->mk_flush;
 
             ### get a new dist from Text::Bastardize ###
-            my $dist = CPANPLUS::Dist->new( 
-                        format => $Format, 
-                        module => $cb->module_tree('Text::Bastardize'), 
-                    );  
+            my $dist = CPANPLUS::Dist->new(
+                        format => $Module,
+                        module => $cb->module_tree('Text::Bastardize'),
+                    );
 
             ### first sub returns target ###
             my $sub    = shift @$aref;
             my $target = $sub->();
-            
+
             my $flag = $dist->_resolve_prereqs(
-                            format  => $Format,
+                            format  => $Module,
                             force   => 1,
                             target  => $target,
                             prereqs => $Prereq );
-     
+
             is( !!$flag, !!$bool,   $txt );
-        
+
             ### any extra tests ###
             $_->($cb->module_tree($Mod_prereq)) for @$aref;
-        
+
         }
-    }                          
-}   
+    }
+}
 
+### dist_types tests
+{   can_ok( 'CPANPLUS::Dist',       'dist_types' );
 
+    SKIP: {
+        skip "You do not have Module::Pluggable installed", 2
+            unless check_install( module => 'Module::Pluggable' );
 
+        my @types = CPANPLUS::Dist->dist_types;
+        ok( scalar(@types),         "   Dist types found" );
+        ok( grep( /_Test/, @types), "   Found our _Test dist type" );
+    }
+}
 1;
 
 # Local variables:

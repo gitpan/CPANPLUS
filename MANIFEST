@@ -1,4 +1,4 @@
-bin/cpan2dist.pl
+bin/cpan2dist
 bin/cpanp
 ChangeLog
 Changes
@@ -42,9 +42,7 @@ lib/CPANPLUS/inc/File/Spec/OS2.pm
 lib/CPANPLUS/inc/File/Spec/Unix.pm
 lib/CPANPLUS/inc/File/Spec/VMS.pm
 lib/CPANPLUS/inc/File/Spec/Win32.pm
-lib/CPANPLUS/inc/installers/.DS_Store
 lib/CPANPLUS/inc/installers/.installers
-lib/CPANPLUS/inc/installers/Module/.DS_Store
 lib/CPANPLUS/inc/installers/Module/Build.pm
 lib/CPANPLUS/inc/installers/Module/Build/Base.pm
 lib/CPANPLUS/inc/installers/Module/Build/Compat.pm
@@ -65,8 +63,6 @@ lib/CPANPLUS/inc/installers/Module/Build/Platform/VOS.pm
 lib/CPANPLUS/inc/installers/Module/Build/Platform/Windows.pm
 lib/CPANPLUS/inc/installers/Module/Build/PodParser.pm
 lib/CPANPLUS/inc/installers/Module/Build/PPMMaker.pm
-lib/CPANPLUS/inc/installers/patches/build_inc.patch
-lib/CPANPLUS/inc/installers/patches/new_from_context.patch
 lib/CPANPLUS/inc/IO/String.pm
 lib/CPANPLUS/inc/IO/Zlib.pm
 lib/CPANPLUS/inc/IPC/Cmd.pm
@@ -83,7 +79,6 @@ lib/CPANPLUS/inc/Log/Message/Config.pm
 lib/CPANPLUS/inc/Log/Message/Handlers.pm
 lib/CPANPLUS/inc/Log/Message/Item.pm
 lib/CPANPLUS/inc/Module/CoreList.pm
-lib/CPANPLUS/inc/Module/foo/ConfigData.pm
 lib/CPANPLUS/inc/Module/Load.pm
 lib/CPANPLUS/inc/Module/Load/Conditional.pm
 lib/CPANPLUS/inc/Object/Accessor.pm

@@ -12,10 +12,10 @@ use Module::Load::Conditional   qw[can_load];
 ### detached sig, not actually used afaik --kane ###
 #sub get_signature {
 #    my $self = shift;
-#    
+#
 #    my $clone = $self->clone;
 #    $clone->package( $self->package . '.sig' );
-#    
+#
 #    return $clone->fetch;
 #}
 
@@ -24,25 +24,25 @@ sub check_signature {
     my $cb = $self->parent;
     my $conf = $cb->configure_object;
     my %hash = @_;
-    
+
     my $verbose;
     my $tmpl = {
         verbose => {default => $conf->get_conf('verbose'), store => \$verbose},
     };
 
     check( $tmpl, \%hash ) or return;
-    
+
     my $dir = $self->status->extract or (
                 error( loc( "Do not know what dir '%1' was extracted to; ".
                             "Cannot check signature", $self->module ) ),
                 return );
-                                        
+
     my $cwd = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
         error(loc(  "Could not chdir to '%1', cannot verify distribution '%2'",
                     $dir, $self->module ));
         return;
-    }       
+    }
 
 
     ### check prerequisites
@@ -62,4 +62,4 @@ sub check_signature {
     return $flag ? 0 : 1;
 }
 
-1;    
+1;

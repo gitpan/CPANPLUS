@@ -3,7 +3,7 @@
 BEGIN { chdir 't' if -d 't' };
 
 ### this is to make devel::cover happy ###
-BEGIN { 
+BEGIN {
     use File::Spec;
     require lib;
     for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
@@ -29,7 +29,7 @@ BEGIN { require 'conf.pl'; }
 my $conf    = gimme_conf();
 my $cb      = CPANPLUS::Backend->new( $conf );
 my $noperms = ($< and not $conf->get_program('sudo')) &&
-              ($conf->get_conf('makemakerflags') or 
+              ($conf->get_conf('makemakerflags') or
                 not -w $Config{installsitelib} );
 
 ### don't start sending test reports now... ###
@@ -43,7 +43,7 @@ local $CPANPLUS::Error::MSG_FH   = output_handle() unless @ARGV;
 *STDERR                          = output_handle() unless @ARGV;
 
 ### start with fresh sources ###
-ok( $cb->reload_indices( update_source => 0 ),  
+ok( $cb->reload_indices( update_source => 0 ),
                                 "Rebuilding trees" );
 
 ### set alternate install dir ###
@@ -51,7 +51,7 @@ ok( $cb->reload_indices( update_source => 0 ),
 ### in EU::Installed (6871). And therefor we can't test uninstall() or any of
 ### the EU::Installed functions. So, let's just install into sitelib... =/
 #my $prefix  = File::Spec->rel2abs( File::Spec->catdir(cwd(),'dummy-perl') );
-#my $rv = $cb->configure_object->set_conf( makemakerflags => "PREFIX=$prefix" );       
+#my $rv = $cb->configure_object->set_conf( makemakerflags => "PREFIX=$prefix" );
 #ok( $rv,                        "Alternate install path set" );
 
 ### enable signature checks ###
@@ -63,35 +63,35 @@ my $mod = $cb->module_tree('Text::Bastardize');
 ### format_available tests ###
 {   ok( CPANPLUS::Dist::MM->format_available,
                                 "Format is available" );
-    
+
     ### whitebox test!
     {   local $^W;
         local *CPANPLUS::Dist::MM::can_load = sub { 0 };
         ok(!CPANPLUS::Dist::MM->format_available,
                                 "   Making format unavailable" );
     }
-    
+
     ### test if the error got logged ok ###
     like( CPANPLUS::Error->stack_as_string,
           qr/You do not have .+?'CPANPLUS::Dist::MM' not available/s,
                                 "   Format failure logged" );
 
     ### flush the stack ###
-    CPANPLUS::Error->flush;       
+    CPANPLUS::Error->flush;
 }
 
 ok( $mod->fetch,                "Fetching module" );
 ok( $mod->extract,              "Extracting module" );
 
 ok( $mod->test,                 "Testing module" );
-ok( $mod->status->dist_cpan->status->test,  
+ok( $mod->status->dist_cpan->status->test,
                                 "   Test success registered as status" );
 
 ok( $mod->dist,                 "Building distribution" );
 ok( $mod->status->dist_cpan,    "   Dist registered as status" );
 isa_ok( $mod->status->dist_cpan,    "CPANPLUS::Dist::MM" );
 
-### flush the lib cache 
+### flush the lib cache
 ### otherwise, cpanplus thinks the module's already installed
 ### since the blib is already in @INC
 $cb->_flush( list => [qw|lib|] );
@@ -104,7 +104,7 @@ SKIP: {
 
     skip(q[Probably no permissions to install, skipping], 10)
         if $noperms;
-    
+
     ok( $mod->install( force =>1 ),
                                 "Installing module" );
     ok( $mod->status->installed,"   Module installed according to status" );
@@ -114,53 +114,53 @@ SKIP: {
         skip("makemakerflags set -- probably EU::Installed tests will fail", 8)
             if $conf->get_conf('makemakerflags');
 
-        skip("Old perl on cygwin detected -- tests will fail due to know bugs", 8) 
+        skip("Old perl on cygwin detected -- tests will fail due to know bugs", 8)
             if ON_OLD_CYGWIN;
-    
+
         {   ### validate
             my @missing = $mod->validate;
 
             is_deeply( \@missing, [],
                                     "No missing files" );
         }
-        
+
         {   ### files
             my @files = $mod->files;
-            
+
             ### number of files may vary from OS to OS
             ok( scalar(@files),     "All files accounted for" );
             ok( grep( /Bastardize\.pm/, @files),
                                     "   Found the module" );
-            
+
             ### XXX does this work on all OSs?
             #ok( grep( /man/, @files ),
-            #                        "   Found the manpage" );                                        
-        }       
-         
-        {   ### packlist 
+            #                        "   Found the manpage" );
+        }
+
+        {   ### packlist
             my ($obj) = $mod->packlist;
             isa_ok( $obj,           "ExtUtils::Packlist" );
         }
-        
+
         {   ### directory_tree
             my @dirs = $mod->directory_tree;
             ok( scalar(@dirs),      "Directory tree obtained" );
-            
+
             my $found;
             for my $dir (@dirs) {
                 ok( -d $dir,        "   Directory exists" );
-                
-                my $file = File::Spec->catfile( $dir, "Bastardize.pm" );  
+
+                my $file = File::Spec->catfile( $dir, "Bastardize.pm" );
                 $found = $file if -e $file;
             }
-            
+
             ok( -e $found,          "   Module found" );
-        }                                
-    
+        }
+
         SKIP: {
             skip("Probably no permissions to uninstall", 1)
                 if $noperms;
-        
+
             ok( $mod->uninstall,    "Uninstalling module" );
         }
     }
@@ -169,8 +169,8 @@ SKIP: {
 ### test exceptions in Dist::MM->create ###
 {   ok( $mod->status->mk_flush, "Old status info flushed" );
     my $dist = CPANPLUS::Dist->new( module => $mod,
-                                    format => 'makemaker' );
-                                    
+                                    format => INSTALLER_MM );
+
     ok( $dist,                  "New dist object made" );
     ok(!$dist->create,          "   Dist->create failed" );
     like( CPANPLUS::Error->stack_as_string, qr/No dir found to operate on/s,
@@ -178,8 +178,8 @@ SKIP: {
 
     ### manually set the extract dir ###
     $mod->status->extract($0);
-    
-    ok(!$dist->create,          "   Dist->create failed" );                                 
+
+    ok(!$dist->create,          "   Dist->create failed" );
     like( CPANPLUS::Error->stack_as_string, qr/Could not chdir/s,
                                 "   Failure logged" );
 }
@@ -191,13 +191,13 @@ SKIP: {
     ok( $mod->status->mk_flush, "Old status info flushed" );
     ok( $mod->fetch,            "Module fetched again" );
     ok( $mod->extract,          "Module extracted again" );
-    
+
     ### cheat and add fake prereqs ###
     $mod->status->prereqs( { strict => '0.001', Carp => '0.002' } );
 
     my $makefile_pl = MAKEFILE_PL->( $mod->status->extract );
     my $makefile    = MAKEFILE->(    $mod->status->extract );
-    
+
     my $dist        = $mod->dist;
     ok( $dist,                  "Dist object built" );
 
@@ -208,15 +208,15 @@ SKIP: {
     like( CPANPLUS::Error->stack_as_string, qr/Already created/,
                                 "   Prior existance noted" );
 
-    ### ok, unlink the makefile.pl, now really write one 
-    unlink $makefile;      
+    ### ok, unlink the makefile.pl, now really write one
+    unlink $makefile;
 
     ok( unlink($makefile_pl),   "Deleting Makefile.PL");
     ok( !-s $makefile_pl,       "   Makefile.PL deleted" );
     ok( !-s $makefile,          "   Makefile deleted" );
     ok($dist->write_makefile_pl,"   Makefile.PL written" );
-    
-    ### see if we wrote anything sensible 
+
+    ### see if we wrote anything sensible
     my $fh = OPEN_FILE->( $makefile_pl );
     ok( $fh,                    "Makefile.PL open for read" );
 
@@ -225,19 +225,19 @@ SKIP: {
                                 "   Autogeneration noted" );
     like( $str, '/'. $mod->module .'/',
                                 "   Contains module name" );
-    like( $str, '/'. quotemeta($mod->version) . '/',       
+    like( $str, '/'. quotemeta($mod->version) . '/',
                                 "   Contains version" );
     like( $str, '/'. $mod->author->author .'/',
                                 "   Contains author" );
     like( $str, '/PREREQ_PM/',  "   Contains prereqs" );
     like( $str, qr/Carp.+0.002/,"   Contains prereqs" );
     like( $str, qr/strict.+001/,"   Contains prereqs" );
-    
+
     close $fh;
 
     ### seems ok, now delete it again and go via install()
-    ### to see if it picks up on the missing makefile.pl and 
-    ### does the right thing 
+    ### to see if it picks up on the missing makefile.pl and
+    ### does the right thing
     ok( unlink($makefile_pl),   "Deleting Makefile.PL");
     ok( !-s $makefile_pl,       "   Makefile.PL deleted" );
     ok( $dist->status->mk_flush,"Dist status flushed" );
@@ -251,15 +251,15 @@ SKIP: {
     ### write a makefile.pl
     {   local $^W;
         local *CPANPLUS::Dist::MM::write_makefile_pl = sub { 1 };
-    
+
         unlink $makefile_pl;
-        unlink $makefile;      
+        unlink $makefile;
 
         ok(!-s $makefile_pl,        "Makefile.PL deleted" );
         ok(!-s $makefile,           "Makefile deleted" );
         ok( $dist->status->mk_flush,"Dist status flushed" );
         ok(!$dist->create,          "   Dist->create failed" );
-        like( CPANPLUS::Error->stack_as_string, 
+        like( CPANPLUS::Error->stack_as_string,
               qr/Could not find 'Makefile.PL'/i,
                                     "   Missing Makefile.PL noted" );
         is( $dist->status->makefile, 0,
@@ -268,27 +268,27 @@ SKIP: {
 
     ### now let's write a makefile.pl that just does 'die'
     {   local $^W;
-        local *CPANPLUS::Dist::MM::write_makefile_pl = sub {  
+        local *CPANPLUS::Dist::MM::write_makefile_pl = sub {
                 my $dist = shift; my $self = $dist->parent;
-                my $fh = OPEN_FILE->( 
+                my $fh = OPEN_FILE->(
                             MAKEFILE_PL->($self->status->extract), '>' );
                 print $fh "die '$0'";
                 close $fh;
             };
-    
+
         ### there's no makefile.pl now, since the previous test failed
         ### to create one
         #ok( -e $makefile_pl,        "Makefile.PL exists" );
         #ok( unlink($makefile_pl),   "   Deleting Makefile.PL");
         ok(!-s $makefile_pl,        "Makefile.PL deleted" );
         ok( $dist->status->mk_flush,"Dist status flushed" );
-        ok(!$dist->create,          "   Dist->create failed" );    
+        ok(!$dist->create,          "   Dist->create failed" );
         like( CPANPLUS::Error->stack_as_string, qr/Could not run/s,
                                     "   Logged failed 'perl Makefile.PL'" );
         is( $dist->status->makefile, 0,
-                                    "   Did not manage to create Makefile" );    
+                                    "   Did not manage to create Makefile" );
     }
-    
+
     ### clean up afterwards ###
     ok( unlink($makefile_pl),   "Deleting Makefile.PL");
     $dist->status->mk_flush;

@@ -35,8 +35,8 @@ CPANPLUS::Internals::Source
 CPANPLUS::Internals::Source controls the updating of source files and
 the parsing of them into usable module/author trees to be used by
 C<CPANPLUS>.
- 
-Functions exist to check if source files are still C<good to use> as 
+
+Functions exist to check if source files are still C<good to use> as
 well as update them, and then parse them.
 
 The flow looks like this:
@@ -52,7 +52,7 @@ The flow looks like this:
                 $cb->__retrieve_source
                 $cb->__create_dslip_tree
                     $cb->__retrieve_source
-    $cb->_save_source     
+    $cb->_save_source
 
     $cb->_dslip_defs
 
@@ -129,12 +129,12 @@ sub _check_trees {
     my $update_source;
     my $verbose;
     my $path;
-    
+
     my $tmpl = {
-        path            => { default => $conf->get_conf('base'), 
-                             store => \$path       
+        path            => { default => $conf->get_conf('base'),
+                             store => \$path
                         },
-        verbose         => { default => $conf->get_conf('verbose'), 
+        verbose         => { default => $conf->get_conf('verbose'),
                              store => \$verbose
                         },
         update_source   => { default => 0, store => \$update_source },
@@ -145,10 +145,10 @@ sub _check_trees {
     ### if the user never wants to update their source without explicitly
     ### telling us, shortcircuit here
     return 1 if $conf->get_conf('no_update') && !$update_source;
-   
+
     ### a check to see if our source files are still up to date ###
-    msg( loc("Checking if source files are up to date"), $verbose ); 
-        
+    msg( loc("Checking if source files are up to date"), $verbose );
+
     my $uptodate = 1; # default return value
 
     for my $name (qw[auth dslip mod]) {
@@ -169,7 +169,7 @@ sub _check_trees {
 
 =head2 $cb->__check_uptodate( file => $file, name => $name, [update_source => BOOL, verbose => BOOL] )
 
-C<__check_uptodate> checks if a given source file is still up-to-date 
+C<__check_uptodate> checks if a given source file is still up-to-date
 and if not, or when C<update_source> is true, will re-fetch the source
 file.
 
@@ -183,7 +183,7 @@ The source file to check.
 
 =item name
 
-The internal shortcut name for the source file (used for config 
+The internal shortcut name for the source file (used for config
 lookups).
 
 =item update_source
@@ -206,7 +206,7 @@ sub __check_uptodate {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
-    
+
 
     my $tmpl = {
         file            => { required => 1 },
@@ -252,7 +252,7 @@ It takes the following arguments:
 
 =item name
 
-The internal shortcut name for the source file (used for config 
+The internal shortcut name for the source file (used for config
 lookups).
 
 =item path
@@ -274,7 +274,7 @@ sub _update_source {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
-    
+
 
     my $tmpl = {
         name    => { required => 1 },
@@ -301,16 +301,16 @@ sub _update_source {
                         package => $file,
                         _id     => $self->_id,
                     );
-        
+
         ### can't use $fake->fetch here, since ->parent won't work --
         ### the sources haven't been saved yet
         my $rv = $self->_fetch(
                     module      => $fake,
                     fetchdir    => $path,
-                    force       => 1,        
+                    force       => 1,
                 );
 
-                    
+
         unless ($rv) {
             error loc("Couldn't fetch '%1'", $file);
             return;
@@ -320,7 +320,7 @@ sub _update_source {
         ### works on *nix too, good fix -Kane
         utime ( $now, $now, File::Spec->catfile($path, $file) ) or
             error loc("Couldn't touch %1", $file);
-    
+
     }
     return 1;
 }
@@ -335,7 +335,7 @@ It takes the following arguments:
 
 =over 4
 
-=item uptodate 
+=item uptodate
 
 Indicates whether any on disk caches are still ok to use.
 
@@ -347,7 +347,7 @@ The absolute path to the directory holding the source files.
 
 A boolean flag indicating whether or not to be verbose.
 
-=item use_stored   
+=item use_stored
 
 A boolean flag indicating whether or not it is ok to use previously
 stored trees. Defaults to true.
@@ -384,13 +384,13 @@ sub _build_trees {
     ### build the trees ###
     $self->{_authortree} =  $stored->{_authortree} ||
                             $self->__create_author_tree(
-                                    uptodate    => $uptodate, 
+                                    uptodate    => $uptodate,
                                     path        => $path,
                                     verbose     => $args->{verbose},
                                 );
     $self->{_modtree}    =  $stored->{_modtree} ||
                             $self->_create_mod_tree(
-                                    uptodate    => $uptodate, 
+                                    uptodate    => $uptodate,
                                     path        => $path,
                                     verbose     => $args->{verbose},
                                 );
@@ -402,9 +402,9 @@ sub _build_trees {
     #$self->_save_source( map { $_ => $args->{$_} } qw[path verbose] );
 
     ### still necessary? can only run one instance now ###
-    ### will probably stay that way --kane    
+    ### will probably stay that way --kane
 #     my $id = $self->_store_id( $self );
-# 
+#
 #     unless ( $id == $self->_id ) {
 #         error loc("IDs do not match: %1 != %2. Storage failed!", $id, $self->_id);
 #     }
@@ -460,13 +460,13 @@ sub __retrieve_source {
     my $args = check( $tmpl, \%hash ) or return;
 
     ### check if we can retrieve a frozen data structure with storable ###
-    my $storable = can_load( modules => {'Storable' => '0.0'} ) 
+    my $storable = can_load( modules => {'Storable' => '0.0'} )
                         if $conf->get_conf('storable');
 
     return unless $storable;
-    
+
     ### $stored is the name of the frozen data structure ###
-    my $stored = File::Spec->rel2abs(           
+    my $stored = File::Spec->rel2abs(
                     File::Spec->catfile(
                                 $args->{path},      #base dir
                                 #$args->{name}       #file
@@ -476,10 +476,10 @@ sub __retrieve_source {
                                 . '.stored'         #append a suffix
                     )
                 );
-                
+
     if ($storable && -e $stored && -s _ && $args->{'uptodate'}) {
         msg loc("Retrieving %1", $stored), $args->{'verbose'};
-        
+
         my $href = Storable::retrieve($stored);
         return $href;
     } else {
@@ -488,12 +488,12 @@ sub __retrieve_source {
 }
 
 =pod
- 
+
 =head2 $cb->_save_source([verbose => BOOL, path => $path])
 
-This method saves all the parsed trees in I<storable>d format if 
-C<Storable> is available. 
- 
+This method saves all the parsed trees in I<storable>d format if
+C<Storable> is available.
+
 It takes the following arguments:
 
 =over 4
@@ -512,13 +512,13 @@ Will get information from the config file by default.
 
 Returns true on success, false on failure.
 
-=cut 
- 
+=cut
+
 sub _save_source {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
-    
+
 
     my $tmpl = {
         path     => { default => $conf->get_conf('base'), allow => DIR_EXISTS },
@@ -529,10 +529,10 @@ sub _save_source {
     my $args = check( $tmpl, \%hash ) or return;
 
     my $aref = [qw[_modtree _authortree]];
-    
+
     ### check if we can retrieve a frozen data structure with storable ###
     my $storable;
-    $storable = can_load( modules => {'Storable' => '0.0'} ) 
+    $storable = can_load( modules => {'Storable' => '0.0'} )
                     if $conf->get_conf('storable');
     return unless $storable;
 
@@ -570,13 +570,13 @@ sub _save_source {
 
     return $flag ? 0 : 1;
 }
- 
- 
+
+
 =pod
-    
+
 =head2 $cb->__create_author_tree([path => $path, uptodate => BOOL, verbose => BOOL])
 
-This method opens a source files and parses its contents into a 
+This method opens a source files and parses its contents into a
 searchable author-tree or restores a file-cached version of a
 previous parse, if the sources are uptodate and the file-cache exists.
 
@@ -608,7 +608,7 @@ sub __create_author_tree() {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
-    
+
 
     my $tmpl = {
         path     => { default => $conf->get_conf('base') },
@@ -619,24 +619,24 @@ sub __create_author_tree() {
     my $args = check( $tmpl, \%hash ) or return;
     my $tree = {};
     my $file = File::Spec->catfile(
-                                $args->{path}, 
+                                $args->{path},
                                 $conf->_get_source('auth')
                             );
 
     msg(loc("Rebuilding author tree, this might take a while"),
         $args->{verbose});
 
-    ### extract the file ###                        
+    ### extract the file ###
     my $ae      = Archive::Extract->new( archive => $file ) or return;
     my $out     = STRIP_GZ_SUFFIX->($file);
-    
+
     ### make sure to set the PREFER_BIN flag if desired ###
     {   local $Archive::Extract::PREFER_BIN = $conf->get_conf('prefer_bin');
         $ae->extract( to => $out )                              or return;
     }
-    
+
     my $cont    = $self->_get_file_contents( file => $out ) or return;
-    
+
     ### don't need it anymore ###
     unlink $out;
 
@@ -645,7 +645,7 @@ sub __create_author_tree() {
                                     (\S+) \s+
                                     "\s* ([^\"\<]+?) \s* <(.+)> \s*"
                                 /x;
-                                  
+
         $tree->{$id} = CPANPLUS::Module::Author->new(
             author  => $name,           #authors name
             email   => $email,          #authors email address
@@ -662,7 +662,7 @@ sub __create_author_tree() {
 
 =head2 $cb->_create_mod_tree([path => $path, uptodate => BOOL, verbose => BOOL])
 
-This method opens a source files and parses its contents into a 
+This method opens a source files and parses its contents into a
 searchable module-tree or restores a file-cached version of a
 previous parse, if the sources are uptodate and the file-cache exists.
 
@@ -695,7 +695,7 @@ sub _create_mod_tree {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
-    
+
 
     my $tmpl = {
         path     => { default => $conf->get_conf('base') },
@@ -712,7 +712,7 @@ sub _create_mod_tree {
 
     my $dslip_tree = $self->__create_dslip_tree( %$args );
 
-    ### extract the file ###                        
+    ### extract the file ###
     my $ae      = Archive::Extract->new( archive => $file ) or return;
     my $out     = STRIP_GZ_SUFFIX->($file);
 
@@ -728,7 +728,7 @@ sub _create_mod_tree {
 
     my $tree = {};
     my $flag;
-    
+
     for ( split /\n/, $cont ) {
 
         ### quick hack to read past the header of the file ###
@@ -745,7 +745,7 @@ sub _create_mod_tree {
         ### filter out the author and filename as well ###
         ### authors can apparently have digits in their names,
         ### and dirs can have dots... blah!
-        my ($author, $package) = $data[2] =~ 
+        my ($author, $package) = $data[2] =~
                 m|  [A-Z\d-]/
                     [A-Z\d-]{2}/
                     ([A-Z\d-]+) (?:/[\S]+)?/
@@ -762,12 +762,12 @@ sub _create_mod_tree {
                         $author, $data[0] ) );
             next;
         }
-        
+
         ### adding the dslip info
         ### probably can use some optimization
         my $dslip;
         for my $item ( qw[ statd stats statl stati ] ) {
-            ### checking if there's an entry in the dslip info before 
+            ### checking if there's an entry in the dslip info before
             ### catting it on. appeasing warnings this way
             $dslip .=   $dslip_tree->{ $data[0] }->{$item}
                             ? $dslip_tree->{ $data[0] }->{$item}
@@ -780,11 +780,11 @@ sub _create_mod_tree {
                 version     => $data[1],    # version number
                 path        => File::Spec::Unix->catfile(
                                     $conf->_get_mirror('base'),
-                                    $data[2],   
+                                    $data[2],
                                 ),          # extended path on the cpan mirror,
                                             # like /A/AB/ABIGAIL
                 comment     => $data[3],    # comment on the module
-                author      => $self->author_tree($author),  
+                author      => $self->author_tree($author),
                 package     => $package,    # package name, like
                                             # 'foo-bar-baz-1.03.tar.gz'
                 description => $dslip_tree->{ $data[0] }->{'description'},
@@ -802,7 +802,7 @@ sub _create_mod_tree {
 
 =head2 $cb->__create_dslip_tree([path => $path, uptodate => BOOL, verbose => BOOL])
 
-This method opens a source files and parses its contents into a 
+This method opens a source files and parses its contents into a
 searchable dslip-tree or restores a file-cached version of a
 previous parse, if the sources are uptodate and the file-cache exists.
 
@@ -834,7 +834,7 @@ sub __create_dslip_tree {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
-    
+
     my $tmpl = {
         path     => { default => $conf->get_conf('base') },
         verbose  => { default => $conf->get_conf('verbose') },
@@ -846,17 +846,17 @@ sub __create_dslip_tree {
     ### get the file name of the source ###
     my $file = File::Spec->catfile($args->{path}, $conf->_get_source('dslip'));
 
-    ### extract the file ###                        
+    ### extract the file ###
     my $ae      = Archive::Extract->new( archive => $file ) or return;
     my $out     = STRIP_GZ_SUFFIX->($file);
-                  
+
     ### make sure to set the PREFER_BIN flag if desired ###
     {   local $Archive::Extract::PREFER_BIN = $conf->get_conf('prefer_bin');
         $ae->extract( to => $out )                              or return;
-    } 
+    }
 
     my $in      = $self->_get_file_contents( file => $out ) or return;
-    
+
     ### don't need it anymore ###
     unlink $out;
 
@@ -891,11 +891,11 @@ sub __create_dslip_tree {
     {   #local $@; can't use this, it's buggy -kane
 
         $cols = eval $ds_one;
-        error( loc("Error in eval of dslip source files: %1", $@) ) if $@; 
-       
+        error( loc("Error in eval of dslip source files: %1", $@) ) if $@;
+
         $data = eval $ds_two;
-        error( loc("Error in eval of dslip source files: %1", $@) ) if $@; 
-       
+        error( loc("Error in eval of dslip source files: %1", $@) ) if $@;
+
     }
 
     my $tree = {};
@@ -917,8 +917,8 @@ sub __create_dslip_tree {
 
 =head2 $cb->_dslip_defs ()
 
-This function returns the definition structure (ARRAYREF) of the 
-dslip tree. 
+This function returns the definition structure (ARRAYREF) of the
+dslip tree.
 
 =cut
 

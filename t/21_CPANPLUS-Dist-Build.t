@@ -3,17 +3,18 @@
 BEGIN { chdir 't' if -d 't' };
 
 ### this is to make devel::cover happy ###
-BEGIN { 
+BEGIN {
     use File::Spec;
     require lib;
     for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
 }
-    
+
 use strict;
 use CPANPLUS::inc;
 use CPANPLUS::Configure;
 use CPANPLUS::Backend;
 use CPANPLUS::Dist::Build;
+use CPANPLUS::Internals::Constants;
 
 use Config;
 use Test::More 'no_plan';
@@ -35,7 +36,7 @@ $cb->_callbacks->send_test_report( sub { 0 } );
 $conf->set_conf( cpantest => 0 );
 
 ### start with fresh sources ###
-ok( $cb->reload_indices( update_source => 0 ),  
+ok( $cb->reload_indices( update_source => 0 ),
                                 "Rebuilding trees" );
 
 my $mod = $cb->module_tree('Devel::Caller::Perl');
@@ -43,15 +44,15 @@ my $mod = $cb->module_tree('Devel::Caller::Perl');
 ok( $mod->fetch,    "Fetching module" );
 ok( $mod->extract,  "Extracting module" );
 
-### config might determine to use Makefile.PL instead 
+### config might determine to use Makefile.PL instead
 ### but to test M::B we need build.pl ;)
 ok( $mod->get_installer_type( prefer_makefile => 0 ),
                                 "Getting build installer type" );
-is( $mod->status->installer_type, ($has_mb ? 'build' : 'makemaker'),
-                                "   Proper installer type found" );    
-                                    
+is( $mod->status->installer_type, ($has_mb ? INSTALLER_BUILD : INSTALLER_MM),
+                                "   Proper installer type found" );
+
 ok( $mod->test,                 "Testing module" );
-ok( $mod->status->dist_cpan->status->test,  
+ok( $mod->status->dist_cpan->status->test,
                                 "   Test success registered as status" );
 
 
@@ -60,18 +61,18 @@ ok( $mod->status->dist_cpan,    "   Dist registered as status" );
 isa_ok( $mod->status->dist_cpan,    "CPANPLUS::Dist::Build" );
 
 ### install tests
-SKIP: {   
+SKIP: {
     skip("Install tests require Module::Build 0.2606 or higher", 3)
         unless $Module::Build::VERSION >= '0.2606';
-    
+
     ### flush the lib cache
     ### otherwise, cpanplus thinks the module's already installed
     ### since the blib is already in @INC
     $cb->_flush( list => [qw|lib|] );
 
-    ### force the install, make sure the Dist::Build->install() 
+    ### force the install, make sure the Dist::Build->install()
     ### sub gets called
-    ok( $mod->install( force => 1, verbose => 1 ),"Installing module" ); # 
+    ok( $mod->install( force => 1, verbose => 1 ),"Installing module" ); #
     ok( $mod->status->installed,    "   Status says module installed" );
 
 
@@ -84,7 +85,7 @@ SKIP: {
     skip(q[Can't uninstall: Module::Build writes no .packlist], 1);
 
     ### XXX M::B doesn't seem to write into the .packlist...
-    ### can't figure out what to uninstall then... 
+    ### can't figure out what to uninstall then...
     ok( $mod->uninstall,  "Uninstalling module" );
 }
 

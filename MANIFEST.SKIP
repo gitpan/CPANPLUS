@@ -2,6 +2,7 @@
 ^t/dummy-cpanplus/(?!\.hidden)
 ^t/dummy-localmirror/authors/id
 ^t/dummy-localmirror/.*gz
+t/dummy-perl/*pm
 ^t/\..*
 ^\.#autoinstall
 ^pmfiles.dat$
@@ -19,3 +20,4 @@
 ^samples/
 ^bin/cpanpd\.pl
 ^CPANPLUS.*gz$
+\.DS_Store$

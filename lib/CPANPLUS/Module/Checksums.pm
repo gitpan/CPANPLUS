@@ -27,16 +27,16 @@ on error.
 
 The location of the checksums file is also stored as
     $mod->status->checksums
-    
-=cut    
+
+=cut
 
 sub checksums {
     my $mod = shift or return;
-    
+
     my $file = $mod->_get_checksums_file( @_ );
 
     return $mod->status->checksums( $file ) if $file;
-    
+
     return;
 }
 
@@ -46,17 +46,17 @@ sub _validate_checksum {
     my $self = shift;
     my $conf = $self->parent->configure_object;
     my %hash = @_;
-    
+
     my $verbose;
     my $tmpl = {
         verbose => {    default => $conf->get_conf('verbose'),
                         store   => \$verbose },
     };
 
-    check( $tmpl, \%hash ) or return;      
+    check( $tmpl, \%hash ) or return;
 
     ### if we can't check it, we must assume it's ok ###
-    return $self->status->checksum_ok(1) 
+    return $self->status->checksum_ok(1)
             unless can_load( modules => { 'Digest::MD5' => '0.0' } );
 
     my $file = $self->_get_checksums_file( verbose => $verbose ) or (
@@ -69,10 +69,10 @@ sub _validate_checksum {
         error(loc(q[Could not parse '%1' file], CHECKSUMS)), return );
 
     my $md5 = $href->{ $self->package }->{'md5'};
-    
+
     unless( defined $md5 ) {
         msg(loc("No 'md5' checksum known for '%1'",$self->package),$verbose);
-        
+
         return $self->status->checksum_ok(1);
     }
 
@@ -84,45 +84,45 @@ sub _validate_checksum {
 
     my $ctx = Digest::MD5->new;
     $ctx->addfile( $fh );
-    
+
     my $flag = $ctx->hexdigest eq $md5;
-    $flag 
+    $flag
         ? msg(loc("Checksum matches for '%1'", $self->package),$verbose)
         : error(loc("Checksum does not match for '%1': " .
-                    "MD5 is '%2' but should be '%3'",  
+                    "MD5 is '%2' but should be '%3'",
                     $self->package, $ctx->hexdigest, $md5),$verbose);
 
 
     return $self->status->checksum_ok(1) if $flag;
     return $self->status->checksum_ok(0);
-}   
+}
 
 
 ### fetches the module objects checksum file ###
 sub _get_checksums_file {
     my $self = shift;
     my %hash = @_;
-    
+
     my $clone = $self->clone;
     $clone->package( CHECKSUMS );
-    
+
     my $file = $clone->fetch( %hash, force => 1 ) or return;
-   
-    return $file; 
-}    
+
+    return $file;
+}
 
 sub _parse_checksums_file {
     my $self = shift;
     my %hash = @_;
-    
+
     my $file;
     my $tmpl = {
         file    => { required => 1, allow => FILE_READABLE, store => \$file },
-    };         
+    };
     my $args = check( $tmpl, \%hash );
-    
+
     my $fh = OPEN_FILE->( $file ) or return;
-    
+
     ### loop over the header, there might be a pgp signature ###
     my $signed;
     while (<$fh>) {
@@ -130,72 +130,72 @@ sub _parse_checksums_file {
         my $header = PGP_HEADER;        # but be tolerant of whitespace
         $signed = 1 if /^${header}\s*$/;# due to crossplatform linebreaks
    }
-    
+
     ### read the filehandle, parse it rather than eval it, even though it
     ### *should* be valid perl code
     my $dist;
     my $cksum = {};
     while (<$fh>) {
-        
+
         if (/^\s*'([^']+)' => \{\s*$/) {
             $dist = $1;
-        
+
         } elsif (/^\s*'([^']+)' => '?([^'\n]+)'?,?\s*$/ and defined $dist) {
             $cksum->{$dist}{$1} = $2;
-        
+
         } elsif (/^\s*}[,;]?\s*$/) {
             undef $dist;
-        
+
         } elsif (/^__END__\s*$/) {
             last;
-        
+
         } else {
             error( loc("Malformed %1 line: %2", CHECKSUMS, $_) );
         }
     }
-    
-    return $cksum;  
-}      
+
+    return $cksum;
+}
 
 sub _check_signature_for_checksum_file {
     my $self = shift;
-    
+
     my $conf = $self->parent->configure_object;
     my %hash = @_;
-    
-    ### you don't want to check signatures, 
+
+    ### you don't want to check signatures,
     ### so let's just return true;
     return 1 unless $conf->get_conf('signature');
-    
+
     my($force,$file,$verbose);
     my $tmpl = {
         file    => { required => 1, allow => FILE_READABLE, store => \$file },
         force   => { default => $conf->get_conf('force'), store => \$force },
         verbose => { default => $conf->get_conf('verbose'), store => \$verbose },
     };
-    
+
     my $args = check( $tmpl, \%hash ) or return;
-    
+
     my $fh = OPEN_FILE->($file) or return;
-   
-    my $signed; 
+
+    my $signed;
     while (<$fh>) {
         my $header = PGP_HEADER;
         $signed = 1 if /^$header$/;
     }
-    
+
     if ( !$signed ) {
-        msg(loc("No signature found in %1 file '%2'", 
+        msg(loc("No signature found in %1 file '%2'",
                 CHECKSUMS, $file), $verbose);
-        
+
         return 1 unless $force;
-        
-        error( loc( "%1 file '%2' is not signed -- aborting", 
+
+        error( loc( "%1 file '%2' is not signed -- aborting",
                     CHECKSUMS, $file ) );
-        return;             
-    
+        return;
+
     }
-    
+
     if( can_load( modules => { 'Module::Signature' => '0.06' } ) ) {
         # local $Module::Signature::SIGNATURE = $file;
         # ... check signatures ...

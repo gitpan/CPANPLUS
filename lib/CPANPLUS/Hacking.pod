@@ -6,7 +6,7 @@ CPANPLUS::Hacking
 
 =head1 DESCRIPTION
 
-This document attempts to describe how to easiest develop with the 
+This document attempts to describe how to easiest develop with the
 CPANPLUS environment, how certain things work and why.
 
 This is basically a quick-start guide to people who want to add
@@ -15,16 +15,16 @@ features or patches to CPANPLUS.
 =head1 OBTAINING CPANPLUS
 
 CPANPLUS offers snapshots from the stable and unstable branches.
-After every patch to either of the branches, the snapshot is 
+After every patch to either of the branches, the snapshot is
 automatically updated.
 
 You can find the stable branch here (which should be equal to the
 CPAN release):
     http://p4.elixus.org/snap/cpanplus-dist.tar.gz
-    
+
 And the development branch here:
     http://p4.elixus.org/snap/cpanplus-devel.tar.gz
-    
+
 =head1 INSTALLING CPANPLUS
 
 CPANPLUS follows the standard perl module installation process:
@@ -32,14 +32,14 @@ CPANPLUS follows the standard perl module installation process:
     make
     make test
     mkae install
-    
-=head1 CONFIGURING CPANPLUS    
-    
+
+=head1 CONFIGURING CPANPLUS
+
 When running C<perl Makefile.PL> you will be prompted to configure.
 If you have already done so, and merely wish to update the C<Makefile>,
 simply run:
     perl Makefile.PL JFDI=1
-    
+
 This will keep your configuration intact. Note however, if there are
 changes to the default configuration file C<Config.pm-orig>, you should
 either delete your current config file and reconfigure, or patch your
@@ -47,7 +47,7 @@ config file from the new entries in C<Config.pm-orig>.
 
 =head1 RUNNING CPANPLUS FROM DEVELOPMENT ENVIRONMENT
 
-If you'd rather not install the development version to your 
+If you'd rather not install the development version to your
 C<site_perl> directory, that's no problem. You can set your C<PERL5LIB>
 environment variable to CPANPLUS' C<lib> directory, and you can run it
 from there.
@@ -57,10 +57,10 @@ from there.
 Tests are what tells us if CPANPLUS is working. If a test is not working,
 try to run it explicilty like this:
     perl -I/path/to/cpanplus/lib t/XX_name_of_test.t 1
-    
-The extra '1' makes sure that all the messages and errors (they might 
+
+The extra '1' makes sure that all the messages and errors (they might
 be errors we're testing for!) are being printed rather than kept quiet.
-This is a great way to find out the context of any failures that may 
+This is a great way to find out the context of any failures that may
 occur.
 
 If you believe this test failure proves a bug in CPANPLUS, the long
@@ -71,11 +71,11 @@ bug report.
 
 Sometimes you might find bugs in CPANPLUS' behaviour. If you encounter
 these in a development snapshot, we'd appreciate a complete patch (as
-described below in the C<SENDING PATCHES> section. 
+described below in the C<SENDING PATCHES> section.
 
-If it's way over your head, then of course reporting the bug is always 
-better than not reporting it at all. Before you do so though, make 
-sure you have the B<latest> development snapshot, and the bug still 
+If it's way over your head, then of course reporting the bug is always
+better than not reporting it at all. Before you do so though, make
+sure you have the B<latest> development snapshot, and the bug still
 persists there. If so, report the bug to this address:
 
     cpanplus-devel@lists.sourceforge.net
@@ -86,7 +86,7 @@ A good C<patch> would have the following characteristics:
 
 =item Problem description
 
-Describe clearly what the bug is you found, and what it should have 
+Describe clearly what the bug is you found, and what it should have
 done instead.
 
 =item Program demonstrating the bug
@@ -126,7 +126,7 @@ We prefer patches in the following format:
 
 =back
 
-You will always be informed if a patch is applied or rejected, and in 
+You will always be informed if a patch is applied or rejected, and in
 case of rejection why that is (perhaps you can tweak the patch to have
 it accepted after all).
 

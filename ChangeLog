@@ -1,7 +1,37 @@
+Changes for 0.050_03    Fri Dec 17 13:54:48 CET 2004
+====================================================
+
+*   Move to Module::Pluggable to find CPANPLUS::Dist::*
+    plugins.
+*   Make CPANPLUS::Dist::* generate a few required accessors
+    itself, rather than making all submodules do it themselves
+*   Rename cpan2dist.pl to cpan2dist to be more 'unixish'
+*   Improve cpan2dist diagnostics
+*   Add pod to cpan2dist
+*   Change config lay out for distribution types (incompatible
+    change -- will require reconfiguration)
+*   Add 2-way version checking so cpanplus + its config can
+    both verify if their counterparts are compatible
+*   Move logic for 'best_path_to_module_build' to Module.pm    
+*   Make logic to detect installed modules follow symlinks
+    (required for among others, debian)
+*   'force install' will try even harder to install a module
+    if it can, even if it previously failed.
+*   Make test reports report the version of CPANPLUS, not the
+    version of the constants file the headers are in.
+*   Update various bundled modules to their newest versions
+*   Stringify '$@' to avoid clobbering by sub routine calls
+*   Various documentation improvements
+*   Various spelling fixes
+*   Clean up trailing whitespace from sources
+*   Add more files to MANIFEST.skip
+*   Update MANIFEST
+
+
 Changes for 0.050_02    Fri Dec 10 15:03:39 CET 2004
 ====================================================
 
-*   Move CPANPLUS::Dist::(Deb|Ports) to it's on repository
+*   Move CPANPLUS::Dist::(Deb|Ports) to it's own repository
 *   Fix error when Test::Reporter is unavaliable
 *   Various spelling fixes
 *   Added CPANPLUS::Hacking pod with instructions how to hack on
