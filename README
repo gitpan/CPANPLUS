@@ -1,0 +1,54 @@
+# $File: //member/autrijus/cpanplus/dist/README $
+# $Revision: #4 $ $Change: 3550 $ $DateTime: 2002/03/26 09:28:17 $
+
+This is the README file for CPANPLUS, Ameliorated interface to
+the Comprehensive Perl Archive Network, by Jos Boumans.
+
+Please type "perldoc CPANPLUS" after installation to see the
+module usage information.
+
+### PLEASE NOTE ###################################################
+
+CPANPLUS will eventually be a full drop-in replacement for CPAN.pm.
+However, at this early stage in its life, you should *NOT* expect
+it to work just like CPAN.pm.
+
+###################################################################
+
+* Installation
+
+CPANPLUS uses the standard perl module install process:
+
+perl Makefile.PL
+make
+make test
+make install
+
+* Notes for Windows users
+
+If you are using Microsoft Windows, you'll probably need the 'nmake'
+utility before installation. It's available at:
+
+    ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe
+
+Please download the file, save it to your windows directory, and run it
+from there; that will create the 'nmake.exe' file needed by CPANPLUS.
+
+* Contact
+
+CPANPLUS has several mailing lists you can write to:
+
+- General suggestions: <cpanplus-info@lists.sourceforge.net>
+- Bug reporting:       <cpanplus-bugs@lists.sourceforge.net>
+- Development list:    <cpanplus-devel@lists.sourceforge.net>
+
+News and project updates are available at http://cpanplus.sf.net/.
+
+* Copyright
+
+Copyright 2001 by Jos Boumans <kane@cpan.org>.
+
+All rights reserved.  You can redistribute and/or modify
+this bundle under the same terms as Perl itself.
+
+See <http://www.perl.com/perl/misc/Artistic.html>.

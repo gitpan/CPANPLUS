@@ -1,0 +1,34 @@
+Changes					Changelog
+MANIFEST				This list of files
+Makefile.PL				Makefile writer
+README					The Instructions
+TODO					Things to do
+bin/cpanp				The CPANPLUS launcher
+inc/ExtUtils/AutoInstall.pm		Support file - Not installed
+lib/CPANPLUS.pm				Command-line access to CPANPLUS
+lib/CPANPLUS/Backend.pm			Object-oriented interface for CPAN++
+lib/CPANPLUS/Config.pm-orig		Skeleton of the Configuration file
+lib/CPANPLUS/Configure.pm		Configuration Object
+lib/CPANPLUS/Configure/Setup.pm		Interactive Setup
+lib/CPANPLUS/Error.pm			Error handling for the CPAN++ interface
+lib/CPANPLUS/FAQ.pod			Frequently Asked Questions
+lib/CPANPLUS/Internals.pm		Internal processing code
+lib/CPANPLUS/Internals/Author.pm	Author objects
+lib/CPANPLUS/Internals/Extract.pm	Extract-related code
+lib/CPANPLUS/Internals/Fetch.pm		Fetch-related code
+lib/CPANPLUS/Internals/Install.pm	Install-related code
+lib/CPANPLUS/Internals/Make.pm		Make-related code
+lib/CPANPLUS/Internals/Module.pm	Module objects
+lib/CPANPLUS/Internals/Search.pm	Search-related code
+lib/CPANPLUS/Internals/Source.pm	Source-related code
+lib/CPANPLUS/Shell.pm			Command-line interface for CPAN++
+lib/CPANPLUS/Shell/Default.pm		The default shell
+t/1-basic.t				Sanity test
+t/2-autoinstall.t			Autoinstaller test
+t/3-backend.t				Backend test
+t/lib/Test/Builder.pm			Support file - Not installed
+t/lib/Test/More.pm			Support file - Not installed
+t/lib/Test/Simple.pm			Support file - Not installed
+t/dummy-CPAN/authors/01mailrc.txt.gz		Test data file
+t/dummy-CPAN/modules/02packages.details.txt.gz	Test data file
+t/dummy-CPAN/modules/03modlist.data.gz		Test data file

@@ -1,0 +1,1378 @@
+____________________________________________________________________________
+[  3549] By: autrijus                              on 2002/03/26  09:13:51
+        Log: * This is CPANPLUS, version 0.01.
+	   - dist/BUGS
+____________________________________________________________________________
+[  3548] By: autrijus                              on 2002/03/26  09:09:27
+        Log: * last touches before 0.01.
+	  !> dist/lib/CPANPLUS/Backend.pm
+	  !> dist/lib/CPANPLUS/Configure/Setup.pm dist/lib/CPANPLUS/FAQ.pod
+	  !> dist/lib/CPANPLUS/Internals/Author.pm
+	  !> dist/lib/CPANPLUS/Internals/Module.pm
+____________________________________________________________________________
+[  3547] By: autrijus                              on 2002/03/26  08:56:25
+        Log: * kudra's final POD patch before 0.01.
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/FAQ.pod
+	   ! devel/lib/CPANPLUS/Internals/Author.pm
+	   ! devel/lib/CPANPLUS/Internals/Module.pm
+____________________________________________________________________________
+[  3546] By: autrijus                              on 2002/03/26  08:24:17
+        Log: * better hint for makemakerflags
+             * put the parameters in one line, and get the tenses fixed up
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3545] By: autrijus                              on 2002/03/26  08:03:20
+        Log: * 5.005 chokes on recreating Term::Readline::Perl::term
+	     object.
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3544] By: autrijus                              on 2002/03/26  07:48:03
+        Log: * The pre-0.01 mega bidirectional MFC, brings -devel and -dist
+	     in sync.
+	   ! devel/lib/CPANPLUS/Internals/Install.pm
+	   ! dist/lib/CPANPLUS/Configure/Setup.pm
+	   ! dist/lib/CPANPLUS/Internals/Fetch.pm
+	   ! dist/lib/CPANPLUS/Internals/Install.pm
+	  !> devel/lib/CPANPLUS/Configure/Setup.pm dist/TODO
+	  !> dist/lib/CPANPLUS/Backend.pm dist/lib/CPANPLUS/Configure.pm
+	  !> dist/lib/CPANPLUS/Internals/Extract.pm
+	  !> dist/lib/CPANPLUS/Internals/Make.pm
+	  !> dist/lib/CPANPLUS/Internals/Search.pm
+	  !> dist/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3543] By: autrijus                              on 2002/03/26  07:24:17
+        Log: * fix Make.pm so it won't call itself with proper Module
+	     objects
+             * retract last change; was false alarm due to this bug
+             * more clearly marked _install_module invocation for
+	     Backend.pm
+	   ! devel/Makefile.PL devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3542] By: autrijus                              on 2002/03/26  06:48:38
+        Log: * filehandle auto-vivification nonexistant in 5.005.
+	   ! devel/lib/CPANPLUS/Configure.pm
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+	   ! devel/lib/CPANPLUS/Internals/Extract.pm
+	   ! devel/lib/CPANPLUS/Internals/Install.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+	   ! devel/lib/CPANPLUS/Internals/Search.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3541] By: autrijus                              on 2002/03/26  06:32:22
+        Log: * Digest::MD5 doesn't like 5.005, so we don't recommend it for
+	     now.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3540] By: autrijus                              on 2002/03/26  04:28:49
+        Log: * MFC galore.
+	  +> dist/lib/CPANPLUS/FAQ.pod
+	  !> dist/MANIFEST dist/README dist/lib/CPANPLUS.pm
+	  !> dist/lib/CPANPLUS/Backend.pm dist/lib/CPANPLUS/Configure.pm
+	  !> dist/lib/CPANPLUS/Configure/Setup.pm
+	  !> dist/lib/CPANPLUS/Error.pm dist/lib/CPANPLUS/Internals.pm
+	  !> dist/lib/CPANPLUS/Internals/Author.pm
+	  !> dist/lib/CPANPLUS/Internals/Extract.pm
+	  !> dist/lib/CPANPLUS/Internals/Fetch.pm
+	  !> dist/lib/CPANPLUS/Internals/Install.pm
+	  !> dist/lib/CPANPLUS/Internals/Make.pm
+	  !> dist/lib/CPANPLUS/Internals/Module.pm
+	  !> dist/lib/CPANPLUS/Internals/Search.pm
+	  !> dist/lib/CPANPLUS/Internals/Source.pm
+	  !> dist/lib/CPANPLUS/Shell.pm dist/lib/CPANPLUS/Shell/Default.pm
+	  !> dist/t/1-basic.t dist/t/2-autoinstall.t dist/t/3-backend.t
+____________________________________________________________________________
+[  3539] By: autrijus                              on 2002/03/26  04:23:16
+        Log: * the FAQ is there.
+             * retro-nix INSTALL.
+	   + devel/lib/CPANPLUS/FAQ.pod
+	   - devel/INSTALL
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3538] By: autrijus                              on 2002/03/26  04:09:17
+        Log: * mention the mailing lists.
+	   ! devel/README
+____________________________________________________________________________
+[  3537] By: autrijus                              on 2002/03/26  04:07:05
+        Log: * nix the redundant INSTALL.
+             * update manifest and bugs file.
+	   - dist/INSTALL
+	   ! dist/BUGS dist/MANIFEST
+____________________________________________________________________________
+[  3536] By: autrijus                              on 2002/03/26  03:25:17
+        Log: * better email validation code courtesy of Jeffrey Friedl
+             * small nitpicking
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3535] By: autrijus                              on 2002/03/26  03:22:53
+        Log: * fix makemakerflag handling so user can set/display it
+	     properly
+             * if the value is undef, nix the '=' and keep the key only
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3534] By: autrijus                              on 2002/03/26  02:20:09
+        Log: * make 's' accept values with spaces.
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3533] By: autrijus                              on 2002/03/26  02:02:10
+        Log: * devnull is portable; close STDOUT may affect duping on
+	     Win32.
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3532] By: autrijus                              on 2002/03/25  23:57:41
+        Log: * pedantic message cleanup
+	   ! devel/lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3531] By: autrijus                              on 2002/03/25  21:24:35
+        Log: * oops. this is the real deal.
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3530] By: autrijus                              on 2002/03/25  21:22:43
+        Log: * the promised Make.pm patch; use _run() instead of system()
+             * use STDOUT duping to inhibit message on non-verbose messages
+             * let 'Makefile.PL'/'make test' be always verbose -- maybe
+	     interactive
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3529] By: autrijus                              on 2002/03/25  21:18:04
+        Log: * RCS header change: set everything to -tktext without
+	     $Author$.
+             * Unify the header comment's styles.
+	   ! devel/README devel/lib/CPANPLUS.pm
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Configure.pm
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+	   ! devel/lib/CPANPLUS/Error.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Internals/Author.pm
+	   ! devel/lib/CPANPLUS/Internals/Extract.pm
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+	   ! devel/lib/CPANPLUS/Internals/Install.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+	   ! devel/lib/CPANPLUS/Internals/Module.pm
+	   ! devel/lib/CPANPLUS/Internals/Search.pm
+	   ! devel/lib/CPANPLUS/Internals/Source.pm
+	   ! devel/lib/CPANPLUS/Shell.pm
+	   ! devel/lib/CPANPLUS/Shell/Classic.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm devel/lib/CPANPLUS/Tee.pm
+	   ! devel/t/1-basic.t devel/t/2-autoinstall.t devel/t/3-backend.t
+____________________________________________________________________________
+[  3528] By: jambe                                 on 2002/03/25  16:20:47
+        Log: Added friendly hint for MakeMaker Flags.
+	   ! dist/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3527] By: PROFIT                                on 2002/03/25  12:15:11
+        Log:              default shell's help() method was missing some of the
+	     supported functions.
+             please merge
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3526] By: autrijus                              on 2002/03/25  08:35:12
+        Log: * new release plan for the next 24 hours.
+             * mfc.
+	   ! dist/BUGS
+	  !> dist/lib/CPANPLUS/Config.pm-orig
+	  !> dist/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3525] By: autrijus                              on 2002/03/25  08:24:31
+        Log: * Better Guess from Timezone algorithm.
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3524] By: autrijus                              on 2002/03/25  08:07:01
+        Log: * cpan@plus.com should be cpanplus@example.com for netiquette.
+	   ! devel/lib/CPANPLUS/Config.pm-orig
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3518] By: autrijus                              on 2002/03/22  06:25:54
+        Log: * mfc.
+	  !> dist/lib/CPANPLUS.pm dist/lib/CPANPLUS/Configure.pm
+	  !> dist/lib/CPANPLUS/Internals/Author.pm
+	  !> dist/lib/CPANPLUS/Internals/Module.pm
+	  !> dist/lib/CPANPLUS/Shell.pm dist/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3517] By: autrijus                              on 2002/03/22  06:23:18
+        Log: * kudra's doc mega patch.
+	   ! devel/lib/CPANPLUS.pm devel/lib/CPANPLUS/Configure.pm
+	   ! devel/lib/CPANPLUS/Internals/Author.pm
+	   ! devel/lib/CPANPLUS/Internals/Module.pm
+	   ! devel/lib/CPANPLUS/Shell.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3516] By: autrijus                              on 2002/03/22  05:06:39
+        Log: * mfc.
+	  !> dist/lib/CPANPLUS.pm
+____________________________________________________________________________
+[  3515] By: jynnantonix                           on 2002/03/22  05:03:44
+        Log:              fixed the ambiguity between get and fetch in CPANPLUS.pm
+             get is now an alias to fetch()
+	   ! devel/lib/CPANPLUS.pm
+____________________________________________________________________________
+[  3514] By: autrijus                              on 2002/03/22  04:33:21
+        Log: * mfc last change.
+	  !> dist/lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  3513] By: autrijus                              on 2002/03/22  04:29:30
+        Log: * let Configure use Error.pm; promote the erros to fatal.
+	   ! devel/lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  3512] By: autrijus                              on 2002/03/22  04:23:57
+        Log: * Tee is not for -dist.
+	   ! dist/MANIFEST
+____________________________________________________________________________
+[  3510] By: autrijus                              on 2002/03/21  20:34:33
+        Log: * mfc all the -dist changes.
+	  !> dist/Makefile.PL dist/README dist/t/2-autoinstall.t
+	  !> dist/t/3-backend.t
+____________________________________________________________________________
+[  3509] By: autrijus                              on 2002/03/21  20:30:44
+        Log: * relax version requirements after checking the old versions
+	     work.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3508] By: autrijus                              on 2002/03/21  20:29:02
+        Log: * integrate mainline.
+	  !> devel/t/2-autoinstall.t
+____________________________________________________________________________
+[  3506] By: autrijus                              on 2002/03/21  20:20:04
+        Log: * <jos> that's test code and should not go in -dist imo...
+	   - dist/lib/CPANPLUS/Tee.pm
+	   ! dist/MANIFEST
+____________________________________________________________________________
+[  3505] By: autrijus                              on 2002/03/21  20:17:18
+        Log: * warnings message from Obra.
+	   ! devel/Makefile.PL devel/README
+____________________________________________________________________________
+[  3504] By: autrijus                              on 2002/03/21  20:15:46
+        Log: * test #3 broken by refactoring. fix.
+	   ! devel/t/3-backend.t
+____________________________________________________________________________
+[  3499] By: jynnantonix                           on 2002/03/21  03:24:46
+        Log: fixed the TODO, removed old entries, added new ones
+             this should be merged with the -dist
+	   ! devel/TODO
+____________________________________________________________________________
+[  3497] By: autrijus                              on 2002/03/20  21:35:50
+        Log: * Classics.pm not part of dist.
+	   ! dist/MANIFEST
+____________________________________________________________________________
+[  3496] By: autrijus                              on 2002/03/20  21:32:45
+        Log: * not part of dist.
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3484] By: autrijus                              on 2002/03/19  15:41:46
+        Log: * mfc (docs)
+	  !> dist/lib/CPANPLUS/Backend.pm dist/lib/CPANPLUS/Configure.pm
+	  !> dist/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3483] By: autrijus                              on 2002/03/19  15:40:45
+        Log: * =pod in in-style. my bad.
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  3482] By: autrijus                              on 2002/03/19  15:39:41
+        Log: * doc from kudra: "Shell/Default.pm patch"
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3481] By: autrijus                              on 2002/03/19  15:38:03
+        Log: * indent and whitespace fix for the last patch.
+	   ! devel/lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3480] By: autrijus                              on 2002/03/19  15:36:57
+        Log: * kudra: "new feature in backend: sub searches"
+	   ! devel/lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3479] By: autrijus                              on 2002/03/19  15:34:14
+        Log: * kudra's Configure doc.
+	   ! devel/lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  3478] By: autrijus                              on 2002/03/19  15:27:35
+        Log: * mfc.
+	  !> dist/lib/CPANPLUS/Backend.pm
+	  !> dist/lib/CPANPLUS/Internals/Author.pm
+	  !> dist/lib/CPANPLUS/Internals/Module.pm
+	  !> dist/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3445] By: autrijus                              on 2002/03/17  14:10:16
+        Log: * Classic.pm is not for this release.
+	   - dist/lib/CPANPLUS/Shell/Classic.pm
+	   ! dist/MANIFEST
+____________________________________________________________________________
+[  3444] By: PROFIT                                on 2002/03/17  08:19:08
+        Log: added internal documentation to Author and Module.pm
+             slight chagned returnvalues there.
+             Minor bug in backend fixed and a small help() error in
+	     default.pm
+	   ! devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Internals/Author.pm
+	   ! devel/lib/CPANPLUS/Internals/Module.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3443] By: autrijus                              on 2002/03/17  04:11:18
+        Log: * mfc.
+	  !> dist/lib/CPANPLUS/Backend.pm dist/lib/CPANPLUS/Internals.pm
+	  !> dist/lib/CPANPLUS/Internals/Author.pm
+	  !> dist/lib/CPANPLUS/Internals/Module.pm
+	  !> dist/lib/CPANPLUS/Internals/Search.pm
+	  !> dist/lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  3442] By: autrijus                              on 2002/03/17  04:06:23
+        Log: * jambe's todo turned to be fixed after all.
+	   ! dist/BUGS
+____________________________________________________________________________
+[  3439] By: PROFIT                                on 2002/03/16  02:58:45
+        Log:              This enables us to use the distributions and modules methods
+	     in respectively Module.pm and Author.pm
+             The problem was the passing around of configure/error objects
+	     and the author and module tree hashes.
+             Fixed this by building a hash in Internals.pm that stores
+	     them, linked to an ID of that object.
+             Might sound a bit hazy but the diff should explain =)
+             This should go in dist, since these methods were designed to
+	     be there.
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Internals/Author.pm
+	   ! devel/lib/CPANPLUS/Internals/Module.pm
+	   ! devel/lib/CPANPLUS/Internals/Search.pm
+	   ! devel/lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  3433] By: jynnantonix                           on 2002/03/15  02:31:48
+        Log: a bug in _ncftpget_get
+             && and 'and' dont have the same precedence we learned.
+             thanks to PETE SERGEANT!
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  3432] By: autrijus                              on 2002/03/15  01:22:23
+        Log: * false alarm. move along.
+	   ! dist/BUGS
+____________________________________________________________________________
+[  3431] By: autrijus                              on 2002/03/15  00:52:13
+        Log: * spellchecked
+	   ! dist/BUGS
+____________________________________________________________________________
+[  3430] By: autrijus                              on 2002/03/15  00:35:00
+        Log: * outstanding bugs for the branch.
+	   + dist/BUGS
+____________________________________________________________________________
+[  3429] By: autrijus                              on 2002/03/14  21:22:09
+        Log: * The CPANPLUS-0.01 Release Branch.
+	  +> (branch 38 files)
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3426] By: PROFIT                                on 2002/03/14  11:27:26
+        Log: fixed manifest so the new files are also in it
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3425] By: jynnantonix                           on 2002/03/14  09:46:19
+        Log: oooops, left a DUMPER in there by mistake
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  3424] By: jynnantonix                           on 2002/03/14  09:41:43
+        Log: did some testing on Module.pm and Author.pm, made sure all
+	     other modules were compatible, which required some changes in
+	     backend, and some minor ones in Fetch and Make
+	   ! devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Internals/Author.pm
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+	   ! devel/lib/CPANPLUS/Internals/Module.pm
+____________________________________________________________________________
+[  3420] By: jambe                                 on 2002/03/13  16:06:21
+        Log: Added configure_object() method and documentation. 
+	     Spellchecked.
+	   ! devel/lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3419] By: jambe                                 on 2002/03/13  16:05:13
+        Log: Added prompts for 'lib' and 'makemakerflags'.  Removed prompt
+	     and logic for _build{perl}.  Changed private method names to
+	     start with '_'.  Spellchecked.
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3418] By: jambe                                 on 2002/03/13  16:01:13
+        Log: Removed 'perl' from _build subtype.  Added '_' in front of
+	     dump() method.  Changed 'return 1;' to '1;' at end of file
+	     (newbie error!)  Spellchecked.
+	   ! devel/lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  3417] By: jynnantonix                           on 2002/03/13  07:36:53
+        Log: We now have module and author objects, so taht for example:
+             $module_object->install works, and also
+	     $author_object->distributions
+                          more refactoring of internals and some small adaptations to
+	     make these objects work with the rest of the code
+	   + devel/lib/CPANPLUS/Internals/Author.pm
+	   + devel/lib/CPANPLUS/Internals/Module.pm
+	   ! devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Internals/Install.pm
+	   ! devel/lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  3412] By: jynnantonix                           on 2002/03/13  00:48:20
+        Log: i further refactored internals, which essentially just means
+	     putting stuff in seperate files.
+             Internals.pm still ISA Internals::*
+             so there should be no problems.
+             i have tested and found none, but any glitches noticed should
+	     of course be reported
+	   + devel/lib/CPANPLUS/Internals/Install.pm
+	   + devel/lib/CPANPLUS/Internals/Search.pm
+	   + devel/lib/CPANPLUS/Internals/Source.pm
+	   ! devel/MANIFEST devel/lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  3408] By: autrijus                              on 2002/03/12  16:16:18
+        Log: * make autoinstall happier; it was failing on fresh installs.
+	   ! devel/Makefile.PL devel/inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  3407] By: autrijus                              on 2002/03/12  13:36:22
+        Log: * delayed until kane gets around to submit
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3406] By: jynnantonix                           on 2002/03/12  12:30:31
+        Log: patched backend's install check
+             added files to manifest
+	   ! devel/MANIFEST devel/lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3405] By: jynnantonix                           on 2002/03/12  05:14:15
+        Log: - package CPANPLUS::Internals::Extract;
+             + package CPANPLUS::Internals::Fetch;
+                          how the HELL did this work before? and i wonder why no one
+	     caught this...
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  3403] By: autrijus                              on 2002/03/12  04:16:53
+        Log: * Make cygwin happy with catdir.
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  3402] By: autrijus                              on 2002/03/12  04:09:12
+        Log: * make Extrace.pm recognize tar files with directory as the
+	     first entry.
+	   ! devel/lib/CPANPLUS/Internals/Extract.pm
+____________________________________________________________________________
+[  3399] By: autrijus                              on 2002/03/11  13:06:55
+        Log: * RCS tags for everybody.
+	   ! devel/lib/CPANPLUS/Internals/Extract.pm
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm devel/t/1-basic.t
+	   ! devel/t/3-backend.t
+____________________________________________________________________________
+[  3398] By: autrijus                              on 2002/03/11  13:00:51
+        Log: * The user may choose to skip setup, and we can't fail their
+	     tests.
+	   ! devel/Makefile.PL devel/inc/ExtUtils/AutoInstall.pm
+	   ! devel/t/1-basic.t
+____________________________________________________________________________
+[  3397] By: autrijus                              on 2002/03/11  12:53:10
+        Log: * AutoInstall verified working on win32.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3396] By: autrijus                              on 2002/03/11  12:38:24
+        Log: * fixes duplicated Config entries during autoinstall.
+	   ! devel/Makefile.PL devel/inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  3394] By: autrijus                              on 2002/03/11  06:33:00
+        Log: * fixes one Make-related typo bug.
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3389] By: gremlin                               on 2002/03/09  13:53:48
+        Log: added support to install file names, not just module names.
+             also patched some little things left and right.
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3387] By: autrijus                              on 2002/03/09  08:12:31
+        Log: * fix syntax errors.
+	   ! devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  3384] By: autrijus                              on 2002/03/08  16:01:06
+        Log: * the updated, annotated manifest file
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3383] By: autrijus                              on 2002/03/08  15:37:29
+        Log: * The release engineering plan for 0.01.
+	   ! devel/TODO
+____________________________________________________________________________
+[  3382] By: autrijus                              on 2002/03/08  14:32:45
+        Log: * stub submit of ::Classic for kane to edit later.
+	   + devel/lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  3381] By: PROFIT                                on 2002/03/08  09:56:00
+        Log: attempting to patch backend/internals in such a way they can
+	     deal with teh old cpan.pm commands as well.
+             the cpanplus::shell::classic will be the same thing as the
+	     current cpan::shell but using backend/internals under the hood
+             it's work in progress... shouldn't be breaking things afaik
+	   ! devel/lib/CPANPLUS.pm devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3380] By: autrijus                              on 2002/03/08  08:31:58
+        Log: * changed tar invocation along the same line as CPAN.pm,
+             so it works on my FreeBSD. (it otherwise defaults to /dev/sa0)
+             * The recommended install of Term::ReadLine doesn't work on
+             "Stub" terminal; Term::ReadLine::Perl should be used instead.
+	   ! devel/lib/CPANPLUS/Internals/Extract.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3357] By: autrijus                              on 2002/03/05  15:31:06
+        Log: * Probe for Archive::Tar, too. 
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3356] By: autrijus                              on 2002/03/05  15:26:03
+        Log: * Relax the version requirement of Term::ReadLine::Perl
+             * install Term::ReadLine first for the poor souls that doesn't
+	     have it
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3355] By: autrijus                              on 2002/03/05  15:19:34
+        Log: * probe ReadLine support for AutoInstall.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3353] By: autrijus                              on 2002/03/05  14:23:19
+        Log: * cope with the refactoring so -i etc works again.
+	   ! devel/bin/cpanp
+____________________________________________________________________________
+[  3352] By: jynnantonix                           on 2002/03/05  05:02:18
+        Log: added sub searches to backend.
+             it's now possible to search on a subselection of modules,
+	     rather than all of them (so you could do a refined search on
+	     previous mathces for example).
+                          it's not documented yet, but i informed the mailing list
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  3351] By: jynnantonix                           on 2002/03/05  04:13:21
+        Log: backend->author_tree wasn't returning the author tree, becase
+	     it was looking at the wrong key in the object.
+             so i fixed that
+	   ! devel/lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3345] By: jambe                                 on 2002/03/04  10:30:45
+        Log: Fixed problem with scheme being stored incorrectly.  Found and
+	     fixed an old bug in _parse_mirrored_by().	Added better
+	     handling for file URL's.  Removed debug prints that were
+	     accidentally left in from last update.
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3343] By: jynnantonix                           on 2002/03/04  03:30:11
+        Log: updated manifest to have 'cpanplus::shell::default' in it as
+	     well
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3230] By: blackrider                            on 2002/02/24  13:18:37
+        Log: Added 't/lib' so Test::More can be found
+	   ! devel/t/1-basic.t
+____________________________________________________________________________
+[  3207] By: jynnantonix                           on 2002/02/22  04:42:51
+        Log: internals got partly subclassed, here are the new .pm's
+	   + devel/lib/CPANPLUS/Internals/Extract.pm
+	   + devel/lib/CPANPLUS/Internals/Fetch.pm
+	   + devel/lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3206] By: jynnantonix                           on 2002/02/22  04:42:04
+        Log: refactor of Internals, splitting it up into smaller parts.
+             there is now Internals::(Make|Fetch|Extract).. perhaps we can
+	     even go further with this.
+             the shell had a minor bug in 'u' which is now fixed, backend
+	     was doing some evil foo when instlaling multiple modules (it
+	     would only do the first one) - that's fixed too now.
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3205] By: jambe                                 on 2002/02/21  12:06:25
+        Log: Added brief descriptions for each method.
+	   ! devel/lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  3204] By: jambe                                 on 2002/02/21  12:03:30
+        Log: Added basic support for file uri's.  Added subroutine
+	     descriptions.  Partial fix to Autrijus' host autopick code for
+	     more populous timezones.
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3196] By: jynnantonix                           on 2002/02/20  08:36:00
+        Log: we can now print an error stack
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3181] By: jynnantonix                           on 2002/02/19  08:46:04
+        Log: added error in msg in shell.pm
+             added ! as a function in default.pm, which will eval a command
+             (not documented yet, just like u)
+	   ! devel/lib/CPANPLUS/Shell.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3180] By: jynnantonix                           on 2002/02/19  08:10:59
+        Log: added uninstall to the shell, tinkered with a few thins in
+	     backend and fixed Internals::_make to not go in an infinite
+	     loop in deep recursion
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3159] By: jynnantonix                           on 2002/02/18  07:04:31
+        Log: added files and uninstall functions to backend and internals,
+	     made  a minor tweak in the default shell to display 'l' nicer.
+                          and testing a pathc in internals to do the right thing when
+	     _make'ing
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3151] By: gremlin                               on 2002/02/18  03:16:20
+        Log: added patch files from kudra and schwern
+	   + devel/.patches/0026 devel/.patches/0027 devel/.patches/0028
+	   + devel/.patches/0029 devel/.patches/0030
+____________________________________________________________________________
+[  3150] By: gremlin                               on 2002/02/18  01:36:26
+        Log: 4 doc patches, and some changes in internals in regard to the
+	     updating of source files. all seems to work dandy =)
+	   ! devel/lib/CPANPLUS.pm devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+	   ! devel/lib/CPANPLUS/Error.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3105] By: PROFIT                                on 2002/02/11  14:24:53
+        Log: somehow, my patch to make Internals->_can_use handle version
+	     numbers got lost in the source.. so i redid the patch, and
+	     here's the submission
+	   ! devel/lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  3104] By: gremlin                               on 2002/02/11  12:31:01
+        Log: missed one line of patch last time around...
+	   ! devel/t/3-backend.t
+____________________________________________________________________________
+[  3103] By: gremlin                               on 2002/02/11  12:18:31
+        Log: submitted patch 0026 courtesy of schwern
+	   ! devel/Makefile.PL devel/lib/CPANPLUS/Internals.pm
+	   ! devel/t/3-backend.t
+____________________________________________________________________________
+[  3100] By: gremlin                               on 2002/02/10  14:53:27
+        Log: apparently, we need the temp files to keep the dirs existing
+             how VERY annoying!
+	   + devel/t/dummy-cpanplus/authors/id/.hidden
+	   + devel/t/dummy-cpanplus/build/.hidden
+____________________________________________________________________________
+[  3099] By: gremlin                               on 2002/02/10  14:42:12
+        Log: edited 3-backend.t to use the new t/dummy-cpanplus/
+             dir as it's 'homedir'
+	   ! devel/t/3-backend.t
+____________________________________________________________________________
+[  3098] By: gremlin                               on 2002/02/10  14:36:43
+        Log: removed temp files
+	   - devel/t/dummy-cpanplus/authors/id/foo
+	   - devel/t/dummy-cpanplus/build/foo
+____________________________________________________________________________
+[  3097] By: gremlin                               on 2002/02/10  14:36:10
+        Log: the 'base' dir for testing will be t/dummy-cpanplus/
+             there, we will emulate a user .cpanplus dir
+             tests should use this dir
+	   + devel/t/dummy-cpanplus/authors/id/foo
+	   + devel/t/dummy-cpanplus/build/foo
+____________________________________________________________________________
+[  3096] By: gremlin                               on 2002/02/10  13:18:16
+        Log: edited internals to check if there was a Makefile already
+	     before running 'perl Makefile.PL'
+             and also made it check if there is already a 'blib' dir before
+	     running 'make' again.
+             boht overridable with force.
+                          on a side note: we probably need a way to pass a flag to force
+	     update of sourcefiles
+             as well as consider not using Config.pm to know what perl to
+	     run the 'perl Makefile.pl'
+             with, but rather use $^X
+             thoughts welcome
+	   ! devel/lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  3095] By: amsterdam                             on 2002/02/10  10:58:58
+        Log: stripped the source files to take up less room
+             only has information needed for the test suite in them right
+	     now.
+	   ! devel/t/dummy-CPAN/authors/01mailrc.txt.gz
+	   ! devel/t/dummy-CPAN/modules/02packages.details.txt.gz
+	   ! devel/t/dummy-CPAN/modules/03modlist.data.gz
+____________________________________________________________________________
+[  3094] By: gremlin                               on 2002/02/10  06:03:24
+        Log: added INSTALL notes
+	   + devel/INSTALL
+____________________________________________________________________________
+[  3093] By: amsterdam                             on 2002/02/09  15:47:19
+        Log: fixed shell.pm bug.. turned out to be a perl bug and submitted
+	     to p5p:
+             kane@www:~$ perl -le 'BEGIN{local $@; die"bar"}print"foo"'
+	     #prints "foo"
+             # that's NOT proper!
+                          anyway, it's all working now, just needs docs
+	   ! devel/lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  3091] By: gremlin                               on 2002/02/09  05:22:18
+        Log: Made shell.pm default to our Default.pm shell in case the user
+	     specified
+             shell failed to be use'd.. still a little bug in the die() in
+	     BEGIN, 
+             i'll try to fix it soon.	
+	   ! devel/lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  3084] By: gremlin                               on 2002/02/08  17:39:19
+        Log: as described in the previous submit, we're opening up the
+	     cpanplus::Shell::*
+             namespace. Default.pm will be our default shell.
+	   + devel/lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3083] By: gremlin                               on 2002/02/08  17:38:24
+        Log: Changed the way CPANPLUS::Shell works nowadays:
+             instead of a fixed shell, it's be come a wrapper for the
+	     user's preffered
+             shell, much like /bin/sh is a symlink to bash, tcsh etc.
+             so, from now on, it loads the users preferred shell as
+	     described in config.pm
+             by default, it's CPANPLUS::Shell::Default, our default shell.
+             this will open the cpanplus::shell namespace to more shell
+	     developers
+             or so we hope.
+	   ! devel/lib/CPANPLUS/Config.pm-orig
+	   ! devel/lib/CPANPLUS/Configure.pm devel/lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  3069] By: autrijus                              on 2002/02/07  20:24:04
+        Log: From: Jos Boumans <kane@cpan.org>
+             Subject: failed test 2-auto-install.t
+	   ! devel/t/2-autoinstall.t
+____________________________________________________________________________
+[  3068] By: gremlin                               on 2002/02/07  16:38:33
+        Log: doc bugs were fixed, matched test suite to match
+	   ! devel/t/3-backend.t
+____________________________________________________________________________
+[  3067] By: autrijus                              on 2002/02/07  11:48:28
+        Log: * reflect changes.
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  3066] By: autrijus                              on 2002/02/07  11:41:43
+        Log: * trivial clean-up and typo correction
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3065] By: autrijus                              on 2002/02/07  11:27:22
+        Log: * enable use constant USE_AUTOINSTALL => 1
+             * move ExtUtils to inc/
+             * let AutoInstall.pm recognize our MY::postamble, and write it
+	     to Makefile
+             * add TEST_VERBOSE to postamble.
+	  +> devel/inc/ExtUtils/AutoInstall.pm
+	   - devel/ExtUtils/AutoInstall.pm
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3058] By: autrijus                              on 2002/02/07  02:54:11
+        Log: * make detection of Config.pm work.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  3057] By: autrijus                              on 2002/02/07  02:37:57
+        Log: * we shouldn't be installing AutoInstall and Test.
+	  +> devel/ExtUtils/AutoInstall.pm devel/t/lib/Test/Builder.pm
+	  +> devel/t/lib/Test/More.pm devel/t/lib/Test/Simple.pm
+	   - devel/lib/ExtUtils/AutoInstall.pm devel/lib/Test/Builder.pm
+	   - devel/lib/Test/More.pm devel/lib/Test/Simple.pm
+	   ! devel/MANIFEST devel/Makefile.PL
+____________________________________________________________________________
+[  3055] By: autrijus                              on 2002/02/06  18:09:16
+        Log: * nothing. just testing triggers.
+	   ! devel/README
+____________________________________________________________________________
+[  2989] By: amsterdam                             on 2002/02/04  07:14:55
+        Log: added schwern's test files.
+	   + devel/lib/Test/Builder.pm devel/lib/Test/More.pm
+	   + devel/lib/Test/Simple.pm devel/t/3-backend.t
+____________________________________________________________________________
+[  2966] By: autrijus                              on 2002/02/02  04:25:10
+        Log: * fix $INC{"lib/..."} mistake; it's the module name, not file
+	     name
+             * uses File::Spec instead of hardwiring or ::Functions all
+	     around
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  2965] By: amsterdam                             on 2002/02/02  02:53:17
+        Log: applied patch 0025 and added it to the archive
+	   + devel/.patches/0025
+	   ! devel/MANIFEST devel/lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2953] By: PROFIT                                on 2002/01/30  11:02:23
+        Log: added some cpan source files in the dummy-CPAN dir
+	   + devel/t/dummy-CPAN/authors/01mailrc.txt.gz
+	   + devel/t/dummy-CPAN/modules/02packages.details.txt.gz
+	   + devel/t/dummy-CPAN/modules/03modlist.data.gz
+____________________________________________________________________________
+[  2952] By: PROFIT                                on 2002/01/30  08:17:39
+        Log: extutitls::autoinstall now lives in lib/
+             changed manifest to match
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  2948] By: PROFIT                                on 2002/01/29  08:38:41
+        Log: cleaned up shell, made a minor addition in the docs in backend
+	   ! devel/lib/CPANPLUS/Backend.pm devel/lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2932] By: amsterdam                             on 2002/01/27  12:31:50
+        Log: little doc fix
+	   ! devel/lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  2931] By: amsterdam                             on 2002/01/27  12:21:10
+        Log: added kudra's docs
+	   ! devel/lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  2930] By: amsterdam                             on 2002/01/27  12:09:03
+        Log: took out the dump() routine in error.pm which was only there
+	     for testing.. it also elimates the use of Data::Dumper in
+	     error.pm
+	   ! devel/lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  2923] By: autrijus                              on 2002/01/27  05:01:45
+        Log: * RCS.
+	   ! devel/t/2-autoinstall.t
+____________________________________________________________________________
+[  2922] By: autrijus                              on 2002/01/27  04:59:48
+        Log: * touch RCS.
+	   ! devel/lib/CPANPLUS.pm devel/lib/CPANPLUS/Backend.pm
+	   ! devel/lib/CPANPLUS/Config.pm-orig
+	   ! devel/lib/CPANPLUS/Configure.pm
+	   ! devel/lib/CPANPLUS/Configure/Setup.pm
+	   ! devel/lib/CPANPLUS/Error.pm devel/lib/CPANPLUS/Internals.pm
+	   ! devel/lib/CPANPLUS/Shell.pm devel/lib/CPANPLUS/Tee.pm
+	   ! devel/lib/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  2921] By: autrijus                              on 2002/01/27  04:54:50
+        Log: * integrate CPANPLUS* to lib/CPANPLUS*
+             * integrate ExtUtils* to lib/ExtUtils*
+             * update Makefile.PL and MANIFEST to reflect the changes.
+	  +> devel/lib/CPANPLUS.pm devel/lib/CPANPLUS/Backend.pm
+	  +> devel/lib/CPANPLUS/Config.pm-orig
+	  +> devel/lib/CPANPLUS/Configure.pm
+	  +> devel/lib/CPANPLUS/Configure/Setup.pm
+	  +> devel/lib/CPANPLUS/Error.pm devel/lib/CPANPLUS/Internals.pm
+	  +> devel/lib/CPANPLUS/Shell.pm devel/lib/CPANPLUS/Tee.pm
+	  +> devel/lib/ExtUtils/AutoInstall.pm
+	   - devel/CPANPLUS.pm devel/CPANPLUS/Backend.pm
+	   - devel/CPANPLUS/Config.pm-orig devel/CPANPLUS/Configure.pm
+	   - devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Error.pm
+	   - devel/CPANPLUS/Internals.pm devel/CPANPLUS/Shell.pm
+	   - devel/CPANPLUS/Tee.pm devel/ExtUtils/AutoInstall.pm
+	   ! devel/MANIFEST devel/Makefile.PL
+____________________________________________________________________________
+[  2903] By: amsterdam                             on 2002/01/19  08:19:26
+        Log: eliminated the use of file::spec::functions... alltho this
+	     should already have been done by jmb imo.
+             -kane
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2846] By: autrijus                              on 2002/01/11  16:50:22
+        Log: * integrate the missing test. kudos to schwern.
+	  !> devel/t/2-autoinstall.t
+____________________________________________________________________________
+[  2845] By: amsterdam                             on 2002/01/11  15:24:01
+        Log: changed the use of 'targetdir' to 'fetchdir' now
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2844] By: amsterdam                             on 2002/01/11  14:52:32
+        Log: removed File::Spec::Functions and replaced with
+	     File::Spec->method
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2825] By: autrijus                              on 2002/01/10  00:08:54
+        Log: * \_.
+	   + devel/.patches/0024
+	   ! devel/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  2820] By: autrijus                              on 2002/01/09  18:51:49
+        Log: * update to the new AutoInstall.
+	  !> devel/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  2719] By: autrijus                              on 2001/12/23  20:56:38
+        Log: * fix directory building.
+	   + devel/.patches/0023
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2712] By: senax                                 on 2001/12/22  14:42:12
+        Log: changes:
+             changed internals to have module name as key for
+	     _query_mod_tree rather than a counter
+             this counter now gets added in shell.pm
+                          added access to the error object thru backend.pm
+             $backend->error_object() will return the the Error.pm object
+             ann's writing the docs on the interface
+                          made set/get_conf in backend return hashrefs (makes them
+	     different from Configure's methods)
+             get conf will return:
+             { key1 => value1, key2 => value2 }
+                          set_conf will return only success or failure, so:
+             { key1 => 1, key2 => 0 }
+                          changed 'targetdir' to 'fetchdir' for fetch
+             extract also *should* take a targetdir but doesn't.. need to
+	     patch and name 'extractdir'
+                          _query_modtree and _query_auttree are now case insensitive
+             actually, they don't have any switches any more and expect a 
+             regexp with switches embedded.
+             like: (?i:foo);
+                          backend, error and internals now all have the same version;
+             they get their version from internals.pm now
+                          fixed a bug wehre cpanplus tries to upgrade perl anyway
+             fixed a bug in _check_install's return value
+             removed debug info
+	   ! devel/CPANPLUS.pm devel/CPANPLUS/Backend.pm
+	   ! devel/CPANPLUS/Error.pm devel/CPANPLUS/Internals.pm
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2671] By: PROFIT                                on 2001/12/18  15:48:00
+        Log: fixed rv checks in shell.pm
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2670] By: jambe                                 on 2001/12/18  14:57:12
+        Log: jmb: this is with the previous change, I had not saved it
+	     before the submit!  (I thought such an error would be noticed
+	     by perforce?)
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2669] By: jambe                                 on 2001/12/18  14:50:59
+        Log: jmb: fix endless loop on initial setup when MIRRORED.BY is not
+	     available locally
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2668] By: jambe                                 on 2001/12/18  11:28:23
+        Log: jmb: removes errant tabs
+	   ! devel/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  2667] By: jambe                                 on 2001/12/18  11:19:43
+        Log: jmb: finalize configure options to Backend->new()
+	   ! devel/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  2666] By: jynnantonix                           on 2001/12/18  08:12:25
+        Log: many fixes.. mostly to _check_install, backend->new and some
+	     various other backend subs
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Configure.pm
+	   ! devel/CPANPLUS/Internals.pm devel/t.pl
+____________________________________________________________________________
+[  2664] By: autrijus                              on 2001/12/18  06:19:45
+        Log: * wraps the $@ test for mkdir in a proper block with local().
+	   + devel/.patches/0022
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2643] By: autrijus                              on 2001/12/17  15:15:40
+        Log: * MFC from 0.25-tobe.
+	  !> devel/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  2642] By: jambe                                 on 2001/12/17  14:55:41
+        Log: jmb: some cleanup and comments, run diff :o)
+	   ! devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2639] By: autrijus                              on 2001/12/17  14:14:20
+        Log: * 0021: after resolving with jambe, patch mkdir so it checks
+	     the return value.
+	   + devel/.patches/0021
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2637] By: jambe                                 on 2001/12/17  11:36:32
+        Log: jmb: added new() method, calls Configure and then the
+	     Internals new() function
+	   ! devel/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  2636] By: jambe                                 on 2001/12/17  11:23:43
+        Log: jmb: added Autrijus' patch to guess hosts from timezone data -
+	     also added some comments/changes elsewhere
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2635] By: jambe                                 on 2001/12/17  11:16:16
+        Log: jmb: cleanup(remove) old code after the return - to make later
+	     diffs more logical
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2634] By: jynnantonix                           on 2001/12/17  07:03:30
+        Log: fixed setup.pm so that it wouldn't thing cygwin is ALSO
+	     windows:
+                          ### this breaks cygwin, thanks -kane
+             #if ($^O =~ m/win/i) {
+             if ( $^O eq 'MSWin32' ) {
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2629] By: amsterdam                             on 2001/12/16  14:47:08
+        Log: patched backend.pm mostly to have consistent return values
+             (hashrefs with status' indications).
+             minor changes in internals.
+                          docs in backend shot to hell tho. they're very inaccurate
+             kudra's working on them.
+             should be done Real Soon Now
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2628] By: autrijus                              on 2001/12/16  13:14:58
+        Log: * updates TODO.
+	   ! devel/TODO
+____________________________________________________________________________
+[  2627] By: amsterdam                             on 2001/12/16  12:40:38
+        Log: test code
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Internals.pm
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2610] By: autrijus                              on 2001/12/15  02:14:59
+        Log: * the 5.5.3 patch, as applied by autrijus
+	   + devel/.patches/0020
+____________________________________________________________________________
+[  2609] By: autrijus                              on 2001/12/15  01:57:07
+        Log:              * make Configure.pm use vars instead of our.
+             * make Setup.pm specify the default umask explicitly
+             * also, add a notice of fetching MIRRORED.BY as agreed by
+	     jambe in the channel
+             * finally, fixes duplicate my() in Shell.pm.
+	   ! devel/CPANPLUS/Configure.pm devel/CPANPLUS/Configure/Setup.pm
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2607] By: autrijus                              on 2001/12/14  09:12:48
+        Log: * amendment to 2603 so it works with Config and cmdline grep.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  2606] By: autrijus                              on 2001/12/14  08:37:43
+        Log: * oops: s/Config.pm/Config.pm-orig/
+	   ! devel/MANIFEST
+____________________________________________________________________________
+[  2604] By: autrijus                              on 2001/12/14  08:14:14
+        Log: * branches from ExtUtils to cpanplus
+	  +> devel/ExtUtils/AutoInstall.pm devel/t/2-autoinstall.t
+____________________________________________________________________________
+[  2603] By: autrijus                              on 2001/12/14  08:11:36
+        Log: * bundles ExtUtils::AutoInstall to handle autoinstallation.
+             * (it's disabled for now; either tweak the constant in
+	     Makefile.PL,
+             or use "perl Makefile.PL AUTOINSTALL=1" to trigger it)
+             * add tests for it.
+	   ! devel/MANIFEST devel/Makefile.PL
+____________________________________________________________________________
+[  2594] By: autrijus                              on 2001/12/13  09:56:10
+        Log: * let Makefile.PL know that bin/cpanplus is now bin/cpanp.
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  2593] By: autrijus                              on 2001/12/13  09:53:37
+        Log: * the new 'cpanp' launcher, with POD modified.
+	   + devel/bin/cpanp
+____________________________________________________________________________
+[  2592] By: autrijus                              on 2001/12/13  09:52:25
+        Log: * renaming cpanplus to cpanp to avoid perldoc conflict on
+	     win32. (reported by kane)
+	   - devel/bin/cpanplus
+	   ! devel/CPANPLUS/Shell.pm devel/MANIFEST
+____________________________________________________________________________
+[  2589] By: jynnantonix                           on 2001/12/13  05:37:51
+        Log: makefile.pl time configuration
+                          needed to enable decent test suite
+	   ! devel/Makefile.PL
+____________________________________________________________________________
+[  2588] By: jynnantonix                           on 2001/12/13  05:36:46
+        Log: shell.pm now supports multiple file downloads/installs
+             so
+             i Foo Acme::Bleach
+             now works
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2587] By: jynnantonix                           on 2001/12/13  04:47:46
+        Log: experimental cache control code added in internals, not yet in
+	     use
+             added /i flag to the grep in _get_reply of Setup.pm to make
+	     answers case insensitive
+	   ! devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2586] By: jynnantonix                           on 2001/12/13  02:27:15
+        Log: patch additions
+	  +> devel/.patches/0019
+	   ! devel/.patches/0018
+____________________________________________________________________________
+[  2585] By: autrijus                              on 2001/12/13  02:10:11
+        Log: * nix ftp.funet.fi -- not only it doesn't work, it's bad idea
+	     to overrun it.
+	   ! devel/CPANPLUS/Config.pm-orig
+____________________________________________________________________________
+[  2580] By: autrijus                              on 2001/12/12  12:43:30
+        Log: * diffs.
+	   + devel/.patches/0017 devel/.patches/0018
+____________________________________________________________________________
+[  2579] By: autrijus                              on 2001/12/12  12:38:30
+        Log: * add newlines and asterisking to the Shell.pm banner.
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2578] By: jynnantonix                           on 2001/12/12  12:24:53
+        Log: fixed 'flush' to take more params
+             and NOT flush all data on default (like methods)
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2577] By: autrijus                              on 2001/12/12  12:22:46
+        Log: * rename Config.pm to Config.pm-orig.
+             * delay Setup's terminal setup to _get_reply time.
+             * ask for configuration at Makefile.PL time.
+	  +> devel/CPANPLUS/Config.pm-orig
+	   - devel/CPANPLUS/Config.pm
+	   ! devel/CPANPLUS/Configure/Setup.pm devel/Makefile.PL
+____________________________________________________________________________
+[  2576] By: autrijus                              on 2001/12/12  08:51:41
+        Log: * lets Win32 uses Stub as terminal on Setup.pm time, just as
+	     Shell.pm does.
+             * see the comment for a possible alternative solution.
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2561] By: PROFIT                                on 2001/12/11  11:57:46
+        Log: added support for the 'file://' scheme
+             means a change in internals.pm (mainly fetch and _lwp_get)
+             and a new routine _file_get
+	   ! devel/CPANPLUS/Internals.pm devel/t.pl
+____________________________________________________________________________
+[  2560] By: autrijus                              on 2001/12/11  09:41:44
+        Log: * shows bug reporting address at Shell prompt.
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2559] By: autrijus                              on 2001/12/11  09:32:31
+        Log: * cures the Win32 double-enter terminal bug reported by kane.
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2557] By: autrijus                              on 2001/12/11  05:24:31
+        Log: * small patch: corrects the recommended installation for
+	     Term::ReadLine
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2544] By: jynnantonix                           on 2001/12/10  02:57:36
+        Log: applied patch 0017
+             printing out version of cpanplus and term::readline on start
+	     up
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2543] By: jynnantonix                           on 2001/12/10  02:11:27
+        Log: patches 0015 and 0016 are applied on shell.pm
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2541] By: amsterdam                             on 2001/12/09  06:41:27
+        Log: added patches 0015 and 0016, patches from ann to shell.pm
+	   + devel/.patches/0015 devel/.patches/0016
+____________________________________________________________________________
+[  2540] By: amsterdam                             on 2001/12/09  06:03:13
+        Log: applied 0014, fixing signals in shell.pm
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2539] By: amsterdam                             on 2001/12/09  06:01:50
+        Log: applied 0012, fixing the Term::Readline issue of 'falling back
+	     to dumb' mode...
+             basically only one $term can be open
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2538] By: amsterdam                             on 2001/12/09  06:00:21
+        Log: patched 1-basic, no longer needing Test::More to work
+	   ! devel/t/1-basic.t
+____________________________________________________________________________
+[  2537] By: amsterdam                             on 2001/12/09  05:45:13
+        Log: patch 0012, fixing the multiple readline terminal bug we had.
+                          checks if there is one existing already.
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2536] By: amsterdam                             on 2001/12/09  05:39:17
+        Log: applied patch 0010, striking 'test::more' as necessary in
+	     1-basic
+	   ! devel/t/1-basic.t
+____________________________________________________________________________
+[  2535] By: amsterdam                             on 2001/12/09  05:36:30
+        Log: applied patch 0009, small fix to Shell.pm, addition to
+	     Setup.pm
+	   ! devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2534] By: PROFIT                                on 2001/12/08  03:35:14
+        Log: new patches, not yet applied!
+             0009-0014
+	   + devel/.patches/0009 devel/.patches/0010 devel/.patches/0011
+	   + devel/.patches/0012 devel/.patches/0013 devel/.patches/0014
+____________________________________________________________________________
+[  2531] By: autrijus                              on 2001/12/07  09:52:35
+        Log: * makes cpanplus -action work
+             * correctly handles Setup.pm calls
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2530] By: autrijus                              on 2001/12/04  14:55:41
+        Log: * Ann's patch, with my own nitpicking and podchecking
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2529] By: autrijus                              on 2001/12/04  14:13:14
+        Log: * fixed weird typo. 
+	   ! devel/CPANPLUS/Shell.pm devel/bin/cpanplus
+____________________________________________________________________________
+[  2525] By: autrijus                              on 2001/12/04  06:03:28
+        Log: * patch from kane: defaults to sane servers
+             * hide personal todos from manifest
+	   ! devel/CPANPLUS/Config.pm devel/MANIFEST
+____________________________________________________________________________
+[  2524] By: autrijus                              on 2001/12/04  05:43:50
+        Log: * fixes a no-op.
+             * added comments so we know what we're getting into.
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2523] By: autrijus                              on 2001/12/04  05:34:57
+        Log: * enables boolean options.
+             * enables setting options and entering shell.
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2522] By: jynnantonix                           on 2001/12/04  05:29:36
+        Log: corrected little typos
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2521] By: jynnantonix                           on 2001/12/04  05:14:02
+        Log: corrected typo in setup.pm
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2520] By: jynnantonix                           on 2001/12/04  04:53:28
+        Log: set default
+             debug => 0
+             instead of 1
+	   ! devel/CPANPLUS/Config.pm
+____________________________________________________________________________
+[  2519] By: jynnantonix                           on 2001/12/04  04:50:23
+        Log: patched shell docs, took away 'f' as a public function
+             added flush patch to internals
+	   ! devel/CPANPLUS/Internals.pm devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2518] By: jynnantonix                           on 2001/12/04  04:24:53
+        Log: sigint handled, added 'ask' to the options of following
+	     prereqs
+	   ! devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2517] By: autrijus                              on 2001/12/04  04:09:52
+        Log: * newline.
+	   ! devel/CPANPLUS.pm
+____________________________________________________________________________
+[  2516] By: jynnantonix                           on 2001/12/04  04:05:27
+        Log: patched with josh's changes
+             LOTS OF WORK NO DIFF THANKS JOSH
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2515] By: autrijus                              on 2001/12/04  03:59:38
+        Log: * Internals.pm, applied after much conflicts.
+	   ! devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2514] By: autrijus                              on 2001/12/04  03:53:43
+        Log: * applied backend and config-related stuff from josh after
+	     hand-wiring.
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Config.pm
+	   ! devel/CPANPLUS/Configure.pm devel/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  2513] By: jynnantonix                           on 2001/12/04  01:53:55
+        Log: applied patches 0007 (to cpanplus.pm - doc fix) and 0008 (to
+	     shell.pm - signal fix)
+	   ! devel/CPANPLUS.pm devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2512] By: jynnantonix                           on 2001/12/04  01:29:16
+        Log: one patch had a .txt extension
+             changed
+	   + devel/.patches/0004
+	   - devel/.patches/0004.txt
+____________________________________________________________________________
+[  2511] By: jynnantonix                           on 2001/12/04  01:28:22
+        Log: 2 new patches
+	   + devel/.patches/0007 devel/.patches/0008
+____________________________________________________________________________
+[  2509] By: PROFIT                                on 2001/12/03  15:06:51
+        Log: small bug fixes in error/internals
+             shell now tells you if your query had no results
+	   ! devel/CPANPLUS/Error.pm devel/CPANPLUS/Internals.pm
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2504] By: jynnantonix                           on 2001/12/03  09:23:44
+        Log: removed 'p' as a command.. should use 'l' instead now
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2502] By: jynnantonix                           on 2001/12/03  08:57:45
+        Log: patch to keep the installer from going into a loop on a failed
+	     install of a prereq
+	   ! devel/CPANPLUS/Backend.pm devel/CPANPLUS/Internals.pm
+	   ! devel/t.pl
+____________________________________________________________________________
+[  2500] By: autrijus                              on 2001/12/03  05:59:00
+        Log: * patch to allow rudimentary SIGINT handling.
+	   ! devel/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  2488] By: jynnantonix                           on 2001/11/30  07:27:16
+        Log: typo correction
+	   ! devel/README
+____________________________________________________________________________
+[  2487] By: jynnantonix                           on 2001/11/30  06:44:14
+        Log: changed cpanplus.pm to work with CPANPLUS::Error
+	   ! devel/CPANPLUS.pm
+____________________________________________________________________________
+[  2486] By: autrijus                              on 2001/11/30  06:31:34
+        Log: * adds multiple arguments handling -- maybe should in
+	     shell.pm?
+             * pod cleanup, nits, fixes.
+             * no warnings now.
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2485] By: jynnantonix                           on 2001/11/30  06:22:25
+        Log: fixed errors in flush and forget. they are now more DWYM.
+                          new syntax: $error->flush() will flush all errors from the
+	     stack.
+             $error->flush($number) will do a splice'ing off of $number
+	     from the error stack and return that as an array ref.
+             it will also now re-set $error->{ERROR} to the now first
+	     element of $error->{STACK}
+	   ! devel/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  2484] By: jynnantonix                           on 2001/11/30  06:15:21
+        Log: small typo fix
+	   ! devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2483] By: autrijus                              on 2001/11/30  05:46:40
+        Log: * introduce -f and -v to cpanplus, as stated in pod
+             * adds @cmd_stack for rooms of multiple operations in the
+	     future
+             * disables the useless cpanplus -q
+	   + devel/.patches/0006
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2481] By: autrijus                              on 2001/11/30  03:22:05
+        Log: * retrack cpanplus from the last change; wasn't approved yet.
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2480] By: autrijus                              on 2001/11/30  03:20:21
+        Log: * apply what remains as 0003 by hand.
+	   ! devel/CPANPLUS.pm devel/CPANPLUS/Backend.pm
+	   ! devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Error.pm
+	   ! devel/CPANPLUS/Internals.pm devel/CPANPLUS/Shell.pm
+	   ! devel/bin/cpanplus
+____________________________________________________________________________
+[  2479] By: autrijus                              on 2001/11/30  03:01:51
+        Log: * change 0004 applied by hand.
+	   ! devel/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[  2478] By: jynnantonix                           on 2001/11/30  02:53:13
+        Log: patch 0005
+	   + devel/.patches/0005
+____________________________________________________________________________
+[  2477] By: jynnantonix                           on 2001/11/30  02:51:52
+        Log: patch 0005 -makemakerflags- applied
+	   ! devel/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  2476] By: jynnantonix                           on 2001/11/30  02:41:41
+        Log: entered patches 0003 and 0004
+	   ! devel/CPANPLUS.pm devel/Changes devel/Makefile.PL devel/TODO
+	   ! devel/TODO-JOSH devel/TODO-KANE devel/command-line.txt
+	   ! devel/md5.txt devel/prereqs devel/t.pl
+____________________________________________________________________________
+[  2475] By: autrijus                              on 2001/11/30  02:19:28
+        Log: * regen the tree use unix line ending. (jambe--)
+	   ! devel/CPANPLUS.pm devel/CPANPLUS/Backend.pm
+	   ! devel/CPANPLUS/Config.pm devel/CPANPLUS/Configure.pm
+	   ! devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Error.pm
+	   ! devel/CPANPLUS/Internals.pm devel/CPANPLUS/Shell.pm
+	   ! devel/CPANPLUS/Tee.pm devel/Changes devel/MANIFEST
+	   ! devel/Makefile.PL devel/README devel/TODO devel/TODO-JOSH
+	   ! devel/TODO-KANE devel/bin/cpanplus devel/command-line.txt
+	   ! devel/md5.txt devel/prereqs devel/t.pl devel/t/1-basic.t
+____________________________________________________________________________
+[  2471] By: autrijus                              on 2001/11/29  13:41:36
+        Log: * patches list from kane.
+	   + devel/.patches/0001 devel/.patches/0002 devel/.patches/0003
+	   + devel/.patches/0004.txt
+____________________________________________________________________________
+[  2470] By: autrijus                              on 2001/11/29  13:25:41
+        Log: * add RCS headers.
+	   ! devel/CPANPLUS.pm devel/CPANPLUS/Backend.pm
+	   ! devel/CPANPLUS/Config.pm devel/CPANPLUS/Configure.pm
+	   ! devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Error.pm
+	   ! devel/CPANPLUS/Internals.pm devel/CPANPLUS/Shell.pm
+	   ! devel/CPANPLUS/Tee.pm devel/Makefile.PL devel/README
+	   ! devel/bin/cpanplus devel/t/1-basic.t
+____________________________________________________________________________
+[  2468] By: autrijus                              on 2001/11/29  07:30:38
+        Log: * the cpanplus development tree.
+	   + devel/CPANPLUS.pm devel/CPANPLUS/Backend.pm
+	   + devel/CPANPLUS/Config.pm devel/CPANPLUS/Configure.pm
+	   + devel/CPANPLUS/Configure/Setup.pm devel/CPANPLUS/Error.pm
+	   + devel/CPANPLUS/Internals.pm devel/CPANPLUS/Shell.pm
+	   + devel/CPANPLUS/Tee.pm devel/Changes devel/MANIFEST
+	   + devel/Makefile.PL devel/README devel/TODO devel/TODO-JOSH
+	   + devel/TODO-KANE devel/bin/cpanplus devel/command-line.txt
+	   + devel/md5.txt devel/prereqs devel/t.pl devel/t/1-basic.t

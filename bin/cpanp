@@ -1,0 +1,129 @@
+#!/usr/bin/perl
+# $File: //depot/OurNet-BBS/BBS.pm $ $Author: autrijus $
+# $Revision: #41 $ $Change: 2088 $ $DateTime: 2001/10/15 14:33:05 $
+
+$VERSION = '0.01';
+
+use strict;
+use CPANPLUS;
+use Term::ReadLine;
+
+=head1 NAME
+
+cpanp - The CPANPLUS launcher
+
+=head1 SYNOPSIS
+
+B<cpanp>
+
+B<cpanp> S<[ --[B<no>]I<option>... ]> S<[-]B<a>> S<[ I<author>... ]>
+
+B<cpanp> S<[ --[B<no>]I<option>... ]> S<[-]B<dhilmp>> S<[ I<module>... ]>
+
+=head1 DESCRIPTION
+
+This script launches the B<CPANPLUS> utility to perform various operations
+from the command line. If it's invoked without arguments, an interactive
+shell is executed by default.
+
+Optionally, it can take a single-letter switch and one or more argument,
+to perform the associated action on each arguments. The commands are:
+
+    a AUTHOR...	# search by author(s)
+    m MODULE...	# search by module(s)
+    i MODULE...	# install module(s)
+    d MODULE...	# download module(s) into current directory
+    p MODULE...	# display the package that contains the module(s)
+    l MODULE...	# display detailed information about module(s)
+    h 		# show help message
+
+Each command may be prefixed with the B<f> and/or B<v> flags, both taking
+an optional boolean value (defaults to 1) as argument. They control the
+force/verboseness for this single session, respectively.
+
+=cut
+
+my $opt;
+
+my @bool = qw(verbose storable flush force md5 prereqs);
+
+my $cmd = {
+    a => "search",
+    m => "search",
+    d => "fetch",
+    i => "install",
+    p => "package",
+    l => "details",
+    h => "_help",
+};
+
+my @cmd_stack;
+
+while ($opt = shift(@ARGV)) {
+    push @cmd_stack, "s $2 ".($1 ? 0 : 1) and next
+	if ($opt =~ /^--(no)?(\w+)$/);
+
+    $opt =~ s/^-//; $opt = lc(substr($opt, 0, 1));
+    last;
+};
+
+push @cmd_stack, map { "$opt $_" } @ARGV if ($opt and exists $cmd->{$opt});
+
+if (@cmd_stack) {
+    # initializes configure setup if we've not been through it yet
+    no strict 'refs';
+
+    # remember the old coderefs in case of a setoption-only invocation
+    my $newref  = *{"$Term::ReadLine::ISA[0]::new"}{CODE};
+    my $histref = *{"$Term::ReadLine::ISA[0]::addhistory"}{CODE};
+
+    # save the original constructor arguments in the Faked arrayref
+    *{"Term::ReadLine::new"} = sub {
+	# shell only
+	goto &{$newref} unless caller(0)->isa('CPANPLUS::Shell')
+	                    or caller(0)->isa('CPANPLUS::Shell::Default');
+
+	return bless([@_], 'CPANPLUS::_Faked');
+    };
+
+    *{'CPANPLUS::_Faked::addhistory'} = sub { };
+    *{'CPANPLUS::_Faked::readline'}   = sub {
+	unless ($opt or @cmd_stack) {
+	    # there's no immediate actions anyway, and we've run out of 's',
+	    # so we restore the handlers and regen a genuine object
+
+	    *{"$Term::ReadLine::ISA[0]::new"} = $newref;
+	    *{"$Term::ReadLine::ISA[0]::addhistory"} = $histref;
+
+	    # regen self, pass the args to the new object
+	    return ($_[0] = $newref->(@{$_[0]}))->readline(@_[1..$#_]);
+	}
+
+	return shift @cmd_stack;
+    };
+}
+
+shell();
+
+1;
+
+__END__
+
+=head1 SEE ALSO
+
+L<CPANPLUS>.
+
+=head1 AUTHORS
+
+Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>
+
+=head1 COPYRIGHT
+
+Copyright 2001 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
+
+This program is free software; you can redistribute it and/or 
+modify it under the same terms as Perl itself.
+
+See L<http://www.perl.com/perl/misc/Artistic.html>
+
+=cut

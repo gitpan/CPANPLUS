@@ -1,0 +1,79 @@
+############################################
+###         CPANPLUS::Config.pm          ###
+###  Configuration structure for CPAN++  ###
+############################################
+
+#last changed: Tue Dec  4 06:38:37 2001 GMT
+
+package CPANPLUS::Config;
+
+use strict;
+
+sub new {
+    my $class = shift;
+
+    my $conf = {
+                 'conf' => {
+                             'verbose' => 0,
+                             'storable' => 1,
+                             'prereqs' => 1,
+                             'lib' => [],
+                             'force' => 0,
+                             'makeflags' => '',
+                             'makemakerflags' => {},
+                             'debug' => 0,
+                             'md5' => 1,
+                             'shell' => 'CPANPLUS::Shell::Default', 
+                           },
+                 '_source' => {
+                                'auth' => '01mailrc.txt.gz',
+                                'update' => '86400',
+                                'smod' => 'packages',
+                                'sauth' => 'mailrc',
+                                'mod' => '02packages.details.txt.gz',
+                                'dslip' => '03modlist.data.gz',
+                                'hosts' => 'MIRRORED.BY',
+                                'sdslip' => 'dslip'
+                              },
+                 '_build' => {
+                               'unzip' => '',
+                               'base' => '',
+                               'autdir' => 'authors/',
+                               'ftp' => '',
+                               'gzip' => '',
+                               'tar' => '',
+                               'ncftpget' => '',
+                               'targetdir' => '',
+                               'wget' => '',
+                               'ncftp' => '',
+                               'perl' => '',
+                               'moddir' => 'build/',
+                               'lynx' => '',
+                               'make' => '',
+                               'startdir' => ''
+                             },
+                 '_ftp' => {
+                             'auth' => 'authors/01mailrc.txt.gz',
+                             'urilist' => [
+                                            {
+                                              'path' => '/pub/CPAN/',
+                                              'scheme' => 'ftp',
+                                              'host' => 'ftp.cpan.org'
+                                            },
+                                          ],
+                             'base' => 'authors/id/',
+                             'mod' => 'modules/02packages.details.txt.gz',
+                             'passive' => 1,
+                             'email' => 'cpanplus@example.com',
+                             'dslip' => 'modules/03modlist.data.gz'
+                           }
+    };
+
+    bless($conf, $class);
+    return $conf;
+
+} #new
+
+1;
+
+__END__

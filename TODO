@@ -1,0 +1,63 @@
+# $File: //member/autrijus/cpanplus/devel/README $ $Author: anonymous $
+# $Revision: #4 $ $Change: 2488 $ $DateTime: 2001/11/30 07:27:16 $
+
+### 0.01 Release Engineering Plan ###
+
+Code branch time: Friday March 15th 00:00 GMT
+
+Things to do before code branch: (jambe, co-kane, kudra, autrijus)
+
+[j] 1. have Setup.pm to ask for makemakerflags and lib, and ditch {perl}
+[j] 2. configure/setup methods that aren't public should indicated with _
+[k] 3. check documents for new features
+[j] 4. Configure should offer methods for Backend to hand it to user at runtime
+[c] 5. clean up Internal's interaction with Shell.pm in interactive mode
+[k] 6. compile lib/CPANPLUS/FAQ.pod
+[c] 7. full pathname as parameter to install
+[a] 8. make sure AutoInstall works on all popular platforms
+[a] *. do code branch, smoke testing, and portability testing
+
+The above are sorted by priority. All unfinished features should simply
+be omitted from the release branch.
+
+After code branch, there will be a "Showstopping Bugs" file under
+//member/autrijus/cpanplus/release/BUGS. It should document only bugs
+relevant to the above 1-8, and the bugs that prevents user from basic
+(documented) functionality.
+
+Only bugfixes related to the BUGS file are allowed to submit into
+the release branch.  
+
+Once the BUG subsection drops to an acceptable number (preferably 0),
+Autrijus will announce the RC1 for two more days of field testing, and
+the initial release will follow after that.
+
+### TODO ###
+
+- test suite from schwern
+- move over the status cache from _make to the module objects
+- lean mode to load certain source files on demand
+- automated configuration
+
+### DESIRED ###
+
+- write a method to make cpan distributions
+  - (generate makefile, make dist, etc)
+  - also generate deb/rpm/ppm/ports if possible
+- create a lockfile so only one instance can run
+  - OR multi-user support
+- upload feature to cpan
+  - integrate the cpan-upload script
+- bug reports on failed make (|test|install) to rt.cpan.org or admin
+- add 'tee' support (aka IO::Tee) for shell
+  - tied STDERR impossible, isa perlbug
+- keep one's own module/library directory
+- check host existence periodically
+- smoke test for all/many modules on CPAN to see how we stand up
+
+### CAVEAT ###
+
+- sometimes, when following prereqs, the shell will keep asking to
+  install the same file, but somehow doesn't.
+  - workaround: answer 'yes' the first time, answer 'no' after that,
+    and it works.
