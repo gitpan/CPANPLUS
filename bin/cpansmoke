@@ -1,13 +1,14 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/bin/cpansmoke $ $Author: autrijus $
-# $Revision: #5 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #7 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
 
 use strict;
+use Cwd;
 use Config;
 use Getopt::Std;
 use CPANPLUS::Backend;
 
-my $VERSION = '0.02';
+my $VERSION = '0.03';
 
 =head1 NAME
 
@@ -53,20 +54,20 @@ my ($auto, $cc, $display, $force, $local, $prereq, $skip, $verbose, $timeout)
 ### Initialize Environment #################################################
 ############################################################################
 
-my $cp   = CPANPLUS::Backend->new;		# CPANPLUS Backend object
-my $conf = $cp->configure_object;		# Configuration for this session
+my $cp   = CPANPLUS::Backend->new;              # CPANPLUS Backend object
+my $conf = $cp->configure_object;               # Configuration for this session
 
-my $shell = bless({}, 'main');			# fake shell object
+my $shell = bless({}, 'main');                  # fake shell object
 $cp->{_shell} = $shell;
 
-$ENV{VISUAL} = 'echo' if $auto;			# let cpantest skip editing
+$ENV{VISUAL} = 'echo' if $auto;                 # let cpantest skip editing
 
 $conf->set_conf( prereq   => $prereq  );
 $conf->set_conf( force    => $force   );
 $conf->set_conf( verbose  => $verbose );
 $conf->set_conf( cpantest => $args{c} ? 'always_cc' : 1 );
 
-$conf->_set_ftp(urilist => [ {			# prefers www.cpan.org
+$conf->_set_ftp(urilist => [ {                  # prefers www.cpan.org
     path   => '/',
     scheme => 'http',
     host   => 'www.cpan.org',
@@ -77,61 +78,80 @@ $conf->_set_ftp(urilist => [ {			# prefers www.cpan.org
 ############################################################################
 
 foreach my $pkg (@ARGV) {
-    $pkg =~ s|.*authors/id||;			# strip leading paths
-    $pkg = "/$pkg" if $pkg =~ m|^[^/].*/|;	# add leading / if needed
+    $pkg =~ s|.*authors/id||;                   # strip leading paths
+    $pkg = "/$pkg" if $pkg =~ m|^[^/].*/|;      # add leading / if needed
 
     ### Translate module names to package names
-    my $dist = ($pkg =~ m|^/|) ? $pkg : _distname($cp->module_tree->{$pkg})
+    my $dist = $cp->pathname(to => $pkg)
         or (print("No such module: $pkg, skipping.\n"), next);
 
     return unless defined $dist;
 
-    my $report = $cp->reports( modules => [ $dist ] )
+    my $report = $cp->reports( modules => [ $pkg ] )
         if $display or $skip;
 
     my $is_there;
     my $my_platform = join(' ', $^O, $Config{osvers}, $Config{archname});
 
     while( my($name, $href) = each (%$report) ) {
-	while( my ($dist, $pf_ref) = each (%$href) ) {
-	    print "[$dist]\n" if $display;
-	    for my $platform (sort keys %{$pf_ref}) {
-		printf "%8s %s\n", $pf_ref->{$platform}, $platform if $display;
-		$is_there = 1 if $platform eq $my_platform;
-	    }
-	}
+        while( my ($dist, $pf_ref) = each (%$href) ) {
+            print "[$dist]\n" if $display;
+            for my $platform (sort keys %{$pf_ref}) {
+                printf "%8s %s\n", $pf_ref->{$platform}, $platform if $display;
+                $is_there = 1 if $platform eq $my_platform;
+            }
+        }
     }
 
     if ($skip and $is_there) {
-	print "$dist already tested on this configuration; skipping.\n";
-	next;
+        print "$dist already tested on this configuration; skipping.\n";
+        next;
     }
 
-    print "Testing: ".($pkg =~ m|^/| ? $pkg : "$pkg ($dist)")."\n";
+    print "Testing: ".($pkg =~ /[^\w:]/ ? $dist : "$pkg ($dist)")."\n";
 
     eval {
-	local $SIG{ALRM} = sub { die "\n" };	# alarm handler
-	alarm ($timeout || 300);		# default timeout is 5 mins
+        $timeout ||= 600;
 
-	$cp->install(				# perform the install
-	    modules => [ $dist ],		# one module at a time
-	    target  => 'test',			# but stop after 'make test'
-	);
+        my $cwd      = Cwd::cwd();
+        my $alarm_ok = eval 'alarm ($timeout); 1;';
+        my $nohang   = do { require POSIX; POSIX::WNOHANG() } unless $alarm_ok;
 
-	alarm 0;				# reset alarm
+        local $SIG{ALRM} = sub { die "\n" } if $alarm_ok;
+
+        if ($nohang and $^O eq 'MSWin32') {
+            # chdir to the build dir since IPC::Run and fork don't mix
+            my $path = $dist; $path =~ s|.*/||;
+            $path =~ s/(?:\.tar\.(?:gz|Z|bz2)|\.t[gb]z|\.zip)$//i;
+            chdir $conf->_get_build('base') or die $!;
+            chdir $conf->_get_build('moddir') or die $!;
+            mkdir $path, 0755 unless -d $path;
+            chdir $path or die $!;
+        }
+
+        if ($nohang and my $pid = fork()) {
+            # waitpid-based alarm loop
+            my $time = time;
+            while ((time - $time) < $timeout) {
+                last if waitpid($pid, $nohang);
+                sleep 1;
+            }
+
+            kill(1, $pid); sleep 1; kill(9, $pid);
+        }
+        else {
+            $cp->install(                       # perform the install
+                modules => [ $pkg ],            # one module at a time
+                target  => 'test',              # but stop after 'make test'
+            );
+            exit if $nohang;
+        }
+
+        chdir $cwd;
+        eval 'alarm 0' if $alarm_ok;
     };
 
-    warn $@ if $@;				# warns any errors
-}
-
-sub _distname {
-    my $module = shift or return;
-    my ($author, $package) = @{$module}{qw|author package|};
-
-    return join(
-        '/', '', substr($author, 0, 1), substr($author, 0, 2),
-                 $author, $package,
-    );
+    warn $@ if $@;                              # warns any errors
 }
 
 ### Fake shell method to confirm sending out report ###
@@ -157,15 +177,15 @@ sub show_usage {
 Usage:
   $0 [ -acflpv ] [ -t timeout ] <module | distribution> ...
 
-  -a	Automatically send reports without prompting or editing
-  -c	Always Cc: to the module author (only on FAIL by default)
-  -d	Display each package's existing result before testing it
-  -f	Force re-fetching cached packages and checksum data
-  -l	Use user-configured hosts; www.cpan.org is preferred by default
-  -p	Install prerequisite modules; this is disabled by default
-  -s	Skip modules that have testing results from the same settings
-  -v	Print verbose proceeding informations
-  -t	Sets timeout for each package's install; default to 300
+  -a    Automatically send reports without prompting or editing
+  -c    Always Cc: to the module author (only on FAIL by default)
+  -d    Display each package's existing result before testing it
+  -f    Force re-fetching cached packages and checksum data
+  -l    Use user-configured hosts; www.cpan.org is preferred by default
+  -p    Install prerequisite modules; this is disabled by default
+  -s    Skip modules that have testing results from the same settings
+  -v    Print verbose proceeding informations
+  -t    Sets timeout for each package's install; default to 300
 
 .
     exit;

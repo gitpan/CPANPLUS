@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/bin/cpanp $ $Author: autrijus $
-# $Revision: #8 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #9 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
 
 use strict;
 use vars '$VERSION';
@@ -83,12 +83,15 @@ if (@cmd_stack) {
     # initializes configure setup if we've not been through it yet
     no strict 'refs';
 
+    my $TR = ($^O eq 'MSWin32') ? 'Term::ReadLine::Stub'
+                                : $Term::ReadLine::ISA[0];
+                                
     # remember the old coderefs in case of a setoption-only invocation
-    my $newref  = *{"$Term::ReadLine::ISA[0]::new"}{CODE};
-    my $histref = *{"$Term::ReadLine::ISA[0]::addhistory"}{CODE};
+    my $newref  = *{"$TR\::new"}{CODE};
+    my $histref = *{"$TR\::addhistory"}{CODE};
 
     # save the original constructor arguments in the Faked arrayref
-    *{"Term::ReadLine::new"} = sub {
+    *{"$TR\::new"} = sub {
         # shell only
         goto &{$newref} unless caller(0)->isa('CPANPLUS::Shell')
                             or caller(0) =~ /^CPANPLUS::Shell::/;
@@ -102,8 +105,8 @@ if (@cmd_stack) {
             # there's no immediate actions anyway, and we've run out of 's',
             # so we restore the handlers and regen a genuine object
 
-            *{"$Term::ReadLine::ISA[0]::new"} = $newref;
-            *{"$Term::ReadLine::ISA[0]::addhistory"} = $histref;
+            *{"$TR\::new"} = $newref;
+            *{"$TR\::addhistory"} = $histref;
 
             # regen self, pass the args to the new object
             return ($_[0] = $newref->(@{$_[0]}))->readline(@_[1..$#_]);
@@ -112,7 +115,7 @@ if (@cmd_stack) {
         return shift @cmd_stack;
     };
 
-    *{'CPANPLUS::_Faked::ReadLine'} = sub { "$Term::ReadLine::ISA[0]" };
+    *{'CPANPLUS::_Faked::ReadLine'} = sub { $TR };
 }
 
 shell();

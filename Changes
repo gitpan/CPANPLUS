@@ -1,4 +1,152 @@
 ____________________________________________________________________________
+[  3858] By: autrijus                              on 2002/04/10  07:10:14
+        Log: * This be CPANPLUS 0.031, maintenance release.
+     Branch: dist
+	  !> (integrate 8 files)
+____________________________________________________________________________
+[  3857] By: autrijus                              on 2002/04/10  07:09:04
+        Log: * 'cpansmoke' won't re-fetch distfiles if its arguments are
+	     module names.
+     Branch: devel
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  3856] By: kane                                  on 2002/04/10  07:05:01
+        Log: * version change to 0.031
+     Branch: devel
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  3855] By: autrijus                              on 2002/04/10  07:02:34
+        Log: * mention stenzel and waalboer's bugs.
+     Branch: devel
+	   ! ChangeLog
+____________________________________________________________________________
+[  3854] By: autrijus                              on 2002/04/10  06:59:48
+        Log: * further merge from 0.29 EU::AI.
+     Branch: devel
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  3852] By: autrijus                              on 2002/04/10  06:52:12
+        Log: * fix 'Can't make test or install 0.03' bug.
+     Branch: devel
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  3849] By: autrijus                              on 2002/04/10  06:35:56
+        Log: * add ftp://ftp.cpan.org/pub/CPAN/ as the default 'additional'
+	     url.
+     Branch: devel
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3848] By: autrijus                              on 2002/04/10  06:27:33
+        Log: * Tell user we need root permission to install dependencies.
+     Branch: devel
+	   ! Makefile.PL
+____________________________________________________________________________
+[  3847] By: kane                                  on 2002/04/10  05:59:02
+        Log: * fetchdir fix and classic.pm editing
+     Branch: devel
+	   ! lib/CPANPLUS/Backend.pm lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  3846] By: autrijus                              on 2002/04/10  05:54:28
+        Log: * mfc for the upcoming 0.031.
+     Branch: dist
+	  !> (integrate 12 files)
+____________________________________________________________________________
+[  3845] By: autrijus                              on 2002/04/10  05:52:28
+        Log: * changelog for 0.031.
+     Branch: devel
+	   ! ChangeLog
+____________________________________________________________________________
+[  3844] By: kane                                  on 2002/04/10  05:46:57
+        Log: * now adds the version of storable and the extension .stored
+	     to storable'd sourcefiles to get around version conflicts
+	     between older and newer versions of storable.
+                          will look like this:
+                          Retrieving D:\cpanplus\mailrc.1.010.stored
+             Retrieving D:\cpanplus\dslip.1.010.stored
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  3843] By: autrijus                              on 2002/04/10  05:41:17
+        Log: * Setup.pm now clears away old storable images during a fresh
+	     install.
+     Branch: devel
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3842] By: autrijus                              on 2002/04/10  05:19:46
+        Log: * mention 'c' in synopsis.
+     Branch: devel
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3841] By: autrijus                              on 2002/04/10  05:09:49
+        Log: * kudra's patch to mention .. and some other bits.
+     Branch: devel
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  3840] By: autrijus                              on 2002/04/10  03:24:29
+        Log: * testers.cpan.org offers smtp. perl.org does not.
+     Branch: devel
+	   ! bin/cpantest
+____________________________________________________________________________
+[  3839] By: autrijus                              on 2002/04/10  03:08:57
+        Log: * revert the bogus patch about autosetup earlier.
+     Branch: devel
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3838] By: autrijus                              on 2002/04/10  02:54:57
+        Log: * less scary messages from uninstall.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  3837] By: autrijus                              on 2002/04/10  02:53:11
+        Log: * fixed fork and IPC::Run foo.
+     Branch: devel
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  3836] By: autrijus                              on 2002/04/10  02:05:56
+        Log: * disables buffering on IPC::Run.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  3835] By: autrijus                              on 2002/04/10  01:31:46
+        Log: * let cpanp recognize Term::ReadLine brokeness on Win32.
+     Branch: devel
+	   ! bin/cpanp
+____________________________________________________________________________
+[  3834] By: autrijus                              on 2002/04/10  01:16:48
+        Log: * let cpansmoke use pathname().
+     Branch: devel
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  3833] By: autrijus                              on 2002/04/10  00:58:08
+        Log: * try to reduced $AutoSetup-induced loopness.
+     Branch: devel
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  3832] By: autrijus                              on 2002/04/10  00:55:05
+        Log: * fix alarm() on win32.
+     Branch: devel
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  3831] By: autrijus                              on 2002/04/09  22:51:11
+        Log: * mention the Text::Bastardize readme in t/'s copyright.
+             * mention 's cpantest' and 's save'.
+             * convention: user input use double quote, single quote
+	     otherwise.
+     Branch: devel
+	   ! README
+____________________________________________________________________________
+[  3830] By: autrijus                              on 2002/04/09  19:10:57
+        Log: * small pod nit.
+     Branch: devel
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  3826] By: autrijus                              on 2002/04/09  11:19:28
+        Log: * changes.
+     Branch: devel
+	   ! Changes
+     Branch: dist
+	   ! Changes
+____________________________________________________________________________
 [  3825] By: autrijus                              on 2002/04/09  11:17:33
         Log: * mfc.
      Branch: dist

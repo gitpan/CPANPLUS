@@ -1,8 +1,8 @@
 # $File: //member/autrijus/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #3 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #4 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
 
 package ExtUtils::AutoInstall;
-$ExtUtils::AutoInstall::VERSION = '0.28';
+$ExtUtils::AutoInstall::VERSION = '0.29';
 
 use strict;
 
@@ -15,7 +15,7 @@ ExtUtils::AutoInstall - Automatic install of dependencies via CPAN
 
 =head1 VERSION
 
-This document describes version 0.28 of B<ExtUtils::AutoInstall>.
+This document describes version 0.29 of B<ExtUtils::AutoInstall>.
 
 =head1 SYNOPSIS
 
@@ -416,7 +416,7 @@ sub _install_cpanplus {
 
 	    my $i; # used below to strip leading '-' from config keys
 	    
-	    if ($obj->install(@config)) {
+	    if ($cp->install( modules => [ $obj->{module} ], @config)) {
 		$installed++;
 		print "*** $pkg successfully installed.\n";
 	    }

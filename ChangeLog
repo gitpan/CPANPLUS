@@ -1,5 +1,33 @@
 # $File: //member/autrijus/cpanplus/dist/ChangeLog $
-# $Revision: #6 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #8 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+
+[Changes for 0.031 - April 10, 2002]
+
+Following the 'next-day followup' tradition established by version 0.02,
+this is yet another bugfix release, due to numerous Windows-related
+issues in bundled utilities, and a glitch in the AutoInstaller code.
+
+* New Features
+
+ - Storable images are now tagged with the Storable versions.
+
+ - Old storable images are deleted during the configuration process.
+
+* Bug fixes (and their first reporters):
+
+ - Use AutoInstall 0.29 to resolve installation glitches. (Jochen Stenzel)
+
+ - Fixed IPC::Run's buffering so interactive installs work. (Jorrit Waalboer)
+
+ - 'cpansmoke' now falls back to fork() on platforms without alarm().
+
+ - 'cpansmoke' won't re-fetch distfiles if its arguments are module names.
+
+ - 'cpantest' was using the incorrect 'perl.org' as its SMTP server.
+
+ - 'cpanp' was unable to handle '--flags' with Term::ReadLine::Perl on Win32.
+  
+ - The scary 'Unlinking C:\' messages during uninstall() are eliminated.
 
 [Changes for 0.03 - April 9, 2002]
 

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #17 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #18 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -934,13 +934,15 @@ Shell commands:
     CPAN Terminal>e /home/kudra/perllib
 
     CPAN Terminal>m simple tcp poe
-    CPAN Terminal>i 22 27 /A/AL/ALIZTA/Crypt-Enigma-0.01.tar.gz
+    CPAN Terminal>i 22..27 /A/AL/ALIZTA/Crypt-Enigma-0.01.tar.gz 6
 
-    CPAN Terminal>u Acme::POE::Knee 6
+    CPAN Terminal>u Acme::POE::Knee 21
 
     CPAN Terminal>a damian
 
     CPAN Terminal>t Mail::Box
+
+    CPAN Terminal>c DBI
 
     CPAN Terminal>r POE
 
@@ -1009,9 +1011,10 @@ example:
 
 These columns correspond to the assigned number, module name,
 version number and CPAN author identification.  Assigned numbers
-can be used for a subsequent commands but are
-reassigned for each search.  If no module version is listed,
-the third field will be I<undef>.
+can be used for a subsequent commands, either singly (I<2>) or
+inclusively (I<1..2>).  Numbers are reassigned for each search.  
+
+If no module version is listed, the third field will be I<undef>.
 
 =head2 a AUTHOR [AUTHOR]
 
@@ -1051,9 +1054,10 @@ search.  For instance:
 
 =item * C<i /K/KA/KANE/Acme-POE-Knee-1.10.zip>
 
-=item * C<i 16>
+=item * C<i 16..18 2>
 
-This example would install result 16 from the previous match.
+This example would install results 16 through and including 18 and 2
+from the most recent results.
 
 =back
 

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #13 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #15 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -145,7 +145,7 @@ sub fetch {
 
     my $_data = {
         modules     => { required => 1, default => [] },
-        fetchdir    => { default => '.' },
+        fetchdir    => { default => '' },
         force       => { default => undef },
     };
 
@@ -1232,7 +1232,7 @@ array reference.  In other words, all three forms below are equivalent:
 
 Flags for MakeMaker may be a string, an array reference, or a hash
 reference, just like C<makeflags>.  An example argument for MakeMaker is
-C<INST_LIB =E<gt> '/home/ann/perl/lib/'>.  See ExtUtils::MakeMaker
+C<{ INST_LIB =E<gt> '/home/ann/perl/lib/' }>.  See ExtUtils::MakeMaker
 for a complete list of possible arguments.
 
 Note that individual modules may provide their own additional

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/README $
-# $Revision: #10 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #11 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
 
 This is the README file for CPANPLUS, Ameliorated interface to
 the Comprehensive Perl Archive Network, by Jos Boumans.
@@ -8,7 +8,7 @@ Please type "perldoc CPANPLUS" after installation to see the
 module usage information. For shell usage, please consult
 "perldoc cpanp"; the FAQ is available as "perldoc CPANPLUS::FAQ".
 
-You may also want to read the "ChangeLog" file, which describes new
+You may also want to read the 'ChangeLog' file, which describes new
 features, bugfixes and additional notes for this release.
 
 ### PLEASE NOTE ###################################################
@@ -30,7 +30,7 @@ make install
 
 * Notes for Windows users
 
-If you are using Microsoft Windows, you'll probably need the 'nmake'
+If you are using Microsoft Windows, you will probably need the 'nmake'
 utility before installation. It's available at:
 
     ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe
@@ -41,10 +41,10 @@ all you have to do is to answer 'y' to this question:
 
     Required executable 'nmake' not found. Install it? [Y/n]:
 
-However, if you are not online, or wish to install 'nmake' into
+However, if you are not yet online, or wish to install 'nmake' into
 another directory, then please download the file manually, save it to
 a directory in %PATH (e.g. C:\WINDOWS\COMMAND), then launch the MS-DOS
-command line shell, 'cd' to that directory, and run 'nmake15.exe' from
+command line shell, "cd" to that directory, and run "nmake15.exe" from
 there; that will create the 'nmake.exe' file needed by CPANPLUS.
 
 You may then resume the installation process above, but replace 'make'
@@ -64,10 +64,11 @@ and send reports back to testers.cpan.org. If you have set the 'cpantest'
 configuration variable to true (see below), "t DBI" in the default shell
 will do the same thing for you.
 
-If you wish to report module test results as part of installation
-process, please answer 'Y' to the "Report tests results? [y/N]:"
-question during the interactive configuration. You can type 's conf'
-in the CPANPLUS Shell to start the configure process.
+If you wish to report module test results as part of installation process,
+please answer "Y" to the 'Report tests results? [y/N]:' question during
+the interactive configuration. You can also type "s conf" in the CPANPLUS
+Shell to start the configure process, or just enter "s cpantest 1" and
+"s save" to save the settings.
 
 Please consult "perldoc cpansmoke", "perldoc cpantest" and CPAN Tester's
 Website (http://testers.cpan.org/) for detailed information.
@@ -93,9 +94,9 @@ See <http://www.perl.com/perl/misc/Artistic.html>.
 
 * Legal statement
 
-This distribution bundles several programs and modules in bin/,
-inc/ and t/lib/ directories under the Perl license; modules in
-the latter two directories are not installed. This aggregation
+This distribution bundles several programs, modules and documents
+in bin/, inc/ and t/ directories under the Perl license; modules
+in the latter two directories are not installed. This aggregation
 mandates a declaration on their copyrights, as shown below:
 
 The 'bin/cpantest' program is
@@ -123,4 +124,7 @@ File::Spec and File::Spec::* are authored by
     abs2rel() and rel2abs() written by Shigio Yamaguchi <shigio@tamacom.com>,
     modified by Barrie Slaymaker <barries@slaysys.com>.
     splitpath(), splitdir(), catpath() and catdir() by Barrie Slaymaker.
+
+The README file of Text::Bastardize (part of the test suite) is authored by
+    Julian Fondren (julian@imaji.net), or ayrnieu of EFnet IRC.
 

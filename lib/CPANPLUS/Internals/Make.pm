@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #11 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #12 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -497,6 +497,7 @@ sub _run {
         modules  => { 'IPC::Run' => '0.55' },
         complain => ($^O eq 'MSWin32'),
     ) ) {
+        STDOUT->autoflush(1); STDERR->autoflush(1); 
         IPC::Run::run(\@cmd, \*STDIN, $_out_handler, $_err_handler);
     }
 

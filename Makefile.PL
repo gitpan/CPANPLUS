@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/Makefile.PL $ $Author: autrijus $
-# $Revision: #8 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #9 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
 
 use strict;
 
@@ -166,6 +166,11 @@ sub write_makefile {
     WriteMakefile(%args);
     
     print "Now, please type '$Config{make} test' to test, and '$Config{make} install' to install.\n";
+
+    # make an educated guess of whether we'll need root permission.
+    if (eval '$>' and $AutoInstall) {
+        print "You may need to do that as the 'root' user to install dependencies.\n";
+    }
 }
 
 sub try_autoinstall {

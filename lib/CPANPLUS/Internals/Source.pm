@@ -77,7 +77,13 @@ sub _create_mod_tree {
 
     ### find the location of the stored data structure ###
     ### bleh!  changed to use File::Spec->catfile -jmb
-    my $stored = File::Spec->catfile($conf->_get_build('base'), $conf->_get_source('smod'));
+    my $stored = File::Spec->catfile(
+                                $conf->_get_build('base'),      #base dir
+                                $conf->_get_source('smod')      #file name
+                                . '.' .
+                                $Storable::VERSION              #the version of storable used to store
+                                . '.stored'                     #append a suffix
+                            );
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
@@ -183,14 +189,20 @@ sub _create_author_tree {
 
     ### $stored is the name of the frozen data structure ###
     ### changed to use File::Spec->catfile -jmb
-    my $stored = File::Spec->catfile($conf->_get_build('base'), $conf->_get_source('sauth'));
+    my $stored = File::Spec->catfile(
+                                $conf->_get_build('base'),      #base dir
+                                $conf->_get_source('sauth')     #file
+                                . '.' .
+                                $Storable::VERSION              #the version of storable used to store
+                                . '.stored'                     #append a suffix
+                            );
 
     if ($storable && -e $stored && $args{'uptodate'}) {
-        my $href = Storable::retrieve($stored);
         $err->inform(
             msg => "Retrieving $stored ",
             quiet => !$conf->get_conf('verbose')
         );
+        my $href = Storable::retrieve($stored);
         return $href;
 
     ### else, we'll build a new one ###
@@ -239,14 +251,20 @@ sub _create_dslip_tree {
 
     ### $stored is the name of the frozen data structure ###
     ### changed to use File::Spec->catfile -jmb
-    my $stored = File::Spec->catfile($conf->_get_build('base'), $conf->_get_source('sdslip'));
+    my $stored = File::Spec->catfile(
+                                $conf->_get_build('base'),      #base dir
+                                $conf->_get_source('sdslip')    #file name
+                                . '.' .
+                                $Storable::VERSION              #the version of storable used to store
+                                . '.stored'                     #append a suffix
+                            );
 
     if ($storable && -e $stored && $args{'uptodate'}) {
-        my $href = Storable::retrieve($stored);
         $err->inform(
             msg     => "Retrieving $stored ",
             quiet   => !$conf->get_conf('verbose')
         );
+        my $href = Storable::retrieve($stored);
         return $href;
 
     ### else, we'll build a new one ###

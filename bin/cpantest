@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/bin/cpantest $ $Author: autrijus $
-# $Revision: #2 $ $Change: 3689 $ $DateTime: 2002/04/03 18:01:42 $
+# $Revision: #3 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
 
 =head1 NAME
 
@@ -247,13 +247,13 @@ $msg->set('X-reported-via', "cpan-test version $VERSION");
 
 my $fh = $msg->open(
     ($^O eq 'MacOS' || $^O eq 'VMS' || $^O eq 'MSWin32' || $^O eq 'os2')
-	? ('smtp', Server => 'perl.org')
+	? ('smtp', Server => 'testers.cpan.org')
 	: ()
 );
 
-    open REP, $Report;
-        while (<REP>) { print $fh $_ }
-    close REP;
+open REP, $Report;
+while (<REP>) { print $fh $_ }
+close REP;
 
 $fh->close;
 

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #14 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+# $Revision: #17 $ $Change: 3860 $ $DateTime: 2002/04/10 07:17:53 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -716,6 +716,11 @@ First of all, I'd like to create this directory.  Where?
 
         $cpan_home = Cwd::abs_path($answer);
 
+        ### clear away old storable images before 0.031
+        unlink File::Spec->catfile($cpan_home, 'dslip');
+        unlink File::Spec->catfile($cpan_home, 'mailrc');
+        unlink File::Spec->catfile($cpan_home, 'packages');
+
         print "\nYour CPAN++ build and cache directory has been set to:\n";
         print "    $cpan_home\n";
         last;
@@ -1073,7 +1078,7 @@ file:, ftp:, or http: -- that host a CPAN mirror.
                     if (exists $host_list->{$host}) {
                         print "\nHost $host already selected!\n";
                         last LOOP if $AutoSetup;
-                        next;
+			next;
                     }
 
                     push @hosts, $host;
@@ -1136,10 +1141,16 @@ file:, ftp:, or http: -- that host a CPAN mirror.
     #} sort keys %{$host_list};
     } @hosts;
 
+    ## the default fall-back host for unfortunate users
+    my $fallback_host = 'ftp://ftp.cpan.org/pub/CPAN/';
+
     print qq{
 
 If there are any additional URLs you would like to use, please add them
 now.  You may enter them separately or as a space delimited list.
+
+We provide a default fall-back URL, but you are welcome to override it
+with e.g. 'http://www.cpan.org/' if LWP, wget or lynx is installed.
 
 (Enter an empty string when you are done, or to simply skip this step.)
 
@@ -1147,11 +1158,16 @@ now.  You may enter them separately or as a space delimited list.
 
     while ('kane is happy') {
         $answer = _get_reply(
-                        prompt  => "Additional host(s) to add: ",
+                        prompt  => "Additional host(s) to add". 
+                                   ($fallback_host ? " [$fallback_host]: " : ": "),
+                        default => $fallback_host,
                   );
 
+        ## first-time only.
+        $fallback_host = '';
+
         ## oh, you want to quit (_get_reply returns empty string given no input)
-        last unless $answer;
+        last unless $answer =~ /\S/;
 
         my @given = split(' ', $answer); #little-documented awk-like behavior
 

@@ -351,11 +351,6 @@ sub _uninstall {
     }
 
     for my $dir ( sort @$dirtree ) {
-        $err->inform( 
-                    msg     => qq[removing $dir], 
-                    quiet   => !$conf->get_conf('verbose') 
-                );
-
         ### Check if the $dir is empty
         local *DIR;
         opendir DIR, $dir;
@@ -363,6 +358,11 @@ sub _uninstall {
         close DIR;
 
         next unless @count == 2; # . and ..
+
+        $err->inform( 
+                    msg     => qq[removing $dir], 
+                    quiet   => !$conf->get_conf('verbose') 
+                );
 
         unless (rmdir $dir) {
             $err->trap( error => qq[could not remove $dir: $!] );
