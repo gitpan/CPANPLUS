@@ -148,7 +148,8 @@ sub new {
         $obj->status($acc);
 
         ### add minimum supported accessors
-        $acc->mk_accessors( qw[created installed uninstalled dist] );
+        $acc->mk_accessors( qw[prepared created installed uninstalled 
+                               distdir dist] );
     }
 
     ### now initialize it or admit failure
@@ -192,7 +193,6 @@ Returns a list of the CPANPLUS::Dist::* classes available
 
             my $only_re = __PACKAGE__ . '::\w+$';
 
-            ### XXX M::P 2.4 can do regexes -- find out how
             Module::Pluggable->import(
                             sub_name    => '_dist_types',
                             search_path => __PACKAGE__,
@@ -253,10 +253,10 @@ sub _resolve_prereqs {
     ### so you didn't provide an explicit target.
     ### maybe your config can tell us what to do.
     $target ||= {
-        PREREQ_ASK,     'install',   # we'll bail out if the user says no
-        PREREQ_BUILD,   'create',
-        PREREQ_IGNORE,  'ignore',
-        PREREQ_INSTALL, 'install',
+        PREREQ_ASK,     TARGET_INSTALL, # we'll bail out if the user says no
+        PREREQ_BUILD,   TARGET_CREATE,
+        PREREQ_IGNORE,  TARGET_IGNORE,
+        PREREQ_INSTALL, TARGET_INSTALL,
     }->{ $conf->get_conf('prereqs') } || '';
 
 
@@ -297,7 +297,7 @@ sub _resolve_prereqs {
 
 
     ### so you just want to ignore prereqs? ###
-    if( $target eq 'ignore' ) {
+    if( $target eq TARGET_IGNORE ) {
 
         ### but you have modules you need to install
         if( @install_me ) {
@@ -374,10 +374,11 @@ sub _resolve_prereqs {
         ### CPANPLUS::Dist->new and the like ourselves,
         ### since ->install will take care of fetch &&
         ### extract as well
+        my $pa = $dist->status->_prepare_args   || {};
         my $ca = $dist->status->_create_args    || {};
         my $ia = $dist->status->_install_args   || {};
 
-        unless( $modobj->install(   %$ca, %$ia,
+        unless( $modobj->install(   %$pa, %$ca, %$ia,
                                     force   => $force,
                                     verbose => $verbose,
                                     format  => $format,
@@ -395,7 +396,7 @@ sub _resolve_prereqs {
         last if $flag;
 
         ### don't want us to install? ###
-        if( $target ne 'install' ) {
+        if( $target ne TARGET_INSTALL ) {
             my $dir = $modobj->status->extract
                         or error(loc("No extraction dir for '%1' found ".
                                      "-- weird", $modobj->module));

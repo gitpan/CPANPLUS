@@ -14,7 +14,7 @@ BEGIN {
     use vars        qw[$VERSION @ISA $VERBOSE $CACHE @EXPORT_OK $ERROR];
     use Exporter;
     @ISA        =   qw[Exporter];
-    $VERSION    =   '0.06';
+    $VERSION    =   '0.07';
     $VERBOSE    =   0;
 
     @EXPORT_OK  =   qw[check_install can_load requires];
@@ -63,8 +63,8 @@ Module::Load::Conditional - Looking up module information / loading at runtime
 
     ### The last error that happened during a call to 'can_load'
     my $err = $Module::Load::Conditional::ERROR;
-    
-    
+
+
 =head1 DESCRIPTION
 
 Module::Load::Conditional provides simple ways to query and possibly load any of
@@ -176,7 +176,7 @@ sub check_install {
             }
 
             if (!UNIVERSAL::isa($fh, 'GLOB')) {
-                warn loc(q[Can not open file '%1': %2], $file, $!) 
+                warn loc(q[Cannot open file '%1': %2], $file, $!)
                         if $args->{verbose};
                 next;
             }
@@ -189,7 +189,7 @@ sub check_install {
 
             $fh = new FileHandle;
             if (!$fh->open($filename)) {
-                warn loc(q[Can not open file '%1': %2], $file, $!)
+                warn loc(q[Cannot open file '%1': %2], $file, $!)
                         if $args->{verbose};
                 next;
             }
@@ -198,6 +198,9 @@ sub check_install {
         $href->{file} = $filename;
 
         while (local $_ = <$fh> ) {
+
+	    ### skip commented out lines, they won't eval to anything.
+	    next if /^\s*#/;
 
             ### the following regexp comes from the ExtUtils::MakeMaker
             ### documentation.
@@ -269,15 +272,15 @@ assumed to be good enough.
 
 =item verbose
 
-This controls whether warnings should be printed if a module failed 
-to load. 
+This controls whether warnings should be printed if a module failed
+to load.
 The default is to use the value of $Module::Load::Conditional::VERBOSE.
 
 =item nocache
 
-C<can_load> keeps it's results in a cache, so it will not load the
+C<can_load> keeps its results in a cache, so it will not load the
 same module twice, nor will it attempt to load a module that has
-already failed to load before. By default, C<can_load> will check it's
+already failed to load before. By default, C<can_load> will check its
 cache, but you can override that by setting C<nocache> to true.
 
 =cut
@@ -389,7 +392,7 @@ sub can_load {
 
 C<requires> can tell you what other modules a particular module
 requires. This is particularly useful when you're intending to write
-a module for public release and are listing it's prerequisites.
+a module for public release and are listing its prerequisites.
 
 C<requires> takes but one argument: the name of a module.
 It will then first check if it can actually load this module, and
@@ -412,7 +415,7 @@ sub requires {
 
     my $lib = join " ", map { qq["-I$_"] } @INC;
     my $cmd = qq[$^X $lib -M$who -e"print(join(qq[\\n],keys(%INC)))"];
-    
+
     return  sort
                 grep { !/^$who$/  }
                 map  { chomp; s|/|::|g; $_ }

@@ -86,6 +86,16 @@ ok( $mod->extract,              "Extracting module" );
 ok( $mod->test,                 "Testing module" );
 ok( $mod->status->dist_cpan->status->test,
                                 "   Test success registered as status" );
+ok( $mod->status->dist_cpan->status->prepared,
+                                "   Prepared status registered" );
+ok( $mod->status->dist_cpan->status->created,
+                                "   Created status registered" );
+is( $mod->status->dist_cpan->status->distdir, $mod->status->extract,
+                                "   Distdir status registered properly" );
+
+### test the convenience methods
+ok( $mod->prepare,              "Preparing module" );
+ok( $mod->create,               "Creating module" );
 
 ok( $mod->dist,                 "Building distribution" );
 ok( $mod->status->dist_cpan,    "   Dist registered as status" );
@@ -172,19 +182,24 @@ SKIP: {
                                     format => INSTALLER_MM );
 
     ok( $dist,                  "New dist object made" );
-    ok(!$dist->create,          "   Dist->create failed" );
-    like( CPANPLUS::Error->stack_as_string, qr/No dir found to operate on/s,
-                                "   Failure logged" );
+    ok(!$dist->prepare,         "   Dist->prepare failed" );
+    like( CPANPLUS::Error->stack_as_string, qr/No dir found to operate on/,
+                                "       Failure logged" );
 
-    ### manually set the extract dir ###
+    ### manually set the extract dir,
     $mod->status->extract($0);
 
     ok(!$dist->create,          "   Dist->create failed" );
+    like( CPANPLUS::Error->stack_as_string, qr/not successfully prepared/s,
+                                "       Failure logged" );
+
+    ### pretend we've been prepared ###
+    $dist->status->prepared(1);
+
+    ok(!$dist->create,          "   Dist->create failed" );
     like( CPANPLUS::Error->stack_as_string, qr/Could not chdir/s,
-                                "   Failure logged" );
+                                "       Failure logged" );
 }
-
-
 
 ### writemakefile.pl tests ###
 {   ### remove old status info
@@ -241,6 +256,7 @@ SKIP: {
     ok( unlink($makefile_pl),   "Deleting Makefile.PL");
     ok( !-s $makefile_pl,       "   Makefile.PL deleted" );
     ok( $dist->status->mk_flush,"Dist status flushed" );
+    ok( $dist->prepare,         "   Dist->prepare run again" );
     ok( $dist->create,          "   Dist->create run again" );
     ok( -s $makefile_pl,        "   Makefile.PL present" );
     like( CPANPLUS::Error->stack_as_string,
@@ -258,7 +274,7 @@ SKIP: {
         ok(!-s $makefile_pl,        "Makefile.PL deleted" );
         ok(!-s $makefile,           "Makefile deleted" );
         ok( $dist->status->mk_flush,"Dist status flushed" );
-        ok(!$dist->create,          "   Dist->create failed" );
+        ok(!$dist->prepare,         "   Dist->prepare failed" );
         like( CPANPLUS::Error->stack_as_string,
               qr/Could not find 'Makefile.PL'/i,
                                     "   Missing Makefile.PL noted" );
@@ -282,7 +298,7 @@ SKIP: {
         #ok( unlink($makefile_pl),   "   Deleting Makefile.PL");
         ok(!-s $makefile_pl,        "Makefile.PL deleted" );
         ok( $dist->status->mk_flush,"Dist status flushed" );
-        ok(!$dist->create,          "   Dist->create failed" );
+        ok(!$dist->prepare,         "   Dist->prepare failed" );
         like( CPANPLUS::Error->stack_as_string, qr/Could not run/s,
                                     "   Logged failed 'perl Makefile.PL'" );
         is( $dist->status->makefile, 0,

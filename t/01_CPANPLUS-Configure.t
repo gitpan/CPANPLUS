@@ -31,7 +31,7 @@ isa_ok( $r, 'CPANPLUS::Config' );
 
 ### EU::AI compatibility test ###
 {   my $base = $c->_get_build('base');
-    ok( $base,                          "Base retrieved by old compat API");
+    ok( defined($base),                 "Base retrieved by old compat API");
     is( $base, $c->get_conf('base'),    "   Value as expected" );
 }
 

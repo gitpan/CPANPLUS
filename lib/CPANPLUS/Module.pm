@@ -251,7 +251,7 @@ The checksum value this distribution is expected to have
 
 =head1 METHODS
 
-=head2 new( OPTIONS )
+=head2 $self = CPANPLUS::Module::new( OPTIONS )
 
 This method returns a C<CPANPLUS::Module> object. Normal users
 should never call this method directly, but instead use the
@@ -288,8 +288,8 @@ sub new {
     my $acc = Object::Accessor->new;
     $acc->mk_accessors( qw[ installer_type dist_cpan dist prereqs
                             signature extract fetch readme uninstall
-                            created installed checksums checksum_ok
-                            checksum_value ] );
+                            created installed prepared checksums 
+                            checksum_ok checksum_value ] );
 
     $object->status( $acc );
 
@@ -394,7 +394,7 @@ with C<Bundle::>.
 
 =pod
 
-=head2 clone
+=head2 $clone = $self->clone
 
 Clones the current module object for tinkering with.
 It will have a clean C<CPANPLUS::Module::Status> object, as well as
@@ -418,7 +418,7 @@ sub clone {
 
 =pod
 
-=head2 fetch
+=head2 $where = $self->fetch
 
 Fetches the module from a CPAN mirror.
 Look at L<CPANPLUS::Internals::Fetch::_fetch()> for details on the
@@ -448,7 +448,7 @@ sub fetch {
 
 =pod
 
-=head2 extract
+=head2 $path = $self->extract
 
 Extracts the fetched module.
 Look at L<CPANPLUS::Internals::Extract::_extract()> for details on
@@ -469,7 +469,7 @@ sub extract {
     return $cb->_extract( @_, module => $self );
 }
 
-=head2 get_installer_type([prefer_makefile => BOOL])
+=head2 $type = $self->get_installer_type([prefer_makefile => BOOL])
 
 Gets the installer type for this module. This may either be C<build> or
 C<makemaker>. If C<Module::Build> is unavailable or no installer type
@@ -536,7 +536,7 @@ sub get_installer_type {
 
 =pod
 
-=head2 dist([format => DISTRIBUTION_TYPE, args => {key => val}]);
+=head2 $dist = $self->dist([target => 'prepare|create', format => DISTRIBUTION_TYPE, args => {key => val}]);
 
 Create a distribution object, ready to be installed.
 Distribution type defaults to your config settings
@@ -556,11 +556,12 @@ sub dist {
     my $conf = $cb->configure_object;
     my %hash = @_;
 
-    my $type; my $args;
+    my($type,$args,$target);
     my $tmpl = {
         format  => { default => $conf->get_conf('dist_type') ||
                                 $self->status->installer_type,
                      store   => \$type },
+        target  => { default => TARGET_CREATE, store => \$target },                     
         args    => { default => {}, store => \$args },
     };
 
@@ -570,18 +571,54 @@ sub dist {
                                     module => $self
                             ) or return;
 
-    $dist->create( %$args ) or return;
+    DIST: {
+        ### first prepare the dist
+        $dist->prepare( %$args ) or return;
+        $self->status->prepared(1);
 
-    $self->status->created(1);
+        ### you just wanted us to prepare?
+        last DIST if $target eq TARGET_PREPARE;
 
-    #$self->status->dist( $dist );
+        $dist->create( %$args ) or return;
+        $self->status->created(1);
+    }
 
     return $dist;
 }
 
 =pod
 
-=head2 $mod->test( )
+=head2 $bool = $mod->prepare( )
+ 
+Convenience method around C<install()> that prepares a module 
+without actually building it. This is equivalent to invoking C<install>
+with C<target> set to C<prepare>
+
+Returns true on success, false on failure.
+
+=cut
+
+sub prepare { 
+    my $self = shift;
+    return $self->install( @_, target => TARGET_PREPARE );
+}
+
+=head2 $bool = $mod->create( )
+
+Convenience method around C<install()> that creates a module. 
+This is equivalent to invoking C<install> with C<target> set to 
+C<create>
+
+Returns true on success, false on failure.
+
+=cut
+
+sub create { 
+    my $self = shift;
+    return $self->install( @_, target => TARGET_CREATE );
+}
+
+=head2 $bool = $mod->test( )
 
 Convenience wrapper around C<install()> that tests a module, without
 installing it.
@@ -594,12 +631,12 @@ Returns true on success, false on failure.
 
 sub test {
     my $self = shift;
-    return $self->install( @_, target => 'create', skiptest => 0 );
+    return $self->install( @_, target => TARGET_CREATE, skiptest => 0 );
 }
 
 =pod
 
-=head2 install([ target => 'create|install', format => FORMAT_TYPE, extractdir => DIRECTORY, fetchdir => DIRECTORY, prefer_bin => BOOL, force => BOOL, verbose => BOOL, ..... ]);
+=head2 $bool = $self->install([ target => 'prepare|create|install', format => FORMAT_TYPE, extractdir => DIRECTORY, fetchdir => DIRECTORY, prefer_bin => BOOL, force => BOOL, verbose => BOOL, ..... ]);
 
 Installs the current module. This includes fetching it and extracting
 it, if this hasn't been done yet, as well as creating a distribution
@@ -629,8 +666,9 @@ sub install {
         ### targets 'dist' and 'test' are now completely ignored ###
         my $tmpl = {
                         ### match this allow list with Dist->_resolve_prereqs
-            target     => { default => 'install', store => \$target,
-                                allow => [qw|create install|] },
+            target     => { default => TARGET_INSTALL, store => \$target,
+                            allow   => [TARGET_PREPARE, TARGET_CREATE,
+                                        TARGET_INSTALL] },
             force      => { default => $conf->get_conf('force'), },
             verbose    => { default => $conf->get_conf('verbose'), },
             format     => { default => $conf->get_conf('dist_type'),
@@ -640,11 +678,14 @@ sub install {
         $args = check( $tmpl, \%hash ) or return;
     }
 
-    ### if this target is 'create' then so is the target of every prereq
-    $args->{'prereq_target'} ||= 'create' if $target eq 'create';
+    ### if this target isn't 'install', we will need to at least 'create' 
+    ### every prereq, so it can build
+    ### XXX prereq_target of 'prepare' will do weird things here, and is
+    ### not supported.
+    $args->{'prereq_target'} ||= TARGET_CREATE if $target ne TARGET_INSTALL;
 
     ### check if it's already upto date ###
-    if( $target eq 'install' and !$args->{'force'} and
+    if( $target eq TARGET_INSTALL and !$args->{'force'} and
         !$self->package_is_perl_core() and         # separate rules apply
         ( $self->status->installed() or $self->is_uptodate ) and
         !INSTALL_VIA_PACKAGE_MANAGER->($format)
@@ -748,14 +789,16 @@ sub install {
         }
     }
 
-    my $dist = $self->dist( format => $format, args => $args );
+    my $dist = $self->dist( format  => $format, 
+                            target  => $target, 
+                            args    => $args );
     unless( $dist ) {
         error( loc( "Unable to create a new distribution object for '%1' " .
                     "-- cannot continue", $self->module ) );
         return;
     }
 
-    return 1 if $target ne 'install';
+    return 1 if $target ne TARGET_INSTALL;
 
     my $ok = $dist->install( %$args ) ? 1 : 0;
 
@@ -765,7 +808,7 @@ sub install {
     return;
 }
 
-=pod bundle_modules()
+=pod @list = $self->bundle_modules()
 
 Returns a list of module objects the Bundle specifies.
 
@@ -844,7 +887,7 @@ sub bundle_modules {
 
 =pod
 
-=head2 readme
+=head2 $text = $self->readme
 
 Fetches the readme belonging to this module and stores it under
 C<< $obj->status->readme >>. Returns the readme as a string on
@@ -888,16 +931,16 @@ sub readme {
 
 =pod
 
-=head2 installed_version()
+=head2 $version = $self->installed_version()
 
 Returns the currently installed version of this module, if any.
 
-=head2 installed_file()
+=head2 $where = $self->installed_file()
 
 Returns the location of the currently installed file of this module,
 if any.
 
-=head2 is_uptodate([version => VERSION_NUMBER])
+=head2 $bool = $self->is_uptodate([version => VERSION_NUMBER])
 
 Returns a boolean indicating if this module is uptodate or not.
 
@@ -937,7 +980,7 @@ Returns a boolean indicating if this module is uptodate or not.
 
 =pod
 
-=head2 details()
+=head2 $href = $self->details()
 
 Returns a hashref with key/value pairs offering more information about
 a particular module. For example, for C<Time::HiRes> it might look like
@@ -984,17 +1027,39 @@ sub details {
     return $res;
 }
 
+=head2 @list = $self->contains()
+
+Returns a list of module objects that represent the modules also 
+present in the package of this module.
+
+For example, for C<Archive::Tar> this might return:
+
+    Archive::Tar
+    Archive::Tar::Constant
+    Archive::Tar::File
+
+=cut
+
+sub contains {
+    my $self = shift;
+    my $cb   = $self->parent;
+    my $pkg  = $self->package;
+    
+    my @mods = $cb->search( type => 'package', allow => [qr/^$pkg$/] );
+    
+    return @mods;
+}
+
 =pod
 
-=head2 fetch_report()
+=head2 @list_of_hrefs = $self->fetch_report()
 
 This function queries the CPAN testers database at
 I<http://testers.cpan.org/> for test results of specified module
 objects, module names or distributions.
 
 Look at L<CPANPLUS::Internals::Report::_query_report()> for details on
-the options you can pass.
-
+the options you can pass and the return value to expect.
 
 =cut
 
@@ -1007,7 +1072,7 @@ sub fetch_report {
 
 =pod
 
-=head2 uninstall([type => [all|man|prog])
+=head2 $bool = $self->uninstall([type => [all|man|prog])
 
 This function uninstalls the specified module object.
 
@@ -1121,7 +1186,7 @@ sub uninstall {
 
 =pod
 
-=head2 distributions()
+=head2 @modobj = $self->distributions()
 
 Returns a list of module objects representing all releases for this
 module on success, false on failure.
@@ -1140,7 +1205,7 @@ sub distributions {
 
 =pod
 
-=head2 files ()
+=head2 @list = $self->files ()
 
 Returns a list of files used by this module, if it is installed.
 
@@ -1152,7 +1217,7 @@ sub files {
 
 =pod
 
-=head2 directory_tree ()
+=head2 @list = $self->directory_tree ()
 
 Returns a list of directories used by this module.
 
@@ -1164,7 +1229,7 @@ sub directory_tree {
 
 =pod
 
-=head2 packlist ()
+=head2 @list = $self->packlist ()
 
 Returns the C<ExtUtils::Packlist> object for this module.
 
@@ -1176,7 +1241,7 @@ sub packlist {
 
 =pod
 
-=head2 validate ()
+=head2 @list = $self->validate ()
 
 Returns a list of files that are missing for this modules, but
 are present in the .packlist file.

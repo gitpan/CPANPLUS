@@ -53,7 +53,9 @@ choice.
 sub import {
     my $class   = shift;
     my $option  = shift;
-    my $conf    = CPANPLUS::Configure->new();
+    ### XXX this should offer to reconfigure CPANPLUS, somehow.  --rs
+    my $conf    = CPANPLUS::Configure->new() 
+                    or die loc("No configuration available -- aborting") . $/;
 
     ### find out what shell we're supposed to load ###
     $SHELL      = $option

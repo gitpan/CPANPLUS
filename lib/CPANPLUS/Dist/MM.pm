@@ -6,6 +6,7 @@ use vars    qw[@ISA $STATUS];
 
 use CPANPLUS::inc;
 use CPANPLUS::Internals::Constants;
+use CPANPLUS::Internals::Constants::Report;
 use CPANPLUS::Error;
 use FileHandle;
 use Cwd;
@@ -75,6 +76,21 @@ BOOL indicating if the C<make> (or C<Build>) command was successful.
 
 BOOL indicating if the C<make test> (or C<Build test>) command was 
 successful.
+
+=item prepared ()
+
+BOOL indicating if the C<prepare> call exited succesfully
+This gets set after C<perl Makefile.PL>
+
+=item distdir ()
+
+Full path to the directory in which the C<prepare> call took place,
+set after a call to C<prepare>. 
+
+=item created ()
+
+BOOL indicating if the C<create> call exited succesfully. This gets
+set after C<make> and C<make test>.
 
 =item installed ()
 
@@ -148,34 +164,16 @@ sub init {
     my $status  = $dist->status;
    
     $status->mk_accessors(qw[makefile make test created installed uninstalled
-                            _create_args _install_args] );
+                            _prepare_args _create_args _install_args] );
     
     return 1;
 }    
 
-=pod
-
-=head2 $bool = $dist->create([perl => '/path/to/perl', makemakerflags => 'EXTRA=FLAGS', make => '/path/to/make', makeflags => 'EXTRA=FLAGS', prereq_target => TARGET, skiptest => BOOL, force => BOOL, verbose => BOOL])
-
-C<create> preps a distribution for installation. This means it will 
-run C<perl Makefile.PL>, C<make> and C<make test>. 
-This will also scan for and attempt to satisfy any prerequisites the
-module may have. 
-
-If you set C<skiptest> to true, it will skip the C<make test> stage.
-If you set C<force> to true, it will go over all the stages of the 
-C<make> process again, ignoring any previously cached results. It 
-will also ignore a bad return value from C<make test> and still allow 
-the operation to return true.
-
-Returns true on success and false on failure.
-
-You may then call C<< $dist->install >> on the object to actually
-install it.
+=pod $bool = $dist->prepare(....)
 
 =cut
 
-sub create {
+sub prepare {
     ### just in case you already did a create call for this module object
     ### just via a different dist object
     my $dist = shift;
@@ -197,8 +195,7 @@ sub create {
     }
     
     my $args;
-    my( $force, $verbose, $make, $makeflags, $skiptest, $prereq_target, $perl, 
-        $mmflags, $prereq_format);
+    my( $force, $verbose, $perl, $mmflags );
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
             perl            => {    default => 
@@ -211,27 +208,16 @@ sub create {
                                     store   => \$force },
             verbose         => {    default => $conf->get_conf('verbose'), 
                                     store   => \$verbose },
-            make            => {    default => $conf->get_program('make'), 
-                                    store   => \$make },
-            makeflags       => {    default => $conf->get_conf('makeflags'), 
-                                    store   => \$makeflags },
-            skiptest        => {    default => $conf->get_conf('skiptest'), 
-                                    store   => \$skiptest },
-            prereq_target   => {    default => '', store => \$prereq_target }, 
-            ### don't set the default prereq format to 'makemaker' -- wrong!
-            prereq_format   => {    #default => $self->status->installer_type,
-                                    default => '',
-                                    store   => \$prereq_format },                    
         };                                            
 
         $args = check( $tmpl, \%hash ) or return;
     }
     
     ### maybe we already ran a create on this object? ###
-    return 1 if $dist->status->created && !$force;
+    return 1 if $dist->status->prepared && !$force;
         
     ### store the arguments, so ->install can use them in recursive loops ###
-    $dist->status->_create_args( $args );
+    $dist->status->_prepare_args( $args );
     
     ### chdir to work directory ###
     my $orig = cwd();
@@ -240,9 +226,9 @@ sub create {
         return;
     }
     
-    my $fail; my $prereq_fail;
+    my $fail; 
     RUN: {
-        ### don't run 'perl makefile.pl' again if there's a makefile already ###
+        ### don't run 'perl makefile.pl' again if there's a makefile already 
         if( -e MAKEFILE->() && (-M MAKEFILE->() < -M $dir) && !$force ) {
             msg(loc("'%1' already exists, not running '%2 %3' again ".
                     " unless you force",
@@ -319,121 +305,21 @@ sub create {
         unless( $prereqs ) {
             error( loc( "Unable to scan '%1' for prereqs", 
                         $dist->status->makefile ) );
-        } else {
-            $self->status->prereqs( $prereqs ); 
-        
-            ### this will set the directory back to the start
-            ### dir, so we must chdir /again/           
-            my $ok = $dist->_resolve_prereqs(
-                                format   => $prereq_format,
-                                verbose  => $verbose,
-                                prereqs  => $prereqs,
-                                target   => $prereq_target
-                        
-                        );
-            
-            unless( $cb->_chdir( dir => $dir ) ) {
-                error( loc( "Could not chdir to build directory '%1'", $dir ) );
-                return;
-            }       
-                      
-            unless( $ok ) {
-           
-                #### use $dist->flush to reset the cache ###
-                error( loc( "Unable to satisfy prerequisites for '%1' " .
-                            "-- aborting install", $self->module ) );    
-                $dist->status->make(0);
-                $fail++; $prereq_fail++;
-                last RUN;
-            } 
-        }      
-        ### end of prereq resolving ###    
-        
-        my $captured;
-        
-        ### 'make' section ###    
-        if( -d BLIB->($dir) && (-M BLIB->($dir) < -M $dir) && !$force ) {
-            msg(loc("Already ran '%1' for this module [%2] -- " .
-                    "not running again unless you force", 
-                    $make, $self->module ), $verbose );
-        } else {
-            unless(scalar run(  command => [$make, $makeflags],
-                                buffer  => \$captured,
-                                verbose => $verbose ) 
-            ) {
-                error( loc( "MAKE failed: %1 %2", $!, $captured ) );
-                $dist->status->make(0);
-                $fail++; last RUN;
-            }
-            
-            $dist->status->make(1);
 
-            ### add this directory to your lib ###
-            $cb->_add_to_includepath(
-                directories => [ BLIB_LIBDIR->( $self->status->extract ) ]
-            );
-            
-            last RUN if $skiptest;
+            $fail++; last RUN;
         }
-        
-        ### 'make test' section ###                                           
-        unless( $skiptest ) {
-
-            ### turn off our PERL5OPT so no modules from CPANPLUS::inc get
-            ### included in make test -- it should build without
-            ### also, modules that run in taint mode break if we leave
-            ### our code ref in perl5opt
-            local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt || '';
-        
-            ### you can turn off running this verbose by changing
-            ### the config setting below, although it is really not 
-            ### recommended
-            my $run_verbose =   
-                        $verbose || 
-                        $conf->get_conf('allow_build_interactivity') ||
-                        0;
-
-            ### XXX need to add makeflags here too? 
-            ### yes, but they should really be split out -- see bug #4143
-            unless(run( command => [$make, 'test', $makeflags],
-                        buffer  => \$captured,
-                        verbose => $run_verbose,
-            ) ) {
-                error( loc( "MAKE TEST failed: %1 %2", $!, $captured ) );
-            
-                ### send out error report here? or do so at a higher level?
-                ### --higher level --kane.
-                $dist->status->test(0);
-               
-                unless( $force ) {
-                    $fail++; last RUN;     
-                }
-            
-            } else {
-                $dist->status->test(1);
-            }
-        }
-    } #</RUN>
-      
+    }
+   
     unless( $cb->_chdir( dir => $orig ) ) {
         error( loc( "Could not chdir back to start dir '%1'", $orig ) );
-    }  
-    
-    ### send out test report?
-    ### only do so if the failure is this module, not its prereq
-    if( $conf->get_conf('cpantest') and not $prereq_fail) {
-        $cb->_send_report( 
-            module  => $self,
-            failed  => $fail,
-            buffer  => CPANPLUS::Error->stack_as_string,
-            verbose => $verbose,
-            force   => $force,
-        ) or error(loc("Failed to send test report for '%1'",
-                    $self->module ) );
-    }            
-            
-    return $dist->status->created( $fail ? 0 : 1);
-} 
+    }   
+   
+    ### save where we wrote this stuff -- same as extract dir in normal
+    ### installer circumstances
+    $dist->status->distdir( $self->status->extract );
+   
+    return $dist->status->prepared( $fail ? 0 : 1);
+}
 
 =pod
 
@@ -489,7 +375,218 @@ sub _find_prereqs {
     
     ### just to make sure it's not the same reference ###
     return { %p };                              
-}       
+}     
+
+=pod
+
+=head2 $bool = $dist->create([perl => '/path/to/perl', make => '/path/to/make', makeflags => 'EXTRA=FLAGS', prereq_target => TARGET, skiptest => BOOL, force => BOOL, verbose => BOOL])
+
+C<create> preps a distribution for installation. This means it will 
+run C<perl Makefile.PL>, C<make> and C<make test>. 
+This will also scan for and attempt to satisfy any prerequisites the
+module may have. 
+
+If you set C<skiptest> to true, it will skip the C<make test> stage.
+If you set C<force> to true, it will go over all the stages of the 
+C<make> process again, ignoring any previously cached results. It 
+will also ignore a bad return value from C<make test> and still allow 
+the operation to return true.
+
+Returns true on success and false on failure.
+
+You may then call C<< $dist->install >> on the object to actually
+install it.
+
+=cut
+
+sub create {
+    ### just in case you already did a create call for this module object
+    ### just via a different dist object
+    my $dist = shift;
+    my $self = $dist->parent;
+    
+    ### we're also the cpan_dist, since we don't need to have anything
+    ### prepared 
+    $dist    = $self->status->dist_cpan if      $self->status->dist_cpan;     
+    $self->status->dist_cpan( $dist )   unless  $self->status->dist_cpan;    
+
+    my $cb   = $self->parent;
+    my $conf = $cb->configure_object;
+    my %hash = @_;
+
+    my $dir;
+    unless( $dir = $self->status->extract ) {
+        error( loc( "No dir found to operate on!" ) );
+        return;
+    }
+    
+    my $args;
+    my( $force, $verbose, $make, $makeflags, $skiptest, $prereq_target, $perl, 
+        $mmflags, $prereq_format);
+    {   local $Params::Check::ALLOW_UNKNOWN = 1;
+        my $tmpl = {
+            perl            => {    default => 
+                                        $conf->get_program('perl') || $^X, 
+                                    store => \$perl },
+            force           => {    default => $conf->get_conf('force'), 
+                                    store   => \$force },
+            verbose         => {    default => $conf->get_conf('verbose'), 
+                                    store   => \$verbose },
+            make            => {    default => $conf->get_program('make'), 
+                                    store   => \$make },
+            makeflags       => {    default => $conf->get_conf('makeflags'), 
+                                    store   => \$makeflags },
+            skiptest        => {    default => $conf->get_conf('skiptest'), 
+                                    store   => \$skiptest },
+            prereq_target   => {    default => '', store => \$prereq_target }, 
+            ### don't set the default prereq format to 'makemaker' -- wrong!
+            prereq_format   => {    #default => $self->status->installer_type,
+                                    default => '',
+                                    store   => \$prereq_format },                    
+        };                                            
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+    
+    ### maybe we already ran a create on this object? ###
+    return 1 if $dist->status->created && !$force;
+        
+    ### store the arguments, so ->install can use them in recursive loops ###
+    $dist->status->_create_args( $args );
+    
+    unless( $dist->status->prepared ) {
+        error( loc( "You have not successfully prepared a '%2' distribution ".
+                    "yet -- cannot create yet", __PACKAGE__ ) );
+        return;
+    }
+    
+    
+    ### chdir to work directory ###
+    my $orig = cwd();
+    unless( $cb->_chdir( dir => $dir ) ) {
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        return;
+    }
+    
+    my $fail; my $prereq_fail;
+    RUN: {
+        ### this will set the directory back to the start
+        ### dir, so we must chdir /again/           
+        my $ok = $dist->_resolve_prereqs(
+                            format   => $prereq_format,
+                            verbose  => $verbose,
+                            prereqs  => $self->status->prereqs,
+                            target   => $prereq_target
+                    
+                    );
+        
+        unless( $cb->_chdir( dir => $dir ) ) {
+            error( loc( "Could not chdir to build directory '%1'", $dir ) );
+            return;
+        }       
+                  
+        unless( $ok ) {
+       
+            #### use $dist->flush to reset the cache ###
+            error( loc( "Unable to satisfy prerequisites for '%1' " .
+                        "-- aborting install", $self->module ) );    
+            $dist->status->make(0);
+            $fail++; $prereq_fail++;
+            last RUN;
+        } 
+        ### end of prereq resolving ###    
+        
+        my $captured;
+        
+        ### 'make' section ###    
+        if( -d BLIB->($dir) && (-M BLIB->($dir) < -M $dir) && !$force ) {
+            msg(loc("Already ran '%1' for this module [%2] -- " .
+                    "not running again unless you force", 
+                    $make, $self->module ), $verbose );
+        } else {
+            unless(scalar run(  command => [$make, $makeflags],
+                                buffer  => \$captured,
+                                verbose => $verbose ) 
+            ) {
+                error( loc( "MAKE failed: %1 %2", $!, $captured ) );
+                $dist->status->make(0);
+                $fail++; last RUN;
+            }
+            
+            $dist->status->make(1);
+
+            ### add this directory to your lib ###
+            $cb->_add_to_includepath(
+                directories => [ BLIB_LIBDIR->( $self->status->extract ) ]
+            );
+            
+            last RUN if $skiptest;
+        }
+        
+        ### 'make test' section ###                                           
+        unless( $skiptest ) {
+
+            ### turn off our PERL5OPT so no modules from CPANPLUS::inc get
+            ### included in make test -- it should build without
+            ### also, modules that run in taint mode break if we leave
+            ### our code ref in perl5opt
+            local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt || '';
+
+            ### you can turn off running this verbose by changing
+            ### the config setting below, although it is really not 
+            ### recommended
+            my $run_verbose =   
+                        $verbose || 
+                        $conf->get_conf('allow_build_interactivity') ||
+                        0;
+
+            ### XXX need to add makeflags here too? 
+            ### yes, but they should really be split out -- see bug #4143
+            unless(run( command => [$make, 'test', $makeflags],
+                        buffer  => \$captured,
+                        verbose => $run_verbose,
+            ) ) {
+                error( loc( "MAKE TEST failed: %1 %2", $!, $captured ) );
+            
+                ### send out error report here? or do so at a higher level?
+                ### --higher level --kane.
+                $dist->status->test(0);
+               
+                unless( $force ) {
+                    $fail++; last RUN;     
+                }
+            
+            } else {
+                ### tests might pass because it doesn't have any tests defined
+                ### log this occasion non-verbosely, so our test reporter can
+                ### pick up on this
+                msg( NO_TESTS_DEFINED->( $captured ), 0 )
+                    if NO_TESTS_DEFINED->( $captured );
+            
+                $dist->status->test(1);
+            }
+        }
+    } #</RUN>
+      
+    unless( $cb->_chdir( dir => $orig ) ) {
+        error( loc( "Could not chdir back to start dir '%1'", $orig ) );
+    }  
+    
+    ### send out test report?
+    ### only do so if the failure is this module, not its prereq
+    if( $conf->get_conf('cpantest') and not $prereq_fail) {
+        $cb->_send_report( 
+            module  => $self,
+            failed  => $fail,
+            buffer  => CPANPLUS::Error->stack_as_string,
+            verbose => $verbose,
+            force   => $force,
+        ) or error(loc("Failed to send test report for '%1'",
+                    $self->module ) );
+    }            
+            
+    return $dist->status->created( $fail ? 0 : 1);
+} 
 
 =pod
 

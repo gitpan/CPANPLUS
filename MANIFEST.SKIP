@@ -24,3 +24,4 @@ t/dummy-perl/.*(pm|3)$
 \.orig$
 \.rpt$
 lib/CPANPLUS/inc/installers/patches/
+Changes

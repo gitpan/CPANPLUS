@@ -425,13 +425,14 @@ sub _send_report {
     ### should we send it to a bunch of people? ###
     ### XXX should we do an 'already sent' check? ###
     } elsif( $reporter->send( @inform ) ) {
-        msg(loc("Successfully sent report for '%1'", $dist), $verbose);
+        msg(loc("Successfully sent '%1' report for '%2'", $grade, $dist),
+            $verbose);
         return 1;
 
     ### something broke :( ###
     } else {
-        error(loc("Could not send report for '%1': %2",
-                $dist, $reporter->errstr));
+        error(loc("Could not send '%1' report for '%2': %3",
+                $grade, $dist, $reporter->errstr));
         return;
     }
 }

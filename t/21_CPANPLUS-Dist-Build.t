@@ -54,7 +54,16 @@ is( $mod->status->installer_type, ($has_mb ? INSTALLER_BUILD : INSTALLER_MM),
 ok( $mod->test,                 "Testing module" );
 ok( $mod->status->dist_cpan->status->test,
                                 "   Test success registered as status" );
+ok( $mod->status->dist_cpan->status->prepared,
+                                "   Prepared status registered" );
+ok( $mod->status->dist_cpan->status->created,
+                                "   Created status registered" );
+is( $mod->status->dist_cpan->status->distdir, $mod->status->extract,
+                                "   Distdir status registered properly" );
 
+### test the convenience methods
+ok( $mod->prepare,              "Preparing module" );
+ok( $mod->create,               "Creating module" );
 
 ok( $mod->dist,                 "Building distribution" );
 ok( $mod->status->dist_cpan,    "   Dist registered as status" );

@@ -60,7 +60,8 @@ for my $name (@ARGV) {
 
         ### find the corresponding module object ###
         $obj = $cb->parse_module( module => $name ) or (
-                warn "Cannot make a module object out of '$name' -- skipping\n",
+                warn "Cannot make a module object out of ".
+                        "'$name' -- skipping\n",
                 next );
     }
 

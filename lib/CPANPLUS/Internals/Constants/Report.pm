@@ -106,11 +106,15 @@ use constant PERL_VERSION_TOO_LOW
 use constant NO_TESTS_DEFINED
                             => sub {
                                 my $buffer = shift or return;
-                                return $buffer =~
-                                  /^'?No tests defined for .* extension.\s*$/m
+                                if( $buffer =~
+                                  /('?No tests defined for .* extension.\s*$)/m
                                   and ( $buffer !~ /\*\.t/m and
-                                        $buffer !~ /test\.pl/m);
-
+                                        $buffer !~ /test\.pl/m)
+                                ) { 
+                                    return $1 
+                                }
+                                
+                                return;
                             };
 
 ### what stage did the test fail? ###

@@ -14,20 +14,23 @@ BEGIN {
 
     package CPANPLUS::Dist::_Test;
     use strict;
-    use vars qw[$Available $Create $Install $Init @ISA];
+    use vars qw[$Available $Create $Install $Init $Prepare @ISA];
 
     @ISA        = qw[CPANPLUS::Dist];
     $Available  = 1;
     $Create     = 1;
     $Install    = 1;
     $Init       = 1;
+    $Prepare    = 1;
 
     require CPANPLUS::Dist;
     CPANPLUS::Dist->_add_dist_types( __PACKAGE__ );
 
-    sub init                { $_[0]->status->mk_accessors( qw[created installed
-                                     _install_args _create_args]); $Init };
+    sub init                { $_[0]->status->mk_accessors( qw[prepared created installed
+                                     _prepare_args _install_args _create_args]);
+                              return $Init };
     sub format_available    { return $Available }
+    sub prepare             { return shift->status->prepared($Prepare) }
     sub create              { return shift->status->created($Create) }
     sub install             { return shift->status->installed($Install) }
 }
@@ -85,7 +88,7 @@ ok( $Mod,                       "Got module object" );
     ok( $class,                 "   Proper format found" );
 }
 
-### straight forward dist create
+### straight forward dist build - prepare, create, install
 {   my $dist = CPANPLUS::Dist->new(
                             format  => $Module,
                             module  => $Mod
@@ -98,6 +101,9 @@ ok( $Mod,                       "Got module object" );
     my $status = $dist->status;
     ok( $status,                "Status object found" );
     isa_ok( $status,            "Object::Accessor" );
+
+    ok( $dist->prepare,         "Prepare call" );
+    ok( $dist->status->prepared,"   Status registered OK" );
 
     ok( $dist->create,          "Create call" );
     ok( $dist->status->created, "   Status registered OK" );
@@ -166,6 +172,16 @@ ok( $Mod,                       "Got module object" );
                             "   Previous install failed recorded ok" ) },
             ],
 
+            "Set $Module->prepare to false" => [
+                sub { $CPANPLUS::Dist::_Test::Prepare = 0;       'install' },
+                sub { like( CPANPLUS::Error->stack_as_string,
+                      qr/Unable to create a new distribution object/s,
+                            "   Dist creation failed recorded ok" ) },
+                sub { like( CPANPLUS::Error->stack_as_string,
+                      qr/Failed to install '$Mod_prereq' as prerequisite/s,
+                            "   Dist creation failed recorded ok" ) },
+            ],
+
             "Set $Module->create to false" => [
                 sub { $CPANPLUS::Dist::_Test::Create = 0;       'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
@@ -192,6 +208,8 @@ ok( $Mod,                       "Got module object" );
             ],
             'Simple ignore'     => [
                 sub { 'ignore' },
+                sub { ok( !$_[0]->status->prepared,
+                            "   Module status says not prepared" ) },
                 sub { ok( !$_[0]->status->created,
                             "   Module status says not created" ) },
                 sub { ok( !$_[0]->status->installed,
@@ -199,6 +217,8 @@ ok( $Mod,                       "Got module object" );
             ],
             'Ignore from conf'  => [
                 sub { $conf->set_conf(prereqs => PREREQ_IGNORE);    '' },
+                sub { ok( !$_[0]->status->prepared,
+                            "   Module status says not prepared" ) },
                 sub { ok( !$_[0]->status->created,
                             "   Module status says not created" ) },
                 sub { ok( !$_[0]->status->installed,
@@ -210,6 +230,8 @@ ok( $Mod,                       "Got module object" );
         1 => {
             'Simple create'     => [
                 sub { 'create' },
+                sub { ok( $_[0]->status->prepared,
+                            "   Module status says prepared" ) },
                 sub { ok( $_[0]->status->created,
                             "   Module status says created" ) },
                 sub { ok( !$_[0]->status->installed,
@@ -217,6 +239,8 @@ ok( $Mod,                       "Got module object" );
             ],
             'Simple install'    => [
                 sub { 'install' },
+                sub { ok( $_[0]->status->prepared,
+                            "   Module status says prepared" ) },
                 sub { ok( $_[0]->status->created,
                             "   Module status says created" ) },
                 sub { ok( $_[0]->status->installed,
@@ -225,6 +249,8 @@ ok( $Mod,                       "Got module object" );
 
             'Install from conf' => [
                 sub { $conf->set_conf(prereqs => PREREQ_INSTALL);   '' },
+                sub { ok( $_[0]->status->prepared,
+                            "   Module status says prepared" ) },
                 sub { ok( $_[0]->status->created,
                             "   Module status says created" ) },
                 sub { ok( $_[0]->status->installed,
@@ -232,6 +258,8 @@ ok( $Mod,                       "Got module object" );
             ],
             'Create from conf'  => [
                 sub { $conf->set_conf(prereqs => PREREQ_BUILD);     '' },
+                sub { ok( $_[0]->status->prepared,
+                            "   Module status says prepared" ) },
                 sub { ok( $_[0]->status->created,
                             "   Module status says created" ) },
                 sub { ok( !$_[0]->status->installed,
@@ -245,6 +273,8 @@ ok( $Mod,                       "Got module object" );
                             name => 'install_prerequisite',
                             code => sub {1} );
                       $conf->set_conf(prereqs => PREREQ_ASK);       '' },
+                sub { ok( $_[0]->status->prepared,
+                            "   Module status says prepared" ) },
                 sub { ok( $_[0]->status->created,
                             "   Module status says created" ) },
                 sub { ok( $_[0]->status->installed,
@@ -260,7 +290,7 @@ ok( $Mod,                       "Got module object" );
                             code => sub {0} );
                       $conf->set_conf( prereqs => PREREQ_ASK);      '' },
                 sub { ok( !$_[0]->status->installed,
-                            "   Module status says installed" ) },
+                            "   Module status says not installed" ) },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/Will not install prerequisite '$Mod_prereq' -- Note/,
                             "   Install skipped, recorded ok" ) },
@@ -291,6 +321,7 @@ ok( $Mod,                       "Got module object" );
                                 "Rebuilding trees" );
 
             $CPANPLUS::Dist::_Test::Available   = 1;
+            $CPANPLUS::Dist::_Test::Prepare     = 1;
             $CPANPLUS::Dist::_Test::Create      = 1;
             $CPANPLUS::Dist::_Test::Install     = 1;
 

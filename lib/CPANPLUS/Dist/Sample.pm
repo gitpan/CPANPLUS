@@ -27,6 +27,7 @@ CPANPLUS::Dist::Sample -- Sample code to create your own Dist::* plugin
 ###     format_available    # a sanity check to see if we can use this
 ###                         # module
 ###     init                # init custom code, create accessors
+###     prepare             # prepare a distribution
 ###     create              # create a distribution
 ###     install             # install the created distribution
 ###
@@ -78,7 +79,7 @@ sub init {
     my $status  = $dist->status;
 
     ### minimally required accessors are already created for you:
-    # qw[created installed uninstalled dist]
+    # qw[prepared created installed uninstalled dist distdir]
     
     ### more accessors as you may desire
     # $status->mk_accessors( qw[foo bar bleh] )
@@ -89,11 +90,12 @@ sub init {
     return 'ALL OK' ? 1 : 0;
 };
 
-
-### actually create the dist target required.
+### prepare everything to create the distribution you want. This will allow
+### end users to do last minute tweaks to the meta data/files before you
+### actually turn it into a distribution
 ### you will probably need to run 'perl Makefile.PL' or 'perl Build.PL'
 ### first to get a usable environment.
-sub create {
+sub prepare {
     ### just in case you already did a create call for this module object
     ### just via a different dist object
     my $dist = shift;
@@ -110,7 +112,9 @@ sub create {
 
     ### there's a good chance the module has only been extracted so far,
     ### so let's go and build it first
-    {   my $builder = CPANPLUS::Dist->new(
+    my $fail;
+    BUILD: {   
+        my $builder = CPANPLUS::Dist->new(
                             module  => $self,
                             format  => $self->status->installer_type
                         );
@@ -119,19 +123,40 @@ sub create {
             error( loc( q[Could not create a dist for '%1' with ] .
                         q[installer type '%2'], $self->module,
                         $self->status->installer_type ) );
-            $dist->status->created(0);
-            return;
+            $fail++; last BUILD;
         }
 
         ### set the prereq_format here to your package: so your dependencies
         ### are also packaged up
         unless( $builder->create(%hash, prereq_format => __PACKAGE__ ) ) {
-            $dist->status->created(0);
-            return;
-        }
+            $fail++; last BUILD;        }
     }
     
-    
+    ### other code here ###
+    # ....
+
+    ### this is required! set the status accessor that tells us where you
+    ### created the packagedir
+    $dist->status->distdir( '/path/to/package/directory' );
+
+    return $dist->status->prepared( $fail ? 1 : 0 );
+}
+
+### actually create the dist target required.
+sub create {
+    ### just in case you already did a create call for this module object
+    ### just via a different dist object
+    my $dist = shift;
+    my $self = $dist->parent;
+    $dist    = $self->status->dist   if      $self->status->dist;
+    $self->status->dist( $dist )     unless  $self->status->dist;
+
+    my $cb   = $self->parent;
+    my $conf = $cb->configure_object;
+    my %hash = @_;
+
+    ### you can validate the arguments using Params::Check 
+    ### see the corresponding code in CPANPLUS::Dist::MM and ::Build
 
     ### other code here ###
     # ....
@@ -140,7 +165,7 @@ sub create {
     ### created the package
     $dist->status->dist( '/path/to/package/you/created' );
 
-    return $dist->created( 'TRUE' ? 1 : 0 );
+    return $dist->status->created( 'TRUE' ? 1 : 0 );
 
 }
 

@@ -78,6 +78,21 @@ BOOL indicating if the C<Build> command was successful.
 
 BOOL indicating if the C<Build test> command was successful.
 
+=item prepared ()
+
+BOOL indicating if the C<prepare> call exited succesfully
+This gets set after C<perl Build.PL>
+
+=item distdir ()
+
+Full path to the directory in which the C<prepare> call took place,
+set after a call to C<prepare>. 
+
+=item created ()
+
+BOOL indicating if the C<create> call exited succesfully. This gets
+set after C<Build> and C<Build test>.
+
 =item installed ()
 
 BOOL indicating if the module was installed. This gets set after
@@ -118,7 +133,7 @@ to create and install modules in your environment.
 ### check if the format is available ###
 sub format_available {
     my $mod = "Module::Build";
-    unless( can_load( modules => { $mod => 0.0 } ) ) {
+    unless( can_load( modules => { $mod => 0.2607 } ) ) {
         error( loc( "You do not have '%1' -- '%2' not available",
                     $mod, __PACKAGE__ ) );
         return;
@@ -142,7 +157,8 @@ sub init {
     my $status  = $dist->status;
 
     $status->mk_accessors(qw[build_pl build test created installed uninstalled
-                             _create_args _install_args _mb_object _buildflags
+                             _create_args _install_args _prepare_args
+                             _mb_object _buildflags
                             ]);
 
     return 1;
@@ -150,27 +166,11 @@ sub init {
 
 =pod
 
-=head2 $dist->create([perl => '/path/to/perl', buildflags => 'EXTRA=FLAGS', prereq_target => TARGET, force => BOOL, verbose => BOOL, skiptest => BOOL])
-
-C<create> preps a distribution for installation. This means it will
-run C<perl Build.PL>, C<Build> and C<Build test>.
-This will also satisfy any prerequisites the module may have.
-
-If you set C<skiptest> to true, it will skip the C<Build test> stage.
-If you set C<force> to true, it will go over all the stages of the
-C<Build> process again, ignoring any previously cached results. It
-will also ignore a bad return value from C<Build test> and still allow
-the operation to return true.
-
-Returns true on success and false on failure.
-
-You may then call C<< $dist->install >> on the object to actually
-install it.
-Returns true on success and false on failure.
+=head2 $dist->prepare()
 
 =cut
 
-sub create {
+sub prepare {
     ### just in case you already did a create call for this module object
     ### just via a different dist object
     my $dist = shift;
@@ -192,8 +192,7 @@ sub create {
     }
 
     my $args;
-    my( $force, $verbose, $buildflags, $skiptest, $prereq_target,
-        $perl, $prereq_format);
+    my( $force, $verbose, $buildflags, $perl);
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
             force           => {    default => $conf->get_conf('force'),
@@ -203,21 +202,14 @@ sub create {
             perl            => {    default => $^X, store => \$perl },
             buildflags      => {    default => $conf->get_conf('buildflags'),
                                     store   => \$buildflags },
-            skiptest        => {    default => $conf->get_conf('skiptest'),
-                                    store   => \$skiptest },
-            prereq_target   => {    default => '', store => \$prereq_target },
-            ### don't set the default format to 'build' -- that is wrong!
-            prereq_format   => {    #default => $self->status->installer_type,
-                                    default => '',
-                                    store   => \$prereq_format },
         };
 
         $args = check( $tmpl, \%hash ) or return;
     }
 
-    return 1 if $dist->status->created && !$force;
+    return 1 if $dist->status->prepared && !$force;
 
-    $dist->status->_create_args( $args );
+    $dist->status->_prepare_args( $args );
 
     ### chdir to work directory ###
     my $orig = cwd();
@@ -252,7 +244,7 @@ sub create {
     my %buildflags = $dist->_buildflags_as_hash( $buildflags );
     $dist->status->_buildflags( $buildflags );
 
-    my $fail; my $prereq_fail;
+    my $fail;
     RUN: {
         ### piece of sh*t, stop DYING! --kane
         my $mb = eval { Module::Build->new_from_context( %buildflags ) };
@@ -310,13 +302,154 @@ sub create {
 
             $mangled_prereqs->{ $mod } = $wanted;
         }
+        
+        $self->status->prereqs( $mangled_prereqs );
+    }
+    
+    unless( $cb->_chdir( dir => $orig ) ) {
+        error( loc( "Could not chdir back to start dir '%1'", $orig ) );
+    }
+
+    ### save where we wrote this stuff -- same as extract dir in normal
+    ### installer circumstances
+    $dist->status->distdir( $self->status->extract );
+
+    return $dist->status->prepared( $fail ? 0 : 1 );
+}
+
+sub _find_prereqs {
+    my $dist = shift;
+    my $mb   = $dist->status->_mb_object;
+    my $self = $dist->parent;
+
+    ### Lame++, at least return an empty hashref...
+    my $prereqs = $mb->requires || {};
+    $self->status->prereqs( $prereqs );
+
+    return $prereqs;
+}
+
+=pod
+
+=head2 $dist->create([perl => '/path/to/perl', buildflags => 'EXTRA=FLAGS', prereq_target => TARGET, force => BOOL, verbose => BOOL, skiptest => BOOL])
+
+C<create> preps a distribution for installation. This means it will
+run C<perl Build.PL>, C<Build> and C<Build test>.
+This will also satisfy any prerequisites the module may have.
+
+If you set C<skiptest> to true, it will skip the C<Build test> stage.
+If you set C<force> to true, it will go over all the stages of the
+C<Build> process again, ignoring any previously cached results. It
+will also ignore a bad return value from C<Build test> and still allow
+the operation to return true.
+
+Returns true on success and false on failure.
+
+You may then call C<< $dist->install >> on the object to actually
+install it.
+Returns true on success and false on failure.
+
+=cut
+
+sub create {
+    ### just in case you already did a create call for this module object
+    ### just via a different dist object
+    my $dist = shift;
+    my $self = $dist->parent;
+
+    ### we're also the cpan_dist, since we don't need to have anything
+    ### prepared from another installer
+    $dist    = $self->status->dist_cpan if      $self->status->dist_cpan;
+    $self->status->dist_cpan( $dist )   unless  $self->status->dist_cpan;
+
+    my $cb   = $self->parent;
+    my $conf = $cb->configure_object;
+    my $mb   = $dist->status->_mb_object;
+    my %hash = @_;
+
+    my $dir;
+    unless( $dir = $self->status->extract ) {
+        error( loc( "No dir found to operate on!" ) );
+        return;
+    }
+
+    my $args;
+    my( $force, $verbose, $buildflags, $skiptest, $prereq_target,
+        $perl, $prereq_format);
+    {   local $Params::Check::ALLOW_UNKNOWN = 1;
+        my $tmpl = {
+            force           => {    default => $conf->get_conf('force'),
+                                    store   => \$force },
+            verbose         => {    default => $conf->get_conf('verbose'),
+                                    store   => \$verbose },
+            perl            => {    default => $^X, store => \$perl },
+            buildflags      => {    default => $conf->get_conf('buildflags'),
+                                    store   => \$buildflags },
+            skiptest        => {    default => $conf->get_conf('skiptest'),
+                                    store   => \$skiptest },
+            prereq_target   => {    default => '', store => \$prereq_target },
+            ### don't set the default format to 'build' -- that is wrong!
+            prereq_format   => {    #default => $self->status->installer_type,
+                                    default => '',
+                                    store   => \$prereq_format },
+        };
+
+        $args = check( $tmpl, \%hash ) or return;
+    }
+
+    return 1 if $dist->status->created && !$force;
+
+    $dist->status->_create_args( $args );
+
+    ### is this dist prepared?
+    unless( $dist->status->prepared ) {
+        error( loc( "You have not successfully prepared a '%2' distribution ".
+                    "yet -- cannot create yet", __PACKAGE__ ) );
+        return;
+    }
+
+    ### chdir to work directory ###
+    my $orig = cwd();
+    unless( $cb->_chdir( dir => $dir ) ) {
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        return;
+    }
+
+    ### by now we've loaded module::build, and we're using the API, so
+    ### it's safe to remove CPANPLUS::inc from our inc path, especially
+    ### because it can trip up tests run under taint (just like EU::MM).
+    ### turn off our PERL5OPT so no modules from CPANPLUS::inc get
+    ### included in make test -- it should build without.
+    ### also, modules that run in taint mode break if we leave
+    ### our code ref in perl5opt
+    ### XXX we've removed the ENV settings from cp::inc, so only need
+    ### to reset the @INC
+    #local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
+    #local $ENV{PERL5LIB} = CPANPLUS::inc->original_perl5lib;
+    local @INC           = CPANPLUS::inc->original_inc;
+
+    ### but do it *before* the new_from_context, as M::B seems
+    ### to be actually running the file...
+    ### an unshift in the block seems to be ignored.. somehow...
+    #{   my $lib = $self->best_path_to_module_build;
+    #    unshift @INC, $lib if $lib;
+    #}
+    unshift @INC, $self->best_path_to_module_build
+                if $self->best_path_to_module_build;
+
+    ### this will generate warnings under anything lower than M::B 0.2606
+    my %buildflags = $dist->_buildflags_as_hash( $buildflags );
+    $dist->status->_buildflags( $buildflags );
+
+    my $fail; my $prereq_fail;
+    RUN: {
 
         ### this will set the directory back to the start
         ### dir, so we must chdir /again/
         my $ok = $dist->_resolve_prereqs(
                         format  => $prereq_format,
                         verbose => $verbose,
-                        prereqs => $mangled_prereqs,
+                        prereqs => $self->status->prereqs,
                         target  => $prereq_target,
                     );
 
@@ -380,18 +513,6 @@ sub create {
     }
 
     return $dist->status->created( $fail ? 0 : 1 );
-}
-
-sub _find_prereqs {
-    my $dist = shift;
-    my $mb   = $dist->status->_mb_object;
-    my $self = $dist->parent;
-
-    ### Lame++, at least return an empty hashref...
-    my $prereqs = $mb->requires || {};
-    $self->status->prereqs( $prereqs );
-
-    return $prereqs;
 }
 
 =head2 $dist->install([verbose => BOOL, perl => /path/to/perl])
@@ -532,6 +653,14 @@ if a module on disk, on cpan or something similar is satisfactory
 according to Module::Build's version comparison scheme.
 As a work around, we now simply assume that the most recent version on
 CPAN satisfies a dependency.
+
+=item * Module::Build doesn't support 'PREFIX'
+
+Module::Build doens't support the standard C<Makefile.PL> argument 
+C<PREFIX> and dies if it is provided. Even though that's not usually a 
+problem, sometimes M::B enabled distros ship a C<Makefile.PL> that 
+calls the C<Build.PL> under the hood. In these cases, a C<PREFIX> might
+be provided and C<Module::Build> will die.
 
 =back
 

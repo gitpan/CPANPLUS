@@ -81,6 +81,7 @@ lib/CPANPLUS/inc/Log/Message/Item.pm
 lib/CPANPLUS/inc/Module/CoreList.pm
 lib/CPANPLUS/inc/Module/Load.pm
 lib/CPANPLUS/inc/Module/Load/Conditional.pm
+lib/CPANPLUS/inc/Module/Pluggable.pm
 lib/CPANPLUS/inc/Object/Accessor.pm
 lib/CPANPLUS/inc/Params/Check.pm
 lib/CPANPLUS/inc/Term/UI.pm

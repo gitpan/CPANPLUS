@@ -158,8 +158,8 @@ It would looks something like this:
         'Locale::Maketext::Simple'  => 0,
         'Log::Message'              => 0,
         'Module::Load'              => '0.10',
-        'Module::Load::Conditional' => '0.06',
-        'Module::Build'             => '0.26061',
+        'Module::Load::Conditional' => '0.07',
+        'Module::Build'             => '0.2607',
         'Params::Check'             => '0.22',
         'Term::UI'                  => '0.05',
         'Archive::Extract'          => '0.07',
@@ -167,6 +167,7 @@ It would looks something like this:
         'IO::Zlib'                  => '1.04',
         'Object::Accessor'          => '0.03',
         'Module::CoreList'          => '1.97',
+        'Module::Pluggable'         => '2.4',
         #'Config::Auto'             => 0,   # not yet, not using it yet
     };
 

@@ -30,7 +30,7 @@ $Params::Check::ALLOW_UNKNOWN = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_04';
+    $VERSION    =   '0.051';
 }
 
 load CPANPLUS::Shell;
@@ -254,9 +254,9 @@ sub _install {
     my %hash = @_;
 
     my $mapping = {
-        make        => { target => 'create', skiptest => 1 },
-        test        => { target => 'create' },
-        install     => { target => 'install' },
+        make        => { target => TARGET_CREATE, skiptest => 1 },
+        test        => { target => TARGET_CREATE },
+        install     => { target => TARGET_INSTALL },
     };
 
     my($aref,$cmd);

@@ -1,3 +1,34 @@
+Changes for 0.051       Fri Jan 14 15:10:02 CET 2005
+====================================================
+
+*   First official release in the ground-up rewrite '0.05x'
+    series
+*   When determining installed versions, don't parse
+    commented out versions
+*   Version numbers of 'undef' aren't really versions, they
+    are now treated as '0.0'
+*   Split out 'create' into 'prepare' and 'create' so that 
+    package manager plugins can provide an option to alter 
+    metadata before actually building the package
+*   Add convenience methods for 'prepare' and 'create'    
+*   Update CPANPLUS::Dist::Sample docs to reflect new
+    prepare functionality
+*   Use constants where possible    
+*   Add new methods 'contains' to get a list of modules 
+    contained in a package
+*   Update to bundle Module::Build 0.2607
+*   Return to prefering Build.PL over Makefile.PL
+*   Update various other bundled modules
+*   Bundle Module::Pluggable for Dist:: plugin support
+*   Missing test suites of module was not detected 
+    properly, resultings in undeserved 'pass' grade
+*   dslip data with ';' in it caused parse errors
+*   Mark a fatal error when loading the shell and not being
+    able to load a valid config file
+*   Various spelling fixes
+*   Improve tests
+
+
 Changes for 0.050_04    Sun Dec 26 16:54:46 CET 2004
 ====================================================
 

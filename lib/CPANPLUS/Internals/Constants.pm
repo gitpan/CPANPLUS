@@ -30,7 +30,8 @@ BEGIN {
                     PERL_CORE IS_INTERNALS_OBJ IS_CODEREF CREATE_FILE_URI   
                     STRIP_GZ_SUFFIX BLIB_LIBDIR GET_XS_FILES INSTALLER_BUILD
                     INSTALLER_MM ON_OLD_CYGWIN IS_FILE IS_DIR INSTALLER_SAMPLE
-                    INSTALL_VIA_PACKAGE_MANAGER
+                    INSTALL_VIA_PACKAGE_MANAGER TARGET_CREATE TARGET_PREPARE
+                    TARGET_INSTALL TARGET_IGNORE
                 ];
 }
 
@@ -39,6 +40,12 @@ use constant INSTALLER_BUILD
 use constant INSTALLER_MM   => 'CPANPLUS::Dist::MM';    
 use constant INSTALLER_SAMPLE   
                             => 'CPANPLUS::Dist::Sample';
+
+use constant TARGET_CREATE  => 'create';
+use constant TARGET_PREPARE => 'prepare';
+use constant TARGET_INSTALL => 'install';
+use constant TARGET_IGNORE  => 'ignore';
+
 use constant INSTALL_VIA_PACKAGE_MANAGER 
                             => sub { my $fmt = $_[0] or return;
                                      return 1 if $fmt ne INSTALLER_BUILD and

@@ -25,7 +25,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_04';
+    $VERSION    =   '0.051';
 }
 
 load CPANPLUS::Shell;
@@ -217,6 +217,7 @@ sub _input_loop {
             $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
         }
 
+	print "\n";
         last if $self->dispatch_on_input( input => $input );
 
         ### flush the lib cache ###
@@ -776,7 +777,7 @@ sub _install {
         return;
     }
 
-    my $target = $choice eq 'i' ? 'install' : 'create';
+    my $target = $choice eq 'i' ? TARGET_INSTALL : TARGET_CREATE;
     my $prompt = $choice eq 'i' ? loc('Installing ') : loc('Testing ');
 
     my $status = {};
@@ -900,8 +901,11 @@ sub _details {
     ### maybe more later with Module::CPANTS etc
     $self->_pager_open if scalar @$mods * 10 > $self->_term_rowcount;
 
+
+    my $format = "%-30s %-30s\n";
     for my $mod (@$mods) {
         my $href = $mod->details( %$opts );
+        my @list = sort { $a->module cmp $b->module } $mod->contains;
 
         unless( $href ) {
             print loc("No details for %1 - it might be outdated.",
@@ -911,7 +915,13 @@ sub _details {
         } else {
             print loc( "Details for '%1'\n", $mod->module );
             for my $item ( sort keys %$href ) {
-                printf "%-30s %-30s\n", $item, $href->{$item};
+                printf $format, $item, $href->{$item};
+            }
+            
+            my $showed;
+            for my $item ( @list ) {
+                printf $format, ($showed ? '' : 'Contains:'), $item->module;
+                $showed++;
             }
             print "\n";
         }

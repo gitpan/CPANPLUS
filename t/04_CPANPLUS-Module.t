@@ -166,6 +166,11 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
     is_deeply( $res, $href, "Details OK" );        
 }
 
+{   ### contians() test ###
+    my @list = $mod->contains;
+    ok( scalar @list,           "Found modules contained in this one" );
+    is_deeply( \@list, [$mod],  "   Found all modules expected" );
+}
 
 {   ### testing distributions() ###
     my @mdists = $mod->distributions;

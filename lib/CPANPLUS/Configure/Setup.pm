@@ -934,22 +934,20 @@ Again, if you don't understand this question, just press ENTER.
     {
         print loc("
 Some modules provide both a Build.PL (Module::Build) and a Makefile.PL
-(ExtUtils::MakeMaker).
+(ExtUtils::MakeMaker).  By default, CPANPLUS prefers Build.PL when it
+is available.
 
 Although Module::Build is a pure perl solution, which means you will
 not need a 'make' binary, it does have some limitations. The most
 important is that CPANPLUS is unable to uninstall any modules installed
 by Module::Build.
 
-Right now, we suggest you use the Makefile.PL provided by
-ExtUtils::Makemaker if you have the choice, but it is up to you.
-
 Again, if you don't understand this question, just press ENTER.
 
 ");
         my $type = 'prefer_makefile';
         my $yn = $term->ask_yn(
-                    prompt  => loc("Prefer Makefile.PL?"),
+                    prompt  => loc("Prefer Makefile.PL over Build.PL?"),
                     default => $self->_get( $type => 1 ),
                  );
 
@@ -1110,6 +1108,8 @@ Otherwise, select ASK to have us ask your permission to install them.
                         default => $default,
                         choices => [@$map{sort keys %$map}],
                     );
+        print "\n";
+
         while( my($key,$val) = each %$map ) {
             next unless $val eq $reply;
 
@@ -1150,6 +1150,8 @@ CPANPLUS can do for you later);
                 : loc("I won't use the MD5 checksums");
 
         $conf->set_conf( $type => $yn );
+
+        print "\n\n";
     }
 
     {

@@ -776,8 +776,10 @@ sub _create_mod_tree {
 
         ### Every module get's stored as a module object ###
         $tree->{ $data[0] } = CPANPLUS::Module->new(
-                module      => $data[0],    # full module name
-                version     => $data[1],    # version number
+                module      => $data[0],            # full module name
+                version     => ($data[1] eq 'undef' # version number 
+                                    ? '0.0' 
+                                    : $data[1]), 
                 path        => File::Spec::Unix->catfile(
                                     $conf->_get_mirror('base'),
                                     $data[2],
@@ -880,12 +882,15 @@ sub __create_dslip_tree {
     ### $cols = [....]
     ### and newer versions say:
     ### $CPANPLUS::Modulelist::cols = [...]
-    $in =~ s|.+}\s+(\$(?:CPAN::Modulelist::)?cols)|$1|s;
-
     ### split '$cols' and '$data' into 2 variables ###
-    my ($ds_one, $ds_two) = split ';', $in, 2;
+    ### use this regex to make sure dslips with ';' in them don't cause
+    ### parser errors
+    my ($ds_one, $ds_two) = ($in =~ m|.+}\s+
+										(\$(?:CPAN::Modulelist::)?cols.*?)
+										(\$(?:CPAN::Modulelist::)?data.*)
+									|sx);
 
-    ### eval them into existance ###
+    ### eval them into existence ###
     ### still not too fond of this solution - kane ###
     my ($cols, $data);
     {   #local $@; can't use this, it's buggy -kane
