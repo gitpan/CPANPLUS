@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #12 $ $Change: 7687 $ $DateTime: 2003/08/24 03:37:55 $
+# $Revision: #14 $ $Change: 8342 $ $DateTime: 2003/10/05 17:16:08 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -97,8 +97,8 @@ sub _send_report {
     return unless length $dist
               and $self->_can_use( modules => { 'Test::Reporter' => '1.13' } )
               and $self->{_shell}
-              and $self->{_shell}->_ask_report(dist => $dist, grade => $grade)
-              and $self->_not_already_sent($dist);
+              and $self->_not_already_sent($dist)
+              and $self->{_shell}->_ask_report(dist => $dist, grade => $grade);
 
     my ($already_sent, $nb_send, $max_send) = (0, 0, 2);
     my @inform;
@@ -167,7 +167,7 @@ $prereq
 
 If you are interested in making a more flexible Makefile.PL that can
 probe for missing dependencies and install them, ExtUtils::AutoInstall
-at <http://search.cpan.org/search?dist=ExtUtils-AutoInstall> may be
+at <http://search.cpan.org/dist/ExtUtils-AutoInstall/> may be
 worth a look.
 
 Thanks! :-)
@@ -226,7 +226,7 @@ __END__
 
 would be appreciated.  If you are interested in making a more robust
 test suite, please see the Test::Simple, Test::More and Test::Tutorial
-manpages at <http://search.cpan.org/search?dist=Test-Simple>.
+manpages at <http://search.cpan.org/dist/Test-Simple/>.
 
 Thanks! :-)
 

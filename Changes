@@ -1,4 +1,127 @@
 ____________________________________________________________________________
+[  8348] By: autrijus                              on 2003/10/05  22:27:35
+        Log: * This be CPANPLUS, version 0.045.
+	   ! ChangeLog
+____________________________________________________________________________
+[  8347] By: autrijus                              on 2003/10/05  22:26:46
+        Log: * skip extracting the module only if the directory really
+             exists; the status can be mmisleading for bundle files.
+	   ! lib/CPANPLUS/Internals/Extract.pm
+____________________________________________________________________________
+[  8346] By: autrijus                              on 2003/10/05  17:31:32
+        Log: * we will release it today.
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  8345] By: autrijus                              on 2003/10/05  17:25:48
+        Log: * cpanp should always use the Default shell regardless
+             of the user's config, if it's passed command line
+             options to work with.
+	   ! bin/cpanp lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  8344] By: autrijus                              on 2003/10/05  17:25:02
+        Log: * we should be able to test bundles just like other
+             disttypes, so prereq_target should work on them also.
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  8343] By: kane                                  on 2003/10/05  17:24:36
+        Log: * if the highest level 'make' call didn't blow up, we
+	       flagged everything as
+             having succeeded, which may not be true. Add the check
+	     code.
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  8342] By: autrijus                              on 2003/10/05  17:16:08
+        Log: * don't even bother to ask whether to send reports if
+             it's already reported.
+	   ! lib/CPANPLUS/Internals/Report.pm
+____________________________________________________________________________
+[  8341] By: autrijus                              on 2003/10/05  17:14:04
+        Log: * Latour's bug: if for example an URL such as
+             H/HA/HANENKAMP/Getargs-Mixed/Getargs-Mixed-1.01.tar.gz,
+             HANENKAMP should be the author name, not Getargs.
+	   ! lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  8340] By: kane                                  on 2003/10/05  16:26:46
+        Log: * flaky logic, bad kane, no cookie
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  8339] By: autrijus                              on 2003/10/05  16:11:41
+        Log: * Fix [BUG] 0.43 and 0.44 upgrade lose existing urilists
+	       from schwern.
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  8337] By: kane                                  on 2003/10/05  15:49:02
+        Log: * trap the fact there are no mirrors and warn about that
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  8336] By: kane                                  on 2003/10/05  15:19:10
+        Log: * also update meta.yaml to 0.045
+	   ! META.yml
+____________________________________________________________________________
+[  8327] By: autrijus                              on 2003/10/04  10:37:11
+        Log: * gbarr pointed out that the canonical url for dists
+             is /dists/Foo-Bar/, *nod* search? which is what we've
+             been sending on the testers test
+	   ! lib/CPANPLUS/Internals/Report.pm
+____________________________________________________________________________
+[  8319] By: autrijus                              on 2003/10/02  23:30:19
+        Log: * bump version to .045
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  8313] By: autrijus                              on 2003/10/02  14:57:49
+        Log: * David Wheeler poitns out that we no longer support
+             older IPC::Run versions.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  8147] By: autrijus                              on 2003/09/16  03:23:34
+        Log: * Schwern reports that we were spewing out gpg --version
+	       info on
+             every module install when verbose is set to 1.	fixed.
+	   ! lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  8146] By: autrijus                              on 2003/09/15  23:16:19
+        Log: * base.pm should be installed instead of special cased.
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  8107] By: autrijus                              on 2003/09/13  21:05:41
+        Log: * won't recommend Term::Readline::Gnu no matter what.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  8106] By: autrijus                              on 2003/09/13  20:59:37
+        Log: * up to EU::AI .54.
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  8101] By: autrijus                              on 2003/09/13  20:44:44
+        Log: * try again at fixing coraline's bug.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  8100] By: autrijus                              on 2003/09/13  20:43:39
+        Log: * try again to fix ask_yn.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  8098] By: autrijus                              on 2003/09/13  20:30:30
+        Log: * fix coraline's bug involving bin/cpanp dying when
+             asked for prerequisites.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  8044] By: autrijus                              on 2003/09/10  22:11:55
+        Log: * Richard Soderberg thinks we need to display meaningful
+             error message for 5.003 users.	Fancy that!
+	   ! Makefile.PL
+____________________________________________________________________________
+[  8018] By: kane                                  on 2003/09/09  11:49:45
+        Log: * check before using a variable as a hashref
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  8017] By: kane                                  on 2003/09/09  11:36:35
+        Log: * fix regexp to properly parse file:// uris too... it was
+	       badly broken
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  7932] By: autrijus                              on 2003/09/07  13:01:01
+        Log: * still test for signatures.
+	   ! Makefile.PL
+____________________________________________________________________________
 [  7931] By: autrijus                              on 2003/09/07  12:54:32
         Log: * This be CPANPLUS, 0.044.
 	   ! ChangeLog

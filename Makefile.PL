@@ -1,9 +1,9 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #22 $ $Change: 7932 $ $DateTime: 2003/09/07 13:01:01 $
+# $Revision: #25 $ $Change: 8313 $ $DateTime: 2003/10/02 14:57:49 $
 
 use strict;
-use 5.00503;
+BEGIN { require 5.00503; }
 
 use Cwd;
 use Config;
@@ -154,6 +154,7 @@ sub setup_needed {
 
         if ($has_prev) {
             $CPANPLUS::Configure::Setup::AutoSetup = !$run_setup;
+            $CPANPLUS::Configure::Setup::SkipMirrors =
             $CPANPLUS::Configure::Setup::SkipMirrors = 1;
             $run_setup = 1; # have to run setup anyway.
         }
@@ -344,14 +345,14 @@ that defaults to 'Y', there might be _unpredictable failures_!
     $ipc_ok ? (
         loc('IPC::Run support')           => [
             -default            => (!_is_unix() or ($^O eq 'solaris')),
-            'IPC::Run'          => 0.55,
+            'IPC::Run'          => 0.75,
         ],
     ) : (),
         loc('CPAN Test reporting')        => [
             -default            => $ConfigObj->get_conf('cpantest'),
             'Net::SMTP'         => 0.01,
     $ipc_ok ? (
-            'IPC::Run'          => 0.55,
+            'IPC::Run'          => 0.75,
     ) : (),
             'Test::Reporter'    => 1.20,
             'YAML'              => 0,
@@ -360,7 +361,7 @@ that defaults to 'Y', there might be _unpredictable failures_!
         loc('ReadLine support')           => [
             -default            => 0,
             'Term::ReadLine'    => 0,
-      $have_cc ? (
+      eval { require Term::ReadLine::Gnu; 1 } ? (
             'Term::ReadLine::Gnu' => 1.00,
       ) : (
             'Term::ReadLine::Perl' => 0.90,

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #6 $ $Change: 7741 $ $DateTime: 2003/08/27 20:36:54 $
+# $Revision: #7 $ $Change: 8347 $ $DateTime: 2003/10/05 22:26:46 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -78,7 +78,7 @@ sub _extract {
                 (ref $args->{data} ? $args->{data}->status->extract : '');
 
 
-    if ( $loc and !$force ) {
+    if ( $loc and -d $loc and !$force ) {
         $err->inform(
                 msg     => loc("Already extracted '%1' to '%2'. Won't extract again without force", $file, $loc),
                 quiet   => !$verbose,

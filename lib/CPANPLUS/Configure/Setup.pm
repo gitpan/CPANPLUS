@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #20 $ $Change: 7777 $ $DateTime: 2003/08/29 12:53:19 $
+# $Revision: #22 $ $Change: 8339 $ $DateTime: 2003/10/05 16:11:41 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -1456,7 +1456,7 @@ Note, the latter option requires a working net connection.
 
     } } ### end LOOP end WHILE;
 
-    push @selected_hosts, _set_custom_host($conf,$host_list) if $AutoSetup;
+    push @selected_hosts, _set_custom_host($conf,$host_list) if !$AutoSetup;
 
     # remove duplicate hosts from the list.
     my %unique_hosts;
@@ -1464,7 +1464,7 @@ Note, the latter option requires a working net connection.
 
     @selected_hosts = map {
         if (!$host_list->{$_}) {
-            my ($scheme, $host, $path) = m{^([a-zA-Z]+)://([a-zA-Z0-9\.-]*)(/.*)$};
+            my ($scheme, $host, $path) = m|^(\w*)://([^/]*)(/.*)$|s;
             $host_list->{$_} = { host => $host, scheme => $scheme, path => $path };
         }
         {
@@ -1582,9 +1582,18 @@ if the file is on your local disk. Note the three /// after the file: bit
             ## cheat here and reject all but full uri's without auth data
             ## (real cheesy basic check - NOT a full URI validation!)
             my ($scheme, $host, $path)
-                = $uri =~ m{^([a-zA-Z]+)://([a-zA-Z0-9\.-:]*)(/.*)$};
+		= $uri =~ m|^(\w*)://([^/]*)(/.*)$|s;     
 
-
+            ### the 2nd regexp is the old one used in 0.44 and earlier, and
+            ### it's broken. it would translate this:
+            ###     file:///usr/local/share/minicpan
+            ### into
+            ###     /usr/local/share (/minicpan) 
+            ### and this:
+            ###     file:///usr/local/share/minicpan/
+            ### into:
+            ###     /usr/local/share/minicpan (/) 
+            
             ## no schemey, no hosty, no pathy, no worky
             unless ($scheme and $path) {
                 print "\n", loc("No valid path or scheme entered!"), "\n";

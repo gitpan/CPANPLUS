@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Install.pm $
-# $Revision: #8 $ $Change: 7920 $ $DateTime: 2003/09/06 15:10:58 $
+# $Revision: #10 $ $Change: 8344 $ $DateTime: 2003/10/05 17:25:02 $
 
 #######################################################
 ###           CPANPLUS/Internals/Install.pm         ###
@@ -76,7 +76,7 @@ sub _install_module {
 
             ### check if any of the prereqs we're about to install wants us to get
             ### a newer version of perl... if so, skip, we dont want to upgrade perl
-            if ($m =~ /^base$/i or $modobj->package =~ /^perl-\d/i ) {
+            if ($modobj->package =~ /^perl-\d/i ) {
                 $err->inform(
                     msg => loc("Cannot fetch %1 (part of core perl distribution); skipping", $m),
                 );
@@ -238,11 +238,13 @@ sub _install_bundle {
     my $tmpl = {
         dir     => { required => 1, default => [], strict_type => 1 },
         verbose => { default => $conf->get_conf('verbose') },
+        prereq_target => { default => 'install' },
     };
 
     my $args = check( $tmpl, \%hash ) or return undef;
 
     my $verbose = $args->{verbose};
+    my $prereq_target = $args->{prereq_target};
 
     my $flag;
     for my $dir ( @{$args->{'dir'}} ) {
@@ -285,8 +287,12 @@ sub _install_bundle {
                 }
 
                 ### install all the modules that were stored in $list
-                my $rv;
-                unless( $rv = $self->install( modules => $list ) ) {
+                my $rv = $self->install(
+                    modules         => $list,
+                    target          => $prereq_target,
+                    prereq_target   => $prereq_target,
+                );
+                unless ($rv) {
                     $err->trap( error => loc("An error occurred while installing bundles from %1", $file) );
                     $flag=1; next;
                 }

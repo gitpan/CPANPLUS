@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #9 $ $Change: 7692 $ $DateTime: 2003/08/24 09:50:27 $
+# $Revision: #10 $ $Change: 8337 $ $DateTime: 2003/10/05 15:49:02 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###
@@ -158,8 +158,15 @@ sub _fetch {
     ### potential bad hosts -- won't know for sure until there's one successful later
     my @bad_uris;
 
+	my @uri_list = @{$self->configure_object->_get_ftp('urilist')};	
+	unless( @uri_list ) {
+		$err->trap(error => loc("You have no mirrors defined! Can not fetch anything."));
+		return;
+	}	
+
+
     HOST:
-    for my $uri ( @{$self->configure_object->_get_ftp('urilist')} ) {
+    for my $uri ( @uri_list ) {
         ### some URIs does not work
         next if exists $self->{_uris}{$uri} and !$self->{_uris}{$uri};
 

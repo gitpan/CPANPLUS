@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #16 $ $Change: 7813 $ $DateTime: 2003/08/31 16:43:01 $
+# $Revision: #18 $ $Change: 8345 $ $DateTime: 2003/10/05 17:25:48 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -22,7 +22,7 @@ BEGIN {
     $VERSION    =   '0.03';
 }
 
-use CPANPLUS::Shell;
+use CPANPLUS::Shell ();
 use CPANPLUS::Backend;
 use CPANPLUS::I18N;
 use CPANPLUS::Tools::Term;
@@ -432,7 +432,7 @@ sub _input_loop {
             
             my $flag;
             for ( @list ) { 
-                $flag++ unless $href->rv->{$_} 
+                $flag++ unless ref $href->rv && $href->rv->{$_} 
             }
             
             if( $href->ok and !$flag ) {

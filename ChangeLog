@@ -1,5 +1,43 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #10 $ $Change: 7931 $ $DateTime: 2003/09/07 12:54:32 $
+# $Revision: #12 $ $Change: 8348 $ $DateTime: 2003/10/05 22:27:35 $
+
+[Changes for 0.045 - October 5, 2003]
+
+Due to some irritating (although non-fatal) bugs in 0.044, we decide to do
+another bugfix release before 0.050, which is coming along quite nicely.
+
+* Bug fixes
+
+  - The "Can't use string ("") as a HASH ref" warning no longer occurs
+    when you install something that's already installed.
+
+  - Bundles used to install their prerequisites even when prereq_target
+    was set to "test".
+
+  - Command-line arguments to cpanp, like "cpanp -i Module::Name", are
+    now always passed to the Default shell.
+
+  - Fixed an infinite loop bug which was caused by modules that are
+    successfully installed, but still cannot be "use"d.
+
+  - Search.cpan.org urls in mails sent from ::Report are now canonical.
+
+  - file:/// URIs in the urilist are no longer broken.
+
+  - Upgrading from earlier CPANPLUS versions no longer drops the URI
+    lists silently.
+
+  - Makefile.PL now prints meaningful error messages on pre-5.00503 perls.
+
+  - We no longer recommend Term::ReadLine::Gnu, even for systems with
+    C compilers avilable.
+
+  - "gpg --version" info are now silenced, even when verbose is set to 1.
+
+  - IPC::Run versions older than 0.75 are no longer supported.
+
+  - CPANPLUS sometimes considers errors during prerequisite installation
+    as successes; it's now fixed.
 
 [Changes for 0.044 - September 7, 2003]
 

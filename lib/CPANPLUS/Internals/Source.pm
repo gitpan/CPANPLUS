@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Source.pm $
-# $Revision: #8 $ $Change: 7778 $ $DateTime: 2003/08/29 17:05:28 $
+# $Revision: #9 $ $Change: 8147 $ $DateTime: 2003/09/16 03:23:34 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###
@@ -774,7 +774,7 @@ sub _get_checksums {
         my $rv;
         my $captured;
         if (can_run('gpg') and
-            $self->_run( command => ['gpg', '--version'], buffer  => \$captured ) and
+            $self->_run( command => ['gpg', '--version'], buffer  => \$captured, verbose => 0 ) and
             $captured =~ /GnuPG.*?(\S+)$/m)
         {
             $rv = Module::Signature::_verify_gpg($file, $file, $1);

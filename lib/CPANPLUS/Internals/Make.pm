@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #10 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
+# $Revision: #12 $ $Change: 8343 $ $DateTime: 2003/10/05 17:24:36 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -283,13 +283,14 @@ sub _make {
                 ### make sure we REMOVE this dir from the TODO list then, else we'll go into
                 ### an infinite loop
                 @{$self->{_todo}{make}} = grep { $_->{dir} ne $dir } @{$self->{_todo}{make}};
-
+warn "FLAG SET! FAIL!";
                 #print "dumpering _todo->make\n";
                 #print Dumper $self->{_todo}->{make};
 
                 $fail = 1;
                 last SCOPE;
             }
+warn "SHOULD NOT GET HERE" if $flag;           
         }
 
         ### if we're not allowed to follow prereqs, and there are some
@@ -353,7 +354,7 @@ sub _make {
                 elsif ( defined $self->{_todo}->{failed}->{$mod}
                         or
                         ( defined $modtree->{$mod}->status->install
-                          && $modtree->{$mod}->status->install == 0
+                          && $modtree->{$mod}->status->install == 1
                         )
                 ) {
                     $err->inform(
@@ -422,6 +423,10 @@ sub _make {
                 map { $return->{$_} = $rv->{$_} } keys %$rv;
             }
 
+			### check what happened to the install we just requested
+			### if not everything went ok, flag it, fail, and bail
+			$fail++ && last SCOPE if grep { !$_->make_overall } values %$return;
+
         ### no prereqs need doing, let's go on installing ###
         } else {
 
@@ -450,6 +455,7 @@ sub _make {
                         command => [$Make, @args],
                         buffer  => \$captured,
                     ) ) {
+
                         ### store it if a module failed to install for some reason ###
                         $fail = 1;
 
@@ -460,8 +466,8 @@ sub _make {
                         ### restore startdir
 
                     }
-
-                    $data->status->make( 1 );
+                	
+                	$data->status->make( 1 );
 
                     last INSTALL if $target eq 'make';
                     ### all ok, set overall => 1
@@ -543,11 +549,11 @@ sub _make {
             );
         }
     }
-
+    
     if($fail) {
 
         $self->{_todo}->{failed}->{ $data->{module} } = 1;
-
+		$data->status->make_overall( 0 );
     } else {
         ### extra return status, makes it easier to check ###
         $data->status->make_overall( 1 );

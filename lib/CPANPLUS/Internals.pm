@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #16 $ $Change: 7915 $ $DateTime: 2003/09/06 14:44:31 $
+# $Revision: #19 $ $Change: 8346 $ $DateTime: 2003/10/05 17:31:32 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -15,7 +15,7 @@ use strict;
 
 BEGIN {
     use vars        qw( @ISA $VERSION );
-    $VERSION    =   0.044;
+    $VERSION    =   0.045;
 }
 
 ### required files. I think we can now get rid of Carp, since we use Error.pm
@@ -628,6 +628,7 @@ sub _parse_module {
 
             my $file   = pop @parts;
             my $author = pop @parts;
+	    $author = pop @parts until $author eq uc($author);
 
             ### be extra friendly and pad the .tar.gz suffix where needed
             $file .= '.tar.gz' unless $file =~ /\.[A-Za-z]+$/;

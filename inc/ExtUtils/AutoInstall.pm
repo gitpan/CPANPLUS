@@ -1,8 +1,8 @@
 # $File: //depot/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #8 $ $Change: 7916 $ $DateTime: 2003/09/06 14:45:45 $
+# $Revision: #9 $ $Change: 8106 $ $DateTime: 2003/09/13 20:59:37 $
 
 package ExtUtils::AutoInstall;
-$ExtUtils::AutoInstall::VERSION = '0.53';
+$ExtUtils::AutoInstall::VERSION = '0.54';
 
 use strict;
 
@@ -15,8 +15,8 @@ ExtUtils::AutoInstall - Automatic install of dependencies via CPAN
 
 =head1 VERSION
 
-This document describes version 0.53 of B<ExtUtils::AutoInstall>,
-released September 6, 2003.
+This document describes version 0.54 of B<ExtUtils::AutoInstall>,
+released September 14, 2003.
 
 =head1 SYNOPSIS
 
@@ -47,7 +47,7 @@ In F<Makefile.PL>:
 	-version	=> '0.40',	# required AutoInstall version
 	                                # usually 0.40 is sufficient
 	-config		=> {
-	    make_args	=> '--hello'	# option(s) for CPAN::Config
+	    make_args	=> '--hello',	# option(s) for CPAN::Config
 	    force	=> 1,		# pseudo-option to force install
 	    do_once	=> 1,		# skip previously failed modules
 	},
@@ -392,7 +392,7 @@ sub import {
 		$DisabledTests{$_} = 1 for map { glob($_) } @skiptests;
 	    }
 	    else {
-		print "failed! (need".($arg ? "s $arg" : 'ed').")\n";
+		print "failed!" . ($arg ? " (needs $arg)" : '') . "\n";
 		push @required, $mod => $arg;
 	    }
 	}
@@ -513,7 +513,7 @@ sub install {
 	if (defined(_version_check(_load($pkg), $ver))) {
 	    push @installed, $pkg;
 	}
-	elsif ($args{do_once} and open(FAILED, '>> .autoinstall.failed')) {
+	elsif ($args{do_once} and open(FAILED, '>> .#autoinstall.failed')) {
 	    print FAILED "$pkg\n";
 	}
     }

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/bin/cpanp $
-# $Revision: #4 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
+# $Revision: #8 $ $Change: 8345 $ $DateTime: 2003/10/05 17:25:48 $
 
 use strict;
 use vars '$VERSION';
@@ -93,11 +93,13 @@ while (@ARGV) {
 push @cmd_stack, map { "$opt $_" } @ARGV if ($opt and exists $cmd->{$opt});
 
 # special case: 'o' and 'b' may take zero arguments
-@cmd_stack = $opt if !@cmd_stack and $opt =~ /^[ob]$/;
+@cmd_stack = $opt if !@cmd_stack and $opt and $opt =~ /^[ob]$/;
 
+my $shell_type;
 if (@cmd_stack) {
     # initializes configure setup if we've not been through it yet
     no strict 'refs';
+    $shell_type = 'Default';
 
     my $TR = ($^O eq 'MSWin32') ? 'Term::ReadLine::Stub'
                                 : $Term::ReadLine::ISA[0];
@@ -116,26 +118,35 @@ if (@cmd_stack) {
     };
 
     *{'CPANPLUS::Shell::_Faked::addhistory'} = sub { };
+    *{'CPANPLUS::Shell::_Faked::spawn'}   = sub {
+        # there's no immediate actions anyway, and we've run out of 's',
+        # so we restore the handlers and regen a genuine object
+
+        *{"$TR\::new"} = $newref;
+        *{"$TR\::addhistory"} = $histref;
+
+        # regen self, pass the args to the new object
+        return ($_[0] = $newref->(@{$_[0]}));
+    };
+    *{'CPANPLUS::Shell::_Faked::parse_options'}   = sub {
+        return +shift->spawn->parse_options(@_);
+    };
+    *{'CPANPLUS::Shell::_Faked::get_reply'}   = sub {
+        return +shift->spawn->get_reply(@_);
+    };
+    *{'CPANPLUS::Shell::_Faked::ask_yn'}   = sub {
+        return +shift->spawn->ask_yn(@_);
+    };
     *{'CPANPLUS::Shell::_Faked::readline'}   = sub {
-        unless ($opt or @cmd_stack) {
-            # there's no immediate actions anyway, and we've run out of 's',
-            # so we restore the handlers and regen a genuine object
-
-            *{"$TR\::new"} = $newref;
-            *{"$TR\::addhistory"} = $histref;
-
-            # regen self, pass the args to the new object
-            return ($_[0] = $newref->(@{$_[0]}))->readline(@_[1..$#_]);
-        }
-
-        return shift @cmd_stack;
+        return shift @cmd_stack if $opt or @cmd_stack;
+        return +shift->spawn->readline(@_);
     };
 
     *{'CPANPLUS::Shell::_Faked::ReadLine'} = sub { $TR };
     *{'CPANPLUS::Shell::_Faked::parse_options'} = \&CPANPLUS::Tools::Term::parse_options;
 }
 
-shell();
+shell($shell_type);
 
 1;
 
