@@ -7,6 +7,7 @@ use CPANPLUS::Error;
 use CPANPLUS::Backend;
 use CPANPLUS::Configure::Setup;
 use CPANPLUS::Internals::Constants;
+use CPANPLUS::Internals::Constants::Report qw[GRADE_FAIL];
 
 use Cwd;
 use IPC::Cmd;
@@ -24,7 +25,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_03';
+    $VERSION    =   '0.050_04';
 }
 
 load CPANPLUS::Shell;
@@ -70,7 +71,7 @@ my $Prompt  = $Brand . '> ';
 
 =head1 NAME
 
-CPANPLUS::Shell::Default;
+CPANPLUS::Shell::Default
 
 =head1 SYNOPSIS
 
@@ -650,7 +651,7 @@ sub _fetch {
         my $where = $mod->fetch( %$opts );
 
         print $where
-                ? loc("Succesfully fetched '%1' to '%2'",
+                ? loc("Successfully fetched '%1' to '%2'",
                         $mod->module, $where )
                 : loc("Failed to fetch '%1'", $mod->module);
         print "\n";
@@ -841,7 +842,9 @@ sub __ask_about_install {
 }
 
 sub __ask_about_send_test_report {
-    my $mod     = shift or return;
+    my($mod, $grade) = @_;
+    return 1 unless $grade eq GRADE_FAIL;
+
     my $term    = $Shell->term;
 
     print "\n";
@@ -857,7 +860,9 @@ sub __ask_about_send_test_report {
 }
 
 sub __ask_about_edit_test_report {
-    my $mod     = shift or return;
+    my($mod, $grade) = @_;
+    return 0 unless $grade eq GRADE_FAIL;
+
     my $term    = $Shell->term;
 
     print "\n";
@@ -1334,7 +1339,7 @@ sub _meta {
         if( $status ) {
             print "\n$buffer\n\n";
 
-            print loc(  "Succesfully connected to '%1' on port '%2'",
+            print loc(  "Successfully connected to '%1' on port '%2'",
                         $host, $port );
             print "\n\n";
             print loc(  "Note that no output will appear until a command ".

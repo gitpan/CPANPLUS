@@ -7,7 +7,7 @@
 
 package CPANPLUS::Config;
 
-$VERSION = "0.050_03";
+$VERSION = "0.050_04";
 
 $MIN_CPANPLUS_VERSION = '0.050_03';
 
@@ -53,6 +53,7 @@ sub new {
                                             'host' => 'ftp.funet.fi'
                                           }
                                         ],
+                             'timeout' => 0,
                              'verbose' => 0,
                              'storable' => 1,
                              'skiptest' => 0,

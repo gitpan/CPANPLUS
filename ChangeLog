@@ -1,3 +1,34 @@
+Changes for 0.050_04    Sun Dec 26 16:54:46 CET 2004
+====================================================
+
+*   Add rsync support to CPANPLUS
+*   List rsync mirrors during setup
+*   Default to the email mentioned in Config.pm during setup
+*   Add timeout support for fetching files from mirrors
+*   Config version has gone up because of new timeout version
+    -- reconfiguration required
+*   Mention Bundle::CPANPLUS::Dependencies in the Makefile.PL    
+*   Add license information to dslip output
+*   Send N/A Grade to cpantesters when your perl version is
+    too low according to the Makefile.PL
+*   Drop dependancy on Mail::Send for test reporting, use a 
+    fixed version of Test::Reporter instead
+*   Alias $modobj->name to $modobj->module for more DWIMery    
+*   cpan2dist now allows creation of distributions from local
+    tarballs as well
+*   cpan2dist now uses the newly defined dist standard to find
+    out where distributions were created
+*   cpan2dist (and CPANPLUS::Dist) plugin detection is now regex
+    based
+*   Specifying CPANPLUS object id's when creating fake module 
+    or author objects is now optional
+*   Small backward-compat hack to make sure old versions of
+    ExtUtils::AutoInstall keep working with the new CPANPLUS
+*   Various documentation patches
+*   Update various bundled modules
+
+
+
 Changes for 0.050_03    Fri Dec 17 13:54:48 CET 2004
 ====================================================
 
@@ -8,7 +39,7 @@ Changes for 0.050_03    Fri Dec 17 13:54:48 CET 2004
 *   Rename cpan2dist.pl to cpan2dist to be more 'unixish'
 *   Improve cpan2dist diagnostics
 *   Add pod to cpan2dist
-*   Change config lay out for distribution types (incompatible
+*   Change config layout for distribution types (incompatible
     change -- will require reconfiguration)
 *   Add 2-way version checking so cpanplus + its config can
     both verify if their counterparts are compatible

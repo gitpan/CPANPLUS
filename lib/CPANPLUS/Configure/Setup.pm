@@ -129,7 +129,6 @@ sub _get {
     my $default = shift;
     my @options = qw/n y a b/;
 
-
     return $default unless $self->use_previous;
 
     ### maybe this is a new key the old conf doesn't have yet
@@ -524,6 +523,30 @@ FTP all that well you can use passive FTP.
             : loc("I won't use passive FTP.");
     print "\n\n";
 
+    #############################
+    ## should fetches timeout? ##
+    #############################
+
+    print loc("
+CPANPLUS can specify a network timeout for downloads (in whole seconds).
+If none is desired (or to skip this question), enter '0'.
+
+");
+
+    my $timeout = 0 + $term->get_reply(
+                prompt  => loc("Network timeout for downloads"),
+                default => $conf->get_conf('timeout') || 0,
+		### whole numbers only
+		allow	=> qr/(?!\D)/,
+            );
+
+    $conf->set_conf(timeout => $timeout);
+
+    print $timeout
+            ? loc("The network timeout for downloads is %1 seconds.", $timeout)
+            : loc("The network timeout for downloads is not set.");
+    print "\n\n";
+
     ############################
     ## where can I reach you? ##
     ############################
@@ -539,16 +562,22 @@ is required for the 'from' field, so choose wisely.
 ");
 
     my $other = 'Something else';
+    my @choices = (DEFAULT_EMAIL, $Config{cf_email}, $other);
+    my $current = $self->_get(email => DEFAULT_EMAIL);
+    unless (grep { $_ eq $current } @choices) {
+	unshift @choices, $current;
+    }
     my $email = $term->get_reply(
                     prompt  => loc('Which email address shall I use?'),
-                    default => $self->_get( email => DEFAULT_EMAIL ),
-                    choices => [DEFAULT_EMAIL, $Config{cf_email}, $other],
+                    default => $choices[0],
+                    choices => \@choices,
                 );
 
     if( $email eq $other ) {
+	print "\n";
         EMAIL: {
             $email = $term->get_reply(
-                        prompt  => loc('Email address: '),
+                        prompt  => loc('Email address:'),
                     );
             unless( $self->_valid_email($email) ) {
                 print loc("You did not enter a valid email address, please try again!"), "\n"
@@ -644,7 +673,7 @@ needed to make a distinction between program name and options to that
 program. For Win32 machines, you can use the short name for a path,
 like '%1'.
 
-    ], 'c:\Progra~1\prog.exe');
+],      'c:\Progra~1\prog.exe');
 
     if( $^O eq 'MSWin32' ) {
         print loc(q[
@@ -711,7 +740,7 @@ If you do not have '%1' yet, you can get it from:
         while( my($pgm, $default) = each %$map ) {
             PROGRAM: {
                 my $where = $term->get_reply(
-                                prompt  => loc("Your favorite command line %1? ", $pgm),
+                                prompt  => loc("Your favorite command line %1?", $pgm),
                                 default => $default,
                             );
 
@@ -719,7 +748,7 @@ If you do not have '%1' yet, you can get it from:
                 if( length $where and !$full ) {
                     warn loc("No such binary '%1'\n", $where);
                     $term->ask_yn(
-                            prompt  => loc("Are you use you want to use '%1'", $where),
+                            prompt  => loc("Are you use you want to use '%1'?", $where),
                             default => 'y',
                     ) or redo PROGRAM;
                     $full = $where;
@@ -823,7 +852,7 @@ If you don't understand this question, just press ENTER.
                             default => $self->_get( $type => $none ),
                     );
 
-        $flags = '' if $flags eq $none;
+        $flags = '' if $flags eq $none || $flags !~ /\S/;
 
         print   "\n", loc("Your '%1' have been set to:", 'Makefile.PL flags'),
                 "\n    ", ( $flags ? $flags : loc('*nothing entered*')),
@@ -854,7 +883,7 @@ Again, if you don't understand this question, just press ENTER.
                                 default => $self->_get($type => $none),
                             );
 
-        $flags = '' if $flags eq $none;
+        $flags = '' if $flags eq $none || $flags !~ /\S/;
 
         print   "\n", loc("Your '%1' have been set to:", $type),
                 "\n    ", ( $flags ? $flags : loc('*nothing entered*')),
@@ -891,7 +920,7 @@ Again, if you don't understand this question, just press ENTER.
                                 default => $self->_get($type => $none),
                             );
 
-        $flags = '' if $flags eq $none;
+        $flags = '' if $flags eq $none || $flags !~ /\S/;
 
         print   "\n", loc("Your '%1' have been set to:",
                             'Build.PL and Build flags'),
@@ -939,7 +968,7 @@ pathnames to be added to your @INC, quoting any with embedded whitespace.
 
         my $type    = 'lib';
         my $flags = $term->get_reply(
-                            prompt  => loc('Additional @INC directories to add? '),
+                            prompt  => loc('Additional @INC directories to add?'),
                             default => (join " ", @{$self->_get($type => [])} ),
                         );
 
@@ -1670,9 +1699,15 @@ sub _parse_mirrored_by {
 
         ### parse the different hosts, store them in config format ###
         my @list;
-        for my $type (qw[dst_ftp dst_http]) {
-            next unless $href->{$type} =~ /\w/;
-            my $parts = $self->_parse_host($href->{$type});
+
+        for my $type (qw[dst_ftp dst_rsync dst_http]) {
+	    my $path = $href->{$type};
+	    next unless $path =~ /\w/;
+	    if ($type eq 'dst_rsync' && $path !~ /^rsync:/) {
+		$path =~ s{::}{/};
+		$path = "rsync://$path/";
+	    }
+            my $parts = $self->_parse_host($path);
             push @list, $parts;
         }
 

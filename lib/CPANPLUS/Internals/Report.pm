@@ -38,12 +38,9 @@ otherwise.
         YAML             => '0.0',
     };
 
-    ### best add mail::send too, see here:
-    ### http://www.mail-archive.com/perl-qa-help@perl.org/msg01274.html
     my $send_list = {
         %$query_list,
-        'Mail::Send'     => '0.0',
-        'Test::Reporter' => 1.19,
+        'Test::Reporter' => 1.21,
     };
 
     sub _have_query_report_modules {
@@ -290,12 +287,19 @@ sub _send_report {
 
     my $grade;
     ### check if this is a platform specific module ###
-    unless( RELEVANT_TEST_RESULT->( $mod) ) {
+    unless( RELEVANT_TEST_RESULT->($mod) ) {
         msg(loc("'%1' is a platform specific module, and the test results on".
                 " your platform are not relevant --sending N/A grade.",
                 $name), $verbose);
 
         $grade = GRADE_NA;
+
+    ### you dont have a high enough perl version?    
+    } elsif ( PERL_VERSION_TOO_LOW->( $buffer ) ) {
+        msg(loc("'%1' requires a higher version of perl than your current ".
+                "version -- sending N/A grade.", $name), $verbose);
+
+        $grade = GRADE_NA;                
 
     ### see if the thing even had tests ###
     } elsif ( NO_TESTS_DEFINED->( $buffer ) ) {
@@ -382,19 +386,14 @@ sub _send_report {
     ### add the body if we have any ###
     $reporter->comments( $message ) if defined $message && length $message;
 
-    ### ask if you'd like to actually send the report, since it's a fail
-    if ($grade eq GRADE_FAIL and not
-        $self->_callbacks->send_test_report->($mod)
-    ) {
+    ### do a callback to ask if we should send the report
+    unless ($self->_callbacks->send_test_report->($mod, $grade)) {
         msg(loc("Ok, not sending test report"));
         return 1;
     }
 
     ### do a callback to ask if we should edit the report
-    ### if the grade is a 'fail'
-    if ($grade eq GRADE_FAIL and
-        $self->_callbacks->edit_test_report->($mod)
-    ) {
+    if ($self->_callbacks->edit_test_report->($mod, $grade)) {
         ### test::reporter 1.20 and lower don't have a way to set
         ### the preferred editor with a method call, but it does
         ### respect your env variable, so let's set that.
@@ -414,7 +413,7 @@ sub _send_report {
     ### should we save it locally? ###
     if( $save ) {
         if( my $file = $reporter->write() ) {
-            msg(loc("Succesfully wrote report for '%1' to '%2'",
+            msg(loc("Successfully wrote report for '%1' to '%2'",
                     $dist, $file), $verbose);
             return $file;
 
@@ -426,7 +425,7 @@ sub _send_report {
     ### should we send it to a bunch of people? ###
     ### XXX should we do an 'already sent' check? ###
     } elsif( $reporter->send( @inform ) ) {
-        msg(loc("Succesfully sent report for '%1'", $dist), $verbose);
+        msg(loc("Successfully sent report for '%1'", $dist), $verbose);
         return 1;
 
     ### something broke :( ###

@@ -1,5 +1,18 @@
 package CPANPLUS::Dist::Sample;
 
+=pod
+
+=head1 NAME
+
+CPANPLUS::Dist::Sample -- Sample code to create your own Dist::* plugin
+
+=head1 SYNOPSIS
+
+    ### read the code & comments
+    perldoc -m CPANPLUS::Dist::Sample
+
+=cut
+
 #######################################################################
 ###
 ### This is a sample module that you can use as a skeleton to create
@@ -17,17 +30,6 @@ package CPANPLUS::Dist::Sample;
 ###     create              # create a distribution
 ###     install             # install the created distribution
 ###
-### To make this format active, you will need to add an entry to the
-### CPANPLUS::Config. If you're creating this CPANPLUS::Dist::* module
-### outside of CPANPLUS core (as a 3rd party), you will want to add a
-### few lines like the following to your Makefile.pl:
-###
-###     my $cb = CPANPLUS::Backend->new;
-###     $cb->configure_object->_add_dist('sample');
-###     $cb->configure_object->_set_dist(
-###             sample => 'CPANPLUS::Dist::Sample' );
-###     $cb->configure_object->save;
-###
 ### If you want to see more actual code for writing your own
 ### CPANPLUS::Dist::* module, take a look at the other modules in the
 ### same class. Especially CPANPLUS::Dist::Ports should be a good
@@ -36,10 +38,9 @@ package CPANPLUS::Dist::Sample;
 ######################################################################
 
 use strict;
-use vars    qw[@ISA];
 
-### inherit from CPANPLUS::Dist ###
-@ISA =      qw[CPANPLUS::Dist];
+### inherit from CPANPLUS::Dist
+use base qw[CPANPLUS::Dist];
 
 ### to set up the include paths properly for bundled modules ###
 use CPANPLUS::inc;
@@ -59,6 +60,7 @@ use CPANPLUS::Internals::Constants;
 #use CPANPLUS::Internals::Constants::Sample;
 
 ### verbose errors on param checking ###
+use Params::Check qw[check];
 local $Params::Check::VERBOSE = 1;
 
 ### sub called to see if it is possible to create this type of dist
@@ -69,17 +71,17 @@ sub format_available { 1; }
 
 ### sub called just after the CPANPLUS::Dist object is created, to
 ### initialize any custom code you might want to run at creation
-### time. At this time you should at least create the required
+### time. At this time you should at least create the 
 ### accessors you're going to use, like in the example below
 sub init {
     my $dist    = shift;
     my $status  = $dist->status;
 
-    ### minimally required accessors
-    $status->mk_accessors(qw[created installed uninstalled]);
-
+    ### minimally required accessors are already created for you:
+    # qw[created installed uninstalled dist]
+    
     ### more accessors as you may desire
-    # ...
+    # $status->mk_accessors( qw[foo bar bleh] )
 
     ### other code here
     # ....
@@ -103,6 +105,9 @@ sub create {
     my $conf = $cb->configure_object;
     my %hash = @_;
 
+    ### you can validate the arguments using Params::Check 
+    ### see the corresponding code in CPANPLUS::Dist::MM and ::Build
+
     ### there's a good chance the module has only been extracted so far,
     ### so let's go and build it first
     {   my $builder = CPANPLUS::Dist->new(
@@ -118,15 +123,22 @@ sub create {
             return;
         }
 
-
-        unless( $builder->create(%hash, prereq_format => 'SAMPLE' ) ) {
+        ### set the prereq_format here to your package: so your dependencies
+        ### are also packaged up
+        unless( $builder->create(%hash, prereq_format => __PACKAGE__ ) ) {
             $dist->status->created(0);
             return;
         }
     }
+    
+    
 
     ### other code here ###
     # ....
+
+    ### this is required! set the status accessor that tells us where you
+    ### created the package
+    $dist->status->dist( '/path/to/package/you/created' );
 
     return $dist->created( 'TRUE' ? 1 : 0 );
 
@@ -147,13 +159,9 @@ sub install {
     my $conf = $cb->configure_object;
     my %hash = @_;
 
-    ### params::check template ###
-    my $tmpl = {
-        key => { default => '' },
-    };
-
-    check( $tmpl, \%hash ) or return;
-
+    ### you can validate the arguments using Params::Check 
+    ### see the corresponding code in CPANPLUS::Dist::MM and ::Build
+    
     ### actual install code here....
     # ....
 

@@ -101,6 +101,10 @@ An objects of this class has the following accessors:
 
 =over 4
 
+=item name
+
+Name of the module.
+
 =item module
 
 Name of the module.
@@ -146,6 +150,9 @@ The C<CPANPLUS::Internals> object that spawned this module object.
 =back
 
 =cut
+
+### Alias ->name to ->module, for human beings.
+*name = *module;
 
 sub parent {
     my $self = shift;
@@ -1277,8 +1284,9 @@ sub best_path_to_module_build {
     ### work again
 
     require Module::Build;
-    if( CPANPLUS::inc->path_to('Module::Build') eq
-        CPANPLUS::inc->installer_path
+    if( CPANPLUS::inc->path_to('Module::Build') and (
+        CPANPLUS::inc->path_to('Module::Build') eq
+        CPANPLUS::inc->installer_path )
     ) {
 
         ### if the module being installed is *not* Module::Build

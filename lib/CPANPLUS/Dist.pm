@@ -65,19 +65,19 @@ All accessors can be accessed as follows:
 
 =item created()
 
-Boolean indicating whether the dist was created succesfully.
+Boolean indicating whether the dist was created successfully.
 Explicitly set to C<0> when failed, so a value of C<undef> may be
 interpreted as C<not yet attempted>.
 
 =item installed()
 
-Boolean indicating whether the dist was installed succesfully.
+Boolean indicating whether the dist was installed successfully.
 Explicitly set to C<0> when failed, so a value of C<undef> may be
 interpreted as C<not yet attempted>.
 
 =item uninstalled()
 
-Boolean indicating whether the dist was uninstalled succesfully.
+Boolean indicating whether the dist was uninstalled successfully.
 Explicitly set to C<0> when failed, so a value of C<undef> may be
 interpreted as C<not yet attempted>.
 
@@ -190,10 +190,13 @@ Returns a list of the CPANPLUS::Dist::* classes available
         ) {
             require Module::Pluggable;
 
+            my $only_re = __PACKAGE__ . '::\w+$';
+
             ### XXX M::P 2.4 can do regexes -- find out how
             Module::Pluggable->import(
                             sub_name    => '_dist_types',
                             search_path => __PACKAGE__,
+                            only        => qr/$only_re/,
                             except      => [ INSTALLER_MM, INSTALLER_SAMPLE,
                                              INSTALLER_BUILD ],
                         );

@@ -18,7 +18,8 @@ BEGIN {
                     GRADE_PASS GRADE_UNKNOWN NO_TESTS_DEFINED MAX_REPORT_SEND
                     REPORT_MESSAGE_HEADER REPORT_MESSAGE_FAIL_HEADER
                     TEST_FAIL_STAGE REPORT_MISSING_TESTS CPAN_TESTERS_EMAIL
-                    REPORT_MISSING_PREREQS MISSING_PREREQS_LIST
+                    REPORT_MISSING_PREREQS MISSING_PREREQS_LIST 
+                    PERL_VERSION_TOO_LOW
                 ];
 }
 
@@ -94,6 +95,13 @@ use constant RELEVANT_TEST_RESULT
                                 };
                                 return $specific ? 0 : 1;
                             };
+
+use constant PERL_VERSION_TOO_LOW
+                            => sub {
+                                my $buffer = shift or return;
+                                    return $buffer =~
+                                        /Perl .*? required--this is only .*?/m
+                            };                                            
 
 use constant NO_TESTS_DEFINED
                             => sub {

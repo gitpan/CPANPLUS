@@ -29,6 +29,12 @@ my $r = $c->conf;
 isa_ok( $r, 'CPANPLUS::Config' );
 
 
+### EU::AI compatibility test ###
+{   my $base = $c->_get_build('base');
+    ok( $base,                          "Base retrieved by old compat API");
+    is( $base, $c->get_conf('base'),    "   Value as expected" );
+}
+
 for my $cat ( keys %$r ) {
 
     ### what field can they take? ###
@@ -49,7 +55,7 @@ for my $cat ( keys %$r ) {
         my $found = grep { $add_key eq $_ } @options;
         ok( !$found,                    "Key '$add_key' not yet defined" );
         ok( $c->$addmeth( $add_key => $add_val ),
-                                        "   Key '$add_key' added" ); 
+                                        "   $addmeth('$add_key' => VAL)" ); 
 
         ### this one now also exists ###
         push @options, $add_key
@@ -61,9 +67,9 @@ for my $cat ( keys %$r ) {
     while( my ($key,$val) = each %$hash ) {
         my $is = $c->$getmeth($key); 
         is_deeply( $val, $is,           "deep check for '$key'" );
-        ok( $c->$setmeth($key => 1 ),   "   setting '$key' to 1" );
-        is( $c->$getmeth($key), 1,      "   '$key' set correctly" );
-        ok( $c->$setmeth($key => $val), "   restoring '$key'" );
+        ok( $c->$setmeth($key => 1 ),   "   $setmeth('$key' => 1)" );
+        is( $c->$getmeth($key), 1,      "   $getmeth('$key')" );
+        ok( $c->$setmeth($key => $val), "   $setmeth('$key' => ORGVAL)" );
     }
 
     ### now check if we found all the keys with options or not ###
@@ -71,6 +77,7 @@ for my $cat ( keys %$r ) {
     ok( !(scalar keys %$hash),          "All possible keys found" );
     
 }    
+
 
 ### see if we can save the config ###
 {   my $file = File::Spec->catfile('dummy-cpanplus','.config');
@@ -116,7 +123,7 @@ for my $cat ( keys %$r ) {
     {   ### try creating a new configure object with an out of date
         ### config. set version to 0, remove entry from %INC     
         local $CPANPLUS::Config::VERSION = 0;      
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         my $err = CPANPLUS::Error->stack_as_string;
@@ -130,7 +137,7 @@ for my $cat ( keys %$r ) {
     {   ### ensure that we handle x.xx_aa < x.xx_bb properly
         local $CPANPLUS::Config::VERSION = "0.00_01";
         local $CPANPLUS::Configure::MIN_CONFIG_VERSION = "0.00_02";
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         my $err = CPANPLUS::Error->stack_as_string;
@@ -144,7 +151,7 @@ for my $cat ( keys %$r ) {
     {   ### ensure that we handle x.xx_aa < y.yy_aa properly
         local $CPANPLUS::Config::VERSION = "0.00_00";
         local $CPANPLUS::Configure::MIN_CONFIG_VERSION = "0.01_00";
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         my $err = CPANPLUS::Error->stack_as_string;
@@ -158,7 +165,7 @@ for my $cat ( keys %$r ) {
     {   ### load config when versions are equal
         local $CPANPLUS::Config::VERSION = "0.00_00";
         local $CPANPLUS::Configure::MIN_CONFIG_VERSION = "0.00_00";
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         ok( $rv,        "Config loaded from environment" );
@@ -175,7 +182,7 @@ for my $cat ( keys %$r ) {
     {   ### ensure that we handle x.xx_aa < y.yy_aa properly
         local $CPANPLUS::Configure::VERSION = "0.00_00";
         local $CPANPLUS::Config::MIN_CONFIG_VERSION = "0.01_00";
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         my $err = CPANPLUS::Error->stack_as_string;
@@ -189,7 +196,7 @@ for my $cat ( keys %$r ) {
     {   ### ensure that we handle x.xx_aa < x.xx_bb properly
         local $CPANPLUS::Configure::VERSION = "0.00_01";
         local $CPANPLUS::Config::MIN_CONFIG_VERSION = "0.00_02";
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         my $err = CPANPLUS::Error->stack_as_string;
@@ -203,7 +210,7 @@ for my $cat ( keys %$r ) {
     {   ### load config when versions are equal
         local $CPANPLUS::Config::MIN_CPANPLUS_VERSION = "0.00_00";
         local $CPANPLUS::Configure::VERSION = "0.00_00";
-        local $INC{$Config_pm} = 0;
+        local $INC{$Config_pm} = undef;
         
         my $rv  = CPANPLUS::Configure->new();
         ok( $rv,        "Config loaded from environment" );

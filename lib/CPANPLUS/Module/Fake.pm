@@ -1,8 +1,10 @@
 package CPANPLUS::Module::Fake;
 
 use CPANPLUS::inc;
+use CPANPLUS::Error;
 use CPANPLUS::Module;
 use CPANPLUS::Module::Author::Fake;
+use CPANPLUS::Internals;
 
 use strict;
 use vars            qw[@ISA];
@@ -24,7 +26,7 @@ CPANPLUS::Module::Fake
                 path    => 'ftp/path/to/foo',
                 author  => CPANPLUS::Module::Author::Fake->new,
                 package => 'fake-1.1.tgz',
-                _id     => $cpan->id,
+                _id     => $cpan->_id,
             );
 
 =head1 DESCRIPTION
@@ -36,7 +38,7 @@ Inherits from C<CPANPLUS::Module>.
 
 =head1 METHODS
 
-=head2 new( module => $mod, path => $path, package => $pkg, _id => DIGIT )
+=head2 new( module => $mod, path => $path, package => $pkg, [_id => DIGIT] )
 
 Creates a dummy module object from the above parameters. It can
 take more options (same as C<< CPANPLUS::Module->new >> but the above
@@ -54,15 +56,21 @@ sub new {
         module  => { required => 1 },
         path    => { required => 1 },
         package => { required => 1 },
-        _id     => { required => 1 },
+        _id     => { default => CPANPLUS::Internals->_last_id },
         author  => { default => '' },
     };
     
     my $args = check( $tmpl, \%hash ) or return;
     
-    $args->{author} ||= CPANPLUS::Module::Author::Fake->new( _id => $args->{_id} );
+    $args->{author} ||= CPANPLUS::Module::Author::Fake->new( 
+                                                        _id => $args->{_id} );
     
     my $obj = CPANPLUS::Module->new( %$args ) or return;
+    
+    unless( $obj->_id ) {
+        error(loc("No '%1' specified -- No CPANPLUS object associated!",'_id'));
+        return;
+    }        
     
     ### rebless object ###
     return bless $obj, $class;                                   

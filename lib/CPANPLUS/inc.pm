@@ -151,7 +151,7 @@ It would looks something like this:
 
 {
     my $map = {
-        'File::Fetch'               => '0.06',
+        'File::Fetch'               => '0.07',
         #'File::Spec'                => '0.82', # can't, need it ourselves...
         'IPC::Run'                  => '0.77',
         'IPC::Cmd'                  => '0.24',
@@ -161,7 +161,7 @@ It would looks something like this:
         'Module::Load::Conditional' => '0.06',
         'Module::Build'             => '0.26061',
         'Params::Check'             => '0.22',
-        'Term::UI'                  => '0.04',
+        'Term::UI'                  => '0.05',
         'Archive::Extract'          => '0.07',
         'Archive::Tar'              => '1.23',
         'IO::Zlib'                  => '1.04',

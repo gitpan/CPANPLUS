@@ -766,7 +766,7 @@ sub _create_mod_tree {
         ### adding the dslip info
         ### probably can use some optimization
         my $dslip;
-        for my $item ( qw[ statd stats statl stati ] ) {
+        for my $item ( qw[ statd stats statl stati statp ] ) {
             ### checking if there's an entry in the dslip info before
             ### catting it on. appeasing warnings this way
             $dslip .=   $dslip_tree->{ $data[0] }->{$item}

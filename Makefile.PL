@@ -289,13 +289,15 @@ CPANPLUS:
 
 %1
 
+You can also have all of them installed for you, including all of
+the optional modules CPANPLUS supports, by installing:
+    
+    %2    
+
 ###################################################################
     
-    ", $string);  
+    ", $string, 'Bundle::CPANPLUS::Dependencies');  
 
-### don't mention this yet, not quite supported
-#If you wish to run cpanpd.pl, the CPANPLUS daemon, you should
-#install recent versions of 'POE' and 'IO::String'
 
     name            ('CPANPLUS');
     author          ('Jos Boumans <kane@cpan.org>');

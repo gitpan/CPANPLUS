@@ -12,7 +12,7 @@ local $Params::Check::VERBOSE = 1;
 
 =head1 NAME
 
-CPANPLUS::Module
+CPANPLUS::Module::Author
 
 =head1 SYNOPSIS
 

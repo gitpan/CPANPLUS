@@ -21,7 +21,7 @@ $VERSION = $CPANPLUS::Internals::VERSION = $CPANPLUS::Internals::VERSION;
 ### The minimum required config version
 ### Update this if we have incompatible config changes
 #$MIN_CONFIG_VERSION = $VERSION;
-$MIN_CONFIG_VERSION = '0.050_03';
+$MIN_CONFIG_VERSION = '0.050_04';
 
 
 =pod
@@ -284,7 +284,7 @@ ${is}cut
 
 package CPANPLUS::Config;
 
-\$VERSION = "$CPANPLUS::Internals::VERSION";
+\$VERSION = "$MIN_CONFIG_VERSION";
 
 \$MIN_CPANPLUS_VERSION = "$CPANPLUS::Config::MIN_CPANPLUS_VERSION";
 
@@ -494,7 +494,13 @@ sub AUTOLOAD {
             if( exists $conf->{$type}->{$key} ) {
                 push @list, $conf->{$type}->{$key};
 
-            } else {
+            ### XXX EU::AI compatibility hack to provide lookups like in
+            ### cpanplus 0.04x; we renamed ->_get_build('base') to
+            ### ->get_conf('base')
+            } elsif ( $type eq '_build' and $key eq 'base' ) {
+                return $self->get_conf($key);  
+                
+            } else {     
                 error loc(q[No such key '%1' in field '%2'], $key, $type);
                 return;
             }
@@ -564,8 +570,9 @@ terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<CPANPLUS::Backend>, L<CPANPLUS::Conf>
+L<CPANPLUS::Backend>, L<CPANPLUS::Configure::Setup>
 
+=cut
 
 # Local variables:
 # c-indentation-style: bsd

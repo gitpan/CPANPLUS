@@ -30,7 +30,7 @@ $Params::Check::ALLOW_UNKNOWN = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_03';
+    $VERSION    =   '0.050_04';
 }
 
 load CPANPLUS::Shell;

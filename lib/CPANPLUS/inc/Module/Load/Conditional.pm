@@ -38,7 +38,7 @@ Module::Load::Conditional - Looking up module information / loading at runtime
     };
 
     print can_load( modules => $use_list )
-            ? 'all modules loaded succesfully'
+            ? 'all modules loaded successfully'
             : 'failed to load required modules';
 
 
@@ -326,7 +326,7 @@ sub can_load {
                     && defined $CACHE->{$mod}->{usable}
                     && (($CACHE->{$mod}->{version}||0) >= $href->{$mod})
             ) {
-                $error = loc( q[Already tried to use '%1', which was unsuccesful], $mod);
+                $error = loc( q[Already tried to use '%1', which was unsuccessful], $mod);
                 last BLOCK;
             }
 

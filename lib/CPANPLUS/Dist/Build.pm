@@ -420,7 +420,7 @@ sub install {
     
     my $verbose; my $perl; my $force;
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
-        my $tmpl ={
+        my $tmpl = {
             verbose => { default => $conf->get_conf('verbose'),
                          store   => \$verbose },
             force   => { default => $conf->get_conf('force'),

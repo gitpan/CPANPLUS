@@ -13,11 +13,11 @@ use CPANPLUS::inc;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants::Report;
 
-my $send_tests  = 26;
+my $send_tests  = 33;
 my $query_tests = 7;
 my $total_tests = $send_tests + $query_tests;
 
-use Test::More                  tests => 58;
+use Test::More                  tests => 67;
 use Module::Load::Conditional   qw[can_load];
 
 use FileHandle;
@@ -63,8 +63,18 @@ my $map = {
                     '/make test/',
                 ],
         check   => 0,
-    }
+    },
+    perl_version_too_low => {
+        buffer  => perl_version_too_low_buffer(),
+        failed  => 1,
+        match   => ['/This distribution has been tested/',
+                    '/http://testers.cpan.org//',
+                    '/NA/',
+                ],
+        check   => 0,
+    },      
 };
+
 
 ### test constants ###
 {   {   my $to = CPAN_MAIL_ACCOUNT->('foo');
@@ -77,6 +87,12 @@ my $map = {
         my $cp = $mod->clone;
         $cp->module( $mod->module . '::' . ($^O eq 'beos' ? 'MSDOS' : 'Be') );
         ok(!RELEVANT_TEST_RESULT->($cp),"Test is irrelevant");
+    }
+
+    {   ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer() ),
+                                        "Perl version too low" );
+        ok(!PERL_VERSION_TOO_LOW->('foo'),
+                                        "   Perl version adequate" );
     }
 
     {   my $tests = "test.pl";
@@ -199,7 +215,7 @@ SKIP: {
             ok( $called_send,   "   Callback to send was called" );
         }
 
-        unlink $file;
+        #unlink $file;
 
 
 ### T::R tests don't even try to mail, let's not try and be smarter
@@ -246,6 +262,17 @@ MAKE TEST:
 No tests defined for Acme::POE::Knee extension.
     ];
 }
+
+sub perl_version_too_low_buffer {
+    return q[
+Running [/usr/bin/perl5.8.1 Makefile.PL ]...
+Perl v5.8.3 required--this is only v5.8.1, stopped at Makefile.PL line 1.
+BEGIN failed--compilation aborted at Makefile.PL line 1.
+[ERROR] Could not run '/usr/bin/perl5.8.1 Makefile.PL': Perl v5.8.3 required--this is only v5.8.1, stopped at Makefile.PL line 1.
+BEGIN failed--compilation aborted at Makefile.PL line 1.
+ -- cannot continue
+    ];
+}    
 
 # Local variables:
 # c-indentation-style: bsd

@@ -19,25 +19,26 @@ After every patch to either of the branches, the snapshot is
 automatically updated.
 
 You can find the stable branch here (which should be equal to the
-CPAN release):
-    http://p4.elixus.org/snap/cpanplus-dist.tar.gz
+CPAN release): L<http://p4.elixus.org/snap/cpanplus-dist.tar.gz>
 
 And the development branch here:
-    http://p4.elixus.org/snap/cpanplus-devel.tar.gz
+L<http://p4.elixus.org/snap/cpanplus-devel.tar.gz>
 
 =head1 INSTALLING CPANPLUS
 
 CPANPLUS follows the standard perl module installation process:
+
     perl Makefile.PL
     make
     make test
-    mkae install
+    make install
 
 =head1 CONFIGURING CPANPLUS
 
 When running C<perl Makefile.PL> you will be prompted to configure.
 If you have already done so, and merely wish to update the C<Makefile>,
 simply run:
+
     perl Makefile.PL JFDI=1
 
 This will keep your configuration intact. Note however, if there are
@@ -56,6 +57,7 @@ from there.
 
 Tests are what tells us if CPANPLUS is working. If a test is not working,
 try to run it explicilty like this:
+
     perl -I/path/to/cpanplus/lib t/XX_name_of_test.t 1
 
 The extra '1' makes sure that all the messages and errors (they might
@@ -71,7 +73,7 @@ bug report.
 
 Sometimes you might find bugs in CPANPLUS' behaviour. If you encounter
 these in a development snapshot, we'd appreciate a complete patch (as
-described below in the C<SENDING PATCHES> section.
+described below in the L<SENDING PATCHES> section.
 
 If it's way over your head, then of course reporting the bug is always
 better than not reporting it at all. Before you do so though, make
@@ -96,7 +98,7 @@ Show us how to reproduce the bug, in a simple of a program as possible
 =item [OPTIONAL] A patch to the test suite to test for the bug
 
 Amend our test suite by making sure this bug will be found in this, and
-future versions of CPANPLUS (see C<SUPPLYING PATCHES>)
+future versions of CPANPLUS (see L<SUPPLYING PATCHES>)
 
 =item [OPTIONAL] A patch to the code + tests + documentation
 

@@ -44,11 +44,12 @@ isa_ok( $auth->parent,'CPANPLUS::Internals',          "Author parent");
 
 ### module accessors ###
 is( $mod->module,     'Text::Bastardize',             "Module name");
+is( $mod->name,       'Text::Bastardize',             "Module name");
 is( $mod->comment,    undef,                          "Module comment");
 is( $mod->package,    'Text-Bastardize-0.06.tar.gz',  "Module package");
 is( $mod->path,       'authors/id/A/AY/AYRNIEU',      "Module path");
 is( $mod->version,    '0.06',                         "Module version");
-is( $mod->dslip,      'cdpO',                         "Module dslip");
+is( $mod->dslip,      'cdpO ',                        "Module dslip");
 is( $mod->description,'corrupts text in various ways',"Module description");
 
 ### convenience methods ###
@@ -152,6 +153,7 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
                 'Perl-only, no compiler needed, should be platform independent',
         'Interface Style'   => 
                 'Object oriented using blessed references and/or inheritance',
+        'Public License'    => 'Unknown',                
         ### XXX we can't really know what you have installed ###
         #'Version Installed' => '0.06',
     };   
@@ -219,7 +221,7 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
                                     "   Error properly logged" );
 }    
  
-### testing taht the uptodate/installed tests don't find things in the
+### testing that the uptodate/installed tests don't find things in the
 ### cpanplus::inc tree
 {   my $href    = CPANPLUS::inc->interesting_modules;
     my $incpath = quotemeta CPANPLUS::inc->inc_path;
