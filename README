@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/README $
-# $Revision: #3 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
+# $Revision: #4 $ $Change: 10313 $ $DateTime: 2004/03/03 14:58:11 $
 
 This is the README file for CPANPLUS, Ameliorated interface to
 the Comprehensive Perl Archive Network, by Jos Boumans.
@@ -86,7 +86,7 @@ News and project updates are available at http://cpanplus.sf.net/.
 
 * Copyright
 
-Copyright 2001, 2002 by Jos Boumans <kane@cpan.org>.
+Copyright 2001, 2002, 2003, 2004 by Jos Boumans <kane@cpan.org>.
 
 All rights reserved.  You can redistribute and/or modify
 this bundle under the same terms as Perl itself.

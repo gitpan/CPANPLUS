@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #18 $ $Change: 8345 $ $DateTime: 2003/10/05 17:25:48 $
+# $Revision: #20 $ $Change: 9271 $ $DateTime: 2003/12/11 21:14:34 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -989,6 +989,9 @@ sub _ask_report {
 
     my $args = check( $tmpl, \%hash ) or return undef;
 
+    # wise defaults for specific grades that shouldn't bother users about
+    return 'n' if $args->{grade} =~ /^unknown|na$/;
+    return 'y' if $args->{grade} =~ /pass/;
 
     return 'n' unless UNIVERSAL::can($self->term, 'ask_yn');
     return $self->term->ask_yn(

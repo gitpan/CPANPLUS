@@ -248,14 +248,15 @@ sub _hasreq {
 }
 
 ### Return a hash of $tmpl keys with default values => defaults
-### make sure to even include undefined ones, so that 'exists' will dwym
+### Ignore undefined defaults to avoid unintentionally filling in
+### keys that have a later defined value.
 sub _hashdefs {
     my $tmpl = shift;
 
     my %hash =  map {
-                    $_ => defined $tmpl->{$_}->{default}
-                                ? $tmpl->{$_}->{default}
-                                : undef
+                    defined $tmpl->{$_}->{default}
+                          ? ($_ => $tmpl->{$_}->{default})
+                          : ()
                 } keys %$tmpl;
 
     return \%hash;

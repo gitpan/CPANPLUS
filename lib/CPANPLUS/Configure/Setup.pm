@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #23 $ $Change: 8890 $ $DateTime: 2003/11/15 16:50:36 $
+# $Revision: #24 $ $Change: 9272 $ $DateTime: 2003/12/11 21:26:17 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -598,7 +598,7 @@ information.  Would you like to do this?
 CPANPLUS has support for the Test::Reporter module, which can be utilized
 to report success and failures of modules installed by CPANPLUS.  Would
 you like to do this?  Note that you will still be prompted before
-sending each report.
+sending each FAIL report.
 
 ");
 
@@ -613,7 +613,7 @@ sending each report.
 
     if ($answer =~ /^y/i) {
         $cpantest = 1;
-        print loc("I will prompt you to report test results.");
+        print loc("I will send PASS results and prompt you to report FAILs.");
 
     } else {
         $cpantest = 0;

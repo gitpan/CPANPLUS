@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #17 $ $Change: 8351 $ $DateTime: 2003/10/07 06:40:41 $
+# $Revision: #19 $ $Change: 10311 $ $DateTime: 2004/03/03 12:12:16 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -124,7 +124,7 @@ sub install {
         extractdir      => { default => undef },
         skiptest        => { default => undef },
         target          => { default => 'install' },
-        prereq_target   => { default => '' },
+        prereq_target   => { default => undef },
     };
 
     ### Input Check ###
@@ -453,10 +453,15 @@ sub make {
     my $args = check( $_data, \%hash );
     return undef unless $args;
 
+    # arguments to pass through to _make since it doesn't take some
+    # of what make does.
+    my %make_args = %$args;
+    delete @make_args{qw(dirs type)};
+
     my $href;
     my $flag = 0;
     for my $dir ( @{$args->{'dirs'}} ) {
-        my $rv = $self->_make( dir => $dir, %$args );
+        my $rv = $self->_make( dir => $dir, %make_args );
 
         ### both the original module-directory, as all the prereqs
         ### will be in this rv

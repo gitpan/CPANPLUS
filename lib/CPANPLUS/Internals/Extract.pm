@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #7 $ $Change: 8347 $ $DateTime: 2003/10/05 22:26:46 $
+# $Revision: #8 $ $Change: 10305 $ $DateTime: 2004/03/03 11:54:09 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -62,6 +62,10 @@ sub _extract {
                    $args->{data}->path,
                    $args->{data}->package,
                );
+
+    # We're going to do some chdir'ing, so make sure we're using an
+    # absolute filename.
+    $file = File::Spec->rel2abs($file);
 
     unless( -s $file ) {
         $err->trap( error => loc("%1 has zero size! Can not extract!", $file) );

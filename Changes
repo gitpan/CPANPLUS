@@ -1,4 +1,69 @@
 ____________________________________________________________________________
+[ 10312] By: kane                                  on 2004/03/03  12:13:59
+        Log: * up version to 0.049
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[ 10311] By: kane                                  on 2004/03/03  12:12:16
+        Log: * make the param undef instead of empty string, to preserve
+	       defaults
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[ 10310] By: kane                                  on 2004/03/03  12:07:53
+        Log: * remove unsupported args in function
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[ 10309] By: kane                                  on 2004/03/03  12:06:18
+        Log: * fix borked hash
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[ 10308] By: kane                                  on 2004/03/03  12:04:10
+        Log: * add default return values
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[ 10307] By: kane                                  on 2004/03/03  12:02:26
+        Log: * add missing key in 'allow'
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[ 10306] By: kane                                  on 2004/03/03  11:58:37
+        Log: * quell uninit variable warning
+	   ! lib/CPANPLUS/Configure.pm
+____________________________________________________________________________
+[ 10305] By: kane                                  on 2004/03/03  11:54:09
+        Log: * make extract() use absolute paths
+	   ! lib/CPANPLUS/Internals/Extract.pm
+____________________________________________________________________________
+[ 10304] By: kane                                  on 2004/03/03  11:44:04
+        Log: * Schwern suggests not allowing undef as a key, and just
+	       leaving the key empty
+             provisionally applying to see if this works
+	   ! lib/CPANPLUS/Tools/Check.pm
+____________________________________________________________________________
+[  9732] By: autrijus                              on 2004/01/19  00:24:58
+        Log: * JP Lindstorm suggests that blindly
+             exec'ing things is dangerous, so we
+             should not suggest it in the pod
+	   ! lib/CPANPLUS/TesterGuide.pod
+____________________________________________________________________________
+[  9290] By: autrijus                              on 2003/12/12  21:08:16
+        Log: * IPC::Run should be on top.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  9272] By: autrijus                              on 2003/12/11  21:26:17
+        Log: * improved prompts now we autosend passes.
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  9271] By: autrijus                              on 2003/12/11  21:14:34
+        Log: * making it to be the correct case.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  9270] By: autrijus                              on 2003/12/11  21:10:40
+        Log: * really only ask for report if it's a FAIL.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  9268] By: autrijus                              on 2003/12/11  20:41:18
+        Log: * new autoinstall to please Alan.
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
 [  9267] By: autrijus                              on 2003/12/11  20:30:22
         Log: * This be 0.048, "test now runs" edition.
 	   ! AUTHORS ChangeLog lib/CPANPLUS.pm

@@ -1,7 +1,7 @@
 # http://module-build.sourceforge.net/META-spec.html
 #XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
 name:         CPANPLUS
-version:      0.048
+version:      0.049
 version_from: lib/CPANPLUS/Internals.pm
 installdirs:  site
 requires:

@@ -1,5 +1,20 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #15 $ $Change: 9267 $ $DateTime: 2003/12/11 20:30:22 $
+# $Revision: #16 $ $Change: 10313 $ $DateTime: 2004/03/03 14:58:11 $
+
+[Changes for 0.049 - March 3, 2004]
+
+* Bug fixes
+
+  - IPC::Run is now listed first on Makefile.PL's prereq list,
+    so spurious warnings will not appear when installing subsequent
+    prerequisites.
+
+  - Corrected an insecure use of exec() in TesterGuide.pod.
+
+  - CPANPLUS needlessly prompted user before sending out test report,
+    even when "cpantest" is set to 1 and the result is a PASS.
+
+  - Backend->extract() now takes absolute paths.
 
 [Changes for 0.048 - December 17, 2003]
 

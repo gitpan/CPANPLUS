@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #15 $ $Change: 9265 $ $DateTime: 2003/12/11 20:21:43 $
+# $Revision: #18 $ $Change: 10309 $ $DateTime: 2004/03/03 12:06:18 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -36,7 +36,7 @@ sub _make {
     my $tmpl = {
         dir             => { required => 1, allow => sub { -d pop() } },
         module          => { default => '' },
-        target          => { default => 'install'. allow => [qw|makefile make test dist|] },
+        target          => { default => 'install', allow => [qw|makefile make test dist install|] },
         prereq_target   => { default => $conf->get_conf('prereqs') == 3 ? 'test': 'install' },
         perl            => { default => $^X },
         force           => { default => $conf->get_conf('force') },
@@ -615,6 +615,8 @@ warn "SHOULD NOT GET HERE" if $flag;
 sub _flags_hashref {
     my ($self, $flags) = @_;
 
+    return {} unless defined $flags;
+
     ### first, join arrayref flags (like ['A=B C=D', 'E=F']) together
     $flags = join(' ', @{$flags}) if UNIVERSAL::isa($flags, 'ARRAY');
 
@@ -631,6 +633,8 @@ sub _flags_hashref {
 ### convert scalar or hashref flags into an arrayref
 sub _flags_arrayref {
     my ($self, $flags) = @_;
+
+    return [] unless defined $flags;
 
     ### first, split scalar flags into hashref
     $flags = $self->_flags_hashref($flags) unless ref($flags);

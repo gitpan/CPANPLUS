@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/TesterGuide.pod $
-# $Revision: #4 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
+# $Revision: #5 $ $Change: 9732 $ $DateTime: 2004/01/19 00:24:58 $
 
 =head1 NAME
 
@@ -484,7 +484,7 @@ empty email to F<cpan-testers-subscribe@perl.org>, and add the lines
 below to your B<Mail::Audit> filter [4]:
 
  fork || exec("sleep 40000 && cpansmoke -aps $1 >/dev/null 2>&1")
-     if $mail->subject =~ /^CPAN Upload: (.*)$/;
+     if $mail->subject =~ /^CPAN Upload: ([-./\w]+)$/;
 
 This rule will fork out a new F<cpansmoke> process for each incoming
 mail about a CPAN upload.  Note that it works only if incoming mail

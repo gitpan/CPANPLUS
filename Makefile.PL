@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #27 $ $Change: 9266 $ $DateTime: 2003/12/11 20:26:07 $
+# $Revision: #28 $ $Change: 9290 $ $DateTime: 2003/12/12 21:08:16 $
 
 use strict;
 BEGIN { require 5.00503; }
@@ -264,6 +264,12 @@ that defaults to 'Y', there might be _unpredictable failures_!
             -prereqs            => 1,
             -do_once            => 1,
         ],
+    $ipc_ok ? (
+        loc('IPC::Run support')           => [
+            -default            => 1,
+            'IPC::Run'          => 0.75,
+        ],
+    ) : (),
         loc('Uncompress .tar files')      => [
             -default            => (!_can_run('tar')),
             'Compress::Zlib'    => 0.01,
@@ -342,12 +348,6 @@ that defaults to 'Y', there might be _unpredictable failures_!
             'File::Spec'        => 0.82,
         ]
     ),
-    $ipc_ok ? (
-        loc('IPC::Run support')           => [
-            -default            => 1,
-            'IPC::Run'          => 0.75,
-        ],
-    ) : (),
         loc('CPAN Test reporting')        => [
             -default            => $ConfigObj->get_conf('cpantest'),
             'Net::SMTP'         => 0.01,

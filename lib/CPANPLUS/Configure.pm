@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #7 $ $Change: 7725 $ $DateTime: 2003/08/26 13:46:16 $
+# $Revision: #8 $ $Change: 10306 $ $DateTime: 2004/03/03 11:58:37 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -305,7 +305,7 @@ sub _load_args {
     my $options = shift;
 
     for my $option (keys %{$options}) {
-        (my $method = $option) =~ s/^(_)?/$1set_/; # translate to calling syntax
+        (my $method = $option) =~ s/^(_?)/$1set_/; # translate to calling syntax
         $self->$method(%{$options->{$option}});
     }
 
