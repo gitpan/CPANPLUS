@@ -1,5 +1,12 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #13 $ $Change: 8891 $ $DateTime: 2003/11/15 16:59:11 $
+# $Revision: #14 $ $Change: 8896 $ $DateTime: 2003/11/16 09:27:30 $
+
+[Changes for 0.047 - November 16, 2003]
+
+* Bug fixes
+
+  - The make_test cache is now used to skip over previously tested modules,
+    without breaking module install altogether.  Sorry.
 
 [Changes for 0.046 - November 16, 2003]
 

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #13 $ $Change: 8399 $ $DateTime: 2003/10/13 09:02:19 $
+# $Revision: #14 $ $Change: 8896 $ $DateTime: 2003/11/16 09:27:30 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -478,9 +478,9 @@ warn "SHOULD NOT GET HERE" if $flag;
                 MAKE_TEST: {
                 unless ($skiptest) {
 
-                    if( defined $self->status->make_test ) {
+                    if( defined $data->status->make_test ) {
                         
-                        if( $self->status->make_test && !$force ) {
+                        if( $data->status->make_test && !$force ) {
                             $err->inform(
                                 msg     => loc(q[Already tested this module - not running '%1' again unless you force],
                                                 'make test' ),
