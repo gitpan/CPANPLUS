@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 #!/usr/bin/perl -w
 
 BEGIN { chdir 't' if -d 't' };
@@ -17,11 +27,18 @@ use CPANPLUS::Dist::Build;
 use CPANPLUS::Internals::Constants;
 
 use Config;
-use Test::More 'no_plan';
+use Test::More;
 use Data::Dumper;
 use File::Basename ();
 
 BEGIN { require 'conf.pl'; }
+
+### maybe M::B isn't bundled with the core yet?
+if( $ENV{PERL_CORE} && ! eval { require M::B; 1 } ) {
+    plan skip_all => 'Module::Build not bundled with core yet';
+} else {
+    plan 'no_plan';
+}
 
 my $conf    = gimme_conf();
 my $cb      = CPANPLUS::Backend->new( $conf );
@@ -34,6 +51,9 @@ $cb->configure_object->set_conf( buildflags => "install_base=$lib" );
 ### don't start sending test reports now... ###
 $cb->_callbacks->send_test_report( sub { 0 } );
 $conf->set_conf( cpantest => 0 );
+
+### we dont need sudo -- we're installing in our own sandbox now
+$conf->set_program( sudo => undef );
 
 ### start with fresh sources ###
 ok( $cb->reload_indices( update_source => 0 ),

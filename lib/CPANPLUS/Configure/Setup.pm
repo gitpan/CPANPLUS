@@ -2,11 +2,12 @@ package CPANPLUS::Configure::Setup;
 
 use strict;
 use vars    qw(@ISA);
-@ISA    =   qw[CPANPLUS::Internals::Utils];
+@ISA    =   qw[CPANPLUS::Internals::Utils CPANPLUS::Shell];
 
 use CPANPLUS::inc;
 use CPANPLUS::Internals::Utils;
 use CPANPLUS::Internals::Constants;
+use CPANPLUS::Shell                 ();
 use CPANPLUS::Error                 qw[msg error];
 
 use Config;
@@ -99,9 +100,14 @@ sub init {
     my $self = shift;
     my $conf = $self->configure_object;
 
-    my $loc = $self->_save_where or return;
-    $self->location($loc);
-
+    ### in case we are totally supposed to Just Guess
+    {   local   $Term::UI::AUTOREPLY =
+                $Term::UI::AUTOREPLY || $ENV{PERL_MM_USE_DEFAULT} || 0;
+    
+        my $loc = $self->_save_where or return;
+        $self->location($loc);
+    }
+    
     my $manual = $self->_manual;
 
     $Term::UI::AUTOREPLY = 1 if $manual;
@@ -272,10 +278,15 @@ to point to the chosen location, so it can be found again.
 }
 
 sub _home_dir {
-    return  exists $ENV{APPDATA}        ? $ENV{APPDATA}     :
-            exists $ENV{HOME}           ? $ENV{HOME}        :
-            exists $ENV{USERPROFILE}    ? $ENV{USERPROFILE} :
-            exists $ENV{WINDIR}         ? $ENV{WINDIR}      :  cwd();
+    my @os_home_envs = qw( APPDATA HOME USERPROFILE WINDIR SYS$LOGIN );
+
+    for my $env ( @os_home_envs ) {
+        next unless exists $ENV{ $env };
+        next unless defined $ENV{ $env } && length $ENV{ $env };
+        return $ENV{ $env } if -d $ENV{ $env };
+    }
+
+    return cwd();
 }
 
 sub _issue_non_default_config_warning {
@@ -811,11 +822,15 @@ You can change this setting by making CPANPLUS prefer the use of
 certain binary programs if they are available.
 
 ");
-
-        my $type = 'prefer_bin';
+        
+        ### default to using binaries if we don't have compress::zlib only
+        ### -- it'll get very noisy otherwise
+        my $type    = 'prefer_bin';
+        my $default = eval { require Compress::Zlib; 1 } ? 'n' : 'y';
+        
         my $yn   = $term->ask_yn(
                         prompt  => loc("Should I prefer the use of binary programs?"),
-                        default => $self->_get( $type => 'n' ),
+                        default => $self->_get( $type => $default ),
                     );
 
         print $yn
@@ -1443,13 +1458,21 @@ are done.
             }
 
             CHOICE: {
+                
+                ### doesn't play nice with Term::UI :(
+                ### should make t::ui figure out pager opens
+                #$self->_pager_open;     # host lists might be long
+            
                 my @reply = $term->get_reply(
                                     prompt  => loc('Please pick a site: '),
-                                    choices => [sort(keys %map), qw|Custom View Up Quit|],
+                                    choices => [sort(keys %map), 
+                                                qw|Custom View Up Quit|],
                                     default => $default,
                                     multi   => 1,
                             );
                 print "\n\n";
+                #$self->_pager_close;
+    
 
                 goto COUNTRY    if grep { $_ eq 'Up' }      @reply;
                 goto CUSTOM     if grep { $_ eq 'Custom' }  @reply;
@@ -1834,6 +1857,8 @@ you made a typo you need to fix.
                     prompt  => loc("Would you like to edit the config file?"),
                     default => 'n'
                 );
+
+    print "\n";
 
     return 1 unless $yn;
 

@@ -6,7 +6,7 @@ package IPC::Run ;
 # License or the Artistic License, as specified in the README file.
 #
 
-$VERSION = 0.77 ;
+$VERSION = 0.80;
 
 =head1 NAME
 
@@ -23,8 +23,8 @@ IPC::Run - system() and background procs w/ piping, redirs, ptys (Unix, Win32)
       run \@cmd, \$in, \$out, \$err, timeout( 10 ) or die "cat: $?"
 
       # Can do I/O to sub refs and filenames, too:
-      run \@cmd, "in.txt", \&out, \&err or die "cat: $?"
-      run \@cat, "in.txt", '>>', "out.txt", '2>>', "err.txt" ;
+      run \@cmd, '<', "in.txt", \&out, \&err or die "cat: $?"
+      run \@cat, '<', "in.txt", '>>', "out.txt", '2>>', "err.txt" ;
 
 
       # Redirecting using psuedo-terminals instad of pipes.
@@ -1072,58 +1072,6 @@ BEGIN {
 }
 
 
-use fields (
-   'ID',           # An identifier of this harness
-   'IOS',          # ARRAY of filehandles passed in by caller for us to watch
-                   # like PIPES except that we perform no management of these,
-                   # just I/O.  These are encapsulated in IPC::Run::IO
-                   # instances.
-
-   'KIDS',         # ARRAY of child processes
-
-   'PIPES',        # ARRAY of Pipes & Pty handles to/from child procs
-                   # These are references to entries in @{$_->{OPS}} for @KIDS
-
-   'PTYS',         # A HASH of pty nicknames => ( undef or IO::Pty instances ).
-                   # Elts are undef until _open_pipes() and after _cleanup().
-
-   'TIMERS',       # ARRAY of all timer / timeout objects
-
-   'STATE',        # "state" of a harness. See constant subs immediately below.
-
-   'TEMP_FILTERS', # ARRAY of filters installed by _open_pipes() and removed
-                   # by _cleanup() to handle I/O to/from handles.
-
-   'DEBUG_FD',     # Debugging FD dup()ed from STDOUT.
-   'SYNC_WRITER_FD', # write end of pipe used to sync w/ child and report
-                   # exec errors from child.
-
-   'RIN',  'WIN',  'EIN',  # Bit vectors for select()
-   'ROUT', 'WOUT', 'EOUT',
-
-   'PIN',          # A bit vector holding paused PIPES that would otherwise
-                   # be set in WIN.  This is a bit vector to make the
-                   # debugging display of filehandles easier to build, since
-                   # it can treat this just like EIN, WIN, and RIN.
-
-   # Some options.  These get set by API entry subs and used by _internal
-   # subs. 
-   'auto_close_ins',
-   'break_on_io',
-   'clear_ins',
-   'non_blocking',
-
-   # Option flags, passed in by caller
-   'debug',
-   'noinherit',
-#   'timeout',
-
-   # Testing flags, passed in from t/*.t
-   '_simulate_open_failure',
-   '_simulate_fork_failure',
-   '_simulate_exec_failure',
-) ;
-
 sub input_avail() ;
 sub get_more_input() ;
 
@@ -1395,7 +1343,8 @@ sub _read {
    confess 'undef' unless defined $_[0] ;
    my $s  = '' ;
    my $r = POSIX::read( $_[0], $s, 10_000 ) ;
-   croak "$!: read( $_[0] )" unless $r ;
+   croak "$!: read( $_[0] )" if not($r) and $! != POSIX::EINTR;
+   $r ||= 0;
    _debug "read( $_[0] ) = $r chars '$s'" if _debugging_data ;
    return $s ;
 }
@@ -1724,19 +1673,7 @@ sub harness {
    my $assumed_fd    = 0 ;  # fd to assume in succinct mode (no redir ops)
    my $handle_num    = 0 ;  # 1... is which handle we're parsing
 
-   my IPC::Run $self ;
-   {
-      no strict 'refs' ;
-      ## The internal implementation of use 'fields' objects has changed
-      ## from pseudo hashes to restricted hashes in perl.
-      if ($] < 5.009) {
-         $self = bless [ \%{"FIELDS"} ], __PACKAGE__ ;
-      }
-      else {
-         $self = bless {}, __PACKAGE__ ;
-         Hash::Util::lock_keys(%$self, keys %{"FIELDS"}) ;
-      }
-   }
+   my IPC::Run $self = bless {}, __PACKAGE__;
 
    local $cur_self = $self ;
 
@@ -2023,18 +1960,7 @@ sub harness {
          }
 
          elsif ( ! ref $_ ) {
-	    if ($] < 5.009) {
-               my $opt = $_ ;
-               croak "Illegal option '$_'"
-                  unless grep $_ eq $opt, keys %$self ; 
-               $self->{$_} = shift @args ;
-	    }
-	    else {
-	       ## There's (currently) no clean way to detect whether a key
-	       ## is permissible in a restricted hash apart from trying :-)
-	       eval {$self->{$_} = shift @args} ;
-	       croak "Illegal option '$_'" if $@ ;
-	    }
+            $self->{$_} = shift @args;
          }
 
          elsif ( $_ eq 'init' ) {
@@ -2472,7 +2398,8 @@ sub _open_pipes {
 	       ## read() throws the bad file descriptor message if the
 	       ## kid dies on Win32.
                die $@ unless
-	          $@ =~ /^Input\/output error: read/
+	          $@ =~ /^Input\/output error: read/ ||
+		  ($@ =~ /input or output/ && $^O =~ /aix/) 
 		  || ( Win32_MODE && $@ =~ /Bad file descriptor/ ) ;
             }
 
@@ -3118,7 +3045,11 @@ SELECT:
       }
       last if ! $nfound && $self->{non_blocking} ;
 
-      croak "$! in select" if $nfound < 0 ;
+      croak "$! in select" if $nfound < 0 and $! != POSIX::EINTR;
+          ## TODO: Analyze the EINTR failure mode and see if this patch
+          ## is adequate and optimal.
+          ## TODO: Add an EINTR test to the test suite.
+
       if ( _debugging_details ) {
          my $map = join(
             '',
@@ -3586,7 +3517,8 @@ sub results {
    &_assert_finished ;
    my IPC::Run $self = shift ;
 
-   return map $_->{RESULT} >> 8, @{$self->{KIDS}} ;
+   # we add 0 here to stop warnings associated with "unknown result, unknown PID"
+   return map { (0+$_->{RESULT}) >> 8 } @{$self->{KIDS}} ;
 }
 
 

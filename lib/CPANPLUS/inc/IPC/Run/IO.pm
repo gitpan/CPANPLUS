@@ -53,9 +53,8 @@ doing).
 
 =head1 SUBCLASSING
 
-This class uses the fields pragma, so you need to be aware of the contraints
-and strengths that this confers upon subclasses.
-See the L<base> and L<fields> pragmas for more information.
+INCOMPATIBLE CHANGE: due to the awkwardness introduced in ripping pseudohashes
+out of Perl, this class I<no longer> uses the fields pragma.
 
 =head1 TODO
 
@@ -80,37 +79,6 @@ use UNIVERSAL qw( isa ) ;
 
 use IPC::Run::Debug;
 use IPC::Run qw( Win32_MODE );
-
-use fields (
-    'TYPE',             # Directionality
-    'DEST',             # Where to send data to when reading from HANDLE
-    'SOURCE',           # Where to get data from when writing to HANDLE
-    'FILENAME',         # The filename to open & close, if any
-    'HANDLE',           # This object's handle
-    'FD',               # File descriptor of 'HANDLE'
-    'TFD',              # fd# file is opened on in parent, will be moved to KFD
-                        # in kid
-    'KFD',              # fd# kid needs to see it on
-    'FILTERS',          # Any filtration?
-    'FBUFS',            # SCALAR refs to filter buffers, including I/O scalars
-    'PAUSED',           # If the input side is paused.
-    'SOURCE_EMPTY',     # No more data to send to file.
-    'PTY_ID',           # The nickname of the pty it HANDLE is a pty
-    'DONT_CLOSE',       # Set if this is an externally opened handle, so
-                        # we know better than to close it.
-
-    'KIN_REF',          # Refers to the input value, whether it's an externally
-                        # supplied SCALAR, or the output buffer for an
-        		# externally supplied CODE ref.
-    'TRUNC',            # Whether or not to truncate the output file if a
-                        # named file is passed.
-    'HARNESS',          # Temporarily set to the IPC::Run instance that
-                        # called us while we're doing filters.  Unset to
-        		# prevent circrefs.
-    'FAKE_PIPE',        # Used to hold the "fake pipe" objects on Win32,
-                        # since Win32 requires a lot of extra monkey business.
-    'BINMODE',          # If you want all the data on Win32...
-) ;
 
 BEGIN {
    if ( Win32_MODE ) {
@@ -162,18 +130,7 @@ sub _new_internal {
       if Win32_MODE && $class eq "IPC::Run::IO";
 
    my IPC::Run::IO $self ;
-   {
-      no strict 'refs' ;
-      ## The internal implementation of use 'fields' objects has changed
-      ## from pseudo hashes to restricted hashes in perl 5.9.0
-      if ($] < 5.009) {
-         $self = bless [ \%{"$class\::FIELDS"} ], $class ;
-      }
-      else {
-         $self = bless {}, $class ;
-         Hash::Util::lock_keys(%$self, keys %{"$class\::FIELDS"}) ;
-      }
-   }
+   $self = bless {}, $class ;
 
    my ( $type, $kfd, $pty_id, $internal, $binmode, @filters ) = @_ ;
 

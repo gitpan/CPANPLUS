@@ -57,11 +57,6 @@ BEGIN {
    );
 }
 
-use fields (
-   @cleanup_fields
-);
-
-
 ## REMOVE OSFHandleOpen
 use Win32API::File qw(
    GetOsFHandle

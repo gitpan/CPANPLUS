@@ -30,7 +30,7 @@ $Params::Check::ALLOW_UNKNOWN = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.051';
+    $VERSION    =   '0.052';
 }
 
 load CPANPLUS::Shell;
@@ -127,7 +127,7 @@ sub _input_loop {
         last if $self->dispatch_on_input( input => $input );
 
         ### flush the lib cache ###
-        $cb->_flush( list => [qw|lib|] );
+        $cb->_flush( list => [qw|lib load|] );
 
     } continue {
         $self->_signals->{INT}{count}--

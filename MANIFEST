@@ -1,7 +1,6 @@
 bin/cpan2dist
 bin/cpanp
 ChangeLog
-Changes
 inc/Module/Install.pm
 inc/Module/Install/Base.pm
 inc/Module/Install/Can.pm
@@ -106,7 +105,6 @@ lib/CPANPLUS/Shell/Default.pm
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
-META.yml
 README
 t/00_CPANPLUS-Inc.t
 t/00_CPANPLUS-Internals-Utils.t

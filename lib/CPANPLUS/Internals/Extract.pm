@@ -164,19 +164,31 @@ sub _extract {
     ### print out what files we extracted ###  
     msg(loc("Extracted '%1'",$_),$verbose) for @{$ae->files};  
     
+    ### set them all to be +w for the owner, so we don't get permission
+    ### denied for overwriting files that are just +r
+    chmod 0755, map { File::Spec->rel2abs( File::Spec->catdir($to, $_) ) }
+                @{$ae->files};
+    
     ### check the return value for the extracted path ###
     ### Make an educated guess if we didn't get an extract_path
     ### back
-    my $dir = File::Spec->rel2abs( 
-                  $ae->extract_path || 
-                  File::Spec->catdir(   $to,
-                                        $mod->package_name .'-'.
-                                        $mod->package_version    
-                                    )
-              );
+    ### XXX apparently some people make their own dists and they 
+    ### pack up '.' which means the leading directory is '.' 
+    ### and only the second directory is the actual module directory
+    ### so, we'll have to check if our educated guess exists first, 
+    ### then see if the extract path works.. and if nothing works...
+    ### well, then we really don't know.
+
+    my $dir;
+    for my $try ( File::Spec->rel2abs( File::Spec->catdir(   
+                    $to, $mod->package_name .'-'. $mod->package_version ) ),
+                  File::Spec->rel2abs( $ae->extract_path ),
+    ) {
+        ($dir = $try) && last if -d $try;
+    }
                                             
     ### test if the dir exists ###
-    unless( -d $dir ) {
+    unless( $dir && -d $dir ) {
         error(loc("Unable to determine extract dir for '%1'",$mod->module));
         return;
     

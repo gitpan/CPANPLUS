@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 BEGIN { chdir 't' if -d 't' };
 
 ### this is to make devel::cover happy ###
@@ -13,11 +23,11 @@ use CPANPLUS::inc;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants::Report;
 
-my $send_tests  = 33;
+my $send_tests  = 35;
 my $query_tests = 7;
 my $total_tests = $send_tests + $query_tests;
 
-use Test::More                  tests => 67;
+use Test::More                  tests => 86;
 use Module::Load::Conditional   qw[can_load];
 
 use FileHandle;
@@ -30,6 +40,7 @@ BEGIN { require 'conf.pl'; }
 my $conf    = gimme_conf();
 my $cb      = CPANPLUS::Backend->new( $conf );
 my $mod     = $cb->module_tree('Text::Bastardize');
+my $int_ver = $CPANPLUS::Internals::VERSION;
 
 ### explicitly enable testing if possible ###
 $cb->configure_object->set_conf(cpantest =>1) if $ARGV[0];
@@ -44,21 +55,23 @@ my $map = {
     missing_prereq  => {
         buffer  => missing_prereq_buffer(),
         failed  => 1,
-        match   => ['/The comments below are created mechanically/',
-                    '/automatically by CPANPLUS/',
+        match   => ['/The comments above are created mechanically/',
+                    '/computer-generated error report/',
+                    '/Below is the error stack from stage/',
                     '/test suite seem to fail without these modules/',
                     '/floo/',
                     '/FAIL/',
                     '/make test/',
                 ],
         check   => 1,
-    },
+   },
     missing_tests   => {
         buffer  => missing_tests_buffer(),
         failed  => 1,
-        match   => ['/The comments below are created mechanically/',
-                    '/automatically by CPANPLUS/',
-                    '/ask for a simple test script/',
+        match   => ['/The comments above are created mechanically/',
+                    '/computer-generated error report/',
+                    '/Below is the error stack from stage/',
+                    '/RECOMMENDATIONS/',
                     '/UNKNOWN/',
                     '/make test/',
                 ],
@@ -72,7 +85,7 @@ my $map = {
                     '/NA/',
                 ],
         check   => 0,
-    },      
+    },    
 };
 
 
@@ -113,34 +126,71 @@ my $map = {
         is( $list[0], 'Foo::Bar',       "   Proper prereq found" );
     }
 
-    {                                       # author
-        my $header = REPORT_MESSAGE_HEADER->('foo');
+    {                                       # cp version, author
+        my $header = REPORT_MESSAGE_HEADER->($int_ver,'foo');
         ok( $header,                    "Test header generated" );
-        like( $header, qr/NOTE/,        "   Proper content found" );
-        like( $header, qr/foo/,         "   Proper content found" );
-        like( $header, qr/CPAN/,        "   Proper content found" );
-        like( $header, qr/comments/,    "   Proper content found" );
+        like( $header, qr/Dear foo,/,   "   Proper content found" );
+        like( $header, qr/puter-gen/,   "   Proper content found" );
+        like( $header, qr/CPANPLUS,/,   "   Proper content found" );
+        like( $header, qr/ments may/,   "   Proper content found" );
     }
 
-    {                                       # cp version, stage, buffer
-        my $header = REPORT_MESSAGE_FAIL_HEADER->('1','test','buffer');
+    {                                       # stage, buffer
+        my $header = REPORT_MESSAGE_FAIL_HEADER->('test','buffer');
         ok( $header,                    "Test header generated" );
-        like( $header, qr/CPANPLUS/,    "   Proper content found" );
+        like( $header, qr/uploading/,   "   Proper content found" );
+        like( $header, qr/RESULTS:/,    "   Proper content found" );
         like( $header, qr/stack/,       "   Proper content found" );
         like( $header, qr/buffer/,      "   Proper content found" );
     }
 
-    {   my $prereqs = REPORT_MISSING_PREREQS->('Foo::Bar');
+    {   my $prereqs = REPORT_MISSING_PREREQS->('foo','bar@example.com','Foo::Bar');
         ok( $prereqs,                   "Test output generated" );
-        like( $prereqs, qr/Foo::Bar/,     "   Proper content found" );
-        like( $prereqs, qr/prerequisite/, "   Proper content found" );
-        like( $prereqs, qr/PREREQ_PM/,    "   Proper content found" );
+        like( $prereqs, qr/'foo \(bar\@example\.com\)'/, 
+                                        "   Proper content found" );
+        like( $prereqs, qr/Foo::Bar/,   "   Proper content found" );
+        like( $prereqs, qr/prerequisi/, "   Proper content found" );
+        like( $prereqs, qr/PREREQ_PM/,  "   Proper content found" );
+    }
+
+    {   my $prereqs = REPORT_MISSING_PREREQS->(undef,undef,'Foo::Bar');
+        ok( $prereqs,                   "Test output generated" );
+        like( $prereqs, qr/Your Name/,  "   Proper content found" );
+        like( $prereqs, qr/Foo::Bar/,   "   Proper content found" );
+        like( $prereqs, qr/prerequisi/, "   Proper content found" );
+        like( $prereqs, qr/PREREQ_PM/,  "   Proper content found" );
     }
 
     {   my $missing = REPORT_MISSING_TESTS->();
         ok( $missing,                   "Missing test string generated" );
         like( $missing, qr/tests/,      "   Proper content found" );
         like( $missing, qr/Test::More/, "   Proper content found" );
+    }
+
+    {   my $missing = REPORT_MESSAGE_FOOTER->();
+        ok( $missing,                   "Message footer string generated" );
+        like( $missing, qr/NOTE/,       "   Proper content found" );
+        like( $missing, qr/identical/,  "   Proper content found" );
+        like( $missing, qr/mistaken/,   "   Proper content found" );
+        like( $missing, qr/appreciate/, "   Proper content found" );
+        like( $missing, qr/Additional/, "   Proper content found" );
+    }
+
+    {   my @libs = MISSING_EXTLIBS_LIST->("No library found for -lfoo\nNo library found for -lbar");
+        ok( @libs,                      "Missing external libraries found" );
+        my @list = qw(foo bar);
+        is_deeply( \@libs, \@list,      "   Proper content found" );
+    }
+    
+    {   my $clone   = $mod->clone;
+        my $prereqs = { 'Cwd' => 1 };
+    
+        $clone->status->prereqs( $prereqs );
+        
+        my $str = REPORT_LOADED_PREREQS->( $clone );
+        
+        like( $str, qr/PREREQUISITES:/, "Listed loaded prerequisites" );
+        like( $str, qr/Cwd\s+\S+/,      "   Proper content found" );
     }
 }
 
@@ -153,7 +203,10 @@ SKIP: {
         unless $cb->_have_query_report_modules(verbose => 0);
 
 
-    {   my @list = $mod->fetch_report;
+    SKIP: {   
+        my @list = $mod->fetch_report;
+        skip "Possibly no net connection, or server down", 7 unless @list;
+     
         my $href = $list[0];
         ok( scalar(@list),                  "Fetched test report" );
         is( ref $href, ref {},              "   Return value has hashrefs" );

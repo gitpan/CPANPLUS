@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 BEGIN { chdir 't' if -d 't' };
 ### this is to make devel::cover happy ###
 

@@ -665,7 +665,7 @@ sub install {
     ### yes, but they should really be split out.. see bug #4143
     my $cmd     = [$make, 'install', $makeflags];
     my $sudo    = $conf->get_program('sudo');
-    unshift @$cmd, $sudo if $sudo;
+    unshift @$cmd, $sudo if $sudo and $>;
     
     unless(scalar run(  command => $cmd,
                         verbose => $verbose,

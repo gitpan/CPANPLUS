@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 BEGIN { chdir 't' if -d 't' };
 ### this is to make devel::cover happy ###
 
@@ -31,9 +41,13 @@ is( ref $code, 'CODE',          'Coderef loaded in @INC' );
 }
 
 ### checking include path ###
-{   my $path = CPANPLUS::inc->inc_path();
+SKIP: {   
+    my $path = CPANPLUS::inc->inc_path();
     ok( $path,                  "Retrieved include path" );
     ok( -d $path,               "   Include path is an actual directory" );
+    
+    skip "No files actually bundled in perl core", 1 if $ENV{PERL_CORE};
+    
     ok( -s File::Spec->catfile( $path, $File ),
                                 "   Found '$File' in include path" );
 
@@ -49,8 +63,22 @@ is( ref $code, 'CODE',          'Coderef loaded in @INC' );
 
     my $rv = $code->($code, $Bfile);
     ok( !$rv,                   "Ignoring boring module" );
-    ok( !$INC{$Bfile},         "   Boring file not loaded" );
+    ok( !$INC{$Bfile},          "   Boring file not loaded" );
     like( $warnings, qr/CPANPLUS::inc: Not interested in '$Boring'/s,
+                                "   Warned about boringness" );
+}
+
+### try to load a module with windows paths in it (bug [#11177])
+{   local $CPANPLUS::inc::DEBUG = 1;
+    my $warnings; local $SIG{__WARN__} = sub { $warnings .= "@_" };
+
+    my $wfile   = 'IO\File.pm';
+    my $wmod    = 'IO::File';
+
+    my $rv = $code->($code, $wfile);
+    ok( !$rv,                   "Ignoring boring win32 module" );
+    ok( !$INC{$wfile},          "   Boring win32 file not loaded" );
+    like( $warnings, qr/CPANPLUS::inc: Not interested in '$wmod'/s,
                                 "   Warned about boringness" );
 }
 

@@ -40,7 +40,7 @@ otherwise.
 
     my $send_list = {
         %$query_list,
-        'Test::Reporter' => 1.21,
+        'Test::Reporter' => 1.27,
     };
 
     sub _have_query_report_modules {
@@ -162,7 +162,8 @@ sub _query_report {
 
     my @rv;
     for my $href ( @$aref ) {
-        next unless $all or $href->{'distversion'} eq $dist;
+        next unless $all or defined $href->{'distversion'} && 
+                            $href->{'distversion'} eq $dist;
 
         push @rv, { platform    => $href->{'platform'},
                     grade       => $href->{'action'},
@@ -314,6 +315,12 @@ sub _send_report {
     my $message;
     if( $grade eq GRADE_FAIL or $grade eq GRADE_UNKNOWN) {
 
+        ### return if one or more missing external libraries
+        if( my @missing = MISSING_EXTLIBS_LIST->($buffer) ) {
+            msg(loc("Not sending test report - external libraries not pre-installed"));
+            return 1;
+        }
+
         ### will be 'fetch', 'make', 'test', 'install', etc ###
         my $stage   = TEST_FAIL_STAGE->($buffer);
 
@@ -322,21 +329,33 @@ sub _send_report {
                     and ($stage !~ /\btest\b/);
 
         ### the header
-        $message =  REPORT_MESSAGE_HEADER->( $author );
+        $message =  REPORT_MESSAGE_HEADER->( $int_ver, $author );
 
         ### the bit where we inform what went wrong
-        $message .= REPORT_MESSAGE_FAIL_HEADER->(
-                        $int_ver, $stage, $buffer );
+        $message .= REPORT_MESSAGE_FAIL_HEADER->( $stage, $buffer );
 
         ### was it missing prereqs? ###
         if( my @missing = MISSING_PREREQS_LIST->($buffer) ) {
-            $message .= REPORT_MISSING_PREREQS->(@missing);
+            if(!$self->_verify_missing_prereqs(
+								module  => $mod,
+								missing => \@missing
+						)) {
+                msg(loc("Not sending test report - bogus missing prerequisites report"));
+                return 1;
+            }
+            $message .= REPORT_MISSING_PREREQS->($author,$email,@missing);
         }
 
         ### was it missing test files? ###
         if( NO_TESTS_DEFINED->($buffer) ) {
             $message .= REPORT_MISSING_TESTS->();
         }
+
+        ### add a list of what modules have been loaded of your prereqs list
+        $message .= REPORT_LOADED_PREREQS->($mod);
+
+        ### the footer
+        $message .=  REPORT_MESSAGE_FOOTER->();
     }
 
     ### if it failed, and that already got reported, we're not cc'ing the
@@ -382,6 +401,9 @@ sub _send_report {
     ### set the from address ###
     $reporter->from( $conf->get_conf('email') )
         if $conf->get_conf('email') !~ /\@example\.\w+$/i;
+
+    ### give the user a chance to programattically alter the message
+    $message = $self->_callbacks->munge_test_report->( $mod, $message );
 
     ### add the body if we have any ###
     $reporter->comments( $message ) if defined $message && length $message;
@@ -435,6 +457,49 @@ sub _send_report {
                 $grade, $dist, $reporter->errstr));
         return;
     }
+}
+
+sub _verify_missing_prereqs {
+    my $self = shift;
+    my %hash = @_;
+
+    ### check arguments ###
+    my ($mod, $missing);
+    my $tmpl = {
+            module  => { required => 1, store => \$mod },
+            missing => { required => 1, store => \$missing },
+    };
+
+    check( $tmpl, \%hash ) or return;
+
+	
+    my %missing = map {$_ => 1} @$missing;
+    my $conf = $self->configure_object;
+
+    ### Read pre-requisites from Makefile.PL or Build.PL (if there is one),
+    ### of the form:
+    ###     'PREREQ_PM' => {
+    ###                      'Compress::Zlib'        => '1.20',
+    ###                      'Test::More'            => 0,
+    ###                    },
+    ###  Build.PL uses 'requires' instead of 'PREREQ_PM'.
+
+
+    for my $file (  MAKEFILE_PL->( $mod->status->extract ),
+                    BUILD_PL->( $mod->status->extract ),
+    ) {
+        if(-e $file and -r $file) {
+            my $slurp = $self->_get_file_contents(file => $file);
+            my ($prereq) = 
+                ($slurp =~ /'?(?:PREREQ_PM|requires)'?\s*=>\s*{(.*?)}/s);
+            my @prereq = 
+                ($prereq =~ /'?([\w\:]+)'?\s*=>\s*'?\d[\d\.\-\_]*'?/sg);
+            delete $missing{$_} for(@prereq);
+        }
+    }
+
+    return 1    if(keys %missing);  # There ARE missing prerequisites
+    return;                         # All prerequisites accounted for
 }
 
 1;

@@ -325,7 +325,7 @@ would be C<tar.gz>.
 Returns a boolean indicating of the package a particular module is in,
 is actually a core perl distribution.
 
-=head2 $mod->module_is_supplied_with_perl_core
+=head2 $mod->module_is_supplied_with_perl_core( [version => $]] )
 
 Returns a boolean indicating whether C<ANY VERSION> of this module
 was supplied with the current running perl's core package.
@@ -379,10 +379,11 @@ with C<Bundle::>.
 
     sub module_is_supplied_with_perl_core {
         my $self = shift;
+        my $ver  = shift || $];
 
         ### check Module::CoreList to see if it's a core package
         require Module::CoreList;
-        my $core = $Module::CoreList::version{ $] }->{ $self->module };
+        my $core = $Module::CoreList::version{ $ver }->{ $self->module };
 
         return $core;
     }
@@ -514,7 +515,9 @@ sub get_installer_type {
     $type = INSTALLER_MM    if  $found_makefile  && !$found_build;
 
     ### ok, so it's a 'build' installer, but you don't /have/ module build
-    unless( check_install( module => 'Module::Build' ) ) {
+    if( $type eq INSTALLER_BUILD and 
+        !check_install( module => 'Module::Build' ) 
+    ) {
         error( loc( "This module requires '%1' to be installed, ".
                     "but you don't have it! Will fall back to ".
                     "'%2', but might not be able to install!",

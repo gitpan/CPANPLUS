@@ -13,6 +13,10 @@ use Data::Dumper ();
 use IO::File ();
 use Text::ParseWords ();
 
+# XXX custom patch, stops segfaults under bleadperl [perl #33927] 
+use vars qw[$VERSION];
+$VERSION = $Module::Build::VERSION; 
+
 #################### Constructors ###########################
 sub new {
   my $self = shift()->_construct(@_);
@@ -200,12 +204,14 @@ sub find_perl_interpreter {
 sub base_dir { shift()->{properties}{base_dir} }
 sub installdirs { shift()->{properties}{installdirs} }
 
+sub _is_interactive {
+  return -t STDIN && (-t STDOUT || !(-f STDOUT || -c STDOUT)) ;   # Pipe?
+}
+
 sub prompt {
   my $self = shift;
   my ($mess, $def) = @_;
   die "prompt() called without a prompt message" unless @_;
-
-  my $INTERACTIVE = -t STDIN && (-t STDOUT || !(-f STDOUT || -c STDOUT)) ;   # Pipe?
   
   ($def, my $dispdef) = defined $def ? ($def, "[$def] ") : ('', ' ');
 
@@ -214,7 +220,7 @@ sub prompt {
     print "$mess $dispdef";
   }
   my $ans;
-  if ($INTERACTIVE) {
+  if ($self->_is_interactive) {
     $ans = <STDIN>;
     if ( defined $ans ) {
       chomp $ans;
@@ -234,12 +240,14 @@ sub prompt {
 sub y_n {
   my $self = shift;
   die "y_n() called without a prompt message" unless @_;
-  
+
+  my $interactive = $self->_is_interactive;
   my $answer;
   while (1) {
     $answer = $self->prompt(@_);
     return 1 if $answer =~ /^y/i;
     return 0 if $answer =~ /^n/i;
+    die "No y/n answer given, no default supplied, and no user to ask again" unless $interactive;
     print "Please answer 'y' or 'n'.\n";
   }
 }
@@ -953,8 +961,6 @@ sub _added_to_INC {
 sub _default_INC {
   my $self = shift;
 
-  local $ENV{PERL5LIB};  # this is not considered part of the default.
-
   my $perl = ref($self) ? $self->perl : $self->find_perl_interpreter;
 
   my @inc = `$perl -le "print for \@INC"`;
@@ -1340,7 +1346,11 @@ sub ACTION_test {
   local @INC = (File::Spec->catdir($p->{base_dir}, $self->blib, 'lib'),
 		File::Spec->catdir($p->{base_dir}, $self->blib, 'arch'),
 		@INC);
-  
+
+  # Filter out nonsensical @INC entries - some versions of
+  # Test::Harness will really explode the number of entries here
+  @INC = grep {ref() || -d} @INC if @INC > 100;
+
   my $tests = $self->find_test_files;
 
   if (@$tests) {
@@ -2308,8 +2318,8 @@ sub make_tarball {
   
   if ($self->{args}{tar}) {
     my $tar_flags = $self->{properties}{verbose} ? 'cvf' : 'cf';
-    $self->do_system($self->{args}{tar}, $tar_flags, "$file.tar", $dir);
-    $self->do_system($self->{args}{gzip}, "$file.tar") if $self->{args}{gzip};
+    $self->do_system($self->split_like_shell($self->{args}{tar}), $tar_flags, "$file.tar", $dir);
+    $self->do_system($self->split_like_shell($self->{args}{gzip}), "$file.tar") if $self->{args}{gzip};
   } else {
     require Archive::Tar;
     # Archive::Tar versions >= 1.09 use the following to enable a compatibility
@@ -2597,11 +2607,13 @@ sub run_perl_script {
   }
   my $perl = ref($self) ? $self->perl : $self->find_perl_interpreter;
 
-  # Make sure our local additions to @INC are propagated to the subprocess
+  # Make sure our local additions to @INC are propagated to the
+  # subprocess.  It seems to work better on systems with very large
+  # @INCs to use -I instead of $ENV{PERL5LIB}.
   my $c = ref $self ? $self->config : \%Config::Config;
-  local $ENV{PERL5LIB} = join $c->{path_sep}, $self->_added_to_INC;
-
-  return $self->do_system($perl, @$preargs, $script, @$postargs);
+  my @inc = map { "-I$_" } $self->_added_to_INC;
+  
+  return $self->do_system($perl, @inc, @$preargs, $script, @$postargs);
 }
 
 sub process_xs {

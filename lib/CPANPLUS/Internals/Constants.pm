@@ -188,7 +188,7 @@ use constant PGP_HEADER     => '-----BEGIN PGP SIGNED MESSAGE-----';
 use constant ENV_CPANPLUS_CONFIG
                             => 'PERL5_CPANPLUS_CONFIG';
 use constant DEFAULT_EMAIL  => 'cpanplus@example.com';   
-use constant DOT_CPANPLUS   => '.cpanplus';         
+use constant DOT_CPANPLUS   => $^O eq 'VMS' ? '_cpanplus' : '.cpanplus';         
 use constant CPANPLUS_UA    => sub { "CPANPLUS/$CPANPLUS::Internals::VERSION" };
 use constant TESTERS_URL    => sub {
                                     "http://testers.cpan.org/show/" .

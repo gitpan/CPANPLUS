@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 BEGIN { chdir 't' if -d 't' };
 
 ### this is to make devel::cover happy ###
@@ -13,6 +23,7 @@ use Test::More 'no_plan';
 use CPANPLUS::Configure;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants;
+use Module::Load::Conditional       qw[can_load];
 use Data::Dumper;
 
 BEGIN { require 'conf.pl'; }
@@ -62,16 +73,42 @@ is($cb->_id, $cb->_last_id, "Comparing ID's");
     is( $cb->_host_ok( host => $host ),     1,  "   Host now ok again" );
 }    
 
+### flush loads test
+{   my $mod     = 'Benchmark';
+    my $file    = $mod . '.pm';
+    
+    ### XXX whitebox test -- mark this module as unloadable
+    $Module::Load::Conditional::CACHE->{$mod}->{usable} = 0;
+
+    ok( !can_load( modules => { $mod => 0 }, verbose => 0 ),
+                                                "'$mod' not loaded" );
+                                                
+    ok( $cb->flush('load'),                     "   'load' cache flushed" );
+    ok( can_load( modules => { $mod => 0 }, verbose => 0 ),
+                                                "   '$mod' loaded" );
+}
+
 ### callback registering tests ###
-{   for my $callback (qw[install_prerequisite edit_test_report 
-                        send_test_report]
-    ) {
+{    my $callback_map = {
+        ### name            default value    
+        install_prerequisite    => 1,   # install prereqs when 'ask' is set?
+        edit_test_report        => 0,   # edit the prepared test report?
+        send_test_report        => 1,   # send the test report?
+        munge_test_report       => $0,  # munge the test report
+    };
+
+    for my $callback ( keys %$callback_map ) {
         
         {   local $CPANPLUS::Error::ERROR_FH = output_handle() unless @ARGV;
 
-            ok( $cb->_callbacks->$callback->(),
+            my $rv = ref $callback_map->{$callback} 
+                        ? $0 
+                        : $callback_map->{$callback};
+
+
+            is( $rv, $cb->_callbacks->$callback->( $0 ),
                                 "Default callback '$callback' called" );
-            like( CPANPLUS::Error->stack_as_string, qr/DEFAULT HANDLER/s,  
+            like( CPANPLUS::Error->stack_as_string, qr/DEFAULT '\S+' HANDLER/s,  
                                 "   Default handler warning recorded" );       
             CPANPLUS::Error->flush;
         }

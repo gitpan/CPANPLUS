@@ -134,6 +134,10 @@ sub makefile_to_build_args {
   foreach my $arg (@_) {
     my ($key, $val) = ($arg =~ /^(\w+)=(.+)/ ? ($1, $2) :
 		       die "Malformed argument '$arg'");
+
+    # Do tilde-expansion if it looks like a tilde prefixed path
+    ( $val ) = glob( $val ) if $val =~ /^~/;
+
     if (exists $makefile_to_build{$key}) {
       my $trans = $makefile_to_build{$key};
       push @out, ref($trans) ? $trans->($val) : "$trans=$val";

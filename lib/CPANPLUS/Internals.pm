@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = '0.051';
+$VERSION = '0.052';
 
 =pod
 
@@ -109,13 +109,20 @@ Returns the object on success, or dies on failure.
 
 =cut
 {
-
+    my $callback_map = {
+        ### name            default value    
+        install_prerequisite    => 1,   # install prereqs when 'ask' is set?
+        edit_test_report        => 0,   # edit the prepared test report?
+        send_test_report        => 1,   # send the test report?
+                                        # munge the test report
+        munge_test_report       => sub { return pop() },
+    };
+    
     my $status = Object::Accessor->new;
     $status->mk_accessors(qw[pending_prereqs]);
 
     my $callback = Object::Accessor->new;
-    $callback->mk_accessors(qw[install_prerequisite edit_test_report
-                                send_test_report]);
+    $callback->mk_accessors(keys %$callback_map);
 
     my $conf;
     my $Tmpl = {
@@ -158,8 +165,17 @@ Returns the object on success, or dies on failure.
 
         ### initialize callbacks to default state ###
         for my $name ( $callback->ls_accessors ) {
+            my $rv = ref $callback_map->{$name} ? 'sub return value' :
+                         $callback_map->{$name} ? 'true' : 'false';
+        
             $args->_callbacks->$name(
-                sub { error(loc("DEFAULT HANDLER")); 1 } );
+                sub { msg(loc("DEFAULT '%1' HANDLER RETURNING '%2'",
+                              $name, $rv), $args->_conf->get_conf('debug')); 
+                      return ref $callback_map->{$name} 
+                                ? $callback_map->{$name}->( @_ )
+                                : $callback_map->{$name};
+                } 
+            );
         }
 
         ### initalize it as an empty hashref ###
@@ -234,6 +250,11 @@ be flushed.
                 ### still fucking p4 :( ###
                 $File'Fetch::METHOD_FAIL = $File'Fetch::METHOD_FAIL = {};
 
+            ### blow away the m::l::c cache, so modules can be (re)loaded
+            ### again if they become available
+            } elsif ( $what eq 'load' ) {
+                undef $Module::Load::Conditional::CACHE;
+
             } else {
                 unless ( exists $self->{$cache} && exists $Tmpl->{$cache} ) {
                     error( loc( "No such cache: '%1'", $what ) );
@@ -262,12 +283,27 @@ Here is a list of the currently used callbacks:
 =item install_prerequisite
 
 Is called when the user wants to be C<asked> about what to do with
-prerequisites.
+prerequisites. Should return a boolean indicating true to install
+the prerequisite and false to skip it.
+
+=item send_test_report
+
+Is called when the user should be prompted if he wishes to send the
+test report. Should return a boolean indicating true to send the 
+test report and false to skip it.
+
+=item munge_test_report
+
+Is called when the test report message has been composed, giving
+the user a chance to programatically alter it. Should return the 
+(munged) message to be sent.
 
 =item edit_test_report
 
 Is called when the user should be prompted to edit test reports
-about to be sent out by Test::Reporter
+about to be sent out by Test::Reporter. Should return a boolean 
+indicating true to edit the test report in an editor and false 
+to skip it.
 
 =back
 

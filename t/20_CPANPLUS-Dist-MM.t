@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 #!/usr/bin/perl -w
 
 BEGIN { chdir 't' if -d 't' };
@@ -111,6 +121,8 @@ diag('since ExtUtils::Installed does not probe for .packlists in other dirs');
 diag('than those in %Config. See bug #6871 on rt.cpan.org for details');
 
 SKIP: {
+
+    skip(q[No install tests under core perl], 10) if $ENV{PERL_CORE};
 
     skip(q[Probably no permissions to install, skipping], 10)
         if $noperms;

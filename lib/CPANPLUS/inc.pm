@@ -153,13 +153,13 @@ It would looks something like this:
     my $map = {
         'File::Fetch'               => '0.07',
         #'File::Spec'                => '0.82', # can't, need it ourselves...
-        'IPC::Run'                  => '0.77',
+        'IPC::Run'                  => '0.80',
         'IPC::Cmd'                  => '0.24',
         'Locale::Maketext::Simple'  => 0,
         'Log::Message'              => 0,
         'Module::Load'              => '0.10',
         'Module::Load::Conditional' => '0.07',
-        'Module::Build'             => '0.2607',
+        'Module::Build'             => '0.26081',
         'Params::Check'             => '0.22',
         'Term::UI'                  => '0.05',
         'Archive::Extract'          => '0.07',
@@ -279,15 +279,16 @@ find out exactly what C<CPANPLUS::inc> is doing.
         ### we care about. very basic check, but will
         ### have to do for now.
         lib->import( sub {
-            my $path    = pop();                # path to the pm
-            my $module  = $path or return;      # copy of the path, to munge
-            my @parts   = split '/', $path;     # dirs + file name
-            my $file    = pop @parts;           # just the file name
+            my $path    = pop();                    # path to the pm
+            my $module  = $path or return;          # copy of the path, to munge
+            my @parts   = split qr!\\|/!, $path;    # dirs + file name; could be
+                                                    # win32 paths =/
+            my $file    = pop @parts;               # just the file name
             my $map     = __PACKAGE__->interesting_modules;
 
-
-            ### translate file name to module name ###
-            $module =~ s|/|::|g; $module =~ s/\.pm//i;
+            ### translate file name to module name 
+            ### could contain win32 paths delimiters
+            $module =~ s!/|\\!::!g; $module =~ s/\.pm//i;
 
             my $check_version; my $try;
             ### does it look like a module we care about?

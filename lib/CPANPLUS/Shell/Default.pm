@@ -25,7 +25,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.051';
+    $VERSION    =   '0.052';
 }
 
 load CPANPLUS::Shell;
@@ -115,7 +115,8 @@ CPANPLUS::Shell::Default
     cpanp> r Acme::Foo      # view Acme::Foo's README file
     cpanp> o                # get a list of all installed modules that
                             # are out of date
-
+    cpanp> o 1..3           # list uptodateness from a previous search 
+                            
     cpanp> s conf           # show config settings
     cpanp> s conf md5 1     # enable md5 checks
     cpanp> s program        # show program settings
@@ -128,7 +129,7 @@ CPANPLUS::Shell::Default
 
     cpanp> b                # create an autobundle for this computers
                             # perl installation
-    cpanp> x                # reload index files
+    cpanp> x                # reload index files (purges cache)
     cpanp> p [FILE]         # print error stack (to a file)
     cpanp> v                # show the banner
     cpanp> w                # show last search results again
@@ -221,7 +222,7 @@ sub _input_loop {
         last if $self->dispatch_on_input( input => $input );
 
         ### flush the lib cache ###
-        $cb->_flush( list => [qw|lib|] );
+        $cb->_flush( list => [qw|lib load|] );
 
     } continue {
         $self->_signals->{INT}{count}--
@@ -492,7 +493,7 @@ loc('    s edit                 # open configuration file in editor and reload' 
 loc('    /source FILE [FILE ..] # read in commands from the specified file'         ),
 loc('    ! EXPR                 # evaluate a perl statement'                        ),
 loc('    p [FILE]               # print the error stack (optionally to a file)'     ),
-loc('    x                      # reload CPAN indices'                              ),
+loc('    x                      # reload CPAN indices (purges cache)'                              ),
     ) unless @Help;
 
     $self->_pager_open if (@Help >= $self->_term_rowcount);
@@ -849,7 +850,7 @@ sub __ask_about_send_test_report {
     my $term    = $Shell->term;
 
     print "\n";
-    print loc(  "Test report prepared for module '%1'\n. Would you like to ".
+    print loc(  "Test report prepared for module '%1'.\n Would you like to ".
                 "send it? (You can edit it if you like)", $mod->module );
     print "\n\n";
     my $bool =  $term->ask_yn(
@@ -996,9 +997,9 @@ sub _set_conf {
 
     if( $type eq 'reconfigure' ) {
         my $setup = CPANPLUS::Configure::Setup->new(
-                        conf    => $conf,
-                        term    => $self->term,
-                        backend => $cb,
+                        configure_object    => $conf,
+                        term                => $self->term,
+                        backend             => $cb,
                     );
         return $setup->init;
 
@@ -1119,7 +1120,7 @@ sub _uptodate {
     for my $mod ( @rv ) {
         printf $format,
                 $i,
-                $self->_format_version( $mod->installed_version ),
+                $self->_format_version( $mod->installed_version ) || 'None',
                 $self->_format_version( $mod->version ),
                 $mod->module,
                 $mod->author->cpanid();

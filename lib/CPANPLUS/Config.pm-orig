@@ -7,7 +7,7 @@
 
 package CPANPLUS::Config;
 
-$VERSION = "0.051";
+$VERSION = "0.052";
 
 $MIN_CPANPLUS_VERSION = '0.050_03';
 
@@ -64,7 +64,7 @@ sub new {
                              'lib' => [],
                              'makemakerflags' => '',
                              'prefer_makefile' => 0,
-                             'prefer_bin' => 0,
+                             'prefer_bin' => undef, # probed in setup
                              'shell' => 'CPANPLUS::Shell::Default',
                              'base' => '',
                              'no_update' => 0,

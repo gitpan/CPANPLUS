@@ -481,6 +481,9 @@ sub create {
             directories => [ BLIB_LIBDIR->( $self->status->extract ) ]
         );
 
+        ### this buffer will not include what tests failed due to a 
+        ### M::B/Test::Harness bug. Reported as #9793 with patch 
+        ### against 0.2607 on 26/1/2005
         unless( $skiptest ) {
             eval { $mb->dispatch('test', %buildflags) };
             if( $@ ) {

@@ -153,15 +153,26 @@ sub _perl_version {
     my $self = shift;
     my %hash = @_;
 
+    my $perl;
     my $tmpl = {
-        perl    => { required => 1 },
+        perl    => { required => 1, store => \$perl },
     };
 
-    my $args = check( $tmpl, \%hash ) or return;
-    my $cmd  = $args->{'perl'} .
+    check( $tmpl, \%hash ) or return;
+    
+    my $perl_version;
+    ### special perl, or the one we are running under?
+    if( $perl eq $^X ) {
+        ### just load the config        
+        require Config;
+        $perl_version = $Config::Config{version};
+        
+    } else {
+        my $cmd  = $perl .
                 ' -MConfig -eprint+Config::config_vars+version';
-    my ($perl_version) = (`$cmd` =~ /version='(.*)'/);
-
+        ($perl_version) = (`$cmd` =~ /version='(.*)'/);
+    }
+    
     return $perl_version if defined $perl_version;
     return;
 }

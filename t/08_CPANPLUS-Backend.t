@@ -1,3 +1,13 @@
+BEGIN { 
+    if( $ENV{PERL_CORE} ) {
+        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
+        unshift @INC, '../../../lib';
+    
+        ### fix perl location too
+        $^X = '../../../t/' . $^X;
+    }
+} 
+
 BEGIN { chdir 't' if -d 't' };
 
 ### this is to make devel::cover happy ###
@@ -91,13 +101,39 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
                     FROO/Flub-Flob-1.1.zip
     ] ) {
         my $obj = $cb->parse_module( module => $guess );
-        my ($auth) = $guess =~ m|(.+?)/| ? $1 : $obj->author->cpanid;
+        my ($auth) = $guess =~ m|^(.+?)/| ? $1 : $obj->author->cpanid;
         
         ok( IS_FAKE_MODOBJ->(mod => $obj), "parse_module success by '$guess'" );     
         like( $obj->author->cpanid, "/$auth/i", "   proper author found" );
         like( $obj->path,           "/$auth/i", "   proper path found" );
+
+
     }
-    
+
+    ### more complicated ones 
+    for my $guess ( qw[ E/EY/EYCK/Net/Lite/Net-Lite-FTP-0.091
+                        EYCK/Net/Lite/Net-Lite-FTP-0.091
+                        M/MA/MAXDB/DBD-MaxDB-7.5.00.24a
+                    ] 
+    ) {
+        my $obj     = $cb->parse_module( module => $guess );
+        my ($ver)   = $guess =~ m|-([^-]+)$|            ? $1 : '';
+        my ($auth)  = $guess =~ m|(?:./../)?(.+?)/|     ? $1 : '';
+        my ($path)  = $guess =~ m|^(.+)/|               ? $1 : '';
+
+        ok( IS_FAKE_MODOBJ->(mod => $obj), "parse_module success by '$guess'" );
+
+        ok( $auth,                  "   Author '$auth' parsed from '$guess'");
+        ok( $path,                  "   Path '$path' parsed from '$guess'");
+        ok( $ver,                   "   Version '$ver' parsed from '$guess'");
+
+        like( $obj->author->cpanid, qr/^$auth$/i, 
+                                    "   proper author found" );
+        like( $obj->path,           qr/$path$/i, 
+                                    "   proper path found" );
+        is( $obj->version, $ver,    "   proper version found" );        
+    }
+
     ### test for things that look like real modules, but aren't ###
     {   local $CPANPLUS::Error::MSG_FH    = output_handle() if $Trap_Output;
         local $CPANPLUS::Error::ERROR_FH  = output_handle() if $Trap_Output;

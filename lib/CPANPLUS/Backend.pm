@@ -437,17 +437,38 @@ sub parse_module {
     ### ok, so it looks like a distribution then?
     my @parts   = split '/', $mod;
     my $dist    = pop @parts;
-    my $author  = pop @parts || '';
 
     unless( $dist ) {
         error( loc("%1 is not a proper distribution name!", $mod) );
         return;
     }
+    
+    ### there's wonky uris out there, like this:
+    ### E/EY/EYCK/Net/Lite/Net-Lite-FTP-0.091
+    ### compensate for that
+    my $author;
+    ### you probably have an A/AB/ABC/....../Dist.tgz type uri
+    if( (defined $parts[0] and length $parts[0] == 1) and 
+        (defined $parts[1] and length $parts[1] == 2) and
+        $parts[2] =~ /^$parts[0]/i and $parts[2] =~ /^$parts[1]/i
+    ) {   
+        splice @parts, 0, 2;    # remove the first 2 entries from the list
+        $author = shift @parts; # this is the actual author name then    
+
+    ### we''ll assume a ABC/..../Dist.tgz
+    } else {
+        $author = shift @parts || '';
+    }
 
     ### translate a distribution into a module name ###
     my $guess   = $dist;
-    $guess      =~ s/([.\d_]*)(?:\.[\w.]*)?$//; # strip version plus .tgz & co
+    $guess      =~ s/-(\d[.\w]*?)(?:\.[A-Za-z.]*)?$//; 
+                                    # versions must begin with a digit,
+                                    # but may contain letters (wtf?? silly
+                                    # cpan authors).
+                                    # strip version plus .tgz & co
     my $version = $1 || '';
+    
     $guess      =~ s/-$//;                      # strip trailing -
     my $pkg     = $guess;
     $guess      =~ s/-/::/g;
@@ -476,7 +497,8 @@ sub parse_module {
                                     $conf->_get_mirror('base'),
                                     substr(uc $author, 0, 1),
                                     substr(uc $author, 0, 2),
-                                    uc $author
+                                    uc $author,
+                                    @parts,     #possible sub dirs
                                 );
             } else {
                 $auth_obj   = $maybe->author;
@@ -520,7 +542,8 @@ sub parse_module {
                             $conf->_get_mirror('base'),
                             substr(uc $author, 0, 1),
                             substr(uc $author, 0, 2),
-                            uc $author
+                            uc $author,
+                            @parts,         #possible subdirs
                         ),
             _id     => $self->_id,
         );
@@ -619,6 +642,12 @@ installation succeeded, failed, or was not attempted.
 This resets PERL5LIB, which is changed to ensure that while installing
 modules they are in our @INC.
 
+=item * C<load>
+
+This resets the cache of modules we've attempted to load, but failed.
+This enables you to load them again after a failed load, if they 
+somehow have become available.
+
 =item * C<all>
 
 Flush all of the aforementioned caches.
@@ -632,11 +661,12 @@ sub flush {
     my $type = shift or return;
 
     my $cache = {
-        methods => [ qw( methods ) ],
+        methods => [ qw( methods load ) ],
         hosts   => [ qw( hosts ) ],
         modules => [ qw( modules lib) ],
         lib     => [ qw( lib ) ],
-        all     => [ qw( hosts lib modules methods ) ],
+        load    => [ qw( load ) ],
+        all     => [ qw( hosts lib modules methods load ) ],
     };
 
     my $aref = $cache->{$type}
