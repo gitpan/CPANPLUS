@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # $File: //member/autrijus/cpanplus/dist/t/3-backend.t $
-# $Revision: #5 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #6 $ $Change: 3992 $ $DateTime: 2002/04/25 14:39:21 $
 
 # This is going test all of CPANPLUS::Backend except the parts which
 # actually download and install modules.  Those will be in another part.
@@ -195,8 +195,8 @@ SKIP: {
     skip "requires internet connectivity", 2
 	unless eval "use Socket; Socket::inet_aton('testers.cpan.org')";
 
-    $rv = $cp->reports(modules => [ $modname ]);
-    is_deeply(ref($rv->{$modname}), 'HASH', 'reports()');
+    $rv = $cp->reports(modules => [ $modname ], all_versions => 1);
+    is_deeply(ref($rv->{$modname}), 'ARRAY', 'reports()');
     is_deeply($modobj->reports, $rv->{$modname}, '    module method');
 }
 

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/bin/cpansmoke $ $Author: autrijus $
-# $Revision: #7 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #11 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
 
 use strict;
 use Cwd;
@@ -8,7 +8,7 @@ use Config;
 use Getopt::Std;
 use CPANPLUS::Backend;
 
-my $VERSION = '0.03';
+my $VERSION = '0.04';
 
 =head1 NAME
 
@@ -21,8 +21,8 @@ B<cpansmoke> S<[ -B<acdflpv> ]> S<[ -B<t> I<timeout> ]> I<packages>...
 =head1 DESCRIPTION
 
 This script uses B<CPANPLUS> to test one or more distributions from
-CPAN.  It accept both distribution names with absolute author directory
-(e.g. C<K/KA/KANE/CPANPLUS-0.01.tar.gz>), or module names (e.g.
+CPAN.  It accepts full or partial distribution names (e.g. C<CPANPLUS-0.01>
+and C<K/KA/KANE/CPANPLUS-0.01.tar.gz>), or module names (e.g.
 C<CPANPLUS::Backend>), in which case the latest distribution containing
 the module is tested.
 
@@ -33,10 +33,30 @@ the module is tested.
  -d    Display each package's existing result before testing it
  -f    Force re-fetching cached packages and checksum data
  -l    Use user-configured hosts; www.cpan.org is preferred by default
- -p    Install prerequisite modules; this is disabled by default
+ -p    Fetch, make and test (but not install) prerequisite modules
  -s    Skip modules that have testing results from the same settings
  -v    Print verbose proceeding informations
  -t    Sets timeout for each package's install; default to 300
+
+=head1 NOTES
+
+If the B<-a> option is set, only failures during C<make test> are reported,
+to prevent bogus reports caused by insufficient non-perl requisites.
+
+For automatic testing, C<cpansmoke -aps> is preferred. Subscriber of the
+C<cpan-testers@perl.org> list may use this B<Mail::Audit> recipe to enable
+unattended smoke testing:
+
+    fork || system("cpansmoke -aps $1 >/dev/null 2>&1")
+        if $mail->subject =~ /^CPAN Upload: (.*)$/;
+
+Users of C<procmail> should add this line to C<.procmailrc>:
+
+    :0hc
+    * ^Subject: CPAN Upload:
+    |sh -c "grep Subject|cut -f4 -d' '|xargs cpansmoke -aps >/dev/null 2>&1"
+
+Please consult L<CPANPLUS::TesterGuide> for additional information.
 
 =cut
 
@@ -46,9 +66,11 @@ the module is tested.
 
 show_usage() unless @ARGV;
 
-my %args; getopts('acdflpsvt:', \%args);
-my ($auto, $cc, $display, $force, $local, $prereq, $skip, $verbose, $timeout)
-    = @args{qw|a c d f l p s v t|};
+my %args; getopts('acdfhlpsvt:', \%args);
+my ($auto, $cc, $display, $force, $help, $local, $prereq, $skip, $verbose, $timeout)
+    = @args{qw|a c d f h l p s v t|};
+
+show_usage() if $help;
 
 ############################################################################
 ### Initialize Environment #################################################
@@ -62,10 +84,14 @@ $cp->{_shell} = $shell;
 
 $ENV{VISUAL} = 'echo' if $auto;                 # let cpantest skip editing
 
-$conf->set_conf( prereq   => $prereq  );
+my $cpantest_conf = '';
+$cpantest_conf .= 'always_cc,'     if $cc;
+$cpantest_conf .= 'maketest_only,' if $auto;
+
+$conf->set_conf( prereqs  => $prereq  );
 $conf->set_conf( force    => $force   );
 $conf->set_conf( verbose  => $verbose );
-$conf->set_conf( cpantest => $args{c} ? 'always_cc' : 1 );
+$conf->set_conf( cpantest => $cpantest_conf || 1);
 
 $conf->_set_ftp(urilist => [ {                  # prefers www.cpan.org
     path   => '/',
@@ -87,19 +113,18 @@ foreach my $pkg (@ARGV) {
 
     return unless defined $dist;
 
-    my $report = $cp->reports( modules => [ $pkg ] )
+    my $report = $cp->reports( modules => [ $pkg ] ) || {}
         if $display or $skip;
 
     my $is_there;
     my $my_platform = join(' ', $^O, $Config{osvers}, $Config{archname});
 
-    while( my($name, $href) = each (%$report) ) {
-        while( my ($dist, $pf_ref) = each (%$href) ) {
-            print "[$dist]\n" if $display;
-            for my $platform (sort keys %{$pf_ref}) {
-                printf "%8s %s\n", $pf_ref->{$platform}, $platform if $display;
-                $is_there = 1 if $platform eq $my_platform;
-            }
+    while ( my ($name, $href) = each (%$report) ) {
+        next unless $href;
+        for my $rv (@{$href}) {
+            printf "%8s %s%s\n", @{$rv}{'grade', 'platform'},
+                                 ($rv->{detail} ? ' (*)' : '') if $display;
+            $is_there = 1 if $rv->{platform} eq $my_platform;
         }
     }
 
@@ -115,7 +140,7 @@ foreach my $pkg (@ARGV) {
 
         my $cwd      = Cwd::cwd();
         my $alarm_ok = eval 'alarm ($timeout); 1;';
-        my $nohang   = do { require POSIX; POSIX::WNOHANG() } unless $alarm_ok;
+        my $nohang   = eval 'use POSIX (); POSIX::WNOHANG();' unless $alarm_ok;
 
         local $SIG{ALRM} = sub { die "\n" } if $alarm_ok;
 
@@ -127,6 +152,8 @@ foreach my $pkg (@ARGV) {
             chdir $conf->_get_build('moddir') or die $!;
             mkdir $path, 0755 unless -d $path;
             chdir $path or die $!;
+
+            $nohang = 0; # XXX!
         }
 
         if ($nohang and my $pid = fork()) {
@@ -141,8 +168,9 @@ foreach my $pkg (@ARGV) {
         }
         else {
             $cp->install(                       # perform the install
-                modules => [ $pkg ],            # one module at a time
-                target  => 'test',              # but stop after 'make test'
+                modules       => [ $pkg ],      # one module at a time
+                target        => 'test',        # but stop after 'make test'
+                prereq_target => 'test',        # same for its prerequisites
             );
             exit if $nohang;
         }
@@ -182,7 +210,7 @@ Usage:
   -d    Display each package's existing result before testing it
   -f    Force re-fetching cached packages and checksum data
   -l    Use user-configured hosts; www.cpan.org is preferred by default
-  -p    Install prerequisite modules; this is disabled by default
+  -p    Fetch, make and test (but not install) prerequisite modules
   -s    Skip modules that have testing results from the same settings
   -v    Print verbose proceeding informations
   -t    Sets timeout for each package's install; default to 300
@@ -191,16 +219,29 @@ Usage:
     exit;
 }
 
-### Answers whether to install prerequisites -- should never be called ###
-sub _ask_prereq {
-    return $prereq;
+### PERL5LIB munging so we don't need to install prereqs
+BEGIN {
+    no strict 'refs';
+    my $oldref = *{CPANPLUS::Internals::Make::_make}{CODE};
+    *{CPANPLUS::Internals::Make::_make} = sub {
+        my ($self, %args) = @_;
+
+        $ENV{PERL5LIB} = join(
+            $Config{path_sep},
+            split($Config{path_sep}, $ENV{PERL5LIB}),
+            File::Spec->catdir($args{dir}, 'blib', 'lib'),
+            File::Spec->catdir($args{dir}, 'blib', 'arch'),
+        );
+
+	goto &$oldref;
+    } 
 }
 
 __END__
 
 =head1 SEE ALSO
 
-L<CPANPLUS>, L<cpantest>
+L<CPANPLUS>, L<CPANPLUS::TesterGuide>, L<cpantest>
 
 =head1 AUTHORS
 
@@ -216,3 +257,10 @@ modify it under the same terms as Perl itself.
 See L<http://www.perl.com/perl/misc/Artistic.html>
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

@@ -83,7 +83,7 @@ sub _create_mod_tree {
                                 . '.' .
                                 $Storable::VERSION              #the version of storable used to store
                                 . '.stored'                     #append a suffix
-                            );
+                            ) if $storable;
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
@@ -195,7 +195,7 @@ sub _create_author_tree {
                                 . '.' .
                                 $Storable::VERSION              #the version of storable used to store
                                 . '.stored'                     #append a suffix
-                            );
+                            ) if $storable;
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
@@ -257,7 +257,7 @@ sub _create_dslip_tree {
                                 . '.' .
                                 $Storable::VERSION              #the version of storable used to store
                                 . '.stored'                     #append a suffix
-                            );
+                            ) if $storable;
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
@@ -584,3 +584,10 @@ sub _get_checksums {
     return $cksum;
 }
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

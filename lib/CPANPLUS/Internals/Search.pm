@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Search.pm $
-# $Revision: #10 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #11 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 #######################################################
 ###            CPANPLUS/Internals/Search.pm         ###
@@ -371,3 +371,10 @@ sub _validate_module {
 }
 
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

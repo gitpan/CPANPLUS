@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #15 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #20 $ $Change: 4042 $ $DateTime: 2002/04/30 10:59:09 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -91,6 +91,8 @@ sub install {
         makemakerflags  => { default => undef }, # hashref
         fetchdir        => { default => undef },
         target          => { default => 'install' },
+        prereq_target   => { default => 'install' },
+        type            => { default => 'MakeMaker', }
     };
 
     ### Input Check ###
@@ -102,9 +104,11 @@ sub install {
 
     my $href;
     for my $mod ( @{$args->{"modules"}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
 
-        unless ( $name =~ m|/| or $force) {
+        my ($name, $modobj) = each %$mods;
+
+        unless ( $name =~ m|/| or $name =~ /^Bundle::/ or $force ) {
             my $res =  $self->_check_install( module => $name );
 
             if ($res->{uptodate}) {
@@ -172,7 +176,9 @@ sub fetch {
     my $href;
 
     for my $mod ( @{$args->{'modules'}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
 
         my $rv = $self->_fetch(
             data        => $modobj,
@@ -241,6 +247,8 @@ sub make {
         perl            => { default => undef },
         makemakerflags  => { default => undef }, # hashref
         target          => { default => 'install' },
+        prereq_target   => { default => 'install' },
+        type            => { default => 'MakeMaker' },
     };
 
 
@@ -300,7 +308,10 @@ sub files {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
+
         my $rv = $self->_files( module => $modobj->{module}, %$args );
 
         unless ( $rv ) {
@@ -341,7 +352,10 @@ sub uninstall {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
+
         my $rv = $self->_uninstall( module => $modobj->{module}, %$args );
 
         unless ( $rv ) {
@@ -374,7 +388,9 @@ sub uptodate {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
 
         $href->{$name} = $self->_check_install(
             module  => $modobj->{module},
@@ -405,7 +421,10 @@ sub validate {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
+
         my $rv = $self->_validate_module( module  => $modobj->{module} );
 
         $href->{$name} = (UNIVERSAL::isa($rv, 'ARRAY') and scalar @$rv) ? $rv : 0;
@@ -422,6 +441,7 @@ sub validate {
 sub flush {
     my $self    = shift;
     my $input   = shift;
+    my $conf    = $self->configure_object();
 
     my $cache = {
         methods => [ qw( _methods ) ],
@@ -436,7 +456,10 @@ sub flush {
     return 0 unless $list = $cache->{ lc $input };
 
     if ( $self->_flush( list => $list ) ) {
-        $self->{_error}->inform( msg => "All cached data has been flushed." );
+        $self->{_error}->inform(
+                            msg     => "All cached data has been flushed",
+                            quiet   => !$conf->get_conf('verbose'),
+                        );
         return 1;
     }
 
@@ -502,7 +525,9 @@ sub details {
     my $result;
 
     for my $mod ( @modules ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
 
         my @dslip = split '', $modobj->{dslip};
         my $author = $authtree->{$modobj->{'author'}}
@@ -616,7 +641,9 @@ sub readme {
     my $href;
 
     for my $mod ( @{$args->{'modules'}} ) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my ($name, $modobj) = each %$mods;
 
         ### will either return a filename, or '0' for now
         my $rv = $self->_readme(
@@ -653,7 +680,7 @@ sub reports {
 
     my $href;
     foreach my $mod (@{$args->{modules}}) {
-        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my ($name, $modobj) = $self->_parse_module(mod => $mod) or next;
 
         if (my $dist = $modobj->{package}) {
             $href->{$name} = $self->_query_report(
@@ -725,11 +752,38 @@ sub pathname {
         return 0;
     }
 
-    my ($name, $modobj) = $self->_parse_module($to) or return 0;
+    my $mods = $self->parse_module(modules => [$to]) or return 0;
+
+    my ($name, $modobj) = each %$mods;
 
     return File::Spec::Unix->catdir('', $modobj->{path}, $modobj->{package});
 }
 
+sub parse_module {
+    my $self = shift;
+    my $err = $self->{_error};
+    my %hash = @_;
+
+    my $_data = {
+        modules => { required => 1, default => [] },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    my $rv;
+    for my $mod ( @{$args->{modules}} ) {
+
+        my ($name, $modobj) = $self->_parse_module( mod => $mod );
+
+        if ($name) {
+            $rv->{$name} = $modobj;
+        }
+    }
+
+    return $rv;
+}
 
 ### input checks ###
 {
@@ -949,14 +1003,14 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
     my $validated = $cp->validate(modules => ['Rcs', $module_obj]);
 
 
-    ### Backend methods with corresponding Module methods 
+    ### Backend methods with corresponding Module methods
 
     # The same result, first with a Backend then a Module method
-    my $fetch_result = $cp->fetch(modules  => ['Dir::Purge']); 
+    my $fetch_result = $cp->fetch(modules  => ['Dir::Purge']);
     $fetch_result = $module_obj->fetch();
 
-    # Backend method 
-    my $txt = $cp->readme(modules => ['Mail::Box', 
+    # Backend method
+    my $txt = $cp->readme(modules => ['Mail::Box',
                               '/K/KA/KANE/Acme-POE-Knee-1.10.zip']);
 
     # Module method
@@ -979,10 +1033,10 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
     my $files_in_dist = $cp->files(modules => ['LEGO::RCX']);
 
 
-    ### Backend methods with corresponding Module and Author methods 
+    ### Backend methods with corresponding Module and Author methods
 
     # The same result via Backend, Module and Author methods
-    my $mods_by_same_auth = $cp->modules(authors => ['JV']); 
+    my $mods_by_same_auth = $cp->modules(authors => ['JV']);
     $mods_by_same_auth    = $module_obj->modules();
     $mods_by_same_auth    = $all_authors->{'JV'}->modules();
 
@@ -994,7 +1048,7 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
 
     ### Backend and Module methods
 
-    # Backend method 
+    # Backend method
     my $path = $cp->pathname(to => 'C::Scan');
 
 
@@ -1016,8 +1070,8 @@ interface.
 =head2 GENERAL NOTES
 
 Unless otherwise noted, all functions which accept the I<modules> argument
-accept module array elements in the form of strings or module objects.  
-Strings containing characters other than letters, digits, underscores 
+accept module array elements in the form of strings or module objects.
+Strings containing characters other than letters, digits, underscores
 and colons will be treated as distribution files.
 
 So, for example, the following are all valid values for I<modules>:
@@ -1096,7 +1150,7 @@ The search function accepts the following arguments:
 
 =item * C<type>
 
-This indicates what type of search should be performed.  Any 
+This indicates what type of search should be performed.  Any
 module object key may be provided as a type.  The most common
 types are I<author> and I<module>.  For a complete list, refer
 to L<"MODULE OBJECTS">.
@@ -1108,7 +1162,7 @@ are joined in an 'or' search--modules which match any of the patterns
 are returned.  An 'and' search can be performed with multiple searches
 by the use of the I<data> argument.
 
-Search strings should be specified as regular expressions.  
+Search strings should be specified as regular expressions.
 If your version of perl supports it, you can use introduce
 flags with the (?f:) syntax.  Refer to L<perlre> for more information.
 
@@ -1201,15 +1255,15 @@ See L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
 
 The values this method returns are the contents of the readme
-files, or 0 for errors. 
+files, or 0 for errors.
 
-=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING);
+=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL, fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING, prereq_target => STRING);
 
 See L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
 
 Install is a shortcut for performing C<fetch>, C<extract> and C<make>
-on the specified modules.  
+on the specified modules.
 
 Optional arguments can be used to override configuration information.
 
@@ -1250,7 +1304,7 @@ a true value.
 
 =item * C<fetchdir>
 
-The directory fetched files should be stored in.  By default 
+The directory fetched files should be stored in.  By default
 it will store to the directory you started from.
 
 =item * C<extractdir>
@@ -1268,9 +1322,17 @@ C<skiptest> implies all preceding ones.
 The special C<skiptest> target has the same meaning as C<install>, but
 will skip the C<test> step.
 
+=item * C<prereq_target>
+
+This argument is the objective when making prerequisite modules.
+It takes the same range of values as C<target> and also defaults
+to C<install>.  Usually C<install> is the correct value, or the
+parent module won't make properly, but you may want to set it to
+C<skiptest> if some of the prerequisites are known to fail.
+
 =back
 
-The values of the returned hash reference are 1 for success or 
+The values of the returned hash reference are 1 for success or
 0 for failure.
 
 Note that a failure does not identify the source of the problem,
@@ -1282,7 +1344,7 @@ necessary to examine the error object.
 =head2 fetch(modules => [LIST], force => BOOL, fetchdir => DIRECTORY);
 
 This function will retrieve the distributions that contains the modules
-specified with the C<modules> argument. 
+specified with the C<modules> argument.
 Refer to L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
 
@@ -1290,8 +1352,8 @@ The remaining arguments are optional.  A true value for force means
 that pre-existing files will be overwritten.  Fetchdir behaves like
 the C<install> argument of the same name.
 
-The method will return a hash reference; values are either the 
-fully qualified path plus the file name of the saved module, 
+The method will return a hash reference; values are either the
+fully qualified path plus the file name of the saved module,
 or--in the case of a failure--0.
 
 Here is an example of a successful return value:
@@ -1310,7 +1372,7 @@ to.  Failure results in a value of 0.
 Extractdir is optional and behaves like the C<install> argument
 of the same name.
 
-=head2 make(dirs => [DIRECTORIES], force => BOOL, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL);
+=head2 make(dirs => [DIRECTORIES], force => BOOL, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, target => string, prereq_target => STRING);
 
 This function will attempt to install the module in the specified
 directory with C<perl Makefile.PL>, C<make>, C<make test>, and
@@ -1339,7 +1401,7 @@ This function lists all files belonging to a module if the module is
 installed.  See L<"GENERAL NOTES"> for more information about this
 method.
 
-It returns a hash reference.  
+It returns a hash reference.
 The value will be 0 if the module is not installed.
 Otherwise, it returns an array reference of files as
 shown below.
@@ -1354,8 +1416,8 @@ shown below.
 =head2 distributions(authors => [CPAN_ID [CPAN_ID]]);
 
 This provides a list of all distributions by the author of the
-module (given in the form of the CPAN author identification).  
-This information is provided by the CHECKSUMS file in the authors 
+module (given in the form of the CPAN author identification).
+This information is provided by the CHECKSUMS file in the authors
 directory.
 
 It returns a hash reference where each key is
@@ -1397,10 +1459,10 @@ module names or distributions.
 The optional argument C<all_versions> controls whether all versions of
 a given distribution should be grabbed.  It defaults to false.
 
-The function returns a hash reference. 
+The function returns a hash reference.
 See L<"GENERAL NOTES"> for more information about this method.
 
-The values are themselves hash references, the keys to which are the
+The values are themselves array references, the keys to which are the
 distribution name and version.
 
 The values are hash references, the keys to which are the
@@ -1412,22 +1474,34 @@ one of the following: UNKNOWN, PASS, FAIL or NA.
 
 For example,
 
-    $cp->reports(modules => ['DBI-1.21.tar.gz']);
+    $cp->reports(modules => [ 'CPANPLUS' ], all_versions => 1);
 
 might return the following data structure:
 
-    '/T/TI/TIMB/DBI-1.21.tar.gz' => {
-        'DBI-1.21' => {
-            'solaris 2.7 sun4-solaris' => 'PASS',
-            'linux 2.4.8-11mdkenter i386-linux' => 'PASS',
-            'linux 2.2.14-5.0 i686-linux' => 'PASS',
-            'openbsd 3.0 OpenBSD.i386-openbsd' => 'PASS',
-            'MSWin32 4.0 MSWin32-x86-multi-thread' => 'PASS',
-            'cygwin 1.3.10(0.5132) cygwin-multi-64int' => 'PASS',
-            'openbsd 3.0 i386-openbsd' => 'PASS',
-            'freebsd 4.5-release i386-freebsd' => 'PASS'
+    { 'CPANPLUS' => [
+        {
+            'grade'    => 'PASS',
+            'dist'     => 'CPANPLUS-0.031',
+            'platform' => 'freebsd 4.5-release i386-freebsd'
         },
-    }
+        {
+            'grade'    => 'FAIL',
+            'dist'     => 'CPANPLUS-0.03',
+            'platform' => 'freebsd 4.2-stable i386-freebsd',
+            'details'  => 'http://testers.cpan.org/search?request=dist&dist=CPANPLUS#0.03+freebsd+4.2-stable+i386-freebsd'
+        },
+        {
+            'grade'    => 'PASS',
+            'dist'     => 'CPANPLUS-0.01',
+            'platform' => 'linux 2.4.8-11mdkenter i386-linux'
+        },
+        {
+            'grade'    => 'PASS',
+            'dist'     => 'CPANPLUS-0.01',
+            'platform' => 'MSWin32 4.0 MSWin32-x86-multi-thread',
+            'details'  => 'http://testers.cpan.org/search?request=dist&dist=CPANPLUS#0.01+MSWin32+4.0+MSWin32-x86-multi-thread'
+        },
+    ] }
 
 =head2 uptodate(modules => [LIST]);
 
@@ -1457,7 +1531,7 @@ the following data structure might be returned:
             'file'     => 'C:\\Perl\\site\\lib\\Acme\\POE\\Knee.pm',
             'uptodate' => 1
         }
-    } 
+    }
 
 =head2 validate(modules => [LIST]);
 
@@ -1465,7 +1539,7 @@ See L<"GENERAL NOTES"> for information about the I<modules> argument
 or the keys of the returned hash reference.
 
 Hash reference values will be either
-an empty array reference (if no files are missing), an array reference 
+an empty array reference (if no files are missing), an array reference
 containing the missing files, or 0 if there was an error (such as
 the module not being installed).
 
@@ -1793,3 +1867,10 @@ L<ExtUtils::MakeMaker>, L<CPANPLUS::Internals::Module>, L<perlre>
 http://testers.cpan.org
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

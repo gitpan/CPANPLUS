@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/FAQ.pod $
-# $Revision: #3 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
+# $Revision: #4 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 =head1 NAME
 
@@ -103,3 +103,10 @@ L<CPANPLUS::Backend>, L<CPANPLUS::Shell::Default>, L<CPANPLUS>,
 L<CPANPLUS::Configure>
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

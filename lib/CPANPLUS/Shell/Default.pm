@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #18 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
+# $Revision: #21 $ $Change: 4027 $ $DateTime: 2002/04/29 14:25:47 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -93,7 +93,7 @@ sub shell {
     my $cpan = new CPANPLUS::Backend;
 
     my $term = Term::ReadLine->new( $brand );
-    my $prompt = "$brand>";
+    my $prompt = "$brand> ";
 
     ### store this in the object, so we can access the prompt anywhere if need be
     $self->{_term}    = $term;
@@ -349,12 +349,31 @@ sub _input_loop {
             my $method = $cmd->{$key};
             my $res = $cpan->$method( modules => [ @list ] );
 
-            while( my($name, $href) = each (%$res) ) {
-                while( my ($dist, $pf_ref) = each (%$href) ) {
+            foreach my $name (@list) {
+                my $dist = $self->{_backend}->pathname(to => $name);
+                my $url;
+
+                foreach my $href ($res->{$name} || $res->{$dist}) {
                     print "[$dist]\n";
-                    for my $platform (sort keys %{$pf_ref}) {
-                        printf "%8s %s\n", $pf_ref->{$platform}, $platform;
+
+                    unless ($href) {
+                        print "No reports available for this distribution.\n";
+                        next;
                     }
+
+                    foreach my $rv (@{$href}) {
+                        printf "%8s %s%s\n", @{$rv}{'grade', 'platform'},
+                                             ($rv->{details} ? ' (*)' : '');
+                        $url ||= $rv->{details} if $rv->{details};
+                    }
+                }
+
+                if ($url) {
+                    $url =~ s/#.*//;
+                    print "==> $url\n\n";
+                }
+                else {
+                    print "\n";
                 }
             }
 
@@ -599,7 +618,10 @@ sub _select_modules {
     my @ret;
 
     ### expand .. in $input
-    $input =~ s/\b(\d+)\s*\.\.\s*(\d+)\b/join(' ', $1 .. $2)/eg;
+    $input =~ s{\b(\d+)\s*\.\.\s*(\d+)\b}
+               {join(' ', ($1 < 1 ? 1 : $1) .. ($2 > $#{$cache} ? $#{$cache} : $2))}eg;
+
+    $input = join(' ', 1 .. $#{$cache}) if $input eq '*';
 
     foreach my $mod (split /\s+/, $input) {
         if ( $mod =~ /[^\w:]/ ) {
@@ -928,38 +950,39 @@ CPANPLUS::Shell::Default.
 
 Shell commands:
 
-    CPAN Terminal>h
+    CPAN Terminal> h
 
-    CPAN Terminal>s verbose 1
-    CPAN Terminal>e /home/kudra/perllib
+    CPAN Terminal> s verbose 1
+    CPAN Terminal> e /home/kudra/perllib
 
-    CPAN Terminal>m simple tcp poe
-    CPAN Terminal>i 22..27 /A/AL/ALIZTA/Crypt-Enigma-0.01.tar.gz 6
+    CPAN Terminal> m simple tcp poe
+    CPAN Terminal> i 22..27 /A/AL/ALIZTA/Crypt-Enigma-0.01.tar.gz 6 DBI-1.20
 
-    CPAN Terminal>u Acme::POE::Knee 21
+    CPAN Terminal> u Acme::POE::Knee 21
 
-    CPAN Terminal>a damian
+    CPAN Terminal> a damian
 
-    CPAN Terminal>t Mail::Box
+    CPAN Terminal> t Mail::Box
 
-    CPAN Terminal>c DBI
+    CPAN Terminal> c DBI
 
-    CPAN Terminal>r POE
+    CPAN Terminal> r POE
 
-    CPAN Terminal>d XML::Twig
+    CPAN Terminal> d XML::Twig
 
-    CPAN Terminal>l DBD::Unify
+    CPAN Terminal> l DBD::Unify
 
-    CPAN Terminal>f VROO?MANS$ DCROSS
+    CPAN Terminal> f VROO?MANS$ DCROSS
 
-    CPAN Terminal>! die 'wild rose';
-    CPAN Terminal>p /tmp/cpanplus/errors
+    CPAN Terminal> ! die 'wild rose';
+    CPAN Terminal> p /tmp/cpanplus/errors
 
-    CPAN Terminal>o
+    CPAN Terminal> o
+    CPAN Terminal> i *
 
-    CPAN Terminal>x
+    CPAN Terminal> x
 
-    CPAN Terminal>q
+    CPAN Terminal> q
 
 =head1 DESCRIPTION
 
@@ -1046,7 +1069,11 @@ author's full name.
 
 This command installs a module by its case-sensitive name, by the
 path and filename on CPAN, or by the number returned from a previous
-search.  For instance:
+search.  Distribution names need only to be complete enough for
+distinction.  That is to say, I<DBI-1.20> is sufficient; the 
+author can be deduced from the named portion.
+
+Examples:
 
 =over 4
 
@@ -1054,10 +1081,16 @@ search.  For instance:
 
 =item * C<i /K/KA/KANE/Acme-POE-Knee-1.10.zip>
 
+=item * C<i DBI-1.20>
+
 =item * C<i 16..18 2>
 
 This example would install results 16 through and including 18 and 2
 from the most recent results.
+
+=item * C<i *>
+
+This would install all results.
 
 =back
 
@@ -1301,3 +1334,10 @@ the original CPAN.pm module.
 L<CPANPLUS::Backend>, L<CPANPLUS>, http://testers.cpan.org
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

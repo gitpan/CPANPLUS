@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #9 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #12 $ $Change: 4042 $ $DateTime: 2002/04/30 10:59:09 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -278,6 +278,14 @@ sub save {
 } #save
 
 
+sub can_save {
+    my $file = $INC{'CPANPLUS/Config.pm'};
+    return 1 unless -e $file;
+
+    chmod 0644, $file;
+    return (-w $file);
+}
+
 ## generate a new Config.pm file and save it (after backing up the old)
 ##
 ## (takes no arguments, returns no values)
@@ -342,6 +350,8 @@ _END_OF_CONFIG_
     $fh->print($msg);
     $fh->close;
 
+    delete $INC{'CPANPLUS/Config.pm'};
+    require CPANPLUS::Config;
 } #_save_pm
 
 
@@ -542,3 +552,10 @@ terms as Perl itself.
 L<CPANPLUS::Configure::Setup>
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

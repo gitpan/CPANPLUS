@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Author.pm $
-# $Revision: #12 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+# $Revision: #13 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 #######################################################
 ###            CPANPLUS/Internals/Author.pm         ###
@@ -203,3 +203,10 @@ terms as Perl itself.
 L<CPANPLUS::Backend>
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Shell.pm $ $Author: autrijus $
-# $Revision: #3 $ $Change: 3540 $ $DateTime: 2002/03/26 04:28:49 $
+# $Revision: #4 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 ###################################################
 ###               CPANPLUS/Shell.pm             ###
@@ -116,3 +116,9 @@ L<CPANPLUS::Shell::Default>
 
 =cut
 
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

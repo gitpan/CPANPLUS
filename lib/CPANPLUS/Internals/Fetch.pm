@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #6 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
+# $Revision: #8 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###
@@ -144,7 +144,7 @@ sub _fetch {
     ### methods available to fetch the file depending on the scheme
     my $methods = {
         http => [ qw|lwp wget lynx| ],
-        ftp  => [ qw|lwp ftp ncftpget wget lynx ncftp| ],
+        ftp  => [ qw|lwp netftp ncftpget wget lynx ftp ncftp| ],
         file => [ qw|lwp file| ],
     };
 
@@ -425,8 +425,51 @@ sub _file_get {
     }
 }
 
-
 sub _ftp_get {
+    my $self = shift;
+    my %args = @_;
+
+    my $conf = $self->{_conf};
+    my $err  = $self->{_error};
+
+    my $subname = $self->_whoami();
+    my ($method) = $subname =~ m|.+::(.+?)|;
+
+    if (my $ftp = $conf->_get_build('ftp')) {
+        my $fh = FileHandle->new;
+
+        local $SIG{CHLD} = 'IGNORE';
+        unless ($fh->open("|$ftp -n")) {
+            $err->trap( error => "ftp creation failed: $!" );
+            return 0;
+        }
+
+        my $email = $conf->_get_ftp('email');
+        my ($remote, $local) = ($args{path}->{remote}, $args{path}->{local});
+
+        my @remote_path = split('/', $remote); $remote = pop @remote_path;
+        my @local_path  = split('/', $local);  $local  = pop @local_path;
+
+        my @dialog = (
+            "lcd ".join('/', @local_path),
+            "open $args{uri}{host}",
+            "user anonymous $email",
+            "cd /",
+            (map { "cd $_" } grep { length } @remote_path),
+            "binary",
+            "get $remote $local",
+            "quit",
+        );
+
+        foreach (@dialog) { $fh->print($_, "\n") }
+        $fh->close;
+
+        return -e $args{path}->{local} ? $args{path}->{local} : 0;
+    }
+}
+
+
+sub _netftp_get {
     my $self = shift;
     my %args = @_;
 
@@ -532,28 +575,19 @@ sub _lynx_get {
                 . $args{path}->{remote};
 
         my $email = $conf->_get_ftp('email');
+        my $captured;
 
-        #$url =~ s/pub/ub/;
-
-        my $command = qq[$lynx -source -auth=anonymous:$email $url |];
-
-        my $remote = new FileHandle;
-        unless ($remote->open($command)) {
-            $err->trap( error => "Could not fork opening $command: $!" );
-            return 0;
-        }
-
-        #$remote->autoflush;
-        binmode $remote;
-
-        my $data;
-        {
-            local $/ = undef;
-            $data = <$remote>;
-        }
-
-        unless ($remote->close) {
-            $err->trap( error => "Could not 'close' $command: $!");
+        unless ( $self->_run(
+            command => [
+                $lynx,
+                '-source',
+                "-auth=anonymous:$email",
+                $url
+            ],
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
+            $err->trap( error => "Could not run command: $!" );
             return 0;
         }
 
@@ -563,10 +597,8 @@ sub _lynx_get {
             return 0;
         }
 
-        #$local->autoflush;
         binmode $local;
-
-        unless ($local->print($data)) {
+        unless ($local->print($captured)) {
             $err->trap( error => "Could not write to $args{path}->{local}: $!" );
             return 0;
         }
@@ -625,28 +657,22 @@ sub _ncftpget_get {
         ### portably find the full local directory path
         my ($vol, $dir, $file) = File::Spec->splitpath($args{path}->{local});
         my $local_dir          = File::Spec->catdir($vol, $dir);
+        my $captured;
 
-        my $command = join(
-                          ' ',
-                           $ncftpget,             # program
-                           #qq["$ncftpget"],       # program
-                           #"-d stderr,            # debug to stdout
-                           '-V',                  # not verbose
-                           "-p $email",           # $email as pwd
-                           $args{uri}->{host},    # ftp host
-                           qq["$local_dir"],      # local dir for file
-                           $args{path}->{remote}, # remote path to file
-                           '2>&1',                # stderr => stdout
-                       );
-
-        my $rc = qx[$command];
-
-        if ($rc || ! defined $rc) {
-            $rc ||= '';
-
-            $rc =~ s/\n/ /g;
-            $err->trap( error => "command $command failed: $rc" );
-            #$err->inform( msg => "command $command failed: $rc" );
+        unless ( $self->_run(
+            command => [
+                $ncftpget,             # program
+                '-V',                  # not verbose
+                '-p', $email,          # $email as pwd
+                $args{uri}->{host},    # ftp host
+                $local_dir,            # local dir for file
+                $args{path}->{remote}, # remote path to file
+            ],
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
+            $captured =~ s/\n/ /g;
+            $err->trap( error => "command failed: $captured" );
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
             return 0;
@@ -693,47 +719,22 @@ sub _wget_get {
                 . $args{path}->{remote};
 
         my $email = $conf->_get_ftp('email');
-
-        ### FSCK!!!
-        ### to get it working on both NT4 and *nix had to leave $wget unquoted
-        ### which means on win you must give a space free path to this pgm -jmb
-        ###
-        ### not to mention only qx[] would work on both reliably...
+        my $captured;
 
         ### these long opts are self explanatory - I like that -jmb
-        my $command = join(
-                          ' ',
-                          #'get',
-                          $wget,
-                          '--quiet',
-                          #'--non-verbose', # quiet is *too* quiet -jmb
-                          #'--verbose',
-                          "--execute passwd=$email",
-                          #'--output-document=-',
-                          qq[--output-document "$args{path}->{local}"],
-                          $url,
-                      );
-
-        ### redirect stderr to stdout - with --quiet this should only produce
-        ### output if the program wasn't found, I hope -jmb
-        my $rc = qx[$command 2>&1];
-        #my $rc = qx[$command];
-
-#    qx/STRING/
-#    `STRING`
-#
-#        A string which is (possibly) interpolated and then executed as a system
-#        command with /bin/sh or its equivalent.  Shell wildcards, pipes, and
-#        redirections will be honored.  The collected standard output of the
-#        command is returned; standard error is unaffected.  In scalar context,
-#        it comes back as a single (potentially multi-line) string, or undef if
-#        the command failed.
-
-        if ($rc || ! defined $rc) {
-            $rc ||= '';
-            $rc =~ s/\n/ /g;
-            $err->trap( error => "command $command failed: $rc" );
-            #$err->inform( msg => "command $command failed: $rc" );
+        unless ( $self->_run(
+            command => [
+                $wget,
+                '--quiet',
+                '--execute', "passwd=$email",
+                '--output-document', $args{path}->{local},
+                $url,
+            ],
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
+            $captured =~ s/\n/ /g;
+            $err->trap( error => "command failed: $captured" );
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
             return 0;
@@ -784,17 +785,14 @@ sub _ncftp_get {
                 . $args{uri}->{host}
                 . $args{path}->{remote};
 
-        my $command = qq[$ncftp -a $url 2>&1 1>"$args{path}->{local}"];
-
-        my $rc = qx[$command];
-        if ($rc || ! defined $rc) {
-            $rc ||= '';
-            $rc =~ s/\n.*//gs;
-            $err->trap( error => "command $command failed: $rc" );
-            #$err->inform(
-            #    msg   => "command $command failed: $rc",
-            #    quiet => ! $conf->get_conf('verbose'),
-            #);
+        my $captured;
+        unless ( $self->_run(
+            command => "$ncftp -a $url > $args{path}{local}",
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
+            $captured =~ s/\n.*//gs;
+            $err->trap( error => "command failed: $captured" );
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
             return 0;
@@ -807,7 +805,7 @@ sub _ncftp_get {
         $self->{_methods}->{$method} = 0;
 
         $err->inform(
-            msg   => "ncftpget not available",
+            msg   => "ncftp not available",
             quiet => !$conf->get_conf('verbose')
         );
 
@@ -817,3 +815,10 @@ sub _ncftp_get {
 }
 
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

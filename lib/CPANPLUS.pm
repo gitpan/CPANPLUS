@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS.pm $
-# $Revision: #7 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #9 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -15,7 +15,7 @@ use strict;
 use Carp;
 use CPANPLUS::Backend;
 use CPANPLUS::Shell;
-#use CPANPLUS::Classic::Module;
+use Data::Dumper;
 
 BEGIN {
     use Exporter    ();
@@ -42,7 +42,20 @@ sub install {
         return 0;
 
     } else {
-        return $cpan->install( modules => [ $mod ] );
+        unless( $cpan->module_tree->{$mod} ) {
+            $cpan->{_error}->trap( error => qq[Unknown module "$mod"] );
+            return 0;
+        }
+
+        my $rv = $cpan->install( modules => [ $mod ] );
+
+        my $msg = $rv->{$mod}
+                    ? qq[Installing of $mod succesfull]
+                    : qq[Installing of $mod failed];
+
+        $cpan->{_error}->inform( msg => $msg, quiet => 0 );
+
+        return $rv->{$mod};
     }
 }
 
@@ -67,10 +80,23 @@ sub fetch {
         return 0;
 
     } else {
-        return $cpan->fetch(
+        unless( $cpan->module_tree->{$mod} ) {
+            $cpan->{_error}->trap( error => qq[Unknown module "$mod"] );
+            return 0;
+        }
+
+        my $rv = $cpan->fetch(
             modules     => [ $mod ],
             fetchdir   => $cpan->{_conf}->_get_build('startdir')
         );
+
+        my $msg = $rv->{$mod}
+                    ? qq[Fetching of $mod succesfull]
+                    : qq[Fetching of $mod failed];
+
+        $cpan->{_error}->inform( msg => $msg, quiet => 0 );
+
+        return $rv->{$mod};
     }
 }
 
@@ -128,7 +154,7 @@ Scripts:
 CPANPLUS provides command-line access to the CPAN interface.   Three
 functions, I<fetch>, I<install> and I<shell>
 are imported in to your namespace.  I<get>--an alias for
-I<fetch>--is also provided. 
+I<fetch>--is also provided.
 
 Although CPANPLUS can also be used within scripts,
 it is B<highly> recommended
@@ -206,3 +232,10 @@ for a list of Credits and Contributors.
 L<CPANPLUS::Backend>, L<CPANPLUS::Shell::Default>
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

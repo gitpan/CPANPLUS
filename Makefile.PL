@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/Makefile.PL $ $Author: autrijus $
-# $Revision: #9 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #14 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
 
 use strict;
 
@@ -26,6 +26,10 @@ CPANPLUS will eventually be a full drop-in replacement for CPAN.pm.
 However, at this early stage in its life, you should *NOT* expect
 it to work just like CPAN.pm.
 
+You are strongly urged to configure CPANPLUS now, since otherwise
+non-priviliged (non-root) users may be unable to use CPANPLUS untill
+you configure it properly.
+
 ###################################################################
 __WARNING__
 
@@ -36,6 +40,7 @@ my $ConfigObj;   # the config object
 chdir dirname($0);
 
 # first, determine the Config.pm's location.
+my $has_prev; # flag to signify a configuration file from previous versions
 my $config  = load_config($0);
 my $has_old = is_configured($config);
 
@@ -44,13 +49,14 @@ if (nmake_needed()) {
     get_nmake() or die "Please follow the instruction in README to install nmake first.\n";
 }
 
-# next, determine if we should run seutp
+# next, determine if we should run setup
 if (setup_needed()) {
     $ConfigObj = CPANPLUS::Configure->new;
 
     if ($has_old) {
         unlink $config # remove the old one so we don't end up with Config.pm~
-            or warn "Cannot unlink old config file '$config', continuing anyway.\n";
+            or warn "Cannot unlink old config file '$config', continuing anyway.\n"
+                unless $has_prev;
         CPANPLUS::Configure::Setup->init(conf => $ConfigObj);
     }
     else {
@@ -77,13 +83,27 @@ sub is_configured {
 
 sub load_config {
     unless (-e (File::Spec->catfile(qw|lib CPANPLUS Config.pm|))) {
-        copy(File::Spec->catfile(qw|lib CPANPLUS Config.pm-orig|),
+        copy(old_configuration(),
              File::Spec->catfile(qw|lib CPANPLUS Config.pm|))
             or die "Cannot write Config.pm";
     }
 
     require CPANPLUS::Configure::Setup;
     return $INC{'CPANPLUS/Config.pm'};
+}
+
+sub old_configuration {
+    foreach my $dir (@INC[2..$#INC]) {
+        my $file = File::Spec->catfile($dir, qw|CPANPLUS Config.pm|);
+        ($has_prev = $file, last) if -e $file;
+    }
+
+    if ($has_prev) {
+        print "A previous installation detected. Use its settings? [Y/n]: ";
+        undef $has_prev if <STDIN> =~ /^[Nn]/;
+    }
+
+    return File::Spec->catfile(qw|lib CPANPLUS Config.pm-orig|);
 }
 
 # returns whether setup is requested by user
@@ -103,18 +123,25 @@ sub setup_needed {
     else {
         # can't tell from @ARGV, so ask the user instead
         my $prompt = (
-            $has_old ? "Old settings detected. Do you want to modify it? [y/N]: "
-                     : "Do you want to configure CPANPLUS now? [Y/n]: "
+            $has_prev ? "Manually configure CPANPLUS based on previous settings? [Y/n]: " :
+            $has_old  ? "Old settings detected. Do you want to modify it? [y/N]: "
+                      : "Do you want to configure CPANPLUS now? [Y/n]: "
         );
 
         my $answer = _get_reply(
             prompt  => $prompt,
-            default => ($has_old ? 'n' : 'y'),
+            default => (($has_old and not $has_prev) ? 'n' : 'y'),
             choices => [ qw/y n/ ],
         );
 
-        $run_setup = (($answer =~ /^y/i) ? 1 : 0)
-            or print "Okay, existing settings are preserved.\n";
+        unless ($run_setup = (($answer =~ /^y/i) ? 1 : 0)) {
+            print "Okay, existing settings are preserved.\n";
+        }
+
+        if ($has_prev) {
+            $CPANPLUS::Configure::Setup::AutoSetup = !$run_setup;
+            $run_setup = 1; # have to run setup anyway.
+        }
     }
 
     return $run_setup;
@@ -164,7 +191,7 @@ sub write_makefile {
     $args{test} = { TESTS => $tests } if $tests;
 
     WriteMakefile(%args);
-    
+
     print "Now, please type '$Config{make} test' to test, and '$Config{make} install' to install.\n";
 
     # make an educated guess of whether we'll need root permission.
@@ -207,7 +234,7 @@ __WARNING__
         -core                   => 'all',
         -config                 => [
             ### Skip all tests to speed up installation.
-            ### Also, following modules are particularily bad:
+            ### Also, following modules are particularly bad:
             ### - Archive::Tar is known to fail without zlib.
             ### - LWP takes lots of time to finish.
             ### - Mail::Send will send out external emails.
@@ -255,9 +282,9 @@ __WARNING__
             'File::Spec'        => 0.82,
         ]
     ),
-    _is_win9x() ? () : (
+    (_is_win9x() or $^O eq 'cygwin') ? () : (
         'IPC::Run support'      => [
-            -default            => (!_is_win9x() and !_is_unix()),
+            -default            => (!_is_unix()),
             'IPC::Run'          => 0.55,
         ],
     ),
@@ -308,7 +335,10 @@ sub _is_win9x {
 }
 
 # just uses the Setup.pm one; let it initiate terminal for us
-sub _get_reply { goto &CPANPLUS::Configure::Setup::_get_reply }
+sub _get_reply {
+    local $CPANPLUS::Configure::Setup::AutoSetup = 0; # always interactive
+    return CPANPLUS::Configure::Setup::_get_reply(@_);
+}
 
 sub _supports_readline {
     # determine whether readline support is potentially available.
@@ -331,7 +361,7 @@ sub get_nmake {
 
     use Cwd;
     my $dir = getcwd;
-    chdir $ENV{windir} or return;
+    chdir dirname($^X) or return;
 
     print "Fetching 'nmake' from ftp.microsoft.com. It may take a few minutes... ";
 
@@ -374,7 +404,14 @@ quit
 
     system('nmake15.exe /o > nul') if -s 'nmake15.exe' == 51928;
     unlink('nmake15.exe') if -e 'nmake15.exe';
-    
+
     print ((-e 'nmake.exe') ? "done!\n" : "failed! ($!)\n");
     chdir $dir; return !$?;
 }
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #9 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
+# $Revision: #13 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -14,6 +14,7 @@ package CPANPLUS::Internals::Extract;
 use strict;
 use CPANPLUS::Configure;
 use CPANPLUS::Error;
+use File::Path ();
 
 BEGIN {
     use Exporter    ();
@@ -154,9 +155,11 @@ sub _untar {
             or $err->trap( error => "Could not read dir name from $file" );
 
         if ($dir) {
+            eval { File::Path::rmtree($dir) }; # non-fatal
+
             for (@list) {
                 $err->inform(
-                    msg => "Extracting $_",
+                    msg   => "Extracting $_",
                     quiet => !$verbose
                 );
                 ### I just noticed that we don't bail if this fails.
@@ -187,29 +190,36 @@ sub _untar {
     if ( !$dir and my ($tar, $gzip) = $conf->_get_build( qw|tar gzip| ) ) {
         ### either Archive::Tar failed, or the user doesn't have it installed
 
-        $err->inform( msg => qq[Extracting $file], quiet => !$verbose );
+        $err->inform( msg => "Untarring $file", quiet => !$verbose );
 
-        my $fh = new FileHandle;
+        my $captured;
 
-        unless ($fh->open("$gzip -cd $file | $tar -xvf - |")) {
+        unless( $self->_run(
+            command => "$gzip -cd $file | $tar -tf -",
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
             $err->trap( error => "could not call tar/gzip: $!");
             return 0;
         }
 
         ### find the extraction dir ###
-        while (<$fh>){
-            chomp;
+        foreach (split(/\n/, $captured)) {
             ($dir) = m{(?:.[/\\])*(\S+?)(?:[/\\]|$)} unless defined($dir);
             $err->inform(
-                msg     => $_,
-                quiet   => !$verbose,
+                msg   => "Extracting $_",
+                quiet => !$verbose
             );
         }
 
-        $dir or $err->trap( error => "Could not read dir name from $file" );
-
-        close $fh;
-
+        if ($dir) {
+            File::Path::rmtree($dir);
+            $self->_run( command => "$gzip -cd $file | $tar -xf -" ) or
+                $err->trap( error => "tar/gzip error: $!" );
+        }
+        else {
+            $err->trap( error => "Could not read dir name from $file" );
+        }
     }
     elsif (!$have_module) {
         $err->trap(
@@ -276,27 +286,38 @@ sub _unzip {
             } #unless
 
         } #for
-    } elsif ( my $zip = $conf->_get_build( 'unzip' ) ) {
+    } elsif ( my $unzip = $conf->_get_build( 'unzip' ) ) {
 
-        $err->msg( inform => qq[Extracting $file], quiet => !$verbose );
+        $err->inform( msg => "Unzipping $file", quiet => !$verbose );
 
-        my $fh = new FileHandle;
+        my $captured;
 
-        unless ($fh->open("$zip -qql $file |")) {
+        unless( $self->_run(
+            command => [ $unzip, '-qql', $file ],
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
             $err->trap( error => "could not call unzip: $!");
             return 0;
         }
 
-        while (<$fh>){
-            chomp;
+        ### find the extraction dir ###
+        foreach (split(/\n/, $captured)) {
             ($dir) = m{(?:.[/\\])*(\S+?)(?:[/\\]|$)} unless defined($dir);
             $err->inform(
-                msg     => $_,
+                msg     => "Extracting $_",
                 quiet   => !$verbose,
             );
         }
 
-        close $fh;
+        if ($dir) {
+            File::Path::rmtree($dir);
+            $self->_run( command => [ $unzip, '-qq', $file ] ) or
+                $err->trap( error => "unzip error: $!" );
+        }
+        else {
+            $err->trap( error => "Could not read dir name from $file" );
+        }
 
     } else {
         $err->trap(
@@ -359,23 +380,36 @@ sub _gunzip {
 
         ### else append to $str
         } else {
-            my $str;
+            my $str = '';
             $str .= $buffer, while $gz->gzread($buffer) > 0;
 
             return $str;
         }
     } elsif ( my $gzip = $conf->_get_build( 'gzip' ) ) {
+        my $str = '';
 
-        my $fh = new FileHandle;
-
-        unless ($fh->open("$gzip -cdf $args{'file'} |")) {
+        unless( $self->_run(
+            command => [ $gzip, '-cdf', $args{file} ],
+            buffer  => \$str,
+            verbose => 0,
+        ) ) {
             $err->trap( error => "could not call gzip: $!");
             return 0;
         }
 
-        my $str;
-        while(<$fh>){ $str .= $_ }
-        $fh->close;
+        ### check if we have an output file to print to ###
+        if ($args{'name'}) {
+            my $fh;
+            unless( $fh = FileHandle->new(">$args{name}") ) {
+                $err->trap( error => "File creation failed: $!" );
+                return 0;
+            }
+
+            $fh->print($str);
+            $fh->close;
+            return 1;
+        }
+
         return $str;
 
     } else {
@@ -388,3 +422,10 @@ sub _gunzip {
 } #_gunzip
 
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

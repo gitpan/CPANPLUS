@@ -29,6 +29,7 @@ lib/CPANPLUS/Internals/Search.pm	Search-related code
 lib/CPANPLUS/Internals/Source.pm	Source-related code
 lib/CPANPLUS/Shell.pm			Command-line interface for CPAN++
 lib/CPANPLUS/Shell/Default.pm		The default shell
+lib/CPANPLUS/TesterGuide.pod		Becoming a CPAN Tester with CPANPLUS
 t/1-basic.t				Sanity test
 t/2-autoinstall.t			Autoinstaller test
 t/3-backend.t				Backend test

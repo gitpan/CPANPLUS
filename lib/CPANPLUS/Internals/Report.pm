@@ -1,10 +1,10 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #5 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
+# $Revision: #9 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
 ###    Subclass for testing reports for cpanplus ###
-###      Written 29-03-2002 by Autirjus Tang     ###
+###      Written 29-03-2002 by Autrijus Tang     ###
 ####################################################
 
 ### Report.pm ###
@@ -49,7 +49,28 @@ sub _send_report {
     my ($fh, $filename, @inform);
 
     if ($grade eq 'fail') {
-        print $self->_can_use( modules => { 'File::Temp' => '0.0' } );
+        return unless $self->_can_use( modules => { 'File::Temp' => '0.0' } );
+        ($fh, $filename) = File::Temp::tempfile( UNLINK => 1 );
+
+        my $stage = lc($self->{_error}->stack);
+        $stage =~ s/ failed.*//;
+
+        return if $self->{_conf}->get_conf('cpantest') =~ /\bmaketest_only\b/i
+                  and ($stage !~ /\btest\b/);
+
+        print $fh '' . << ".";
+This is an error report generated automatically by CPANPLUS.
+Below is the error stack during '$stage':
+
+$buffer
+
+Additional comments:
+.
+
+        @inform = "$module->{author}\@cpan.org";
+    }
+    elsif ($grade eq 'unknown') {
+        return unless $self->_can_use( modules => { 'File::Temp' => '0.0' } );
         ($fh, $filename) = File::Temp::tempfile( UNLINK => 1 );
 
         my $stage = lc($self->{_error}->stack);
@@ -62,9 +83,31 @@ Below is the error stack during '$stage':
 $buffer
 
 Additional comments:
-.
 
-        @inform = "$module->{author}\@cpan.org";
+Hello there! Thanks for uploading your $dist on CPAN.
+
+Would it be too much to ask for a simple test script in
+the next release of $module->{module}'s distribution, so
+people can verify which platforms can successfully install
+them, as well as avoid regression bugs?
+
+A simple 't/use.t' that says:
+
+#!/usr/bin/env perl -w
+use strict;
+use Test;
+BEGIN { plan tests => 1 }
+
+use $module->{module}; ok(1);
+exit;
+__END__
+
+would be appreciated.  If you are interested in making a more robust
+test suite, please see the Test::Simple, Test::More and Test::Tutorial
+manpages at <http://search.cpan.org/search?dist=Test-Simple>.
+
+Thanks! :-)
+.
     }
 
     my @cmd = $self->_report_command(
@@ -102,7 +145,7 @@ sub _query_report {
     my ($self, %args) = @_;
     my $err  = $self->{_error};
     my $conf = $self->{_conf};
-    my %ret;
+    my @ret;
 
     my $use_list = {
         LWP              => '0.0',
@@ -129,10 +172,13 @@ sub _query_report {
     ### it wasn't available yet in 5.51 but it was in 5.64...
     ### it's just a convenience method anyway (read: wrapper) for the
     ### following:
-    my $request = HTTP::Request->new(
-                            'GET',
-                            'http://testers.cpan.org/search?request=dist&dist='.$name
-                        );
+    my $url = "http://testers.cpan.org/search?request=dist&dist=$name";
+    my $request = HTTP::Request->new( GET => $url );
+
+    $err->inform(
+        msg   => "Fetching: $url",
+        quiet => !$conf->get_conf('verbose'),
+    );
 
     ### and start using the LWP::UserAgent object again...
     my $response = $ua->request( $request );
@@ -150,21 +196,28 @@ sub _query_report {
         return 0;
     }
 
-    while ($result =~ s/<dt>\n.*<B>([^<\n]+)<\/B>\n([\d\D]*?)\n<p>//) {
+    while ($result =~ s/<dt>\n.*<B>([^<\n]+)<\/B>\n([\d\D]*?)(?:\n<p>|$)//) {
         my ($key, $val) = ($1, $2);
         next unless $dist eq $key or $args{all_versions};
 
-        while ($val =~ s/<dd>.*? ALT="([^"]+)"[^\n]*\n[^>]*>([^<]+)<//s) {
-            $ret{$key}{$2} = $1;
+        while ($val =~ s/<dd>(?:<a href="(.*?)">)?.*? ALT="([^"]+)"[^\n]*\n[^>]*>([^<]+)<//s) {
+            push @ret, {
+                platform => $3,
+                grade    => $2,
+                dist     => $key,
+                $1 ? (details => "$url$1") : (),
+	    };
         }
     }
 
-    unless ($ret{$dist}) {
-        my $unit = (%ret ? 'version' : 'distribution');
-        $err->inform( msg => "No reports available for this $unit." );
-    }
-
-    return \%ret;
+    return @ret ? \@ret : 0;
 }
 
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

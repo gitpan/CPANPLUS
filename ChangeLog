@@ -1,5 +1,73 @@
 # $File: //member/autrijus/cpanplus/dist/ChangeLog $
-# $Revision: #8 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #17 $ $Change: 4050 $ $DateTime: 2002/04/30 12:49:41 $
+
+[Changes for 0.032 - April 30, 2002]
+
+This release went out with the http://perl.com/ article, "Becoming a
+CPAN Tester with CPANPLUS", which is also available in this version
+as CPANPLUS::TesterGuide (without the Lord of the Ring quote, though).
+
+* New Features
+
+ - Setup.pm now uses previous version's settings as default.
+
+ - Returned entries in reports() are changed from hashrefs to arrayrefs.
+
+ - When sending 'unknown' reports, advise the author to include a test suite.
+
+ - Selections in shell now accepts '*'; bounds of 'x..y' are checked.
+
+ - CPANPLUS now correctly guesses full distnames from partial ones.
+
+ - URL is displayed for test reports that contains detailed information.
+
+ - The make() and install() methods now takes a 'prereq_target' argument.
+
+ - Added support for external FTP executable.
+
+ - 'cpansmoke -p' no longer installs prereqs, but sets PERL5LIB to their blib.
+
+ - Bundle installation's procedure revamped; allows upgrade and distnames now.
+
+* Bug fixes (and their first reporters):
+
+ - Methods in CPANPLUS.pm should display error messages. (Mark-Jason Dominus)
+
+ - AutoInstall was reporting success on failed installs. (Jochen Stenzel)
+
+ - Outdated CHECKSUM files prevents installation. (Jochen Stenzel)
+
+ - Fixed self-dependencies caused by missing UNINST=1. (Jochen Stenzel)
+
+ - Fixed co-dependencies between core and site modules. (Robert S Creager)
+
+ - Failed tests prevents installation even with 'force'. (Chia-Liang Kao)
+
+ - The "use Socket" line in t/3-backend.t was crashing solaris. (Andy Lester)
+
+ - Setup.pm should check for non-writable Config.pm first. (Tony Cook)
+
+ - Fixed buffering problems with interactive Makefile.PL. (Jorrit Waalboer)
+
+ - Old files in build/ is now removed before extracting a module.
+
+ - Nmake.exe is now placed in Perl's directory, not the Windows directory.
+
+ - External commands used to break on Cygwin and Windows 9x.
+
+ - External calls on unzip, gunzip and lynx was all broken.
+
+ - If the user saves an empty report, cpantest won't send it out now.
+
+ - The -a flag of cpansmoke should only send out 'make test' failures.
+
+ - AutoInstall.pm was confusing versions with Sort::Versions installed.
+
+ - The order of 'makeflags' and 'makemakerflags' were wrong in Setup.pm.
+
+ - User won't be prompted to enter Setup twice on first-time runs.
+
+ - Host guessing was not working for people living in GMT +0.
 
 [Changes for 0.031 - April 10, 2002]
 

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #12 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #15 $ $Change: 4021 $ $DateTime: 2002/04/29 10:23:50 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -52,7 +52,7 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.031';
+    $VERSION    =   '0.032';
 }
 
 ### ROUGH FLOW OF THE MODULE ###
@@ -588,8 +588,12 @@ sub _cache_control {
 ### modobj/modname entries. the $modobj is always a module object.
 ### returns an empty list for malformed distnames or nonexistent modnames.
 sub _parse_module {
-    my ($self, $mod) = @_;
+    my $self = shift;
+    my %args = @_;
+    
     my $err = $self->{_error};
+
+    my $mod = $args{mod} or return 0;
 
     my ($name, $modobj);
 
@@ -620,12 +624,31 @@ sub _parse_module {
             $modobj = $modtree->{$guess};
         }
         else {
+            $guess =~ s/::/-/g;
+
+            ### $path contains the guessed author of the dist
+            my $author;
+
             ### no - walk modtree to see if anything else matches
             while (my ($key, $val) = each %{$modtree}) {
-                next unless $val->{package} eq $dist;
+                ### wrong; the distname not matched at the beginning of string
+                next if index($val->{package}, $guess);
+
+                ### an approximate match - different version of the same dist?
+                if ($val->{package} ne $dist) {
+                    $author = $val->{author}
+                        if $val->{package} =~ /^\Q$guess\E(?:[\.\d\-_])*\./;
+                    next;
+                }
+
+                ### exact match
                 $modobj = $val;
                 keys %{$modtree}; last;
             }
+
+            ### fill the author in unless we've found the exact match
+            $mod = "/$author/$dist"
+                unless $modobj or $mod =~ m|/.*/| or !defined($author);
         }
 
         unless ($modobj) {
@@ -636,6 +659,9 @@ sub _parse_module {
 
             my $file   = pop @parts;
             my $author = pop @parts;
+
+            ### be extra friendly and pad the .tar.gz suffix where needed
+            $file .= '.tar.gz' unless $file =~ /\.[A-Za-z]+$/;
 
             unless (length $author) {
                 $err->trap( error => "$mod does not contain an author directory!" );
@@ -655,10 +681,12 @@ sub _parse_module {
                 module      => $file,           # full module name
                 path        => $path,           # extended path, like /A/AB/ABIGAIL
                 fetchdir    => $fetchdir,       # the path on the local disk
-                author      => $parts[-1],      # module author
+                author      => $author,         # module author
                 package     => $file,           # package name, like 'foo-bar-baz-1.03.tar.gz'
-                _error      => $self->{_error}, # error object
-                _conf       => $self->{_conf},  # configure object
+                
+                ### it doesn't use these -kane
+                #_error      => $self->{_error}, # error object
+                #_conf       => $self->{_conf},  # configure object
                 _id         => $self->{_id},
             );
         }
@@ -690,6 +718,180 @@ sub _parse_module {
     return ($name, $modobj);
 }
 
+
+### Execute a command: $cmd may be a scalar or an arrayref of cmd and args
+### $bufout is an scalar ref to store outputs, $verbose can override conf
+sub _run {
+    my ($self, %args) = @_;
+    my ($cmd, $buffer, $verbose) = @args{qw|command buffer verbose|};
+    my $err = $self->{_error};
+    my ($buferr, $bufout);
+
+    $$buffer = '';
+    $verbose = $self->{_conf}->get_conf('verbose')
+        unless defined $verbose;
+
+    ### STDOUT message handler
+    my $_out_handler = sub {
+        my $buf = shift; print STDOUT $buf if $verbose;
+        $$buffer .= $buf; $bufout .= $buf;
+        $err->inform( msg => $1, quiet => 1 ) while $bufout =~ s/(.*)\n//;
+    };
+
+    ### STDERR message handler
+    my $_err_handler = sub {
+        my $buf = shift; print STDERR $buf if $verbose;
+        $$buffer .= $buf; $buferr .= $buf;
+        $err->trap( error => $1, quiet => 1 ) while $buferr =~ s/(.*)\n//;
+    };
+
+    my @cmd = ref($cmd) ? grep(length, @{$cmd}) : $cmd;
+    my $is_win98 = ($^O eq 'MSWin32' and !Win32::IsWinNT());
+
+    ### inform the user. note that we don't want to used mangled $verbose.
+    $err->inform(
+        msg   => "Running [@cmd]...",
+        quiet => !$self->{_conf}->get_conf('verbose'),
+    );
+
+    ### First, we prefer Barrie Slaymaker's wonderful IPC::Run module.
+    if (!$is_win98 and $self->_can_use(
+        modules  => { 'IPC::Run' => '0.55' },
+        complain => ($^O eq 'MSWin32'),
+    ) ) {
+        STDOUT->autoflush(1); STDERR->autoflush(1); 
+
+        @cmd = ref($cmd) ? ( [ @cmd ], \*STDIN )
+                         : map { /[<>|&]/ ? $_ : [ split / +/ ] } split(/\s*([<>|&])\s*/, $cmd);
+
+        IPC::Run::run(@cmd, $_out_handler, $_err_handler);
+    }
+
+    ### Next, IPC::Open3 is know to fail on Win32, but works on Un*x.
+    elsif ($^O !~ /^(?:MSWin32|cygwin)$/ and $self->_can_use(
+        modules => { map { $_ => '0.0' } qw|IPC::Open3 IO::Select Symbol| },
+    ) ) {
+        $self->_open3_run(\@cmd, $_out_handler, $_err_handler);
+    }
+
+    ### Abandon all hope; falls back to simple system() on verbose calls.
+    elsif ($verbose) {
+        system(@cmd);
+    }
+
+    ### Non-verbose system() needs to have STDOUT and STDERR muted.
+    else {
+        local *SAVEOUT; local *SAVEERR;
+
+        open(SAVEOUT, ">&STDOUT")
+            or ($err->trap( error => "couldn't dup STDOUT: $!" ), return);
+        open(STDOUT, ">".File::Spec->devnull)
+            or ($err->trap( error => "couldn't reopen STDOUT: $!" ), return);
+
+        open(SAVEERR, ">&STDERR")
+            or ($err->trap( error => "couldn't dup STDERR: $!" ), return);
+        open(STDERR, ">".File::Spec->devnull)
+            or ($err->trap( error => "couldn't reopen STDERR: $!" ), return);
+
+        system(@cmd);
+
+        open(STDOUT, ">&SAVEOUT")
+            or ($err->trap( error => "couldn't restore STDOUT: $!" ), return);
+        open(STDERR, ">&SAVEERR")
+            or ($err->trap( error => "couldn't restore STDERR: $!" ), return);
+    }
+
+    $_out_handler->("\n") if defined $bufout and length $bufout;
+    $_err_handler->("\n") if defined $buferr and length $buferr;
+
+    return !$?;
+}
+
+
+### IPC::Run::run emulator, using IPC::Open3.
+sub _open3_run {
+    my ($self, $cmdref, $_out_handler, $_err_handler) = @_;
+    my $err = $self->{_error};
+    my @cmd = @{$cmdref};
+
+    ### Following code are adapted from Friar 'abstracts' in the
+    ### Perl Monastery (http://www.perlmonks.org/index.pl?node_id=151886).
+
+    local *SAVEIN;
+
+    ### saving away STDIN first, because it will be closed by open3
+    unless (open(SAVEIN, ">&STDIN")) {
+        $err->trap( error => "couldn't dup STDIN: $!" );
+        return 0;
+    }
+
+    my ($outfh, $errfh); # open3 handles
+
+    my $pid = eval {
+        IPC::Open3::open3(
+            '<&STDIN', # may also be \*STDIN according to Barrie
+            $outfh = Symbol::gensym(),
+            $errfh = Symbol::gensym(),
+            @cmd,
+        )
+    };
+
+    if ($@) {
+        $err->trap( error => "couldn't spawn process: $@" );
+        return;
+    }
+
+    my $sel = IO::Select->new; # create a select object
+    $sel->add($outfh, $errfh); # and add the fhs
+
+    STDOUT->autoflush(1); STDERR->autoflush(1);
+    $outfh->autoflush(1) if UNIVERSAL::can($outfh, 'autoflush');
+    $errfh->autoflush(1) if UNIVERSAL::can($errfh, 'autoflush');
+
+    while (my @ready = $sel->can_read) {
+        foreach my $fh (@ready) { # loop through buffered handles
+            # read up to 4096 bytes from this fh.
+            my $len = sysread $fh, my($buf), 4096;
+
+            if (not defined $len){
+                # There was an error reading
+                $err->trap( error => "Error from child: $!" );
+                return;
+            }
+            elsif ($len == 0){
+                $sel->remove($fh); # finished reading
+                next;
+            }
+            elsif ($fh == $outfh) {
+                $_out_handler->($buf);
+            } elsif ($fh == $errfh) {
+                $_err_handler->($buf);
+            } else {
+                $err->trap( error => "IO::Select error" );
+                return;
+            }
+        }
+    }
+
+    waitpid $pid, 0; # wait for it to die
+
+    ### restore STDIN
+    local $^W; # quell 'Filehandle STDIN opened only for output' warnings
+    unless (open(STDIN, ">&SAVEIN")) {
+        $err->trap( error => "couldn't restore STDIN: $!" );
+        return 0;
+    }
+
+    return 1;
+}
+
 sub DESTROY { my $self = shift; $self->_remove_id( $self->{_id} ) }
 
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

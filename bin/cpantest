@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/bin/cpantest $ $Author: autrijus $
-# $Revision: #3 $ $Change: 3846 $ $DateTime: 2002/04/10 05:54:28 $
+# $Revision: #5 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
 
 =head1 NAME
 
@@ -93,7 +93,7 @@ use Getopt::Long;
 use File::Temp;
 
 use vars qw($VERSION);
-$VERSION = "0.93-CPANPLUS";
+$VERSION = "0.93_04-CPANPLUS";
 
 use vars qw(%Grades $CC $CPAN_testers $fh $Report);
 %Grades = (     # Legal grades:
@@ -202,6 +202,9 @@ unless ($No_comment || ($Comment_text and !$Comment_file)) {
     } else {
         die "The editor `$editor' could not be run"
             if system "$editor $Report";
+
+        die "Empty report; terminated"
+            unless -s $Report > 2;
     }
     $CC ||= ask_cc() unless $MacApp or $Automatic;
 }
@@ -247,8 +250,8 @@ $msg->set('X-reported-via', "cpan-test version $VERSION");
 
 my $fh = $msg->open(
     ($^O eq 'MacOS' || $^O eq 'VMS' || $^O eq 'MSWin32' || $^O eq 'os2')
-	? ('smtp', Server => 'testers.cpan.org')
-	: ()
+        ? ('smtp', Server => 'testers.cpan.org')
+        : ()
 );
 
 open REP, $Report;
@@ -351,3 +354,11 @@ sub DoMacOptions {
     $Automatic  = 1;
 }
 
+__END__
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

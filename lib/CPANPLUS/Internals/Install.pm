@@ -152,14 +152,22 @@ sub _install_bundle {
         my $dh = new DirHandle;
 
         ### open the dir of the newly extracted bundle
-        unless ($dh->opendir($dir)) {
+        unless ($dh->open($dir)) {
             $err->trap( error => "error opening dir $dir: $!" );
             $flag = 1; next;
         }
 
         ### find all files in the dir that end in '.pm'
-        my @files = grep { m|\.pm$|i && -f File::Spec->catfile( $dir, $_ ) } $dh->readdir;
-        $dh->closedir;
+        my @files = grep { -f } map { File::Spec->catfile($dir, $_) }
+            grep { m|\.pm$|i } $dh->read;
+        $dh->close;
+
+        my $lib_dir = File::Spec->catdir( $dir, 'lib', 'Bundle' );
+        if (-d $lib_dir and $dh->open($lib_dir)) {
+            push @files, grep { -f } map { File::Spec->catfile($lib_dir, $_) }
+                grep { m|\.pm$|i } $dh->read;
+            $dh->close;
+        }
 
         ### if there are .pm files we'll check them one by one for files to install
         ### although there really should be only ONE
@@ -167,7 +175,7 @@ sub _install_bundle {
             for my $file ( @files ) {
                 ### if it was a .pm with a list of files in it, they'll be in the array ref $list
                 my $list;
-                unless ( $list = $self->_bundle_files( file => File::Spec->catfile( $dir, $file ) ) ) {
+                unless ( $list = $self->_bundle_files( file => $file ) ) {
                     $err->trap( error => "could not obtain required modules from $file" );
                     $flag=1; next;
                 }
@@ -175,13 +183,13 @@ sub _install_bundle {
                 ### tell the user there were no modules mentioned in $file,
                 ### meaning it was probably a 'normal' .pm file
                 unless ( scalar @$list ) {
-                    $err->msg( inform => "No modules mentioned in $file" );
+                    $err->inform( msg => "No modules mentioned in $file" );
                     next;
                 }
 
                 ### install all the modules that were stored in $list
                 my $rv;
-                unless( $rv = $self->_install_module( modules => $list ) ) {
+                unless( $rv = $self->install( modules => $list ) ) {
                     $err->trap( error => "An error occurred while installing bundles from $file" );
                     $flag=1; next;
                 }
@@ -199,6 +207,7 @@ sub _install_bundle {
 sub _bundle_files {
     my $self = shift;
     my %args = @_;
+    my $conf = $self->{_conf};
     my $err  = $self->{_error};
 
     my $fh = new FileHandle;
@@ -208,6 +217,8 @@ sub _bundle_files {
     );
 
     my (@list, $flag);
+    my $modtree = $self->module_tree;
+
     while(<$fh>) {
         ### quick hack to read past the header of the file ###
         last if $flag && m|^=head|i;
@@ -218,7 +229,21 @@ sub _bundle_files {
         ### Module_Name [Version_String] [- optional text]
         $flag = 1 if m|^=head1 CONTENTS|i;
 
-        push @list, $1 if $flag && /^(?!=)(\S+)/;
+        if ($flag && /^(?!=)(\S+)/) {
+            my ($name, $modobj) = $self->_parse_module( mod => $1 );
+
+            unless ($modobj) {
+                $err->trap( error => "Cannot install bundled module: $name does not exist!" );
+                next;
+            }
+
+            $err->inform(
+                msg   => "Installing bundled module: $name",
+                quiet => !$conf->get_conf('verbose'),
+            );
+
+            push @list, $modobj;
+        }
     }
     return \@list;
 }
@@ -307,7 +332,7 @@ sub _check_install {
             close $fh;
         }
     }
-    
+
     return $href;
 }
 
@@ -339,11 +364,11 @@ sub _uninstall {
     ### remove the packlist file altogether
     my $flag;
     for my $file ( @$files, $self->_packlist_file(%args)) {
-        $err->inform( 
-                    msg     => qq[unlinking $file], 
-                    quiet   => !$conf->get_conf('verbose') 
+        $err->inform(
+                    msg     => qq[unlinking $file],
+                    quiet   => !$conf->get_conf('verbose')
                 );
-        
+
         unless (unlink $file) {
             $err->trap( error => qq[could not unlink $file: $!] );
             $flag = 1;
@@ -359,9 +384,9 @@ sub _uninstall {
 
         next unless @count == 2; # . and ..
 
-        $err->inform( 
-                    msg     => qq[removing $dir], 
-                    quiet   => !$conf->get_conf('verbose') 
+        $err->inform(
+                    msg     => qq[removing $dir],
+                    quiet   => !$conf->get_conf('verbose')
                 );
 
         unless (rmdir $dir) {
@@ -416,29 +441,30 @@ sub _check_md5 {
 
         ### make a note wether or not we already had a CHECKSUMS file on our disk ###
         my $flag;
-        if ( -e $cs_file ) { $flag = 1 }
+        if ( -e $cs_file ) { $flag = 1; }
 
         my $checksums = $self->_get_checksums( mod => $href );
 
         CHECK: {
             if ( $checksums->{ $href->{'package'} }->{'md5'} eq $digest ) {
-                $err->inform( 
+                $err->inform(
                         msg     => qq[Checksum for $archive OK],
                         quiet   => !$conf->get_conf('verbose')
-                );          
+                );
                 return 1;
-            
+
             } else {
-                if ( !$flag and defined $checksums->{$href->{'package'}} ) {
+                if ( $flag and !(keys %{$checksums->{$href->{'package'}}}) ) {
                     ### if we didnt already have a checksums file on our disk, we might have
                     ### an outdated one... in that case we'll refetch it and try again to see
                     ### if we get a matching MD5 -kane
-
                     $checksums = $self->_get_checksums( mod => $href, force => 1 );
+
                     $flag = 1;
                     redo CHECK;
 
                 } else {
+
                     $err->trap( error => "MD5 sums did not add up for $href->{package}" );
                     return 0;
                 }
@@ -457,3 +483,10 @@ sub _check_md5 {
 }
 
 1;
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:

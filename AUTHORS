@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/AUTHORS $
-# $Revision: #2 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
+# $Revision: #5 $ $Change: 4042 $ $DateTime: 2002/04/30 10:59:09 $
 
 [Credits]
 
@@ -31,13 +31,17 @@ the appropriate patches.  Corrections, additions, deletions welcome:
 
 Andy Lester		(PETDANCE)
 Barrie Slaymaker	(RBS)
+Chia-Liang Kao		(CLKAO)
 Dave Rolsky		(DROLSKY)
 Graham Barr		(GBARR)
 Jorrit Waalboer
 Jochen Stenzel		(JSTENZEL)
 Kay Roepke
 Mark Fowler
+Mark-Jason Dominus	(MJD)
 Matt Sergeant		(MSERGEANT)
 Peter Sergeant		(SARGIE)
 Randy J. Ray		(RJRAY)
+Robert S Creager
 Ton Hospel
+Tony Cook		(TONYC)

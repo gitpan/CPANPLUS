@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #4 $ $Change: 3858 $ $DateTime: 2002/04/10 07:10:14 $
+# $Revision: #7 $ $Change: 4027 $ $DateTime: 2002/04/29 14:25:47 $
 
 package ExtUtils::AutoInstall;
 $ExtUtils::AutoInstall::VERSION = '0.29';
@@ -414,14 +414,14 @@ sub _install_cpanplus {
 		delete $INC{$inc};
 	    }
 
-	    my $i; # used below to strip leading '-' from config keys
-	    
-	    if ($cp->install( modules => [ $obj->{module} ], @config)) {
+	    my $rv = $cp->install( modules => [ $obj->{module} ], @config);
+
+	    if ($rv and $rv->{$obj->{module}}) {
 		$installed++;
 		print "*** $pkg successfully installed.\n";
 	    }
 	    else {
-		print "*** $pkg installation failed.\n";
+		print "*** $pkg installation cancelled.\n";
 	    }
 	}
 	else {
@@ -575,14 +575,14 @@ sub _version_check {
     my ($cur, $min) = @_; $cur =~ s/\s+$//;
 
     if ($Sort::Versions::VERSION or defined(_load('Sort::Versions'))) {
-	# use Sort::Versions as the sorting algorithm 
-	return ((Sort::Versions::versioncmp($cur, $min) != -1) ? $cur : undef);
+	# use Sort::Versions as the sorting algorithm for a.b.c versions
+	return ((Sort::Versions::versioncmp($cur, $min) != -1) ? $cur : undef)
+	    if $cur =~ /\..*\./ or $min =~ /\..*\./;
     }
-    else {
-	# plain comparison
-	local $^W = 0; # shuts off 'not numeric' bugs
-	return ($cur >= $min ? $cur : undef);
-    }
+
+    # plain comparison
+    local $^W = 0; # shuts off 'not numeric' bugs
+    return ($cur >= $min ? $cur : undef);
 }
 
 # nothing; this usage is deprecated.

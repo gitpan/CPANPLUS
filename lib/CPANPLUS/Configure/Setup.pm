@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #17 $ $Change: 3860 $ $DateTime: 2002/04/10 07:17:53 $
+# $Revision: #23 $ $Change: 4048 $ $DateTime: 2002/04/30 12:25:05 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -55,6 +55,14 @@ sub init {
     my $conf = $args{conf};
     $term = $args{term} if exists $args{term};
 
+    unless ($conf->can_save) {
+        print "*** Error: CPANPLUS $CPANPLUS::Internals::VERSION was not ",
+              "configured properly, and we cannot write to\n",
+              "    '$INC{'CPANPLUS/Config.pm'}'.\n".
+              "*** Please check its permission, or contact your administrator.\n";
+        exit 1;
+    }
+
     local $SIG{INT};
 
     #my ($answer, $prompt, $default);
@@ -68,19 +76,23 @@ CPANPLUS, you have to configure it properly.
 
 ];
 
-    print qq[
+    my $answer;
+
+    unless (defined $AutoSetup) {
+        print qq[
 Although we recommend an interactive configuration session, you can
 also enter 'n' here to use default values for all questions.
 
 ];
 
-    my $answer = _get_reply(
-        prompt  => "Are you ready for manual configuration? [Y/n]: ",
-        default => 'y',
-        choices => [ qw/y n/ ],
-    );
+        $answer = _get_reply(
+            prompt  => "Are you ready for manual configuration? [Y/n]: ",
+            default => 'y',
+            choices => [ qw/y n/ ],
+        );
+    }
 
-    local $AutoSetup = 1 if ($answer =~ /^n/i);
+    local $AutoSetup = 1 if $answer =~ /^n/i;
 
     _setup_ftp($conf);
     _setup_build($conf);
@@ -113,18 +125,19 @@ sub _setup_conf {
     my $conf = shift;
     my ($answer, $prompt, $default);
 
-    ################
-    ## make flags ##
-    ################
+    #####################
+    ## makemaker flags ##
+    #####################
 
     print qq[
-Every Makefile.PL is run by perl in a separate process. Likewise we run
-'make' and 'make install' as separate processes. If you have any
-parameters (e.g. PREFIX, LIB, UNINST or the like) you want to pass
-to the calls, please specify them here.
+Makefile.PL is run by perl in a separate process, and accepts various
+flags that controls the module's installation.  For instance, if you
+would like to install modules to your private user directory, set
+'makemakerflags' to:
 
-In particular, 'UNINST=1' is recommended for root users, unless you have
-fine-tuned ideas of where modules should be installed in the \@INC path.
+LIB=~/perl/lib INSTALLMAN1DIR=~/perl/man/man1 INSTALLMAN3DIR=~/perl/man/man3
+
+and be sure that you do NOT set UNINST=1 in 'makeflags' below.
 
 Enter a name=value list separated by whitespace, but quote any embedded
 spaces that you want to preserve.  (Enter a space to clear any existing
@@ -134,22 +147,21 @@ If you don't understand this question, just press ENTER.
 
 ];
 
-    my $makeflags = _ask_flags(
-        "'make'" => $conf->get_conf('makeflags'),
+    my $MMflags = _ask_flags(
+        MakeMaker => $conf->get_conf('makemakerflags'),
     );
 
-    #####################
-    ## makemaker flags ##
-    #####################
+    ################
+    ## make flags ##
+    ################
 
     print qq[
-Makefile.PL also accepts flags, and you can set anything you like here.
-For instance, if you would like CPAN++ to install modules to your
-private user directory, set 'makemakerflags' to:
+Like Makefile.PL, we run 'make' and 'make install' as separate processes.
+If you have any parameters (e.g. '-j3' in dual processor systems) you want
+to pass to the calls, please specify them here.
 
-LIB=~/perl/lib INSTALLMAN1DIR=~/perl/man/man1 INSTALLMAN3DIR=~/perl/man/man3
-
-and make sure you did not set UNINST=1 in 'makeflags' above. :o)
+In particular, 'UNINST=1' is recommended for root users, unless you have
+fine-tuned ideas of where modules should be installed in the \@INC path.
 
 Enter a name=value list separated by whitespace, but quote any embedded
 spaces that you want to preserve.  (Enter a space to clear any existing
@@ -159,8 +171,8 @@ Again, if you don't understand this question, just press ENTER.
 
 ];
 
-    my $MMflags = _ask_flags(
-        MakeMaker => $conf->get_conf('makemakerflags'),
+    my $makeflags = _ask_flags(
+        "'make'" => $conf->get_conf('makeflags'),
     );
 
     #################
@@ -1078,7 +1090,7 @@ file:, ftp:, or http: -- that host a CPAN mirror.
                     if (exists $host_list->{$host}) {
                         print "\nHost $host already selected!\n";
                         last LOOP if $AutoSetup;
-			next;
+                        next;
                     }
 
                     push @hosts, $host;
@@ -1457,7 +1469,7 @@ sub _guess_from_timezone {
             @{$host}{qw/dst_timezone continent country frequency/};
 
         # skip non-well-formed ones
-        next unless $continent and $country and $zone =~ /^[-+]\d+(?::30)?/;
+        next unless $continent and $country and $zone =~ /^[-+]?\d+(?::30)?/;
 
         ### fix style
         chomp $zone;
@@ -1615,3 +1627,10 @@ terms as Perl itself.
 L<CPANPLUS::Configure>, L<CPANPLUS::Backend>
 
 =cut
+
+# Local variables:
+# c-indentation-style: bsd
+# c-basic-offset: 4
+# indent-tabs-mode: nil
+# End:
+# vim: expandtab shiftwidth=4:
