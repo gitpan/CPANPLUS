@@ -1,6 +1,6 @@
-#!/usr/bin/perl
-# $File: //member/autrijus/cpanplus/dist/bin/cpansmoke $ $Author: autrijus $
-# $Revision: #11 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
+#!/usr/bin/env perl
+# $File: //depot/dist/bin/cpansmoke $
+# $Revision: #3 $ $Change: 60 $ $DateTime: 2002/06/06 05:42:54 $
 
 use strict;
 use Cwd;
@@ -8,7 +8,7 @@ use Config;
 use Getopt::Std;
 use CPANPLUS::Backend;
 
-my $VERSION = '0.04';
+my $VERSION = '0.05';
 
 =head1 NAME
 
@@ -99,6 +99,9 @@ $conf->_set_ftp(urilist => [ {                  # prefers www.cpan.org
     host   => 'www.cpan.org',
 }, @{ $conf->_get_ftp('urilist') } ]) unless $local;
 
+$ENV{PERL_EXTUTILS_AUTOINSTALL} .= ' --testonly';
+$ENV{PERL_EXTUTILS_AUTOINSTALL} .= ' --defaultdeps' if $auto;
+
 ############################################################################
 ### Start Smoking ##########################################################
 ############################################################################
@@ -111,27 +114,7 @@ foreach my $pkg (@ARGV) {
     my $dist = $cp->pathname(to => $pkg)
         or (print("No such module: $pkg, skipping.\n"), next);
 
-    return unless defined $dist;
-
-    my $report = $cp->reports( modules => [ $pkg ] ) || {}
-        if $display or $skip;
-
-    my $is_there;
-    my $my_platform = join(' ', $^O, $Config{osvers}, $Config{archname});
-
-    while ( my ($name, $href) = each (%$report) ) {
-        next unless $href;
-        for my $rv (@{$href}) {
-            printf "%8s %s%s\n", @{$rv}{'grade', 'platform'},
-                                 ($rv->{detail} ? ' (*)' : '') if $display;
-            $is_there = 1 if $rv->{platform} eq $my_platform;
-        }
-    }
-
-    if ($skip and $is_there) {
-        print "$dist already tested on this configuration; skipping.\n";
-        next;
-    }
+    next if _check_existing($dist);
 
     print "Testing: ".($pkg =~ /[^\w:]/ ? $dist : "$pkg ($dist)")."\n";
 
@@ -189,6 +172,7 @@ sub _ask_report {
     my $dist  = $args{dist};
     my $grade = $args{grade};
 
+    return 0 if $skip and _check_existing($dist); # yes, we double-check it.
     return 1 if $auto;
 
     require Term::ReadLine;
@@ -219,11 +203,47 @@ Usage:
     exit;
 }
 
+### Wrapper to display / check for existing reports; return 1 if skip ###
+sub _check_existing {
+    my $dist = shift;
+
+    return unless $display or $skip;
+
+    my $report = $cp->reports( modules => [ $dist ] ) || {};
+    my $is_there;
+
+    while ( my ($name, $href) = each (%$report) ) {
+        next unless ref($href);
+        $href = (values(%$href))[0] or next if UNIVERSAL::isa($href, 'HASH');
+
+        for my $rv (@{$href}) {
+            next unless UNIVERSAL::isa($rv, 'HASH');
+            printf "%8s %s%s\n", @{$rv}{'grade', 'platform'},
+                                 ($rv->{detail} ? ' (*)' : '') if $display;
+
+            my @tested = split /\s/, $rv->{ 'platform' };
+            $is_there = 1 if $^O eq $tested[0]
+                         and $Config{osvers} =~ /^\Q$tested[1]\E(?:[^-]|$)/
+                         and $Config{archname} =~ /^\Q$tested[2]\E(?:[^-]|$)/;
+        }
+    }
+
+    if ($skip and $is_there) {
+        print "$dist already tested on this configuration; skipping.\n";
+        return 1;
+    }
+
+    return;
+}
+
 ### PERL5LIB munging so we don't need to install prereqs
 BEGIN {
+    local $^W; # voluntary namespace munging and redefinition
     no strict 'refs';
-    my $oldref = *{CPANPLUS::Internals::Make::_make}{CODE};
-    *{CPANPLUS::Internals::Make::_make} = sub {
+
+    my $oldref = *{'CPANPLUS::Internals::Make::_make'}{CODE};
+
+    *{'CPANPLUS::Internals::Make::_make'} = sub {
         my ($self, %args) = @_;
 
         $ENV{PERL5LIB} = join(

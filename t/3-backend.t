@@ -192,6 +192,8 @@ is_deeply($modobj->modules->{$modname}, $modobj, '    module method');
 SKIP: {
     skip "requires LWP", 2
 	unless eval "use LWP; 1";
+    skip "requires HTML::HeadParser", 2
+	unless eval "use HTML::HeadParser; 1";
     skip "requires internet connectivity", 2
 	unless eval "use Socket; Socket::inet_aton('testers.cpan.org')";
 

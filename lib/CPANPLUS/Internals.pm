@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals.pm $
-# $Revision: #40 $ $Change: 4106 $ $DateTime: 2002/05/04 23:04:36 $
+# $File: //depot/dist/lib/CPANPLUS/Internals.pm $
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -52,7 +52,7 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.035';
+    $VERSION    =   '0.036';
 }
 
 ### ROUGH FLOW OF THE MODULE ###
@@ -482,7 +482,7 @@ sub _auto_upgrade {
 
         if ($rv) {
             ### being explicitly verbose ###
-            $err->inform( msg => "$mod installed succesfully" )
+            $err->inform( msg => "$mod installed successfully" )
         } else {
             $err->trap( error => "Install of $mod failed in $subname" );
             $flag = 1;

@@ -1,5 +1,5 @@
-# $File$
-# $Revision$ $Change$ $DateTime$
+# $File: //depot/dist/lib/CPANPLUS/Internals/Source.pm $
+# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###

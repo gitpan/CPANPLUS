@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #55 $ $Change: 4106 $ $DateTime: 2002/05/04 23:04:36 $
+# $File: //depot/dist/lib/CPANPLUS/Internals/Make.pm $
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -140,7 +140,7 @@ sub _make {
 
     ### check if the prereq this module wants is something we already tried to install
     ### earlier this session: if so $self->{_todo}->{failed} will be 1.
-    ### a succesfull install will set the above variable to 0. this way we can still
+    ### a successfull install will set the above variable to 0. this way we can still
     ### check for 'defined'-ness.
     #print Dumper $self->{_todo}->{failed};
 

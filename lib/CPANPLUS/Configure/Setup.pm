@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #23 $ $Change: 4048 $ $DateTime: 2002/04/30 12:25:05 $
+# $File: //depot/dist/lib/CPANPLUS/Configure/Setup.pm $
+# $Revision: #4 $ $Change: 60 $ $DateTime: 2002/06/06 05:42:54 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -868,11 +868,11 @@ Which '$pgm' executable should I use?
         } #while
 
         printf "\nYour '$pgm' program has been set to:\n    %s\n",
-            ($pgm_name) ? $pgm_name : '*nothing entered*';
+            ($answer) ? $answer : '*nothing entered*';
 
         print "\n\n";
 
-        $pgms{$pgm} = $pgm_name;
+        $pgms{$pgm} = $answer;
 
     } #for
 

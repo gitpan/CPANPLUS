@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/TesterGuide.pod $ $Author: autrijus $
-# $Revision: #6 $ $Change: 4072 $ $DateTime: 2002/04/30 19:50:43 $
+# $File: //depot/dist/lib/CPANPLUS/TesterGuide.pod $
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 =head1 NAME
 

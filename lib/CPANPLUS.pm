@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS.pm $
-# $Revision: #10 $ $Change: 4063 $ $DateTime: 2002/04/30 17:11:18 $
+# $File: //depot/dist/lib/CPANPLUS.pm $
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -22,7 +22,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   '0.035';    #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   '0.036';    #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -50,7 +50,7 @@ sub install {
         my $rv = $cpan->install( modules => [ $mod ] );
 
         my $msg = $rv->{$mod}
-                    ? qq[Installing of $mod succesfull]
+                    ? qq[Installing of $mod successfull]
                     : qq[Installing of $mod failed];
 
         $cpan->{_error}->inform( msg => $msg, quiet => 0 );
@@ -91,7 +91,7 @@ sub fetch {
         );
 
         my $msg = $rv->{$mod}
-                    ? qq[Fetching of $mod succesfull]
+                    ? qq[Fetching of $mod successfull]
                     : qq[Fetching of $mod failed];
 
         $cpan->{_error}->inform( msg => $msg, quiet => 0 );

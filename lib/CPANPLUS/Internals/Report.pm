@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #24 $ $Change: 4051 $ $DateTime: 2002/04/30 14:13:39 $
+# $File: //depot/dist/lib/CPANPLUS/Internals/Report.pm $
+# $Revision: #5 $ $Change: 77 $ $DateTime: 2002/07/02 10:33:55 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -41,6 +41,7 @@ my %OS = (
     MacPerl     => 'MacOS',
     MacOS       => 'MacOS',
     MacOSX      => 'darwin',
+    MPE         => 'mpeix',
     MPEiX       => 'mpeix',
     OS2         => 'os2',
     Plan9       => 'plan9',
@@ -80,7 +81,7 @@ sub _send_report {
     }
     elsif (
         $buffer =~ /^No tests defined for .* extension.\s*$/m and
-        $buffer !~ /^All tests successful.\s*$/m
+        $buffer !~ /^All tests successful\b/m
     ) {
         $grade = 'unknown';
     }

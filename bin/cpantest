@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-# $File: //member/autrijus/cpanplus/dist/bin/cpantest $ $Author: autrijus $
-# $Revision: #6 $ $Change: 4063 $ $DateTime: 2002/04/30 17:11:18 $
+# $File: //depot/dist/bin/cpantest $
+# $Revision: #3 $ $Change: 60 $ $DateTime: 2002/06/06 05:42:54 $
 
 =head1 NAME
 
@@ -9,8 +9,7 @@ B<cpantest> - Report test results of a package retrieved from CPAN
 =head1 DESCRIPTION
 
 B<cpantest> uniformly posts package test results in support of the
-cpan-testers project.  See B<http://testers.cpan.org/>
-for details.
+cpan-testers project.  See B<http://testers.cpan.org/> for details.
 
 =head1 USAGE
 
@@ -93,7 +92,7 @@ use Getopt::Long;
 use File::Temp;
 
 use vars qw($VERSION);
-$VERSION = "0.93_04-CPANPLUS";
+$VERSION = "0.93_05-CPANPLUS";
 
 use vars qw(%Grades $CC $CPAN_testers $fh $Report);
 %Grades = (     # Legal grades:

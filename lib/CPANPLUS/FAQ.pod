@@ -11,7 +11,49 @@ This is the Frequently Asked Questions list for the CPANPLUS kit.
 More accurately, it's a very thin placeholder for where the FAQ will
 soon be.
 
+The most up-to-date version of the FAQ can be found at the 
+website I<http://cpanplus.sourceforge.net>.  This version of
+the FAQ may contain updates between code releases.
+
 =head1 QUESTIONS
+
+=head2 I think I've found a bug in CPANPLUS.  How can I see if it has been reported?
+
+The CPANPLUS bugs mailing list archive is available at
+I<http://www.geocrawler.com/lists/3/SourceForge/18022/>.
+
+Work-arounds to known bugs will probably be available in the most
+recent FAQ.
+
+=head2 How can I get CPANPLUS to use my proxy?
+
+CPANPLUS currently only supports proxies with LWP::UserAgent.  You will
+need to set your environment variables accordingly.  For example, to
+use an ftp proxy:
+
+    $ENV{ftp_proxy} = 'foo.com';
+
+Refer to L<LWP::UserAgent> for more details.
+
+=head2 CPANPLUS reports that it is going to fetch during an initial install, but it hangs for a long time then reports a failure.
+
+In versions before 0.04, CPANPLUS was designed to fetch initial files 
+exclusively from ftp.cpan.org on the assumption this site would always 
+be available. If CPANPLUS hangs during the initial fetch, it could 
+mean that ftp.cpan.org is unavailable. This is only a problem for 
+installation, as your own host list will be used once CPANPLUS is 
+installed. A work-around is to edit I<Config.pm-orig> in I<lib/CPANPLUS> 
+in the CPANPLUS directory. Under the hash key I<_ftp>
+there's a key I<urilist>. Near that should be the line 
+C<'host' => 'ftp.cpan.org'>. Simply replace this host with another one. 
+
+=head2 I upgraded my version of CPANPLUS and something no longer works the same way
+
+The CPANPLUS interface will only be backwards-compatible with 
+itself after version 1.0. This gives us a chance to
+correct and expand without being locked to an interface in early 
+versions. Two things that have notably changed since
+the first version are the configuration and some Backend return values.
 
 =head2 Can CPANPLUS do I<random something>?
 
@@ -31,7 +73,7 @@ shell you have installed.
 
 =head2 What is the lowest version of Perl CPANPLUS works under?
 
-Reliably under 5.005_03, but 5.004 is a theoretical possibility. 
+Reliably under 5.005_03.
 
 =head2 On what platforms has CPANPLUS been tested?
 
@@ -100,7 +142,7 @@ terms as Perl itself.
 =head1 SEE ALSO
 
 L<CPANPLUS::Backend>, L<CPANPLUS::Shell::Default>, L<CPANPLUS>,
-L<CPANPLUS::Configure>
+L<CPANPLUS::Configure>, http://cpanplus.sourceforge.net
 
 =cut
 

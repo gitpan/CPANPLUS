@@ -16,6 +16,8 @@ Michael G Schwern (MSCHWERN) wrote the test suite.
 
 Ann Barcomb (KUDRA) is responsible for CPANPLUS documentation.
 
+Yves Orton (YVES) is working on the Classic shell to emulate CPAN.pm's shell.
+
 Joshua Keroes (JOSHUA) hacks on the internals.
 
 Mattia Barbon (MBARBON) was responsible for some of the early testing.
@@ -29,13 +31,16 @@ file and the mailing list archives.  These people have either submitted
 patches or suggestions, or their bug reports or comments have inspired
 the appropriate patches.  Corrections, additions, deletions welcome:
 
+Abe Timmerman
 Andy Lester		(PETDANCE)
 Andreas Marcel Riechert
 Barrie Slaymaker	(RBS)
 Chia-Liang Kao		(CLKAO)
 Dave Rolsky		(DROLSKY)
+David Landgren
 Graham Barr		(GBARR)
 Jochen Stenzel		(JSTENZEL)
+Jonathan Leffler	(JOHNL)
 Jorrit Waalboer
 Jost Krieger
 Kay Roepke
@@ -45,6 +50,7 @@ Mark-Jason Dominus	(MJD)
 Matt Sergeant		(MSERGEANT)
 Peter Barabas
 Peter Sergeant		(SARGIE)
+Phil Pennock
 Randy J. Ray		(RJRAY)
 Randy Kobes		(RKOBES)
 Robert S Creager

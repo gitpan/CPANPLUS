@@ -1,5 +1,5 @@
-# $File: //member/autrijus/ExtUtils-AutoInstall/AutoInstall.pm $ 
-# $Revision: #44 $ $Change: 4058 $ $DateTime: 2002/04/30 16:34:09 $
+# $File: //depot/dist/inc/ExtUtils/AutoInstall.pm $ 
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 package ExtUtils::AutoInstall;
 $ExtUtils::AutoInstall::VERSION = '0.32';

@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #20 $ $Change: 4042 $ $DateTime: 2002/04/30 10:59:09 $
+# $File: //depot/dist/lib/CPANPLUS/Backend.pm $
+# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###

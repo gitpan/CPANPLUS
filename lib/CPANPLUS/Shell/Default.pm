@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #83 $ $Change: 4122 $ $DateTime: 2002/05/06 13:31:47 $
+# $File: //depot/dist/lib/CPANPLUS/Shell/Default.pm $
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -133,6 +133,7 @@ sub _input_loop {
         my $key;
         {   # why the block? -jmb
             # to hide the $1. -autrijus
+            { $input =~ s/^([!?])/$1 /; }
             $input =~ s/^\s*([\w\?\!])\w*\s*//;
             chomp $input;
             $key = lc($1);
@@ -512,7 +513,7 @@ sub _input_loop {
 
             for my $mod ( sort keys %$res ) {
                 print $res->{$mod}
-                    ? "Uninstalled $mod succesfully\n"
+                    ? "Uninstalled $mod successfully\n"
                     : "Uninstalling $mod failed\n";
             }
 

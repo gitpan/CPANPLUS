@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Module.pm $
-# $Revision: #15 $ $Change: 4021 $ $DateTime: 2002/04/29 10:23:50 $
+# $File: //depot/dist/lib/CPANPLUS/Internals/Module.pm $
+# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 #######################################################
 ###            CPANPLUS/Internals/Module.pm         ###

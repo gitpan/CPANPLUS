@@ -1,5 +1,5 @@
-# $File: //depot/devel/lib/CPANPLUS/Internals/System.pm $
-# $Revision: #1 $ $Change: 43 $ $DateTime: 2002/05/28 13:15:26 $
+# $File: //depot/dist/lib/CPANPLUS/Internals/System.pm $
+# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 #######################################################
 ###            CPANPLUS/Internals/System.pm         ###

@@ -1,6 +1,29 @@
 # $File: //member/autrijus/cpanplus/dist/ChangeLog $
 # $Revision: #19 $ $Change: 4066 $ $DateTime: 2002/04/30 18:02:42 $
 
+[Changes for 0.036 - July 6, 2002]
+
+This release fixed the showstopping bug in 0.034 that prevented first-time users
+from installing dependencies.
+
+* Bug fixes (and their first reporters):
+
+ - Fixed Makefile.PL so AutoInstall is no longer broken. (Jonathan Leffler)
+
+ - Spelling corrections. (Jonathan Leffler)
+
+ - Prereq modules used to send duplicate reports by cpansmoke -s. (Randy Kobes)
+
+ - PERL_EXTUTILS_AUTOINSTALL is now set by cpansmoke to avoid interactions.
+
+ - LWP tests in t/3-backend.t now refuses to run without HTML::HeadParser.
+
+* New Features
+
+ - The space after the '!' command in default shell is now optional.
+
+ - Some new FAQ entries applied from -devel.
+ 
 [Changes for 0.035 - June 4, 2002]
 
 This version rolls in the bugfixes reported by Jost Krieger. Thanks!

@@ -1,9 +1,10 @@
 #!/usr/bin/perl
-# $File: //member/autrijus/cpanplus/devel/Makefile.PL $ $Author: anonymous $
-# $Revision: #53 $ $Change: 4055 $ $DateTime: 2002/04/30 14:55:44 $
+# $File: //depot/dist/Makefile.PL $
+# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
 
 use strict;
 
+use Cwd;
 use Config;
 use File::Spec;
 use File::Copy      qw/copy/;
@@ -17,6 +18,10 @@ use constant BASIC_TESTS => join (' ', map { File::Spec->catfile('t', $_) } qw{
     1-basic.t 2-autoinstall.t
 });
 
+# set up include path to find CPANPLUS::Internals::System
+$ENV{PERL5LIB} .= $Config::Config{pathsep}
+                . File::Spec->catdir(Cwd::cwd(), 'lib');
+
 # not 'use' because we don't want to import it yet
 require ExtUtils::AutoInstall;
 
@@ -28,7 +33,7 @@ However, at this early stage in its life, you should *NOT* expect
 it to work just like CPAN.pm.
 
 You are strongly urged to configure CPANPLUS now, since otherwise
-non-priviliged (non-root) users may be unable to use CPANPLUS until
+non-privileged (non-root) users may be unable to use CPANPLUS until
 you configure it properly.
 
 ###################################################################
