@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Install.pm $
-# $Revision: #7 $ $Change: 7683 $ $DateTime: 2003/08/23 18:20:12 $
+# $Revision: #8 $ $Change: 7920 $ $DateTime: 2003/09/06 15:10:58 $
 
 #######################################################
 ###           CPANPLUS/Internals/Install.pm         ###
@@ -521,15 +521,14 @@ sub _check_md5 {
         my $checksums = $self->_get_checksums( mod => $modobj );
 
         CHECK: {
-            if ( $checksums->{ $modobj->package }->{'md5'} eq $digest ) {
+            if ( $checksums and $checksums->{ $modobj->package }->{'md5'} eq $digest ) {
                 $err->inform(
                         msg     => loc("Checksum for %1 OK", $archive),
                         quiet   => !$verbose
                 );
                 return 1;
 
-            } else {
-                if ( $flag and !(keys %{$checksums->{ $modobj->package }}) ) {
+            } elsif ( $flag and (!$checksums or !(keys %{$checksums->{ $modobj->package }})) ) {
                     ### if we didnt already have a checksums file on our disk, we might have
                     ### an outdated one... in that case we'll refetch it and try again to see
                     ### if we get a matching MD5 -kane
@@ -542,11 +541,9 @@ sub _check_md5 {
                     $flag = 1;
                     redo CHECK;
 
-                } else {
-
-                    $err->trap( error => loc("MD5 sums did not add up for %1", $modobj->package) );
-                    return undef;
-                }
+            } else {
+                $err->trap( error => loc("MD5 sums did not add up for %1", $modobj->package) );
+                return undef;
             }
         } #CHECK
 

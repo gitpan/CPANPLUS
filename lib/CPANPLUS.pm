@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS.pm $
-# $Revision: #8 $ $Change: 7812 $ $DateTime: 2003/08/31 15:21:51 $
+# $Revision: #9 $ $Change: 7915 $ $DateTime: 2003/09/06 14:44:31 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -21,7 +21,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   0.043;    #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   0.044;    #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -130,7 +130,7 @@ CPANPLUS - Command-line access to the CPAN interface
 
 =head1 VERSION
 
-This document describes version 0.043 of CPANPLUS, released August 31, 2003.
+This document describes version 0.044 of CPANPLUS, released September 7, 2003.
 
 =head1 NOTICE
 

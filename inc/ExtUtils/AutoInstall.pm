@@ -1,8 +1,8 @@
 # $File: //depot/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #7 $ $Change: 7682 $ $DateTime: 2003/08/23 18:12:25 $
+# $Revision: #8 $ $Change: 7916 $ $DateTime: 2003/09/06 14:45:45 $
 
 package ExtUtils::AutoInstall;
-$ExtUtils::AutoInstall::VERSION = '0.52';
+$ExtUtils::AutoInstall::VERSION = '0.53';
 
 use strict;
 
@@ -15,8 +15,8 @@ ExtUtils::AutoInstall - Automatic install of dependencies via CPAN
 
 =head1 VERSION
 
-This document describes version 0.52 of B<ExtUtils::AutoInstall>,
-released May 16, 2003.
+This document describes version 0.53 of B<ExtUtils::AutoInstall>,
+released September 6, 2003.
 
 =head1 SYNOPSIS
 
@@ -488,7 +488,7 @@ sub install {
     my %args = @config;
     my %failed;
     local *FAILED;
-    if ($args{do_once} and open(FAILED, '.autoinstall.failed')) {
+    if ($args{do_once} and open(FAILED, '.#autoinstall.failed')) {
 	while (<FAILED>) { chomp; $failed{$_}++ }
 	close FAILED;
 

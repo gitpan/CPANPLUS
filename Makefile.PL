@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #18 $ $Change: 7809 $ $DateTime: 2003/08/31 15:13:42 $
+# $Revision: #22 $ $Change: 7932 $ $DateTime: 2003/09/07 13:01:01 $
 
 use strict;
 use 5.00503;
@@ -24,9 +24,7 @@ use lib @{+LIBS};
 use CPANPLUS::I18N;
 
 # tests that doesn't require setup
-use constant BASIC_TESTS => join (' ', map { File::Spec->catfile('t', $_) } qw{
-    2-autoinstall.t
-});
+use constant BASIC_TESTS => ('t/0-signature.t');
 
 {
     # set up include path to find CPANPLUS::Internals::System
@@ -224,8 +222,8 @@ sub try_autoinstall {
     print loc("
 ### PLEASE NOTE ###################################################
 
-Although the core features of CPANPLUS does not require external
-modules, it may depend on other modules to work according to your
+Although the core features of CPANPLUS do not require external
+modules, they may depend on other modules to work according to your
 configuration.  If you skip the probing, or answer 'n' to questions
 that defaults to 'Y', there might be _unpredictable failures_!
 
@@ -391,8 +389,8 @@ that defaults to 'Y', there might be _unpredictable failures_!
     );
 
     if (_can_run('gpg')) {
-        print "Importing the PAUSE signing key(s) to GnuPG... ";
-        system('gpg', '--quiet', '--import', <PAUSE*.pub>);
+        print "Importing public keys to GnuPG... ";
+        system('gpg', '--quiet', '--import', <key/*.pub>);
 	print "done!\n";
     }
 

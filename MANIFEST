@@ -1,68 +1,69 @@
-AUTHORS				Contributors info
-ChangeLog			Human-readable changelog
-Changes				Changelog
-MANIFEST			This list of files
-MANIFEST.SKIP			List of files to skip
-Makefile.PL			Makefile writer
-PAUSE2003.pub			The PAUSE 2003 signing key
-README				The Instructions
-SIGNATURE			Module Signature
-bin/cpanp			The CPANPLUS launcher
-bin/cpansmoke			CPAN Smoke Tester
-inc/ExtUtils/AutoInstall.pm	Support file - Not installed
-lib/CPANPLUS.pm			Command-line access to CPANPLUS
-lib/CPANPLUS/Backend.pm		Object-oriented interface for CPAN++
-lib/CPANPLUS/Backend/RV.pm	Module to provide a return value class for CPAN++
-lib/CPANPLUS/Config.pm-orig	Skeleton of the Configuration file
-lib/CPANPLUS/Configure.pm	Configuration Object
-lib/CPANPLUS/Configure/Setup.pm	Interactive Setup
-lib/CPANPLUS/Error.pm		Error handling for the CPAN++ interface
-lib/CPANPLUS/FAQ.pod		Frequently Asked Questions
-lib/CPANPLUS/I18N.pm		Localization functions
-lib/CPANPLUS/I18N/CPANPLUS.pot	Localization lexicon
-lib/CPANPLUS/I18N/fr.po		Lexicon for French
-lib/CPANPLUS/Internals.pm	Internal processing code
-lib/CPANPLUS/Internals/Author.pm	Author objects
-lib/CPANPLUS/Internals/Extract.pm	Extract-related code
-lib/CPANPLUS/Internals/Fetch.pm	Fetch-related code
-lib/CPANPLUS/Internals/Install.pm	Install-related code
-lib/CPANPLUS/Internals/Make.pm	Make-related code
-lib/CPANPLUS/Internals/Module.pm	Module objects
+AUTHORS
+bin/cpanp
+bin/cpansmoke
+ChangeLog
+Changes
+inc/ExtUtils/AutoInstall.pm
+key/AUTRIJUS.pub
+key/KANE.pub
+key/PAUSE2003.pub
+lib/CPANPLUS.pm
+lib/CPANPLUS/Backend.pm
+lib/CPANPLUS/Backend/RV.pm
+lib/CPANPLUS/Config.pm-orig
+lib/CPANPLUS/Configure.pm
+lib/CPANPLUS/Configure/Setup.pm
+lib/CPANPLUS/Error.pm
+lib/CPANPLUS/FAQ.pod
+lib/CPANPLUS/I18N.pm
+lib/CPANPLUS/I18N/CPANPLUS.pot
+lib/CPANPLUS/I18N/fr.po
+lib/CPANPLUS/Internals.pm
+lib/CPANPLUS/Internals/Author.pm
+lib/CPANPLUS/Internals/Extract.pm
+lib/CPANPLUS/Internals/Fetch.pm
+lib/CPANPLUS/Internals/Install.pm
+lib/CPANPLUS/Internals/Make.pm
+lib/CPANPLUS/Internals/Module.pm
 lib/CPANPLUS/Internals/Module/Status.pm
-lib/CPANPLUS/Internals/Report.pm	CPAN Test reporting code
-lib/CPANPLUS/Internals/Search.pm	Search-related code
-lib/CPANPLUS/Internals/Source.pm	Source-related code
-lib/CPANPLUS/Internals/System.pm	Run-time flags for _run()
-lib/CPANPLUS/Internals/Utils.pm	Utility functions
-lib/CPANPLUS/Shell.pm		Command-line interface for CPAN++
-lib/CPANPLUS/Shell/Classic.pm	Backwards compatible shell for CPAN++
-lib/CPANPLUS/Shell/Default.pm	The default shell
-lib/CPANPLUS/Styleguide.pod	Style guide for CPANPLUS contributions
-lib/CPANPLUS/TesterGuide.pod	Becoming a CPAN Tester with CPANPLUS
-lib/CPANPLUS/Tools/Check.pm	Input checker
-lib/CPANPLUS/Tools/Cmd.pm	Running system commands
-lib/CPANPLUS/Tools/Load.pm	Runtime require modules
-lib/CPANPLUS/Tools/Module.pm	Lookup module info
-lib/CPANPLUS/Tools/Term.pm	Term::ReadLine control
-t/0-signature.t			Signature test 
-t/1-basic.t			Sanity test
-t/2-autoinstall.t		Autoinstaller test
-t/3-backend.t			Backend test (obsolete)
-t/CPANPLUS-Backend.t		Test for CPANPLUS::Backend
-t/CPANPLUS.t			Test for CPANPLUS
-t/dummy-CPAN/authors/01mailrc.txt.gz	Test data file
-t/dummy-CPAN/authors/id/A/AY/AYRNIEU/CHECKSUMS	Test data file
-t/dummy-CPAN/authors/id/A/AY/AYRNIEU/Text-Bastardize-0.06.readme	Test data file
-t/dummy-CPAN/modules/02packages.details.txt.gz	Test data file
-t/dummy-CPAN/modules/03modlist.data.gz	Test data file
-t/lib/File/Spec.pm		Support file - Not installed
-t/lib/File/Spec/Functions.pm	Support file - Not installed
-t/lib/File/Spec/Mac.pm		Support file - Not installed
-t/lib/File/Spec/OS2.pm		Support file - Not installed
-t/lib/File/Spec/Unix.pm		Support file - Not installed
-t/lib/File/Spec/VMS.pm		Support file - Not installed
-t/lib/File/Spec/Win32.pm	Support file - Not installed
-t/lib/Test/Builder.pm		Support file - Not installed
-t/lib/Test/MockObject.pm	Support file - Not installed
-t/lib/Test/More.pm		Support file - Not installed
-META.yml                                Module meta-data (added by MakeMaker)
+lib/CPANPLUS/Internals/Report.pm
+lib/CPANPLUS/Internals/Search.pm
+lib/CPANPLUS/Internals/Source.pm
+lib/CPANPLUS/Internals/System.pm
+lib/CPANPLUS/Internals/Utils.pm
+lib/CPANPLUS/Shell.pm
+lib/CPANPLUS/Shell/Classic.pm
+lib/CPANPLUS/Shell/Default.pm
+lib/CPANPLUS/Styleguide.pod
+lib/CPANPLUS/TesterGuide.pod
+lib/CPANPLUS/Tools/Check.pm
+lib/CPANPLUS/Tools/Cmd.pm
+lib/CPANPLUS/Tools/Load.pm
+lib/CPANPLUS/Tools/Module.pm
+lib/CPANPLUS/Tools/Term.pm
+Makefile.PL
+MANIFEST			This list of files
+MANIFEST.SKIP
+META.yml
+README
+SIGNATURE
+t/0-signature.t
+t/1-basic.t
+t/3-backend.t
+t/CPANPLUS-Backend.t
+t/CPANPLUS.t
+t/dummy-CPAN/authors/01mailrc.txt.gz
+t/dummy-CPAN/authors/id/A/AY/AYRNIEU/CHECKSUMS
+t/dummy-CPAN/authors/id/A/AY/AYRNIEU/Text-Bastardize-0.06.readme
+t/dummy-CPAN/modules/02packages.details.txt.gz
+t/dummy-CPAN/modules/03modlist.data.gz
+t/lib/File/Spec.pm
+t/lib/File/Spec/Functions.pm
+t/lib/File/Spec/Mac.pm
+t/lib/File/Spec/OS2.pm
+t/lib/File/Spec/Unix.pm
+t/lib/File/Spec/VMS.pm
+t/lib/File/Spec/Win32.pm
+t/lib/Test/Builder.pm
+t/lib/Test/MockObject.pm
+t/lib/Test/More.pm

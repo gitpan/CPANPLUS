@@ -1,12 +1,10 @@
 ^blib/
 ^t/dummy-cpanplus/
+^\.#autoinstall
 ^pmfiles.dat$
 ^Makefile$
 ^Makefile.old$
 ^MANIFEST.bak$
-^lib/CPANPLUS/Tee.pm$
 ^lib/CPANPLUS/Config\.pm$
 ^lib/CPANPLUS/Config\.pm~$
 ^pm_to_blib$
-^prereqs$
-^TODO$

@@ -1,4 +1,60 @@
 ____________________________________________________________________________
+[  7931] By: autrijus                              on 2003/09/07  12:54:32
+        Log: * This be CPANPLUS, 0.044.
+	   ! ChangeLog
+____________________________________________________________________________
+[  7930] By: autrijus                              on 2003/09/07  12:49:34
+        Log: * change prompt to reflect the fact that we are now
+	       importing multiple keys.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  7923] By: autrijus                              on 2003/09/06  16:38:57
+        Log: * remove the unused Tee.pm
+	   - lib/CPANPLUS/Tee.pm
+	   ! MANIFEST.SKIP
+____________________________________________________________________________
+[  7920] By: autrijus                              on 2003/09/06  15:10:58
+        Log: * fix "Can't use string as hashref bug" reported by kane.
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  7919] By: autrijus                              on 2003/09/06  15:05:42
+        Log: * Grammatical fixes from Walt Mankowski
+	   ! Makefile.PL lib/CPANPLUS/I18N/CPANPLUS.pot
+	   ! lib/CPANPLUS/I18N/fr.po
+____________________________________________________________________________
+[  7918] By: autrijus                              on 2003/09/06  14:51:29
+        Log: * add meta.yml so snapshots work.
+	   + META.yml
+____________________________________________________________________________
+[  7916] By: autrijus                              on 2003/09/06  14:45:45
+        Log: * update to EU::AI 0.53.
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  7915] By: autrijus                              on 2003/09/06  14:44:31
+        Log: * bump version to .44.
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  7912] By: autrijus                              on 2003/09/06  14:39:32
+        Log: * purge the not-going-to-be-needed 2-autoinstall.t.
+             * move public keys into the key/ space.
+	   + key/AUTRIJUS.pub key/KANE.pub
+	   + key/PAUSE2003.pub
+	   - PAUSE2003.pub t/2-autoinstall.t
+	   ! MANIFEST Makefile.PL
+____________________________________________________________________________
+[  7845] By: autrijus                              on 2003/09/03  04:10:53
+        Log: * thanks to a cpan-smoking root at forevermail.com,
+             we found out that .autoinstall.failed was causing
+             the signature test to be failing.  Fixed by adding
+             it to MANIFEST.SKIP.
+	   ! MANIFEST.SKIP
+____________________________________________________________________________
+[  7813] By: kane                                  on 2003/08/31  16:43:01
+        Log: * check explicitly for every module we asked for, rather
+	       than checking if the numbers
+             are the same, since prereqs are also in the rv
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
 [  7812] By: autrijus                              on 2003/08/31  15:21:51
         Log: * This be CPANPLUS, 0.043.
 	   ! lib/CPANPLUS.pm

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #15 $ $Change: 7797 $ $DateTime: 2003/08/30 17:13:07 $
+# $Revision: #16 $ $Change: 7813 $ $DateTime: 2003/08/31 16:43:01 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -429,8 +429,13 @@ sub _input_loop {
                     : (loc("Error %tense(%1,present) %2", $target, $key), "\n" );
 
             }
-
-            if( $href->ok and (keys %{$href->rv || {}} == @list)) {
+            
+            my $flag;
+            for ( @list ) { 
+                $flag++ unless $href->rv->{$_} 
+            }
+            
+            if( $href->ok and !$flag ) {
                 print loc("All modules %tense(%1,past) successfully", $target), "\n";
             } else {
                 print loc("Problem %tense(%1,present) one or more modules", $target), "\n";
