@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #3 $ $Change: 3544 $ $DateTime: 2002/03/26 07:48:03 $
+# $Revision: #6 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###
@@ -95,7 +95,7 @@ sub _fetch {
         if ($@) {
             chomp($@);
             $err->inform(
-                msg   => "could not create $local_path: $@",
+                msg   => "Could not create $local_path: $@",
                 quiet => !$conf->get_conf('verbose'),
             );
             return 0;
@@ -115,14 +115,16 @@ sub _fetch {
     ### perhaps we should return in this case?
     ### I had assumed you may have passed the file in $args{fetchdir} -jmb
     if (-e $path->{local}) {
+        my $force = $args{force};
+        $force = $conf->get_conf('force') unless defined $force;
 
-        if ($args{force} || $conf->get_conf('force')) {
+        if ($force) {
 
             ### on at least two of the _*_get methods an existing file will
             ### cause failure, so we delete the file now to prevent that -jmb
             unlink $path->{local}
                 or $err->inform(
-                       msg   => "couldn't delete $path->{local}"
+                       msg   => "Could not delete $path->{local}"
                               . ", some methods may fail to force a download",
                        quiet => !$conf->get_conf('verbose'),
                    );
@@ -130,7 +132,7 @@ sub _fetch {
 
             ### the file exists and you didn't force - we return the old version
             $err->inform(
-                msg   => "already downloaded $path->{local}"
+                msg   => "Already downloaded $path->{local}"
                        . ", won't download again without force",
                 quiet => !$conf->get_conf('verbose'),
             );
@@ -146,8 +148,13 @@ sub _fetch {
         file => [ qw|lwp file| ],
     };
 
+    ### potential bad hosts -- won't know for sure until there's one successful later
+    my @bad_uris;
+
     HOST:
     for my $uri (@{$self->{_conf}->_get_ftp('urilist')}) {
+        ### some URIs does not work
+        next if exists $self->{_uris}{$uri} and !$self->{_uris}{$uri};
 
         ### full path to remote file
         $path->{remote} = File::Spec::Unix->catdir($uri->{path}, $remote_path);
@@ -179,6 +186,9 @@ sub _fetch {
              || ! exists $self->{_methods}->{$method}) {
 
                 if (my $file = $self->$method(%args)) {
+                    ### this host is good, previous ones are not
+                    $self->{_uris}{$uri} = 1;
+                    $self->{_uris}{$_} = 0 foreach @bad_uris;
 
                     unless (-e $path->{local} && -s _) {
 
@@ -202,7 +212,10 @@ sub _fetch {
             ### I have not implemented such an idea yet -jmb
 
             ### $method *works* but this host is bad - try the next one
-            next HOST, if $self->{_methods}->{$method};
+            if ($self->{_methods}->{$method}) {
+                push @bad_uris, $uri;
+                next HOST;
+            }
 
         } #for (METHOD)
 
@@ -243,13 +256,15 @@ sub _lwp_get {
 
     ### check prerequisites
     my $use_list = {
-        LWP             => '0.0',
-        'LWP::UserAgent'  => '0.0',
-        'HTTP::Request'   => '0.0',
-        URI             => '0.0',
+        LWP                 => '0.0',
+        'LWP::UserAgent'    => '0.0',
+        'HTTP::Request'     => '0.0',
+        'HTTP::Status'      => '0.0',
+        URI                 => '0.0',
+
     };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
@@ -286,22 +301,26 @@ sub _lwp_get {
 
         ### we need better handlers... especially for 304
         ### we already throw out 304's with the force check so remove this -jmb
-        #if ($res->code == 304) {
-        #    $err->inform(
-        #        msg     => "already downloaded $args{path}->{local}, " .
-        #                    "won't download again without force",
-        #        quiet   => !$conf->get_conf('verbose')
-        #    );
-        #    ### we shouldn't return the same thing in two different places -jmb
-        #    ### solution? - Kane
-        #    return $args{path}->{local};
-        #}
+        ### reactivated for 'x' (rebuild index) command in default shell -autrijus
+
+        if ($res->code == 304) {
+            $err->inform(
+                msg     => "$args{path}->{local} is up to date",
+                quiet   => !$conf->get_conf('verbose')
+            );
+            ### we shouldn't return the same thing in two different places -jmb
+            ### solution? - Kane
+            return $args{path}->{local};
+        }
 
         ### the only acceptable return from this is OK (200)
         if ($res->code == 200) {
             return $args{path}->{local};
         } else {
-            $err->trap( error => "fetch failed! " . $res->code );
+            $err->trap(
+                error => qq|Fetch failed! HTTP response code: | . $res->code .' ['.
+                            HTTP::Status::status_message($res->code) .']'
+            );
             return 0;
         }
 
@@ -335,7 +354,7 @@ sub _file_get {
         'File::Copy'  => '0.0',
     };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
@@ -420,7 +439,7 @@ sub _ftp_get {
     ### check prerequisites
     my $use_list = { 'Net::FTP' => '0.0' };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
@@ -588,7 +607,7 @@ sub _ncftpget_get {
 
     my $use_list = { 'File::Spec' => '0.82' };
 
-    if (my $ncftpget = $conf->_get_build('ncftpget') and $self->_can_use($use_list) ) {
+    if (my $ncftpget = $conf->_get_build('ncftpget') and $self->_can_use(modules => $use_list) ) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;

@@ -1,10 +1,14 @@
 AUTHORS					Contributors info
 Changes					Changelog
+ChangeLog				Human-readable changelog
 MANIFEST				This list of files
+MANIFEST.SKIP				List of files to skip
 Makefile.PL				Makefile writer
 README					The Instructions
 TODO					Things to do
 bin/cpanp				The CPANPLUS launcher
+bin/cpansmoke				CPAN Smoke Tester
+bin/cpantest				Report test results of a package
 inc/ExtUtils/AutoInstall.pm		Support file - Not installed
 lib/CPANPLUS.pm				Command-line access to CPANPLUS
 lib/CPANPLUS/Backend.pm			Object-oriented interface for CPAN++
@@ -20,6 +24,7 @@ lib/CPANPLUS/Internals/Fetch.pm		Fetch-related code
 lib/CPANPLUS/Internals/Install.pm	Install-related code
 lib/CPANPLUS/Internals/Make.pm		Make-related code
 lib/CPANPLUS/Internals/Module.pm	Module objects
+lib/CPANPLUS/Internals/Report.pm	CPAN Test reporting code
 lib/CPANPLUS/Internals/Search.pm	Search-related code
 lib/CPANPLUS/Internals/Source.pm	Source-related code
 lib/CPANPLUS/Shell.pm			Command-line interface for CPAN++
@@ -29,7 +34,15 @@ t/2-autoinstall.t			Autoinstaller test
 t/3-backend.t				Backend test
 t/lib/Test/Builder.pm			Support file - Not installed
 t/lib/Test/More.pm			Support file - Not installed
-t/lib/Test/Simple.pm			Support file - Not installed
+t/lib/File/Spec/Functions.pm		Support file - Not installed
+t/lib/File/Spec/Unix.pm			Support file - Not installed
+t/lib/File/Spec/VMS.pm			Support file - Not installed
+t/lib/File/Spec/Mac.pm			Support file - Not installed
+t/lib/File/Spec/Win32.pm		Support file - Not installed
+t/lib/File/Spec/OS2.pm			Support file - Not installed
+t/lib/File/Spec.pm			Support file - Not installed
 t/dummy-CPAN/authors/01mailrc.txt.gz		Test data file
 t/dummy-CPAN/modules/02packages.details.txt.gz	Test data file
 t/dummy-CPAN/modules/03modlist.data.gz		Test data file
+t/dummy-CPAN/authors/id/A/AY/AYRNIEU/CHECKSUMS	Test data file
+t/dummy-CPAN/authors/id/A/AY/AYRNIEU/Text-Bastardize-0.06.readme	Test data file

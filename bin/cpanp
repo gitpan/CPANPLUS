@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //member/autrijus/cpanplus/dist/bin/cpanp $ $Author: autrijus $
-# $Revision: #3 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
+# $Revision: #8 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
 
 use strict;
 use vars '$VERSION';
@@ -31,41 +31,47 @@ shell is executed by default.
 Optionally, it can take a single-letter switch and one or more argument,
 to perform the associated action on each arguments. The commands are:
 
-    a AUTHOR...	# search by author(s)
-    m MODULE...	# search by module(s)
-    i MODULE...	# install module(s)
-    d MODULE...	# download module(s) into current directory
-    p MODULE...	# display the package that contains the module(s)
-    l MODULE...	# display detailed information about module(s)
-    h 		# show help message
+    a AUTHOR... # search by author(s)
+    m MODULE... # search by module(s)
+    f AUTHOR... # list all distributions by an author(s)
+    i MODULE... # install module(s)
+    t MODULE... # test module(s)
+    u MODULE... # uninstall module(s)
+    d MODULE... # download module(s) into current directory
+    l MODULE... # display detailed information about module(s)
+    r MODULE... # display README files of module(s)
+    c MODULE... # check for module report(s) from cpan-testers
 
 Each command may be prefixed with one or more I<options>.  If preceded by
 C<no>, the corresponding option will be set to C<0>, otherwise it's set to
-C<1>. The valid options includes C<debug>, C<flush>, C<force>, C<prereqs>,
-C<storable>, C<verbose> and C<md5>; please consult C<CPANPLUS::Configure>
-for an explanation to their meanings.
+C<1>. The valid options includes C<cpantest>, C<debug>, C<flush>, C<force>,
+C<prereqs>, C<storable>, C<verbose> and C<md5>; please consult
+C<CPANPLUS::Configure> for an explanation to their meanings.
 
 =cut
 
 my $opt;
 
-my @bool = qw(debug flush force storable verbose md5 prereqs);
+my @bool = qw(cpantest debug flush force storable verbose md5 prereqs);
 
 my $cmd = {
     a => "search",
     m => "search",
-    d => "fetch",
+    f => "distributions",
     i => "install",
-    p => "package",
+    t => "install",
+    u => "uninstall",
+    d => "fetch",
     l => "details",
-    h => "_help",
+    r => "readme",
+    c => "reports",
 };
 
 my @cmd_stack;
 
 while ($opt = shift(@ARGV)) {
     push @cmd_stack, "s $2 ".($1 ? 0 : 1) and next
-	if ($opt =~ /^--(no)?(\w+)$/);
+        if ($opt =~ /^--(no)?(\w+)$/);
 
     $opt =~ s/^-//; $opt = lc(substr($opt, 0, 1));
     last;
@@ -83,28 +89,30 @@ if (@cmd_stack) {
 
     # save the original constructor arguments in the Faked arrayref
     *{"Term::ReadLine::new"} = sub {
-	# shell only
-	goto &{$newref} unless caller(0)->isa('CPANPLUS::Shell')
-	                    or caller(0) =~ /^CPANPLUS::Shell::/;
+        # shell only
+        goto &{$newref} unless caller(0)->isa('CPANPLUS::Shell')
+                            or caller(0) =~ /^CPANPLUS::Shell::/;
 
-	return bless([@_], 'CPANPLUS::_Faked');
+        return bless([@_], 'CPANPLUS::_Faked');
     };
 
     *{'CPANPLUS::_Faked::addhistory'} = sub { };
     *{'CPANPLUS::_Faked::readline'}   = sub {
-	unless ($opt or @cmd_stack) {
-	    # there's no immediate actions anyway, and we've run out of 's',
-	    # so we restore the handlers and regen a genuine object
+        unless ($opt or @cmd_stack) {
+            # there's no immediate actions anyway, and we've run out of 's',
+            # so we restore the handlers and regen a genuine object
 
-	    *{"$Term::ReadLine::ISA[0]::new"} = $newref;
-	    *{"$Term::ReadLine::ISA[0]::addhistory"} = $histref;
+            *{"$Term::ReadLine::ISA[0]::new"} = $newref;
+            *{"$Term::ReadLine::ISA[0]::addhistory"} = $histref;
 
-	    # regen self, pass the args to the new object
-	    return ($_[0] = $newref->(@{$_[0]}))->readline(@_[1..$#_]);
-	}
+            # regen self, pass the args to the new object
+            return ($_[0] = $newref->(@{$_[0]}))->readline(@_[1..$#_]);
+        }
 
-	return shift @cmd_stack;
+        return shift @cmd_stack;
     };
+
+    *{'CPANPLUS::_Faked::ReadLine'} = sub { "$Term::ReadLine::ISA[0]" };
 }
 
 shell();
@@ -123,7 +131,7 @@ Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2001 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
+Copyright 2001, 2002 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
 
 This program is free software; you can redistribute it and/or 
 modify it under the same terms as Perl itself.

@@ -1,0 +1,117 @@
+# $File: //member/autrijus/cpanplus/dist/ChangeLog $
+# $Revision: #6 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
+
+[Changes for 0.03 - April 9, 2002]
+
+This release is dedicated to Elaine -HFB- Ashton, for her tireless
+efforts on maintaining search.cpan.org, perl advocacy, and sponsoring
+the cpantest/cpansmoke integration support present in this release.
+
+See the "Notes on CPAN testing" section in README for instructions
+on how to use the test-related integrations.
+
+* New Shell Commands
+
+ - 'c' checks testing results of modules from testers.cpan.org.
+
+ - 'x' fetches and reloads indices.
+
+ - 'o' searches for installed modules that have a newer version on CPAN.
+
+ - 'u' uninstalls modules.
+
+ - 'r' fetches and displays README files of modules.
+
+ - 't' tests modules without installing them.
+
+* New Features
+
+ - The module/author tree is loaded on demand instead of at startup.
+
+ - CHECKSUM files are fetched only when needed.
+
+ - CHECKSUM file is now parsed instead of eval()'ed to improve security.
+
+ - New 'cpantest' configuration variable. ('Report module build results?')
+
+ - Bundles Kurt Starsinic's 'cpantest' script to report test results.
+
+ - Added the 'cpansmoke' script to help batch-testing CPAN modules.
+
+ - install() and make() now take a 'target' option to control the make target.
+
+ - Failed host will not be retried within the same session.
+
+ - Paged output for README and command listings exceeding screen rows.
+
+ - Better formatting for version numbers (%3.4f instead of %7s).
+
+ - _can_use() now takes a 'complain' option to control display warnings or not.
+
+ - _make() uses IPC::Run and/or IPC::Open3 to capture external command buffers.
+
+ - Dependency probing in Makefile.PL is now enabled by default.
+
+ - Module operation commands in Shell now accepts number ranges (e.g. 1..10).
+
+ - New installed(), reports() and validate() public methods in Backend.pm.
+
+ - Module operation methods in Backend.pm now takes modobj, modname or distname.
+
+ - New pathname() method of Backend returns the canonical distname of a module.
+
+ - Most Backend methods that operates on modules are also Module object methods.
+
+ - The Configuration setup process may be completed automatically now.
+
+ - Properties of Module and Author objects are available as accessor methods.
+
+ - Makefile.PL can automatically fetch and install nmake.exe on Windows.
+
+* Bug fixes (and their first reporters):
+
+ - Setup.pm used to break newer Term::ReadLine versions. (Matt Sergeant)
+
+ - ^D in Default Shell should print "\n" on exit. (Jorrit Waalboer)
+
+ - Archive::Tar was failing on Debian GNU/Linux. (Jorrit Waalboer)
+
+ - _ask_prereq() message may exceed column 80. (Jorrit Waalboer)
+
+ - 'make distclean' used to complain about Config.pm and .pm~. (Jochen Stenzel)
+
+ - Shell should report errors encountered during failed commands. (Mark Fowler)
+
+ - Defaults to cpanplus@example.com, not $Config{cf_email}. (Peter Sergeant)
+
+ - Fixed endless dependency loop on modules not in modtree. (Barrie Slaymaker)
+
+ - More accurate Win32 installation instructions.
+
+ - Various tarball filename parsing failures fixed.
+
+ - Modules belong to the core Perl distribution are never fetched or installed.
+
+
+[Changes for 0.02 - March 27, 2002]
+
+This is mainly a bugfix release, due to the rather serious issue of not able
+to change configuration variables from the default shell.
+
+* New Features
+
+ - Separated Shell::Default's version number from Backend; both are displayed.
+
+* Bug fixes (and their first reporters):
+
+ - Don't let Archive::Tar set uid/gid to prevent local exploit. (Ton Hospel)
+
+ - Scalar configuration variable setting was mistaken as hash in default shell.
+
+ - Documentation fixes in various places.
+
+
+[Changes for 0.01 - March 26, 2002]
+
+Initial CPAN release.
+

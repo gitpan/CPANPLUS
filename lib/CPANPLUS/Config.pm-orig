@@ -14,12 +14,13 @@ sub new {
 
     my $conf = {
                  'conf' => {
+                             'cpantest' => 0,
                              'verbose' => 0,
                              'storable' => 1,
                              'prereqs' => 1,
                              'lib' => [],
                              'force' => 0,
-                             'makeflags' => '',
+                             'makeflags' => {},
                              'makemakerflags' => {},
                              'debug' => 0,
                              'md5' => 1,
@@ -46,6 +47,7 @@ sub new {
                                'targetdir' => '',
                                'wget' => '',
                                'ncftp' => '',
+                               'pager' => '',
                                'perl' => '',
                                'moddir' => 'build/',
                                'lynx' => '',

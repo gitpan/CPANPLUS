@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Search.pm $
-# $Revision: #5 $ $Change: 3565 $ $DateTime: 2002/03/27 05:07:12 $
+# $Revision: #10 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
 
 #######################################################
 ###            CPANPLUS/Internals/Search.pm         ###
@@ -27,6 +27,7 @@ BEGIN {
 sub _query_mod_tree {
     my $self = shift;
     my %args = @_;
+    my $modtree = $self->_module_tree;
 
     #my $i = '0000'; ### keep a counter, it'll be the key of the hashref
     ### not any longer.. it was only used in shell.pm and it's kinda silly
@@ -35,7 +36,7 @@ sub _query_mod_tree {
 
     ### let's see if we got a custom tree (perhaps a sub search?) or
     ### we should use the default tree.
-    my $tree = keys %{$args{'data'}} ? $args{'data'} : $self->{_modtree};
+    my $tree = keys %{$args{'data'}} ? $args{'data'} : $modtree;
 
     ### loop over the list provided, compare every element against the
     ### proper entry of the hashref in the cpan module tree
@@ -69,8 +70,9 @@ sub _query_author_tree {
     my $self = shift;
     my %args = @_;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $conf       = $self->{_conf};
+    my $err        = $self->{_error};
+    my $authortree = $self->_author_tree;
 
     my @list;
 
@@ -88,20 +90,23 @@ sub _query_author_tree {
         # my $el = quotemeta $arg;
 
         if ($el =~ /\w/) {
-            for (keys %{$self->{_authortree}}) {
-                if ($self->{_authortree}->{$_}->{'name'} =~ /$el/ or /$el/) {
+            for (keys %{$authortree}) {
+                if ($authortree->{$_}->{'name'} =~ /$el/ or /$el/) {
                     push @list, $_;    #build a regexp
                 } #if
             } #for
         } #if
     } #for
 
-    return \@list if $args{authors_only};
-
-
+    ### in case we are only interested in the author object: ###
+    if ( $args{authors_only} ) {
+        my $rv;
+        for my $auth (@list) { $rv->{$auth} = $self->author_tree->{$auth} }
+        return $rv;
+    }
+    
     ### if we are going to query again, we'll need to reconstruct the
     ### the regexp, else we'll get more matches than we bargained for;
-
     my @reglist = map { '^'.$_.'$' } @list;
     return $self->_query_mod_tree(type => 'author', list => \@reglist);
 
@@ -126,53 +131,36 @@ sub _distributions {
     ### in his home dir, so we can save ourselves some trouble and return.
     return 0 unless $modules;
 
-    my $path;
-    for my $mod ( keys %$modules ) {
-        $path = File::Spec::Unix->catdir(
-                    $conf->_get_ftp('base'),
-                    $modules->{$mod}->{path}
-                );
-        last;
+    while(  my ($name,$mod) = each %$modules ) {
+        ### a lot of modules could be found for ONE author.
+        ### but they are all in the same CHECKSUMS file.
+        ### so we can exit the loop after the first one... -kane
+        return $self->_get_checksums( mod => $mod, force => 1 );
     }
-
-    my $fetchdir = File::Spec->catdir(
-                                $conf->_get_build('base'),
-                                $conf->_get_ftp('base'),
-                                $path,
-                            );
-
-    ### we always get a new file... ###
-    my $file = $self->_fetch(
-                        file        => 'CHECKSUMS',
-                        dir         => $path,
-                        fetchdir    => $fetchdir,
-                        force       => 1,
-        ) or return 0;
-
-    my $fh = new FileHandle;
-    unless ($fh->open($file)) {
-        $err->trap( error => "Could not open $file: $!" );
-        return 0;
-    }
-
-    my $in;
-    { local $/; $in = <$fh> }
-    $fh->close;
-
-    ### eval into life the checksums file
-    ### another way would be VERY nice - kane
-    my $cksum;
-    {   #local $@; can't use this, it's buggy -kane
-        $cksum = eval $in or $err->trap( error => "eval error on checksums file: $@" );
-    }
-
-    return $cksum;
 }
 
 
 ### Get a list of files which are used by a module ###
 ### pass it a module argument and a type for the type of files ###
 sub _files {
+    return shift->_extutils_installed(@_, method => 'files');
+}
+
+### Ditto, but returns the installed directory tree ###
+sub _directories {
+    return shift->_extutils_installed(@_, method => 'directory_tree');
+}
+
+### Ditto, but returns the packlist file name ###
+sub _packlist_file {
+    my $packlist = shift->_extutils_installed(@_, method => 'packlist')
+        or return 0;
+
+    return $packlist->[0]->packlist_file;
+}
+
+### Utility function to return a ExtUtils::Installed object; not directly used
+sub _extutils_installed {
     my $self = shift;
     my %args = @_;
 
@@ -182,7 +170,7 @@ sub _files {
     ### check prerequisites
     my $use_list = { 'ExtUtils::Installed' => '0.0' };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         my $inst;
         unless ($inst = ExtUtils::Installed->new() ) {
@@ -199,11 +187,12 @@ sub _files {
             ### instead of return 0.
             ### I am NOT happy -kane
 
-            my @files = eval { $inst->files( $mod, $type) };
+            my $method = $args{'method'};
+            my @files  = eval { $inst->$method( $mod, $type ) };
 
             if ($@) {
                 chomp $@;
-                $err->trap( error => "Could no get files for $mod: $@" );
+                $err->trap( error => "Could no get $method for $mod: $@" );
                 return 0;
             }
 
@@ -217,5 +206,168 @@ sub _files {
     }
 }
 
+
+sub _readme {
+    my $self = shift;
+    my %args = @_;
+
+    my $conf = $self->{_conf};
+    my $err  = $self->{_error};
+
+    ### all to please warnings...
+    my $mod = $args{'module'} or return 0;
+
+    ### build the path we need to look at on the cpan mirror ###
+    my $path = File::Spec::Unix->catdir(
+                    $conf->_get_ftp('base'),
+                    $mod->{path}
+                );
+
+    ### and the dir we need to save to ###
+    my $fetchdir = File::Spec->catdir(
+                                $conf->_get_build('base'),
+                                $conf->_get_ftp('base'),
+                                $mod->{path},
+                            );
+
+    ### what is the name of the file we need? ###
+    my $package = $mod->{package};
+
+    my $flag;
+    if ( $package =~ s!(.+?)\.(?:(?:tar\.)?gz|tgz)$!$1\.readme!i ) {
+        $flag = 1;
+
+    ### else, it might be a .zip file
+    } elsif ( $package =~ s|(.+?)\.zip$|$1\.readme|i ) {
+        $flag = 1;
+    }
+
+    unless ($flag) {
+        $err->trap( error => qq[unknown package $mod->{package}] );
+        return 0;
+    }
+
+    my $file = $self->_fetch(
+                        file        => $package,
+                        dir         => $path,
+                        fetchdir    => $fetchdir,
+        ) or return 0;
+
+    my $fh = new FileHandle;
+    unless ($fh->open($file)) {
+        $err->trap( error => "Could not open $file: $!" );
+        return 0;
+    }
+
+    my $in;
+    { local $/; $in = <$fh> }
+    $fh->close;
+
+    return $in;
+}
+
+sub _installed {
+    my $self = shift;
+    my %args = @_;
+
+    my $err = $self->{_error};
+    my $conf = $self->{_conf};
+
+    my $uselist = { 'ExtUtils::Installed' => '0.0' };
+
+    if ( $self->_can_use(modules => $uselist) ) {
+
+        my $inst = new ExtUtils::Installed;
+
+        ### get a list of all installed modules
+        ### some of them are named 'weird' tho, like 'libwww' for LWP
+        ### eval needed.. this silly module just DIES on an error.. GREAT! -kane
+        my @modules = eval { $inst->modules() };
+
+        if ($@){ $err->trap( error => qq[Error while looking up installed modules: $@] ); }
+
+        ### grab the module tree ###
+        my $modtree = $self->_module_tree();
+
+        my $rv;
+        for my $mod (@modules) {
+            ### common transformations on ExtUtils::Installed misnomers
+            $mod =~ s/-/::/g;
+            $mod =~ s/.pm$//;
+
+            ### either we find it directly in the module tree ###
+            my $obj = $modtree->{$mod};
+
+            ### or we find it in the package...
+            unless ($obj) {
+                my $href = $self->search( type => 'package', list => [ '(?i:^'.$mod.')' ] );
+
+                ### there can be only one! (search result that is)
+                my $count = scalar keys %$href;
+                if ( $count != 1 ) {
+                    $err->inform(   msg     => qq[Could not clearly determine what package '$mod' belongs to! ] .
+                                                qq[Found a total of $count possible matches. Skipping...],
+                                    quiet   => !$conf->get_conf('verbose')
+                                );
+
+                    $rv->{$mod} = 0;
+                    next;
+                }
+
+                ### wow, this is clunky! -kane
+                while( undef, $obj = each %$href ) { keys %{$href}; last; }
+
+            }
+
+            ### store the module object for this name ###
+            $rv->{$mod} = $obj;
+        }
+
+        return $rv;
+
+    } else {
+        $err->trap(error => qq[You do not have ExtUtils::Installed available!] );
+        return 0;
+    }
+}
+
+
+sub _validate_module {
+    my $self = shift;
+    my %args = @_;
+
+    my $err = $self->{_error};
+    my $conf = $self->{_conf};
+
+    ### return 0 if we didn't get the proper arguments.. shouldn't happen tho
+    my $mod = $args{'module'} or return 0;
+
+    ### let's first see if we have the module installed even
+    ### will return undef if not, and a hashref if so -kane
+    my $rv = $self->_check_install(module => $mod);
+
+    unless($rv){
+        $err->trap( error => qq[Module $mod not installed! Can not validate!] );
+        return 0;
+    }
+
+    my $uselist = { 'ExtUtils::Installed' => '0.0' };
+
+    if ( $self->_can_use(modules => $uselist) ) {
+
+        my $inst = new ExtUtils::Installed;
+
+        ### eval needed.. this silly module just DIES on an error.. GREAT! -kane
+        my @list = eval { $inst->validate($mod) };
+
+        if ($@){ $err->trap( error => qq[Error while validating $mod: $@] ); }
+
+        return \@list;
+
+    } else {
+        $err->trap(error => qq[You do not have ExtUtils::Installed available!] );
+        return 0;
+    }
+}
 
 1;

@@ -1,7 +1,10 @@
 # $File: //member/autrijus/cpanplus/dist/AUTHORS $
-# $Revision: #1 $ $Change: 3566 $ $DateTime: 2002/03/27 05:17:57 $
+# $Revision: #2 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
 
-[CREDITS]
+[Credits]
+
+Here is a list of people who are directly responsible for some part of the
+CPANPLUS project:
 
 Jos Boumans (KANE) is the leader of this project and the primary contributor.
 
@@ -13,8 +16,28 @@ Michael G Schwern (MSCHWERN) wrote the test suite.
 
 Ann Barcomb (KUDRA) is responsible for CPANPLUS documentation.
 
-Joshua Keroes (JOSHUA) recently joined the project, hacking at internals.
+Joshua Keroes (JOSHUA) hacks on the internals.
 
 Mattia Barbon (MBARBON) was responsible for some of the early testing.
 
 Andreas Koenig (ANDK) wrote the original CPAN.pm.
+
+[Contributors]
+
+Here is a list of people and their CPAN id, extracted from the ChangeLog
+file and the mailing list archives.  These people have either submitted
+patches or suggestions, or their bug reports or comments have inspired
+the appropriate patches.  Corrections, additions, deletions welcome:
+
+Andy Lester		(PETDANCE)
+Barrie Slaymaker	(RBS)
+Dave Rolsky		(DROLSKY)
+Graham Barr		(GBARR)
+Jorrit Waalboer
+Jochen Stenzel		(JSTENZEL)
+Kay Roepke
+Mark Fowler
+Matt Sergeant		(MSERGEANT)
+Peter Sergeant		(SARGIE)
+Randy J. Ray		(RJRAY)
+Ton Hospel

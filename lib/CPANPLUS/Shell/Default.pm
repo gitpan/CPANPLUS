@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #10 $ $Change: 3569 $ $DateTime: 2002/03/27 05:56:09 $
+# $Revision: #17 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -26,7 +26,7 @@ BEGIN {
     use Exporter    ();
     use vars        qw( @ISA $VERSION );
     @ISA        =   qw( Exporter );
-    $VERSION    =   '0.01';
+    $VERSION    =   '0.02';
 }
 
 ### our command set ###
@@ -36,27 +36,33 @@ my $cmd = {
     d   => "fetch",
     e   => "_expand_inc",
     f   => "distributions",
-    i   => "install",
+    i   => "install", # target => install
+    t   => "install", # target => test
     h   => "_help",
-    q   => "_quit",
+    q   => "_quit", # also called on EOF and abnormal exits
     s   => "set_conf",
+    c   => "reports",
     l   => "details",
+    x   => "reload_indices",
     '?' => "_help",
-    ### too buggy to document ###
-    u   => "uninstall",
     p   => "_print_stack",
+    r   => "readme",
+    o   => "uptodate",
+    u   => "uninstall",
 };
 
 ### input check ###
 my $maps = {
     m => "module",
+    a => "author",
+    ### not used yet ###
     v => "version",
     d => "path",
-    a => "author",
     p => "package",
     c => "comment",
 };
 
+my $brand = 'CPAN Terminal';
 
 ### CPANPLUS::Shell::Default needs it's own constructor, seeing it will just access
 ### CPANPLUS::Backend anyway
@@ -65,12 +71,12 @@ sub new {
 
     ### signal handler ###
     $SIG{INT} = $self->{_signals}{INT}{handler} = sub {
-    	unless ($self->{_signals}{INT}{count}++) {
-    	    warn "Caught SIGINT\n";
-    	}
-    	else {
-    	    warn "Got another SIGINT\n"; die;
-    	}
+        unless ($self->{_signals}{INT}{count}++) {
+            warn "Caught SIGINT\n";
+        }
+        else {
+            warn "Got another SIGINT\n"; die;
+        }
     };
 
     $self->{_signals}{INT}{count} = 0; # count of sigint calls
@@ -86,46 +92,35 @@ sub shell {
     ### make an object ###
     my $cpan = new CPANPLUS::Backend;
 
-    my $term = Term::ReadLine->new( 'CPAN Terminal', *STDIN, *STDOUT );
-    my $prompt = "CPAN Terminal>";
-    my $OUT = *STDOUT;
+    my $term = Term::ReadLine->new( $brand );
+    my $prompt = "$brand>";
 
     ### store this in the object, so we can access the prompt anywhere if need be
-    $self->{_term}  = $term;
-    $cpan->{_shell} = $self;
+    $self->{_term}    = $term;
+    $self->{_backend} = $cpan;
+    $cpan->{_shell}   = $self;
 
-    my $flag;
-    my $href;
+    $self->_show_banner($cpan);
+    $self->_input_loop($cpan, $prompt) or print "\n"; # print only on abnormal quits
+    $self->_quit;
+}
 
-    ### Tries to probe for our ReadLine support status
-    my $rl_avail = ($term->can('ReadLine'))                  # a) under an interactive shell?
-	? (-t STDIN)                                         # b) do we have a tty terminal?
-	    ? ($term->ReadLine ne "Term::ReadLine::Stub")    # c) external modules available?
-		? ($self->_is_bad_terminal($term))           # d) should we disable the term?
-		    ? "disabled"                             # a+b+c+d => "Bad" terminal
-		    : "enabled"                              # a+b+c   => "Smart" terminal
-		: "available (try 'i Term::ReadLine::Perl')" # a+b     => "Stub" terminal
-	    : "suppressed"                                   # a       => "Dumb" terminal
-	: "suppressed in batch mode";                        # none    => "Faked" terminal
+### input loop. returns true if exited normally via 'q'.
+sub _input_loop {
+    my ($self, $cpan, $prompt) = @_;
+    my $term = $self->{_term};
 
-    $rl_avail = "ReadLine support $rl_avail.";
-    $rl_avail = "\n*** $rl_avail" if (length($rl_avail) > 45);
-
-    printf (<< ".", $self->which, $self->which->VERSION, $cpan->VERSION, $rl_avail);
-
-%s -- CPAN exploration and modules installation (v%s)
-*** Please report bugs to <cpanplus-bugs\@lists.sourceforge.net>.
-*** Using CPANPLUS::Backend v%s.  %s
-
-.
+    my $cache; # results of previous search
+    my $format = "%5s %-50s %8s %-10s\n";
+    my $normal_quit;
 
     ### somehow it's caching previous input ###
     while (
-	    defined (my $input = eval { $term->readline($prompt) } )
-	    or $self->{_signals}{INT}{count} == 1
+        defined (my $input = eval { $term->readline($prompt) } )
+        or $self->{_signals}{INT}{count} == 1
     ) { eval {
 
-	    ### re-initiate all signal handlers
+        ### re-initiate all signal handlers
         while (my ($sig, $entry) = each %{$self->{_signals}}) {
             $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
         }
@@ -143,17 +138,20 @@ sub shell {
         }
 
 
-        ### in case we got a command, and that command was either:
-        ### h, q or ?, we execute the command since they are in the
+        ### exit the loop altogether
+        if ($key =~ /^q/) { $normal_quit = 1; last }
+
+        ### in case we got a command, and that command was either
+        ### h or ?, we execute the command since they are in the
         ### current package.
-        if ( $cmd->{$key} && ( $key =~ /^[?hq]/ )) {
+        if ( $cmd->{$key} && ( $key =~ /^[?h]/ )) {
             my $method = $cmd->{$key};
             $self->$method();
             next;
         }
 
+        ### dump stack, takes no argument
         if ( $key =~ /^p/ ) {
-
             my $method = $cmd->{$key};
             $self->$method( stack => $cpan->{_error}->flush(), file => $input );
             next;
@@ -163,20 +161,65 @@ sub shell {
         $cpan->{_error}->flush();
         $cpan->{_error}->forget();
 
+        ### check for other commands that does not require an argument ###
         if ( $key =~ /^\!/ ) {
+            # $input = 'system($ENV{SHELL} || $ENV{COMSPEC})' unless length $input;
             eval $input;
-            warn $@ if $@;
+            $cpan->{_error}->trap( error => $@ ) if $@;
             print "\n";
+            next;
+
+        } elsif ( $key =~ /^o/ ) {
+            my $method = $cmd->{$key};
+
+            my $modtree = $cpan->module_tree() ;
+            my $inst = $cpan->installed();
+
+            my $res = $cpan->$method( modules => [keys %$inst] );
+
+            $cache = [ undef ]; # most carbon-based life forms count from 1
+            for my $name ( sort keys %$res ) {
+                next unless $res->{$name}->{uptodate} eq '0';
+                push @{$cache}, $modtree->{$name};
+            }
+
+            $self->_pager_open if ($#{$cache} >= $self->_term_rowcount);
+
+            ### pretty print some information about the search
+            for (1 .. $#{$cache}) {
+
+                my ($module, $version, $author) = @{$cache->[$_]}{qw/module version author/};
+
+                my $have    = $self->_format_version( version => $res->{$module}->{version} );
+                my $can     = $self->_format_version( version => $version );
+
+                my $local_format = "%5s %8s %8s %-44s %-10s\n";
+
+                printf $local_format, $_, ($have, $can, $module, $author);
+            }
+
+            $self->_pager_close;
+
+            next;
+
+        } elsif ( $key =~ /^x/ ) {
+            my $method = $cmd->{$key};
+
+            print "Fetching new indices and rebuilding the module tree\n";
+            print "This may take a while...\n";
+
+            $cpan->$method(update_source => 1);
+
             next;
         }
 
         ### if input has no length, we either got a signal, or a command without a
         ### required string;
         ### in either case we take apropriate action and skip the rest of the loop
-        unless( length $input ) {
+        unless ( length $input or $key =~ /^s/ ) {
 
             unless ( defined $input ) {
-		        $self->{_signals}{INT}{count}++; # to counter the -- in continue block
+                $self->{_signals}{INT}{count}++; # to counter the -- in continue block
             } elsif ( length $key ) {
                 print "Improper command '$key'. Usage:\n";
                 $self->_help();
@@ -198,16 +241,25 @@ sub shell {
             my ($name, $value) = $input =~ m/(\w+)\s*(.*?)\s*$/;
 
             ### redo setup configuration?
-            if ($name =~ m/^c/) {;
-                CPANPLUS::Configure::Setup::init($cpan->{_conf});
-                next; # should be next SHELL I think? -jmb
+            if ($name =~ m/^conf/i) {
+                CPANPLUS::Configure::Setup->init(
+                    conf => $cpan->configure_object,
+                    term => $self->{_term},
+                );
+                next;
+            }
+            elsif ($name =~ m/^save/i) {;
+                $cpan->configure_object->save;
+                print "Your CPAN++ configuration info has been saved!\n\n";
+                next;
             }
 
             ### allow lazy config options... not smart but possible ###
-            my @options = sort $cpan->{_conf}->subtypes('conf');
+            my $conf = $cpan->configure_object;
+            my @options = sort $conf->subtypes('conf');
             my $realname;
             for my $option (@options) {
-                if ($option =~ m/^$name/) {
+                if (defined $name and $option =~ m/^$name/) {
                     $realname = $option;
                     last;
                 }
@@ -216,161 +268,64 @@ sub shell {
             my $method = $cmd->{$key};
 
             if ($realname) {
-                # determine the reference type of the original value
-                my $type = ref($cpan->get_conf($realname)->{$realname});
-
-		if ($type eq 'HASH') {
-		    $value = {
-                        map {
-                            /=/ ? split('=', $_, 2) : ($_ => undef)
-                        } $value =~ m/\s*((?:[^\s=]+=)?(?:"[^"]+"|'[^']+'|[^\s]+))/g
-                    };
-		}
-		elsif ($type eq 'ARRAY') {
-		    $value = [ $value =~ m/\s*("[^"]+"|'[^']+'|[^\s]+)/g ]
-		}
-
-                my $set = $cpan->$method( $realname => $value );
-
-                for my $key (sort keys %$set) {
-                    my $val = $set->{$key}; 
-                    $type = ref($val);
-
-		    if ($type eq 'HASH') {
-                        print "$key was set to:\n";
-                        print map {
-                            defined($value->{$_})
-                                ? "    $_=$value->{$_}\n"
-                                : "    $_\n"
-                        } sort keys %{$value};
-		    }
-		    elsif ($type eq 'ARRAY') {
-                        print "$key was set to:\n";
-			print map { "    $_\n" } @{$value};
-                    }
-                    else {
-                        print "$key was set to $set->{$key}\n";
-                    }
-                }
-
+                $self->_set_config(
+                    key    => $realname,
+                    value  => $value,
+                    method => $method,
+                );
             } else {
-                print "'$name' is not a valid configuration option!\n",
-                      "Available options are:\n",
-                      map { "    $_\n"; } @options,
+                local $Data::Dumper::Indent = 0;
+                print "'$name' is not a valid configuration option!\n" if defined $name;
+                print "Available options and their current values are:\n";
+
+                my $local_format = "    %-".(sort{$b<=>$a}(map(length, @options)))[0]."s %s\n";
+
+                foreach $key (@options) {
+                    my $val = $conf->get_conf($key);
+                    ($val) = ref($val) ? (Data::Dumper::Dumper($val) =~ /= (.*);$/) : "'$val'";
+                    printf $local_format, $key, $val;
+                }
             }
 
         ### i is for install.. it takes multiple arguments, so:
         ### i POE LWP
         ### is perfectly valid.
-        } elsif ( $key =~ /^i/ ) {
-            my @input = split /\s+/, $input;
+        } elsif ( $key =~ /^[it]/ ) {
+            ### prepare the list of modules we'll have to test/install ###
+            my $target = ($key =~ /^i/) ? 'install' : 'test';
 
-            my @list;
-
-            ### prepare the list of modules we'll have to install ###
-            for my $mod (@input) {
-
-                ### if we got a full file name...
-                ### we'll just give it a go...
-                if ( $mod =~ m|/| ) {
-                    push @list, $mod;
-
-
-                ### if this module is only numbers - meaning a previous lookup
-                ### it will be stored in $href (the result of a previous search)
-                ### keys in that hashref are numbers, not the module names.
-                } elsif ( $mod !~ /\D/ ) {
-                    if ( $flag ) {
-                        ### zero pad to match hash key ###
-                        my $mod = sprintf "%04d", $mod;
-
-                        ### look up the module name in our hash ref ###
-                        my $name = $href->{$mod}->{'module'};
-                        if ( $name ) {
-                            push @list, $name;
-                            print "Installing: $name\n";
-                        } else {
-                            print "No such module: $mod\n"
-                        }
-                    } else {
-                        print "No search was done yet!\n";
-                    }
-
-                } else {
-                    ### apparently, this is a 'normal' module name - look it up
-                    ### this look up will have to take place in the modtree,
-                    ### not the $href;
-                    if ( my $name = $cpan->{_modtree}->{$mod}->{'module'} ) {
-                        push @list, $name;
-                        print "Installing: $name\n";
-                    } else {
-                        print "No such module: $mod\n"
-                    }
-                }
-            }
+            my @list = $self->_select_modules(
+                input   => $input,
+                prompt  => "\u${target}ing", # Installing / Testing
+                cache   => $cache,
+                key     => 'module',
+            );
 
             ### try to install them, get the return status back
-            my $status = $cpan->install( modules => [ @list ] );
+            my $status = $cpan->install( modules => [ @list ], target => $target );
 
             for my $key ( sort keys %$status ) {
                 print   $status->{$key}
-                        ? "Successfully installed $key\n"
-                        : "Error installing $key\n";
+                        ? "Successfully ${target}ed $key\n"
+                        : "Error ${target}ing $key\n";
             }
 
         ### d is for downloading modules.. can take multiple input like i does.
         ### so this works: d LWP POE
         } elsif ( $key =~ /^d/ ) {
-            my @input = split /\s+/, $input;
-
-            my @list;
-
-            ### prepare the list of modules we'll have to install ###
-            for my $mod (@input) {
-
-                ### if we got a full file name...
-                ### we'll just give it a go...
-                if ( $mod =~ m|/| ) {
-                    push @list, $mod;
-
-                ### if this module is only numbers - meaning a previous lookup
-                ### it will be stored in $href (the result of a previous search)
-                ### keys in that hashref are numbers, not the module names.
-                } elsif ( $mod !~ /\D/ ) {
-                    if ( $flag ) {
-                        ### zero pad to match hash key ###
-                        my $mod = sprintf "%04d", $mod;
-
-                        ### look up the module name in our hash ref ###
-                        my $name = $href->{$mod}->{'module'};
-                        if ( $name ) {
-                            push @list, $name;
-                            print "Fetching: $name\n";
-                        } else {
-                            print "No such module: $mod\n"
-                        }
-                    } else {
-                        print "No search was done yet!\n";
-                    }
-
-                } else {
-                    ### apparently, this is a 'normal' module name - look it up
-                    ### this look up will have to take place in the modtree,
-                    ### not the $href;
-                    if ( my $name = $cpan->{_modtree}->{$mod}->{'module'} ) {
-                        push @list, $name;
-                        print "Fetching: $name\n";
-                    } else {
-                       print "No such module: $mod\n"
-                    }
-                }
-            }
+            ### prepare the list of modules we'll have to fetch ###
+            my @list = $self->_select_modules(
+                input   => $input,
+                prompt  => 'Fetching',
+                cache   => $cache,
+                key     => 'module',
+            );
 
             ### get the result of our fetch... we store the modules in whatever
             ### dir the shell was invoked in.
             my $status = $cpan->fetch(
                 modules     => [ @list ],
-                fetchdir   => $cpan->{_conf}->_get_build( 'startdir'),
+                fetchdir   => $cpan->{_conf}->_get_build('startdir'),
             );
 
             for my $key ( sort keys %$status ) {
@@ -380,96 +335,134 @@ sub shell {
             }
 
 
+        ### c is for displaying RT/CPAN Testing results.
+        ### requires LWP.
+        } elsif ( $key =~ /^c/ ) {
+            ### prepare the list of modules we'll have to query ###
+            my @list = $self->_select_modules(
+                input   => $input,
+                cache   => $cache,
+                key     => 'module',
+            );
+
+            ### get the result of our listing...
+            my $method = $cmd->{$key};
+            my $res = $cpan->$method( modules => [ @list ] );
+
+            while( my($name, $href) = each (%$res) ) {
+                while( my ($dist, $pf_ref) = each (%$href) ) {
+                    print "[$dist]\n";
+                    for my $platform (sort keys %{$pf_ref}) {
+                        printf "%8s %s\n", $pf_ref->{$platform}, $platform;
+                    }
+                }
+            }
+
         ### l gives a Listing of details for modules.
         ### also takes multiple arguments, so:
         ### l LWP POE #works just fine
         } elsif ( $key =~ /^l/ ) {
+            ### prepare the list of modules we'll have to list ###
+            my @list = $self->_select_modules(
+                input   => $input,
+                cache   => $cache,
+                key     => 'module',
+            );
+
             my $method = $cmd->{$key};
-
-            my @list; my $res;
-
-            ### split the input
-            for my $mod ( split /\s+/, $input ) {
-
-                ### if it's just digits, it was from a previous lookup
-                if ( $mod =~ /^\d+$/ ) {
-                    my $mod = sprintf "%04d", $mod;
-
-                    push @list, $href->{$mod}->{'module'}
-
-                ### else, it's a regular module name
-                } else {
-                    push @list, $mod;
-                }
-            }
-
-            $res = $cpan->$method( modules => [ @list ] );
+            my $res = $cpan->$method( modules => [ @list ] );
 
             for my $mod ( sort keys %$res ) {
-
-                unless ( $res->{$mod}->{Package} ) {
-                    print "\nNo details for $mod - are you sure it exists?\n";
+                unless ( $res->{$mod} ) {
+                    print "No details for $mod - it's probably outdated.\n";
                     next;
                 }
 
-                print "\nDetails for $mod:\n";
+                print "Details for $mod:\n";
                 for my $item ( sort keys %{$res->{$mod}} ) {
                     printf "%-30s %-30s\n", $item, $res->{$mod}->{$item}
                 }
+                print "\n";
             }
 
         ### f gives a listing of distribution Files by a certain author
         ### also takes multiple arguments, so:
         ### f KANE DCONWAY #works just fine
         } elsif ( $key =~ /^f/ ) {
-            my $method = $cmd->{$key};
-
             ### split the input
             my @list = split /\s+/, $input;
 
+            my $method = $cmd->{$key};
             my $res = $cpan->$method( authors => [ @list ] );
 
-            unless ( $res ) {
+            unless ( $res and keys %$res ) {
                 print "No authors found for your query\n";
                 next;
             }
 
+            $cache = [ undef ]; # most carbon-based life forms count from 1
+
             for my $auth ( sort keys %$res ) {
                 next unless $res->{$auth};
-                for my $module ( sort keys %{$res->{$auth}} ) {
 
-                    printf "%-12s %-12s %-50s\n", $auth, $res->{$auth}->{$module}->{size}, $module;
+                my $path = '/'.substr($auth, 0, 1).'/'.substr($auth, 0, 2).'/'.$auth;
+
+                $self->_pager_open if (keys %{$res->{$auth}} >= $self->_term_rowcount);
+
+                for my $dist ( sort keys %{$res->{$auth}} ) {
+                    push @{$cache}, "$path/$dist"; # full path to dist
+
+                    ### pretty print some information about the search
+                    printf $format,
+                           $#{$cache}, $dist, $res->{$auth}->{$dist}->{size}, $auth;
                 }
+
+                $self->_pager_close;
+            }
+
+        ### r prints the readme file for a certain module
+        ### also takes multiple arguments, so:
+        ### r POE DBI #works just fine
+        ### alltho you probably shouldn't do that
+        } elsif ( $key =~ /^r/ ) {
+            ### split the input
+            my @list = $self->_select_modules(
+                input   => $input,
+                cache   => $cache,
+            );
+
+            my $method = $cmd->{$key};
+            my $res = $cpan->$method( modules => [ @list ] );
+
+            unless ( $res ) {
+                print "No README found for your query\n";
+                next;
+            }
+
+            for my $mod ( sort keys %$res ) {
+
+                unless ($res->{$mod}) {
+                    print qq[No README file found for $mod];
+                } else {
+                    $self->_pager_open;
+                    print $res->{$mod};
+                    $self->_pager_close;
+                }
+
                 print "\n";
             }
 
-        ### u uninstalls modules... not documented yet
-        ### handle with care: unlinks files but doens't update packlist!
+        ### u uninstalls modules
         } elsif ( $key =~ /^u/ ) {
+            ### prepare the list of modules we'll have to query ###
+            my @list = $self->_select_modules(
+                input   => $input,
+                prompt  => 'Uninstalling',
+                cache   => $cache,
+                key     => 'module',
+            );
+
             my $method = $cmd->{$key};
-
-            my @list;
-
-            ### split the input
-            for my $mod ( split /\s+/, $input ) {
-
-                ### if it's just digits, it was from a previous lookup
-                unless ( $mod =~ /\D/ ) {
-                    my $mod = sprintf "%04d", $mod;
-
-                    my $name;
-                    if ($name = $href->{$mod}->{'module'} ) {
-                        push @list, $name;
-                    } else {
-                        print "Couldn't find a previous mach for $mod\n";
-                    }
-
-                ### else, it's a regular module name
-                } else {
-                    push @list, $mod;
-                }
-            }
-
             my $res = $cpan->$method( modules => [ @list ] );
 
             for my $mod ( sort keys %$res ) {
@@ -499,63 +492,280 @@ sub shell {
             ### we add the /i flag here for case insensitive searches
             my @regexps = map { "(?i:$_)" } split /\s+/, $input;
 
-            my $result = $cpan->$method(
-                        type => $maps->{$key},
-                        list => [ @regexps ],
-                    );
-
-            ### forget old searches...
-            $href = {};
+            my $res = $cpan->$method(
+                    type => $maps->{$key},
+                    list => [ @regexps ],
+            );
 
             ### if we got a result back....
-            if ( $result ) {
-                $flag = 1;
-                my $i = '0000';
+            if ( $res and keys %{$res} ) {
+                ### forget old searches...
+                $cache = [ undef ]; # most carbon-based life forms count from 1
 
-                ### store them in our $href; it's the storage for searches
+                ### store them in our $cache; it's the storage for searches
                 ### in Shell.pm
-                for my $k ( sort keys %$result ) {
-                    $href->{++$i} = $result->{$k};
+                for my $k ( sort keys %{$res} ) {
+                    push @{$cache}, $res->{$k};
                 }
+
+                $self->_pager_open if ($#{$cache} >= $self->_term_rowcount);
 
                 ### pretty print some information about the search
-                for (sort keys %$href) {
-                    printf "%-5s %-50s %-7s %-10s\n",
-                    $_, $href->{$_}->{'module'}, $href->{$_}->{'version'}, $href->{$_}->{'author'}
+                for (1 .. $#{$cache}) {
+                    my ($module, $version, $author) =
+                        @{$cache->[$_]}{qw/module version author/};
+
+                    my $fmt_version = $self->_format_version( version => $version );
+
+                    printf $format,
+                           $_, ($module, $fmt_version, $author);
                 }
+
+                $self->_pager_close;
             } else {
                 print "Your search generated no results\n";
                 next;
             }
         } else {
-            print "unknown command '$key'. Usage:\n";
+            print "Unknown command '$key'. Usage:\n";
             $self->_help();
         }
 
-        ### add this command to the history
-        $term->addhistory($input) if $input =~ /\S/;
+        ### add this command to the history - nope, it's already done
+        # $term->addhistory($input) if $input =~ /\S/;
 
-    } }
+    }; # eval
+
+    $cpan->{_error}->trap( error => $@ ) if $@;
 
     ### continue the while loop in case we 'next' or 'last' it earlier
     ### to make sure the sig handler is still working properly
-    continue {
+    } continue {
         $self->{_signals}{INT}{count}--
             if $self->{_signals}{INT}{count}; # clear the sigint count
     }
+
+    return $normal_quit;
 }
 
 
-# checks whether the Term::ReadLine is broken and needs to fallback to Stub
+### display shell's banner, takes the Backend object as argument
+sub _show_banner {
+    my ($self, $cpan) = @_;
+    my $term = $self->{_term};
+
+    ### Tries to probe for our ReadLine support status
+    my $rl_avail = ($term->can('ReadLine'))                      # a) under an interactive shell?
+        ? (-t STDIN)                                             # b) do we have a tty terminal?
+            ? (!$self->_is_bad_terminal($term))                  # c) should we enable the term?
+                ? ($term->ReadLine ne "Term::ReadLine::Stub")    # d) external modules available?
+                    ? "enabled"                                  # a+b+c+d => "Smart" terminal
+                    : "available (try 'i Term::ReadLine::Perl')" # a+b+c   => "Stub" terminal
+                : "disabled"                                     # a+b     => "Bad" terminal
+            : "suppressed"                                       # a       => "Dumb" terminal
+        : "suppressed in batch mode";                            # none    => "Faked" terminal
+
+    $rl_avail = "ReadLine support $rl_avail.";
+    $rl_avail = "\n*** $rl_avail" if (length($rl_avail) > 45);
+
+    printf (<< ".", $self->which, $self->which->VERSION, $cpan->VERSION, $rl_avail);
+
+%s -- CPAN exploration and modules installation (v%s)
+*** Please report bugs to <cpanplus-bugs\@lists.sourceforge.net>.
+*** Using CPANPLUS::Backend v%s.  %s
+
+.
+}
+
+
+### checks whether the Term::ReadLine is broken and needs to fallback to Stub
 sub _is_bad_terminal {
     my $self = shift;
     return unless $^O eq 'MSWin32';
 
     # replace the term with the default (stub) one
     return $_[0] = $self->{_term} =
-        Term::ReadLine::Stub->new( 'CPAN Terminal', *STDIN, *STDOUT );
+        Term::ReadLine::Stub->new($brand);
 }
 
+
+### choose modules - either as digits (choose from $cache), or by name
+### return the $key property of module object, or itself if there's no $key
+sub _select_modules {
+    my ($self, %args) = @_;
+    my ($input, $prompt, $cache, $key) = @args{qw|input prompt cache key|};
+    my $cpan = $self->{_backend};
+    my $modtree = $cpan->_module_tree;
+    my @ret;
+
+    ### expand .. in $input
+    $input =~ s/\b(\d+)\s*\.\.\s*(\d+)\b/join(' ', $1 .. $2)/eg;
+
+    foreach my $mod (split /\s+/, $input) {
+        if ( $mod =~ /[^\w:]/ ) {
+            # contains non-word, non-colon characters; must be a distname.
+            push @ret, $mod;
+        }
+
+        ### if this module is only numbers - meaning a previous lookup
+        ### it will be stored in $cache (the result of a previous search)
+        ### keys in that haslist are numbers, not the module names.
+
+        elsif ( $mod !~ /\D/ and $mod > 0 ) {
+            unless ($cache and @{$cache}) {
+                print "No search was done yet!\n";
+            }
+
+            ### look up the module name in our array ref ###
+            ### it may not be a proper object, but distnames from 'f' ###
+
+            elsif ( my $obj = $cache->[$mod] ) {
+                $obj = $obj->{$key} if defined $key and ref($obj);
+                print "$prompt: $obj\n" if defined $prompt;
+                push @ret, $obj;
+            }
+            else {
+                print "No such module: $mod\n";
+            }
+        }
+
+        ### apparently, this is a 'normal' module name - look it up
+        ### this look up will have to take place in the modtree,
+        ### not the $cache;
+        elsif ( my $obj = $modtree->{$mod} ) {
+            $obj = $obj->{$key} if defined $key;
+            print "$prompt: $obj\n" if defined $prompt;
+            push @ret, $obj;
+        }
+
+        ### nothing matched
+        else {
+            print "No such module: $mod\n";
+        }
+    }
+
+    return @ret;
+}
+
+{
+my $win32_console;
+
+### determines row count of current terminal; defaults to 25.
+sub _term_rowcount {
+    my ($self, %args) = @_;
+    my $cpan    = $self->{_backend};
+    my $default = $args{default} || 25;
+
+    if ( $^O eq 'MSWin32' ) {
+        if ($cpan->_can_use( modules => { 'Win32::Console' => '0.0' } )) {
+            $win32_console ||= Win32::Console->new;
+            my $rows = ($win32_console->Info)[-1];
+            return $rows;
+        }
+
+    } else {
+
+        if ($cpan->_can_use( modules => { 'Term::Size' => '0.0' } )) {
+            my ($cols, $rows) = Term::Size::chars();
+            return $rows;
+        }
+    }
+
+    return $default;
+}
+
+}
+
+sub _format_version {
+    my $self = shift;
+    my %args = @_;
+
+    my $version = $args{'version'} or return 0;
+
+    ### fudge $version into the 'optimal' format
+    $version = sprintf('%3.4f', $version);
+    $version = '' if $version == '0.00';
+    $version =~ s/(00?)$/' ' x (length $&)/e;
+
+    return $version;
+}
+
+
+### parse and set configuration options: $method should be 'set_conf'
+sub _set_config {
+    my ($self, %args) = @_;
+    my ($key, $value, $method) = @args{qw|key value method|};
+    my $cpan = $self->{_backend};
+
+    # determine the reference type of the original value
+    my $type = ref($cpan->get_conf($key)->{$key});
+
+    if ($type eq 'HASH') {
+        $value = $cpan->_flags_hashref($value);
+    }
+    elsif ($type eq 'ARRAY') {
+        $value = [ $value =~ m/\s*("[^"]+"|'[^']+'|[^\s]+)/g ]
+    }
+
+    my $set = $cpan->$method( $key => $value );
+
+    for my $key (sort keys %$set) {
+        my $val = $set->{$key};
+        $type = ref($val);
+
+        if ($type eq 'HASH') {
+            print "$key was set to:\n";
+            print map {
+                defined($value->{$_})
+                    ? "    $_=$value->{$_}\n"
+                    : "    $_\n"
+            } sort keys %{$value};
+        }
+        elsif ($type eq 'ARRAY') {
+            print "$key was set to:\n";
+            print map { "    $_\n" } @{$value};
+        }
+        else {
+            print "$key was set to $set->{$key}\n";
+        }
+    }
+}
+
+
+### open a pager handle
+sub _pager_open {
+    my $self  = shift;
+    my $cpan  = $self->{_backend};
+    my $cmd   = $cpan->{_conf}->_get_build('pager') or return;
+
+    $self->{_old_sigpipe} = $SIG{PIPE};
+    $SIG{PIPE} = 'IGNORE';
+
+    my $fh = new FileHandle;
+    unless ( $fh->open("| $cmd") ) {
+        $cpan->{_error}->trap( error => "could not pipe to $cmd: $!\n" );
+        return 0;
+    }
+
+    $fh->autoflush(1);
+    $self->{_pager}     = $fh;
+    $self->{_old_outfh} = select $fh;
+
+    return $fh;
+}
+
+
+### print to the current pager handle, or STDOUT if it's not opened
+sub _pager_close {
+    my $self  = shift;
+    my $pager = $self->{_pager} or return;
+
+    $pager->close if (ref($pager) and $pager->can('close'));
+
+    undef $self->{_pager};
+    select $self->{_old_outfh};
+    $SIG{PIPE} = $self->{_old_sigpipe};
+}
 
 sub _ask_prereq {
     my $obj     = shift;
@@ -567,14 +777,45 @@ sub _ask_prereq {
 
     my $mod = $args{mod};
 
-    print "\n$mod is a required module for this install. " .
-            "Would you like me to install it? [Y/n]";
+    print "\n$mod is a required module for this install.\n";
 
-    while ( defined (my $input = $self->{_term}->readline) ) {
+    return $self->_ask_yn(
+        prompt  => "Would you like me to install it? [Y/n]: ",
+        default => 'y',
+    ) ? $mod : 0;
+}
 
-        if ( $input =~ /^y/i or !length $input) {
-            ### must install this
-            return $mod;
+
+### asks whether to report testing result or not
+sub _ask_report {
+    my $obj     = shift;
+    my %args    = @_;
+
+    ### either it's called from Internals, or from the shell directly
+    ### although the latter is unlikely...
+    my $self   = $obj->{_shell} || $obj;
+    my $dist   = $args{dist};
+    my $grade  = $args{grade};
+
+    return $self->_ask_yn(
+        prompt  => "Report ${dist}'s testing result (\U$grade\E)? [y/N]: ",
+        default => 'n',
+    );
+}
+
+
+### dumps a message stack
+### generic yes/no question interface
+sub _ask_yn {
+    my ($self, %args) = @_;
+    my $prompt  = $args{prompt};
+    my $default = $args{default};
+
+    while ( defined (my $input = $self->{_term}->readline($prompt)) ) {
+        $input = $default unless length $input;
+
+        if ( $input =~ /^y/i ) {
+            return 1;
         } elsif ( $input =~ /^n/i ) {
             return 0;
         } else {
@@ -582,6 +823,7 @@ sub _ask_prereq {
         }
     }
 }
+
 
 sub _print_stack {
     my $self = shift;
@@ -608,6 +850,7 @@ sub _print_stack {
     return 1;
 }
 
+
 ### add dirs to the @INC at runtime ###
 sub _expand_inc {
     my $self    = shift;
@@ -621,29 +864,45 @@ sub _expand_inc {
     return 1;
 }
 
+
+### shows help information
 sub _help {
-    ### not yet public !! ##@
-    #f                   # flush the cache on installed modules
-
-    print <<EOL;
-    a AUTHOR [ AUTHOR]  # search by author
-    m MODULE [ MODULE]  # search by module
-    i MODULE | NUMBER   # install module, by name or by search number
-    d MODULE | NUMBER   # download module into current directory
-    l MODULE [ MODULE]  # display detailed information about a module
-    e DIR    [ DIR]     # add directories to your \@INC
-    f AUTHOR [ AUTHOR]  # list all distributions by an author
-    s OPTION VALUE      # set configuration options for this session
-    p [ FILE]           # print the error stack (optionally to a file)
-    h | ?               # display help
-    q                   # exit
-
+    my $self = shift;
+    my @Help = split("\n", << 'EOL', -1);
+[General]    
+    h | ?                  # display help
+    q                      # exit
+[Search]
+    a AUTHOR ...           # search by author(s)
+    m MODULE ...           # search by module(s)
+    f AUTHOR ...           # list all distributions by author(s)
+    o                      # list installed module(s) that aren't up to date
+[Operations]
+    i MODULE | NUMBER ...  # install module(s), by name or by search number
+    t MODULE | NUMBER ...  # test module(s), by name or by search number
+    u MODULE | NUMBER ...  # uninstall module(s), by name or by search number
+    d MODULE | NUMBER ...  # download module(s) into current directory
+    l MODULE | NUMBER ...  # display detailed information about module(s)
+    r MODULE | NUMBER ...  # display README files of module(s)
+    c MODULE | NUMBER ...  # check for module report(s) from cpan-testers
+[Local Administration]
+    e DIR ...              # add directories to your @INC
+    s [OPTION VALUE]       # set configuration options for this session
+    s conf | save          # reconfigure settings / save current settings
+    ! EXPR                 # evaluate a perl statement
+    p [FILE]               # print the error stack (optionally to a file)
+    x                      # reload CPAN indices
 EOL
+
+    $self->_pager_open if (@Help >= $self->_term_rowcount);
+    print map {"$_\n"} @Help;
+    $self->_pager_close;
 }
 
+
+### displays quit message
 sub _quit {
     print "Exiting CPANPLUS shell\n";
-    exit;
 }
 
 
@@ -674,10 +933,16 @@ Shell commands:
     CPAN Terminal>s verbose 1
     CPAN Terminal>e /home/kudra/perllib
 
-    CPAN Terminal>m simple tcp
-    CPAN Terminal>i 22 27 /K/KA/KANE/Acme-POE-Knee-1.10.zip
+    CPAN Terminal>m simple tcp poe
+    CPAN Terminal>i 22 27 /A/AL/ALIZTA/Crypt-Enigma-0.01.tar.gz
+
+    CPAN Terminal>u Acme::POE::Knee 6
 
     CPAN Terminal>a damian
+
+    CPAN Terminal>t Mail::Box
+
+    CPAN Terminal>r POE
 
     CPAN Terminal>d XML::Twig
 
@@ -685,7 +950,12 @@ Shell commands:
 
     CPAN Terminal>f VROO?MANS$ DCROSS
 
+    CPAN Terminal>! die 'wild rose';
     CPAN Terminal>p /tmp/cpanplus/errors
+
+    CPAN Terminal>o
+
+    CPAN Terminal>x
 
     CPAN Terminal>q
 
@@ -734,8 +1004,8 @@ This search would look for all C<Acme> submodules.
 The list of matching modules will be printed in four columns.  For
 example:
 
-    0001    Acme::Pony    1.1     DCANTRELL
-    0002    Acme::DWIM    1.05    DCONWAY
+    1 Acme::Pony                1.1   DCANTRELL
+    2 Acme::DWIM                1.05  DCONWAY
 
 These columns correspond to the assigned number, module name,
 version number and CPAN author identification.  Assigned numbers
@@ -762,14 +1032,14 @@ This command gives the same output format as the I<module> command.
 Sometimes the output may not be what you expected.  For instance,
 if you searched for I<jos>, the following listing would be included:
 
-    0001    Acme::POE::Knee    1.02    KANE
+    1 Acme::POE::Knee           1.02  KANE
 
 This is because while the CPAN author identification doesn't contain
 the string, it B<is> found in the module author's full name (in this
 case, I<Jos Boumans>).  There is currently no command to display the
 author's full name.
 
-=head2 i MODULE|NUMBER|FILENAME
+=head2 i MODULE|NUMBER|FILENAME [MODULE|NUMBER|FILENAME]
 
 This command installs a module by its case-sensitive name, by the
 path and filename on CPAN, or by the number returned from a previous
@@ -783,13 +1053,46 @@ search.  For instance:
 
 =item * C<i 16>
 
-This example would install result 0016 from the previous match.
+This example would install result 16 from the previous match.
 
 =back
 
 Install will search, fetch, extract and make the module.
 
-=head2 d MODULE|NUMBER [MODULE|NUMBER]
+=head2 t MODULE|NUMBER|FILENAME [MODULE|NUMBER|FILENAME]
+
+This command is exactly the same as the C<i> above, only it
+will not actually install modules, but will stop after
+the C<make test> step.  Unlike the C<i> command, it performs
+on modules that are already installed, even if the C<force>
+flag is set to false.
+
+=head2 u MODULE|NUMBER [MODULE|NUMBER]
+
+This command will uninstall the specified modules (both
+program files and documentation).   Modules can be
+specified by their case-sensitive names, or by the numbered
+result from the last search.
+
+=head2 c MODULE|NUMBER|FILENAME [MODULE|NUMBER|FILENAME]
+
+This command fetches test results from the CPAN tester's
+website at I<http://testers.cpan.org> and displays the
+results for the most recent version of a module, specified
+by its case-insensitive name, or by the number of a
+previous search.
+
+If passed the path and filename of the module, it will
+display the test results for the version specified.
+
+=head2 r MODULE|NUMBER|DIST [MODULE|NUMBER|DIST]
+
+The read command displays the readme for the specified
+module or distribution.  It accepts the case-sensitive name of the
+module or a number from a previous result, and can accept
+multiple arguments.
+
+=head2 d MODULE|NUMBER|FILENAME [MODULE|NUMBER|FILENAME]
 
 This command will download the module or modules in the current
 directory.  It is case sensitive.   Like install, it can also
@@ -820,9 +1123,10 @@ Examples:
 
 =back
 
-=head2 l MODULE|NUMBER [MODULE|NUMBER]
+=head2 l MODULE|NUMBER|DIST [MODULE|NUMBER|DIST]
 
-This command lists detailed information about a module.
+This command lists detailed information about a module or distribution.
+
 
 =over 4
 
@@ -856,20 +1160,36 @@ expression.
 
 Output from the previous command would look like this:
 
-    KANE         12230        Acme-POE-Knee-1.00.zip
-    KANE         14246        Acme-POE-Knee-1.01.zip
-    KANE         12324        Acme-POE-Knee-1.02.zip
-    KANE         6625         Acme-POE-Knee-1.10.zip
+    1 Acme-POE-Knee-1.00.zip    12230 KANE      
+    2 Acme-POE-Knee-1.01.zip    14246 KANE      
+    3 Acme-POE-Knee-1.02.zip    12324 KANE      
+    4 Acme-POE-Knee-1.10.zip     6625 KANE      
+    5 CPANPLUS-0.01.tar.gz     120689 KANE      
+    6 CPANPLUS-0.02.tar.gz     121967 KANE      
 
-The first column is the CPAN author id, the second column is
-the filesize, and the third is the name of the distribution.
+The first column is the search result number, which can be used for subsequent
+commands.  Next is name of the distribution, the third column is the file's
+size, and the fourth is the CPAN author id.
 
-=head2 s OPTION VALUE
+=head2 s [conf | save | OPTION VALUE]
 
-The I<set> command can be used to override configuration settings for
-the current session.  Available options:
+The I<set> command can be used to change configuration settings.
+If there are no arguments, current settings are displayed.
+
+I<s conf> will let the user go through the configuration process
+again, and save the settings to L<CPANPLUS::Config>.
+
+I<s save> will save the current settings for this session.
+
+The I<OPTION VALUE> form will override current settings for this
+session; they will be cleared away when the Shell exits.  Available
+options are:
 
 =over 4
+
+=item * C<cpantest 0|1>
+
+Disable or enable the CPAN test reporting feature.
 
 =item * C<debug 0|1>
 
@@ -922,6 +1242,33 @@ or the specified file.
 
 It is useful to include this output when reporting a bug.
 
+=head2 o
+
+This command lists installed modules which are out-of-date.
+
+Example output:
+
+    1   0.05     0.06   Acme::ComeFrom         AUTRIJUS
+    2   1.01     1.07   Acme::EyeDrops         ASAVIGE
+    3   1.00     1.01   Acme::USIG             RCLAMP
+    4   2.04     2.1011 DBD::mysql             JWIED
+    5   1.13     1.15   File::MMagic           KNOK
+
+The first column is the search result number, which can be used for subsequent
+commands.  Next is the version you have installed, followed by the latest
+version of the module on CPAN.  Finally the name of the module and the
+author's CPAN identification are given.
+
+=head2 x
+
+This command refetches and reloads index files regardless of
+whether your current indices are up-to-date or not.
+
+=head2 !
+
+This command evals all input after it as perl code, and
+puts any errors in the error stack.
+
 =head1 AUTHORS
 
 This module by
@@ -947,6 +1294,6 @@ the original CPAN.pm module.
 
 =head1 SEE ALSO
 
-L<CPANPLUS::Backend>, L<CPANPLUS>
+L<CPANPLUS::Backend>, L<CPANPLUS>, http://testers.cpan.org
 
 =cut

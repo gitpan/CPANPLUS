@@ -1,0 +1,38 @@
+# CHECKSUMS file written on Mon Dec 11 15:29:12 2000 by CPAN::Checksums (v1.007)
+$cksum = {
+  'Crypt-Rot13-0.04.tar.gz' => {
+    'md5-ungz' => '9022cbbeba95d780dfc9697edf473d6f',
+    'mtime' => '1999-06-15',
+    'md5' => 'e141ee6f891cd59b249140975a74190c',
+    'shortname' => 'crypt004.tgz',
+    'size' => 2694
+  },
+  'Crypt-Rot13-0.02.tar.gz' => {
+    'md5-ungz' => '00cfed3a2367a60d9fdcac0f1a6bd8dd',
+    'mtime' => '1999-05-25',
+    'md5' => 'cbc4edc34415a5703d09bf9ad50875da',
+    'shortname' => 'crypt002.tgz',
+    'size' => 2451
+  },
+  'Crypt-Rot13-0.01.tar.gz' => {
+    'md5-ungz' => 'b0ffd86784a814da219ac8fe9285972a',
+    'mtime' => '1999-05-13',
+    'md5' => '21779b5020be1ea440b6589137bcbc93',
+    'shortname' => 'crypt001.tgz',
+    'size' => 2789
+  },
+  'Text-Bastardize-0.06.tar.gz' => {
+    'md5-ungz' => '8a148408fb4f7e434b7d3ea3671960cc',
+    'mtime' => '1999-05-13',
+    'md5' => '0567a1beaa950b5881c706ebc3dde0d5',
+    'shortname' => 'textb006.tgz',
+    'size' => 3467
+  },
+  'Crypt-Rot13-0.6.tar.gz' => {
+    'md5-ungz' => '71760436f823b672cde0c3da30627b37',
+    'mtime' => '2000-04-23',
+    'md5' => '0898cc852619875a743678083152155a',
+    'shortname' => 'cryptr06.tgz',
+    'size' => 10872
+  }
+};

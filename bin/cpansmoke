@@ -1,0 +1,198 @@
+#!/usr/bin/perl
+# $File: //member/autrijus/cpanplus/dist/bin/cpansmoke $ $Author: autrijus $
+# $Revision: #5 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
+
+use strict;
+use Config;
+use Getopt::Std;
+use CPANPLUS::Backend;
+
+my $VERSION = '0.02';
+
+=head1 NAME
+
+cpansmoke - CPAN Smoke Tester
+
+=head1 SYNOPSIS
+
+B<cpansmoke> S<[ -B<acdflpv> ]> S<[ -B<t> I<timeout> ]> I<packages>...
+
+=head1 DESCRIPTION
+
+This script uses B<CPANPLUS> to test one or more distributions from
+CPAN.  It accept both distribution names with absolute author directory
+(e.g. C<K/KA/KANE/CPANPLUS-0.01.tar.gz>), or module names (e.g.
+C<CPANPLUS::Backend>), in which case the latest distribution containing
+the module is tested.
+
+=head1 OPTIONS
+
+ -a    Automatically send reports without prompting or editing
+ -c    Always Cc: to the module author (only on FAIL by default)
+ -d    Display each package's existing result before testing it
+ -f    Force re-fetching cached packages and checksum data
+ -l    Use user-configured hosts; www.cpan.org is preferred by default
+ -p    Install prerequisite modules; this is disabled by default
+ -s    Skip modules that have testing results from the same settings
+ -v    Print verbose proceeding informations
+ -t    Sets timeout for each package's install; default to 300
+
+=cut
+
+############################################################################
+### Parse Options ##########################################################
+############################################################################
+
+show_usage() unless @ARGV;
+
+my %args; getopts('acdflpsvt:', \%args);
+my ($auto, $cc, $display, $force, $local, $prereq, $skip, $verbose, $timeout)
+    = @args{qw|a c d f l p s v t|};
+
+############################################################################
+### Initialize Environment #################################################
+############################################################################
+
+my $cp   = CPANPLUS::Backend->new;		# CPANPLUS Backend object
+my $conf = $cp->configure_object;		# Configuration for this session
+
+my $shell = bless({}, 'main');			# fake shell object
+$cp->{_shell} = $shell;
+
+$ENV{VISUAL} = 'echo' if $auto;			# let cpantest skip editing
+
+$conf->set_conf( prereq   => $prereq  );
+$conf->set_conf( force    => $force   );
+$conf->set_conf( verbose  => $verbose );
+$conf->set_conf( cpantest => $args{c} ? 'always_cc' : 1 );
+
+$conf->_set_ftp(urilist => [ {			# prefers www.cpan.org
+    path   => '/',
+    scheme => 'http',
+    host   => 'www.cpan.org',
+}, @{ $conf->_get_ftp('urilist') } ]) unless $local;
+
+############################################################################
+### Start Smoking ##########################################################
+############################################################################
+
+foreach my $pkg (@ARGV) {
+    $pkg =~ s|.*authors/id||;			# strip leading paths
+    $pkg = "/$pkg" if $pkg =~ m|^[^/].*/|;	# add leading / if needed
+
+    ### Translate module names to package names
+    my $dist = ($pkg =~ m|^/|) ? $pkg : _distname($cp->module_tree->{$pkg})
+        or (print("No such module: $pkg, skipping.\n"), next);
+
+    return unless defined $dist;
+
+    my $report = $cp->reports( modules => [ $dist ] )
+        if $display or $skip;
+
+    my $is_there;
+    my $my_platform = join(' ', $^O, $Config{osvers}, $Config{archname});
+
+    while( my($name, $href) = each (%$report) ) {
+	while( my ($dist, $pf_ref) = each (%$href) ) {
+	    print "[$dist]\n" if $display;
+	    for my $platform (sort keys %{$pf_ref}) {
+		printf "%8s %s\n", $pf_ref->{$platform}, $platform if $display;
+		$is_there = 1 if $platform eq $my_platform;
+	    }
+	}
+    }
+
+    if ($skip and $is_there) {
+	print "$dist already tested on this configuration; skipping.\n";
+	next;
+    }
+
+    print "Testing: ".($pkg =~ m|^/| ? $pkg : "$pkg ($dist)")."\n";
+
+    eval {
+	local $SIG{ALRM} = sub { die "\n" };	# alarm handler
+	alarm ($timeout || 300);		# default timeout is 5 mins
+
+	$cp->install(				# perform the install
+	    modules => [ $dist ],		# one module at a time
+	    target  => 'test',			# but stop after 'make test'
+	);
+
+	alarm 0;				# reset alarm
+    };
+
+    warn $@ if $@;				# warns any errors
+}
+
+sub _distname {
+    my $module = shift or return;
+    my ($author, $package) = @{$module}{qw|author package|};
+
+    return join(
+        '/', '', substr($author, 0, 1), substr($author, 0, 2),
+                 $author, $package,
+    );
+}
+
+### Fake shell method to confirm sending out report ###
+sub _ask_report {
+    my $obj   = shift;
+    my %args  = @_;
+    my $dist  = $args{dist};
+    my $grade = $args{grade};
+
+    return 1 if $auto;
+
+    require Term::ReadLine;
+    $obj->{_term} ||= Term::ReadLine->new($0);
+
+    return $obj->{_term}->readline(
+        "Report ${dist}'s testing result (\U$grade\E)? [y/N]: "
+    ) =~ /^[yY]/;
+}
+
+### Display usage info ###
+sub show_usage {
+    print << ".";
+Usage:
+  $0 [ -acflpv ] [ -t timeout ] <module | distribution> ...
+
+  -a	Automatically send reports without prompting or editing
+  -c	Always Cc: to the module author (only on FAIL by default)
+  -d	Display each package's existing result before testing it
+  -f	Force re-fetching cached packages and checksum data
+  -l	Use user-configured hosts; www.cpan.org is preferred by default
+  -p	Install prerequisite modules; this is disabled by default
+  -s	Skip modules that have testing results from the same settings
+  -v	Print verbose proceeding informations
+  -t	Sets timeout for each package's install; default to 300
+
+.
+    exit;
+}
+
+### Answers whether to install prerequisites -- should never be called ###
+sub _ask_prereq {
+    return $prereq;
+}
+
+__END__
+
+=head1 SEE ALSO
+
+L<CPANPLUS>, L<cpantest>
+
+=head1 AUTHORS
+
+Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>
+
+=head1 COPYRIGHT
+
+Copyright 2001, 2002 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
+
+This program is free software; you can redistribute it and/or 
+modify it under the same terms as Perl itself.
+
+See L<http://www.perl.com/perl/misc/Artistic.html>
+
+=cut

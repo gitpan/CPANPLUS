@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #4 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
+# $Revision: #9 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -50,16 +50,19 @@ sub _extract {
                    $args{data}->{package},
                );
 
-    ### we already extracted this file once this run. 
+    my $force = $args{force};
+    $force = $conf->get_conf('force') unless defined $force;
+
+    ### we already extracted this file once this run.
     ### so return the dir, unless force is in effect -kane
-    if ( $self->{_extracted}->{$file} and !$conf->get_conf('force') ) {
-        $err->inform( 
-                msg     => qq[already extracted $file. Won't extract again without force], 
+    if ( $self->{_extracted}->{$file} and !$force ) {
+        $err->inform(
+                msg     => qq[already extracted $file. Won't extract again without force],
                 quiet   => !$conf->get_conf('verbose'),
         );
         return $self->{_extracted}->{$file};
     }
-    
+
     ### clean up path - File::Spec->catfile assumes the last arg is *only* a file but we
     ### gave it path+file - perhaps we could 'cheat' and use File::Spec->catdir? -jmb
     #$file = File::Spec->canonpath($file);
@@ -98,11 +101,11 @@ sub _extract {
     my $extract_dir = File::Spec->catdir($base, $dir);
 
     ### make a log in the cache, so we know NOT to extract this thing again
-    ### if we come across it 
+    ### if we come across it
     $self->{_extracted}->{$file} = $extract_dir;
 
     return $extract_dir;
-    
+
 } #_extract
 
 
@@ -122,9 +125,12 @@ sub _untar {
     my $use_list = { 'Archive::Tar' => '0.0' };
 
     my $verbose = $conf->get_conf('verbose');
+    my $have_module = $self->_can_use( modules => $use_list );
 
-    if ( $self->_can_use( $use_list ) ) {
 
+    ### have to use eval here; Tar.pm has all kinds of bugs we can't trap
+    ### beforehand; even the latest version breaks on some debian systems.
+    if ( $have_module ) { eval {
         $err->inform(
             msg     => "Untarring $file",
             quiet   => !$verbose
@@ -144,23 +150,26 @@ sub _untar {
         #my $tar = Archive::Tar->new($file), or croak $Archive::Tar::error;
 
         my @list = $tar->list_files;
-        ($dir) = $list[0] =~ m[(\S+?)(?:/|$)]
+        ($dir) = $list[0] =~ m[(?:./)*(\S+?)(?:/|$)]
             or $err->trap( error => "Could not read dir name from $file" );
 
-        for (@list) {
-            $err->inform(
-                msg => "Extracting $_",
-                quiet => !$verbose
-            );
-            ### I just noticed that we don't bail if this fails.
-            ### Probably because Archive::Tar sucks a bit?
-            ### (at least the earlier version) -jmb
+        if ($dir) {
+            for (@list) {
+                $err->inform(
+                    msg => "Extracting $_",
+                    quiet => !$verbose
+                );
+                ### I just noticed that we don't bail if this fails.
+                ### Probably because Archive::Tar sucks a bit?
+                ### (at least the earlier version) -jmb
 
-            ### from what i get from the docs, it doesn't return anything...
-            ### so yeah, that does suck - kane
+                ### from what i get from the docs, it doesn't return anything...
+                ### so yeah, that does suck - kane
+            }
+
+            local $^W; # quell 'splice() offset past end of array' warnings
+            $tar->extract(@list);
         }
-
-        $tar->extract(@list);
 
         ### the current (0.22) version of Archive::Tar has a new
         ### extract_archive() method that is probably more efficient
@@ -173,18 +182,24 @@ sub _untar {
         ### use 0.22.. and yes, that does suck. hopefully a new(er) release of AS
         ### will actually have C::Zlib 1.13 and we can upgrade.
         ### (should ask brev) - Kane
+    } }
 
-    } elsif ( my ($tar,$gzip) = $conf->_get_build( qw|tar gzip| ) ) {
+    if ( !$dir and my ($tar, $gzip) = $conf->_get_build( qw|tar gzip| ) ) {
+        ### either Archive::Tar failed, or the user doesn't have it installed
+
+        $err->inform( msg => qq[Extracting $file], quiet => !$verbose );
+
         my $fh = new FileHandle;
-        $fh->open("$gzip -cd $file | $tar -xvf - |") or (
-                $err->trap( error => "could not call tar/gzip: $!")
-                && return 0 );
+
+        unless ($fh->open("$gzip -cd $file | $tar -xvf - |")) {
+            $err->trap( error => "could not call tar/gzip: $!");
+            return 0;
+        }
 
         ### find the extraction dir ###
-        my $rootdir = File::Spec->rootdir();
-        while(<$fh>){
+        while (<$fh>){
             chomp;
-            ($dir) = m|(\S+)$rootdir\s*$|sig unless $dir;
+            ($dir) = m{(?:.[/\\])*(\S+?)(?:[/\\]|$)} unless defined($dir);
             $err->inform(
                 msg     => $_,
                 quiet   => !$verbose,
@@ -195,7 +210,8 @@ sub _untar {
 
         close $fh;
 
-    } else {
+    }
+    elsif (!$have_module) {
         $err->trap(
             error => "You don't have Archive::Tar! Please install it as soon as possible!"
         );
@@ -223,7 +239,7 @@ sub _unzip {
     ### maybe we should check that at top of module?
     my $use_list = { 'Archive::Zip' => '0.0' };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         $err->inform(
             msg   => "Unzipping $file",
@@ -261,15 +277,19 @@ sub _unzip {
 
         } #for
     } elsif ( my $zip = $conf->_get_build( 'unzip' ) ) {
-        my $fh = new FileHandle;
-        $fh->open("$zip -qql $file |") or (
-                $err->trap( error => "could not call unzip: $!")
-                && return 0 );
 
-        my $rootdir = File::Spec->rootdir();
-        while(<$fh>){
+        $err->msg( inform => qq[Extracting $file], quiet => !$verbose );
+
+        my $fh = new FileHandle;
+
+        unless ($fh->open("$zip -qql $file |")) {
+            $err->trap( error => "could not call unzip: $!");
+            return 0;
+        }
+
+        while (<$fh>){
             chomp;
-            ($dir) = m|(\S+)$rootdir\s*$|sig unless $dir;
+            ($dir) = m{(?:.[/\\])*(\S+?)(?:[/\\]|$)} unless defined($dir);
             $err->inform(
                 msg     => $_,
                 quiet   => !$verbose,
@@ -300,7 +320,7 @@ sub _gunzip {
     my $use_list = { 'Compress::Zlib' => '0.0' };
 
     ### check if we have the needed modules first ###
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         $err->inform(
             msg   => "Gunzipping $args{'file'}",
@@ -348,13 +368,14 @@ sub _gunzip {
 
         my $fh = new FileHandle;
 
-        open($fh, "$gzip -cdf $args{'file'} |") or (
-                $err->trap( error => "could not call gzip: $!")
-                && return 0 );
+        unless ($fh->open("$gzip -cdf $args{'file'} |")) {
+            $err->trap( error => "could not call gzip: $!");
+            return 0;
+        }
 
         my $str;
         while(<$fh>){ $str .= $_ }
-        close $fh;
+        $fh->close;
         return $str;
 
     } else {

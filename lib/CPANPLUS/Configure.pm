@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #6 $ $Change: 3544 $ $DateTime: 2002/03/26 07:48:03 $
+# $Revision: #9 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -69,7 +69,7 @@ my @types = qw(
 
 ## valid subtypes - must add anything new for Config.pm here
 my %subtypes = (
-    conf    => [ qw(debug flush force lib makeflags makemakerflags md5 prereqs shell storable verbose) ],
+    conf    => [ qw(cpantest debug flush force lib makeflags makemakerflags md5 prereqs shell storable verbose) ],
     _build  => [ qw(ftp gzip lynx make ncftp ncftpget pager shell tar unzip wget autdir base moddir startdir targetdir) ],
     _ftp    => [ qw(auth base dslip email mod passive proto source urilist) ],
     _source => [ qw(auth dslip hosts mod sauth sdslip smod update) ],
@@ -240,8 +240,7 @@ sub load {
     ### load user invocation options
     $self->_load_args($args{options}) if $args{options};
 
-    CPANPLUS::Configure::Setup::init($self), unless $self->_get_build('make');
-    #CPANPLUS::Configure::Setup::init($self);
+    CPANPLUS::Configure::Setup->init(conf => $self), unless $self->_get_build('make');
 
     #$self->get_user_config;
 
@@ -285,7 +284,9 @@ sub save {
 ##
 sub _save_pm {
     my $self = shift;
-    my $err  = $self->{_error};
+    my $err  = $self->{_error} ||= CPANPLUS::Error->new(
+        error_level => 1,
+    );
 
     ## ultimately $file should be passed in or divined from Config.pm
     my $file = $INC{'CPANPLUS/Config.pm'};
@@ -454,6 +455,11 @@ Available subtypes are listed in set_conf().
 This method can be used to set any of the subtypes to new settings.
 
 =over 4
+
+=item * C<cpantest>
+
+This is a boolean value; a true value enables prompting user to
+send test report to cpan-testers after each 'make test'.
 
 =item * C<debug>
 

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #7 $ $Change: 3548 $ $DateTime: 2002/03/26 09:09:27 $
+# $Revision: #13 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -50,9 +50,10 @@ sub search {
     my %hash = @_;
 
     my $_data = {
-        type    => { required =>1, default=>'' },
-        list    => { required =>1, default=>[] },
-        data    => { default=>{} },
+        type            => { required => 1, default => '' },
+        list            => { required => 1, default => [] },
+        authors_only    => { default => 0 },
+        data            => { default => {} },
     };
 
     ### Input Check ###
@@ -64,7 +65,7 @@ sub search {
     my $href;
 
     ### type can be 'author' or 'module' or any other 'module-obj' key
-    ### _query_author_tree will find authors matching the paterns
+    ### _query_author_tree will find authors matching the patterns
     ### and then do a _query_mod_tree with the finds
     if( $args->{'type'} eq 'author' ) {
         $href = $self->_query_author_tree( %$args );
@@ -82,73 +83,39 @@ sub install {
     my $err     = $self->{_error};
 
     my $_data = {
-        modules         => { required => 1, default=>[] },
-        force           => { default => 0 },
-        makeflags       => { default => '' },
-        make            => { default => '' },
-        perl            => { default => '' },
-        makemakerflags  => { default => '' },
-        fetchdir        => { default => '' },
+        modules         => { required => 1, default=> [] },
+        force           => { default => undef },
+        makeflags       => { default => undef }, # hashref
+        make            => { default => undef },
+        perl            => { default => undef },
+        makemakerflags  => { default => undef }, # hashref
+        fetchdir        => { default => undef },
+        target          => { default => 'install' },
     };
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
     return 0 unless $args;
 
-    my $force = $args->{'force'} || $self->{_conf}->get_conf('force');
+    my $force = $args->{'force'};
+    $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     my $href;
     for my $mod ( @{$args->{"modules"}} ) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
 
-        ### the user decided to go get a file.. .something like:
-        ### /D/DC/DCONWAY/Acme-Bleach-0.12.tar.gz
+        unless ( $name =~ m|/| or $force) {
+            my $res =  $self->_check_install( module => $name );
 
-        my ($modobj,$name);
-        if ( $mod =~ m|/| ) {
-
-            $name = $mod;
-
-            my @parts = split '/', $mod;
-
-            my $file = pop @parts;
-            my $path = File::Spec::Unix->catdir( @parts );
-
-            ### Every module get's stored as a module object ###
-            $modobj = CPANPLUS::Internals::Module->new(
-                    module      => $file,           # full module name
-                    path        => $path,           # extended path on the cpan mirror, like /A/AB/ABIGAIL
-                    author      => $parts[-1],      # module author
-                    package     => $file,           # package name, like 'foo-bar-baz-1.03.tar.gz'
-                    _error      => $self->{_error}, # error object
-                    _conf       => $self->{_conf},  # configure object
-            );
-
-        ### the user asked us for a module, say Acme::Bleach
-        } else {
-
-            ### either we pass it a module object, OR just a name
-            ### we have to accept objects to work properly with
-            ### CPANPLUS::Internals::Module, cuz IT doesn't store a
-            ### _modtree for $self.
-
-            if ( ref $mod eq 'CPANPLUS::Internals::Module' ) {
-                ### ok, it's an object
-                $modobj = $mod;
-
-            } else {
-                $modobj = $self->{_modtree}->{$mod};
+            if ($res->{uptodate}) {
+                my $do_install = ($args->{target} =~ /^(?:install|skiptest)$/);
+                $err->inform(
+                    msg => "Module $name already up to date; ".
+                           ($do_install ? "won't install without force!"
+                                        : "continuing anyway.")
+		);
+                next if $do_install;
             }
-
-            $name = $modobj->{module};
-
-	    unless( $force == 1 ) {
-    	        my $res =  $self->_check_install( module => $name );
-
-                if ($res->{uptodate}) {
-                    $err->inform( msg => "Module $name already up to date; won't install without force!" );
-                    next;
-                }
-	    }
         }
 
         $args->{modules} = [ $modobj ];
@@ -178,21 +145,22 @@ sub fetch {
 
     my $_data = {
         modules     => { required => 1, default => [] },
-        fetchdir   	=> { default => '.' },
-        force       => { default => 0 },
+        fetchdir    => { default => '.' },
+        force       => { default => undef },
     };
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
     return 0 unless $args;
 
-    my $force = $args->{'force'} || $self->{_conf}->get_conf('force');
+    my $force = $args->{'force'};
+    $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     ### perhaps we shouldn't do a "_check_install" if we just want to fetch?
 #    my @list;
 #    unless ( $force == 1 ) {
 #        for my $el ( @{ $args->{'modules'} } ) {
-#            my $mod = $self->{_modtree}->{$el};
+#            my $mod = $self->module_tree->{$el};
 #            $self->_check_install( module => $mod->{module}, version => $mod->{version} )
 #            ? $err->inform( msg => qq[ $mod->{module}, version $mod->{version} already installed, won't fetch without force] )
 #            : push (@list, $el);
@@ -204,64 +172,14 @@ sub fetch {
     my $href;
 
     for my $mod ( @{$args->{'modules'}} ) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
 
-        my $rv;
-        my $name;
+        my $rv = $self->_fetch(
+            data        => $modobj,
+            fetchdir    => $args->{'fetchdir'},
+            force       => $force,
+        );
 
-        ### the user decided to go get a file.. .something like:
-        ### /D/DC/DCONWAY/Acme-Bleach-0.12.tar.gz
-        if ( $mod =~ m|/| ) {
-
-            my ($path,$file) = $mod =~ m|(.+)/(.+)$|;
-
-            $name = $file;
-
-            my $dir = File::Spec::Unix->catfile(
-                                    $self->{_conf}->_get_ftp('base'),
-                                    $path,
-                                );
-
-            ### we might need windowsy dirs, etc
-            my @dirs = split '/', $path;
-            my $fetchdir = File::Spec->catfile(
-                                    $self->{_conf}->_get_build(qw[base autdir]),
-                                    @dirs
-                                );
-
-            $rv = $self->_fetch(
-                                file        => $file,
-                                dir         => $dir,
-                                fetchdir    => $fetchdir,
-                                force       => $force,
-                            );
-
-        ### the user asked us for a module, say Acme::Bleach
-        } else {
-
-            ### either we pass it a module object, OR just a name
-            ### we have to accept objects to work properly with
-            ### CPANPLUS::Internals::Module, cuz IT doesn't store a
-            ### _modtree for $self.
-            my $modobj;
-
-            if ( ref $mod eq 'CPANPLUS::Internals::Module' ) {
-                ### ok, it's an object
-                $modobj = $mod;
-            } else {
-                $modobj = $self->{_modtree}->{$mod};
-            }
-
-            $name = $modobj->{'module'};
-
-            ### will either return a filename, or '0' for now
-            $rv = $self->_fetch(
-                                #data        => $self->{_modtree}->{$mod},
-                                #host        => $args->{'host'},
-                                data        => $modobj,
-                                fetchdir    => $args->{'fetchdir'},
-                                force       => $force,
-                            );
-        }
         unless ($rv) {
             $err->trap( error => "fetching $name failed!" );
             $href->{ $name } = 0;
@@ -281,7 +199,7 @@ sub extract {
     my $_data = {
         files       => { required => 1, default => [] },
         targetdir   => { default => '' },
-        force       => { default => 0 },
+        force       => { default => undef },
     };
 
 
@@ -317,11 +235,12 @@ sub make {
 
     my $_data = {
         dirs            => { required => 1, default => [] },
-        force           => { default => 0 },
-        makeflags       => { default => '' },
-        make            => { default => '' },
-        perl            => { default => '' },
-        makemakerflags  => { default => {} },
+        force           => { default => undef },
+        makeflags       => { default => undef }, # hashref
+        make            => { default => undef },
+        perl            => { default => undef },
+        makemakerflags  => { default => undef }, # hashref
+        target          => { default => 'install' },
     };
 
 
@@ -346,12 +265,10 @@ sub make {
 
 
 ### return the module tree
-sub module_tree { return shift->{_modtree} }
-
+sub module_tree { return shift->_module_tree }
 
 ### return the author tree
-sub author_tree { return shift->{_authortree} }
-
+sub author_tree { return shift->_author_tree }
 
 ### return the error object
 sub error_object { return shift->{_error} };
@@ -383,13 +300,14 @@ sub files {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
-        my $rv = $self->_files( module => $mod, %$args );
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $rv = $self->_files( module => $modobj->{module}, %$args );
 
         unless ( $rv ) {
-            $err->trap( error => "Could not get files for $mod");
-            $href->{ $mod } = 0;
+            $err->trap( error => "Could not get files for $name");
+            $href->{ $name } = 0;
         } else {
-            $href->{ $mod } = $rv;
+            $href->{ $name } = $rv;
         }
     }
 
@@ -423,25 +341,21 @@ sub uninstall {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
-        my $rv = $self->_uninstall( module => $mod, %$args );
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $rv = $self->_uninstall( module => $modobj->{module}, %$args );
 
         unless ( $rv ) {
-            $err->trap( error => "Could not uninstall $mod");
-            $href->{ $mod } = 0;
+            $err->trap( error => "Could not uninstall $name");
+            $href->{ $name } = 0;
         } else {
-            $href->{ $mod } = $rv;
+            $href->{ $name } = $rv;
         }
     }
     return $href;
 }
 
-### wrapper for CPANPLUS::Internals::_uninstall ###
-### uninstall's a particular module.
-### CAVEAT: we parse the packlist to do it, so modules installed
-### thru say, ppm, aren't found. also, we don't ALTER the .packlist
-### after this, so you CAN uninstall it, but the .packlist will tell
-### you the files are still there...
-### problem is there's no portable way to do it yet =/
+### wrapper for CPANPLUS::Internals::_check_install ###
+### check if something's up to date against the newest CPAN version
 sub uptodate {
     my $self    = shift;
     my %hash    = @_;
@@ -460,12 +374,43 @@ sub uptodate {
 
     my $href;
     for my $mod ( @{$args->{'modules'}} ) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
 
-        $href->{$mod} = $self->_check_install(
-                                    module  => $mod,
-                                    version => $self->{_modtree}->{$mod}->{version},
-                                );
+        $href->{$name} = $self->_check_install(
+            module  => $modobj->{module},
+            version => $modobj->{version},
+        );
     }
+
+    return $href;
+}
+
+sub installed { shift->_installed() }
+
+### validates if all files for a module are actually there, as per .packlist ###
+sub validate {
+    my $self    = shift;
+    my %hash    = @_;
+
+    my $err = $self->{_error};
+
+    ### input check ? ###
+    my $_data = {
+        modules => { required => 1, default => [] },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    my $href;
+    for my $mod ( @{$args->{'modules'}} ) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
+        my $rv = $self->_validate_module( module  => $modobj->{module} );
+
+        $href->{$name} = (UNIVERSAL::isa($rv, 'ARRAY') and scalar @$rv) ? $rv : 0;
+    }
+
     return $href;
 }
 
@@ -480,10 +425,11 @@ sub flush {
 
     my $cache = {
         methods => [ qw( _methods ) ],
+        uris    => [ qw( _uris ) ],
         modules => [ qw( _todo ) ],
         path    => [ qw( _inc ) ],
         extract => [ qw( _extract ) ],
-        all     => [ qw( _methods _todo _inc _extract ) ],
+        all     => [ qw( _uris _methods _todo _inc _extract ) ],
     };
 
     my $list;
@@ -549,25 +495,30 @@ sub details {
     return 0 unless $args;
 
     my $dslip_def = $self->_dslip_defs();
+    my $modtree   = $self->module_tree();
+    my $authtree  = $self->author_tree();
+    my @modules   = @{$args->{modules}};
 
     my $result;
-    for my $mod ( @{$args->{'modules'}} ) {
-        my $href;
-        unless( $href = $self->{_modtree}->{$mod} ) {
-            $result->{$mod} = 0;
-            next;
-        }
 
-        my @dslip = split '', $href->{dslip};
+    for my $mod ( @modules ) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
 
-        $result->{$mod} = {
-            Package     => $href->{package},
-            Description => $href->{description} || 'None given',
-            Version     => $href->{version}     || 'None given',
-        };
+        my @dslip = split '', $modobj->{dslip};
+        my $author = $authtree->{$modobj->{'author'}}
+            or ($result->{$name} = 0, next);
 
-        for my $i (0..$#dslip) {
-            $result->{$mod}->{ $dslip_def->[$i]->[0] } =
+        #### fill the result; distributions don't have a 'version'.
+        $result->{$name} = {
+            Author      => "$author->{name} ($author->{email})",
+            Package     => $modobj->{package},
+            Description => $modobj->{description} || 'None given',
+        (!ref($name) and $name =~ /[^\w:]/) ? () : (
+            Version     => $modobj->{version}     || 'None given',
+        ) };
+
+        for my $i (0 .. $#dslip) {
+            $result->{$name}->{ $dslip_def->[$i]->[0] } =
                 $dslip_def->[$i]->[1]->{ $dslip[$i] } || 'Unknown';
         }
     }
@@ -595,7 +546,7 @@ sub distributions {
     my $list = $self->_query_author_tree( list => \@authors, authors_only => 1 );
 
     my $href;
-    for my $auth ( @$list ) {
+    for my $auth ( keys %$list ) {
         my $rv = $self->_distributions( author => $auth );
 
         unless ( $rv ) {
@@ -608,6 +559,177 @@ sub distributions {
 
     return $href;
 }
+
+### looks up all the modules by a given author ###
+sub modules {
+    my $self = shift;
+
+    my %hash    = @_;
+    my $err     = $self->{_error};
+
+    my $_data = {
+        authors => { required => 1, default => [] },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    my $rv;
+    for my $auth ( @{$args->{authors}} ) {
+
+        my $href = $self->search(
+            type         => 'author',
+            list         => ['^'.$auth.'$'],
+            authors_only => $args->{authors_only},
+            data         => $args->{data},
+        );
+
+        for my $key (keys %$href ) {
+            $rv->{$auth}->{$key} = $self->module_tree()->{$key};
+        }
+    }
+
+    return $rv;
+}
+
+
+### fetches the readme file ###
+sub readme {
+    my $self    = shift;
+    my %hash    = @_;
+    my $err     = $self->{_error};
+    my $conf    = $self->{conf};
+
+    my $_data = {
+        modules     => { required => 1, default => [] },
+        force       => { default => undef },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    my $force = $args->{'force'};
+    $force = $self->{_conf}->get_conf('force') unless defined $force;
+
+    my $href;
+
+    for my $mod ( @{$args->{'modules'}} ) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
+
+        ### will either return a filename, or '0' for now
+        my $rv = $self->_readme(
+            module => $modobj,
+            force  => $force,
+        );
+
+        unless ($rv) {
+            $err->trap( error => "fetching readme for $name failed!" );
+            $href->{ $name } = 0;
+        } else {
+            $href->{ $name } = $rv;
+        }
+    }
+
+    return $href;
+}
+
+### displays the CPAN test result of given distributions; a wrapper for Report.pm
+sub reports {
+    my $self    = shift;
+    my %hash    = @_;
+    my $err     = $self->{_error};
+    my $conf    = $self->{conf};
+
+    my $_data = {
+        modules      => { required => 1, default => [] },
+        all_versions => { default => 0 },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    my $href;
+    foreach my $mod (@{$args->{modules}}) {
+        my ($name, $modobj) = $self->_parse_module($mod) or next;
+
+        if (my $dist = $modobj->{package}) {
+            $href->{$name} = $self->_query_report(
+                package      => $dist,
+                all_versions => $args->{all_versions},
+            ) or next;
+
+        }
+        else {
+            $err->trap( error => "Cannot find distribution for $mod, skipping" );
+        }
+    }
+
+    return $href;
+}
+
+### method to reload and optionally refetch the index files ###
+sub reload_indices {
+    my $self = shift;
+    my %hash = @_;
+
+    my $err     = $self->{_error};
+    my $conf    = $self->{conf};
+
+    my $_data = {
+        update_source   => { required => 1, default => 0 },
+        force           => { default => undef },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    ### this forcibly refetches the source files if 'update_source' is true
+    ### if false, it checks whether they are still up to date (as compared to
+    ### the TTL in Config.pm -kane
+    $self->_check_trees(update_source => $args->{update_source} );
+
+    {   ### uptodate => 0 means they'll have to be rebuilt ###
+        my $rv = $self->_build_trees( uptodate => 0 );
+
+        unless ($rv) {
+            $err->trap( error => qq[Error rebuilding trees!] );
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
+### canonizes a modobj, modname or distname into its pathname.
+sub pathname {
+    my $self = shift;
+    my $err = $self->{_error};
+    my %hash = @_;
+
+    my $_data = {
+        to   => { required => 1, default => '' },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return 0 unless $args;
+
+    ### only takes one argument, so only pick the first if it's an arrayref
+    my $to = $args->{to};
+    if (ref($to) eq 'ARRAY') {
+        $err->trap( error => "Array reference passed, but 'to' only takes one argument." );
+        return 0;
+    }
+
+    my ($name, $modobj) = $self->_parse_module($to) or return 0;
+
+    return File::Spec::Unix->catdir('', $modobj->{path}, $modobj->{package});
+}
+
 
 ### input checks ###
 {
@@ -712,7 +834,7 @@ sub distributions {
         return 0 unless ($self->_okcaller());
 
         if ( $reqs->{$key} ) {
-            return defined $args->{$key} ? 1 : 0;
+            return exists $args->{$key} ? 1 : 0;
         } else {
             return 1;
         }
@@ -769,7 +891,7 @@ sub _check_input {
     my %args = @_;
 
     ### check if we're searching for some valid key ###
-    for( keys %{$self->{_modtree}->{ (each %{$self->{_modtree}})[0] }} ) {
+    for( keys %{$self->module_tree->{ (each %{$self->module_tree})[0] }} ) {
         if ( $_ eq $args{'type'} ) { return 1 }
     }
 
@@ -794,58 +916,91 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
     my $cp = new CPANPLUS::Backend;
 
 
-    ### Backend methods which return objects ###
+    ##### Methods which return objects #####
 
     my $err  = $cp->error_object();
     my $conf = $cp->configure_object();
 
-    my $all_modules = $cp->module_tree(); 
+    my $module_obj  = $cp->module_tree()->{'Dir::Purge'};
     my $all_authors = $cp->author_tree();
 
 
-    ### Backend methods which return hash references ###
+    ##### Methods which return hash references #####
 
     my $mod_search = $cp->search(type => 'module',
                                  list => ['xml', '^dbix?']);
 
-    my $auth_search = $cp->search(type => 'author',
-                                  list => ['(?i:mi)'],
-                                  data => $search);
+    my $auth_search = $cp->search(type         => 'author',
+                                  list         => ['(?i:mi)'],
+                                  data         => $search,
+                                  authors_only => 1);
 
     $cp->flush('modules');
 
-    $extract = $cp->extract(files => [$fetch_result->{B::Tree},
-                                      '/tmp/POE-0.17.tar.gz']);
+    my $extract = $cp->extract(files => [$fetch_result->{B::Tree},
+                                         '/tmp/POE-0.17.tar.gz']);
 
-    $make = $cp->make(dirs => ['/home/munchkin/Data-Denter-0.13']);
-
-
-    ### Backend methods with corresponding Module methods ###
-
-    my $fetch_result =
-      $cp->fetch(modules  => ['/K/KA/KANE/Acme-POE-Knee-1.10.zip'],
-                 fetchdir => '/tmp');              # Backend method
-    $fetch_result = $all_modules{'Gtk'}->fetch();  # Module method
-
-    my $install_result = 
-      $cp->install(modules => ['GD', 'Gtk'], force => 1); # Backend 
-    $install_result = $all_modules{'GD'}->install();      # Module
-
-    my $info = $cp->details(modules => ['Math::Random']); # Backend
-    $info    = $all_modules{'Math::Random'}->details();   # Module
+    my $make = $cp->make(dirs   => ['/home/munchkin/Data-Denter-0.13']
+                         target => 'skiptest');
 
 
-    ### Additional Module and Author methods ###
+    my $installed = $cp->installed();
 
-    my $mods_by_same_auth = $all_modules{'LEGO::RCX'}->modules();
-    $mods_by_same_auth    = $all_authors{'JQUILLAN'}->modules();
+    my $validated = $cp->validate(modules => ['Rcs', $module_obj]);
 
-    my $dists_by_same_auth = $all_modules{'Acme::USIG'}->distributions();
-    $dists_by_same_auth    = $all_authors{'RCLAMP'}->distributions();
 
-    my $files_in_dist = $all_modules{'Mail::Box'}->files();
+    ### Backend methods with corresponding Module methods 
 
-    my $version_is_cur = $all_modules{'ControlX10::CM11'}->uptodate();
+    # The same result, first with a Backend then a Module method
+    my $fetch_result = $cp->fetch(modules  => ['Dir::Purge']); 
+    $fetch_result = $module_obj->fetch();
+
+    # Backend method 
+    my $txt = $cp->readme(modules => ['Mail::Box', 
+                              '/K/KA/KANE/Acme-POE-Knee-1.10.zip']);
+
+    # Module method
+    my $install_result = $module_obj->install(fetchdir => '/tmp');
+
+    # Backend method
+    my $info = $cp->details(modules => ['Math::Random', 'NexTrieve']);
+
+    # Backend method
+    my $test_report = $cp->reports(modules => ['Festival::Client']);
+
+    # Backend method
+    my $uninstalled = $cp->uninstall(modules => ['Acme::POE::Knee'],
+                                     type    => 'prog');
+
+    # Backend method
+    my $version_is_cur = $cp->uptodate(modules => ['ControlX10::CM11']);
+
+    # Backend method
+    my $files_in_dist = $cp->files(modules => ['LEGO::RCX']);
+
+
+    ### Backend methods with corresponding Module and Author methods 
+
+    # The same result via Backend, Module and Author methods
+    my $mods_by_same_auth = $cp->modules(authors => ['JV']); 
+    $mods_by_same_auth    = $module_obj->modules();
+    $mods_by_same_auth    = $all_authors->{'JV'}->modules();
+
+    # Backend method
+    my $dists_by_same_auth = $cp->distributions(authors => 'Acme::USIG');
+
+
+    ##### Methods with other return values #####
+
+    ### Backend and Module methods
+
+    # Backend method 
+    my $path = $cp->pathname(to => 'C::Scan');
+
+
+    ### Backend methods
+
+    my $reload = $cp->reload_indices(update_source => 1);
 
 =head1 DESCRIPTION
 
@@ -857,6 +1012,28 @@ See CPANPLUS::Shell::Default if you are looking for a ready-made interactive
 interface.
 
 =head1 METHODS
+
+=head2 GENERAL NOTES
+
+Unless otherwise noted, all functions which accept the I<modules> argument
+accept module array elements in the form of strings or module objects.  
+Strings containing characters other than letters, digits, underscores 
+and colons will be treated as distribution files.
+
+So, for example, the following are all valid values for I<modules>:
+
+=over 4
+
+=item * C<['/K/KA/KANE/Acme-POE-Knee-1.10.zip']>
+
+=item * C<[$module_object, 'XML::Twig']>
+
+=back
+
+In general these methods return hash references
+where the keys correspond to the names of listed modules, or, in
+the case of distributions, the name of the distribution from the
+CPAN author id directory, as returned by the C<pathname> method.
 
 =head2 new(CONFIGURATION);
 
@@ -874,7 +1051,7 @@ or use the following syntax:
     my $backend = new CPANPLUS::Backend(conf => {debug => 0,
                                                  verbose => 1});
 
-Refer to CPANPLUS::Configure for a list of available options.
+Refer to L<CPANPLUS::Configure> for a list of available options.
 
 =head2 error_object();
 
@@ -899,101 +1076,8 @@ modify this object at your own risk.
 This method will return a hash reference where each key in the
 hash is a module name and the values are module objects.
 
-Module objects belong to CPANPLUS::Internals::Module but
-should not be created manually.  Instead, use the objects
-returned by Backend methods.
-
-The following methods may be called with a module object:
-
-=over 4
-
-=item * C<$module_object-E<gt>details()>
-
-This method returns a hash reference with more details about
-the module.
-
-It strongly resembles the CPANPLUS::Backend method C<details>.
-The Backend method returns a hash reference of module names where
-each value is another hash reference--the same hash reference 
-returned by this method.
-
-Refer to the CPANPLUS::Backend method C<details> for a description
-of module details.
-
-=item * C<$module_object-E<gt>distributions()>
-
-This provides a list of all distributions by the author of the
-module (object).  It returns a hash reference where each key is
-the name of a distribution and each value is a hash reference
-containing additional information: the last modified time, the
-CPAN short name, md5 and the distribution size in kilobytes.
-
-For example, the CPAN author id 'KANE' might return the following:
-
-    {
-        'Acme-POE-Knee-1.10.zip' => {
-            'mtime'     => '2001-08-23',
-            'shortname' => 'acmep110.zip',
-            'md5'       => '6314eb799a0f2d7b22595bc7ad3df369',
-            'size'      => '6625'
-                                    },
-        'Acme-POE-Knee-1.00.zip' => {
-            'mtime'     => '2001-08-13',
-            'shortname' => 'acmep100.zip',
-            'md5'       => '07a781b498bd403fb12e52e5146ac6f4',
-            'size'      => '12230'
-                                    },
-    }
-
-=item * C<$module_object-E<gt>modules()>
-
-This returns other modules by the author of this module (object)
-in the form of a hash reference where each key is the name of a module
-and each value is a module object.
-
-=item * C<$module_object-E<gt>files()>
-
-This function lists all files belonging to a module if the module is
-installed.  It returns 0 if it is not installed.  Otherwise, it returns
-an array references of files like the one in the following example:
-
-    [
-        'C:\\Perl\\site\\lib\\Acme\\POE\\demo_race.pl',
-        'C:\\Perl\\site\\lib\\Acme\\POE\\Knee.pm',
-        'C:\\Perl\\site\\lib\\Acme\\POE\\demo_simple.pl'
-    ];
-
-
-=item * C<$module_object-E<gt>fetch()>
-
-This method will attempt to fetch the module.  It returns 0 in
-the event of failure, or the path of the file for success.  An
-example return value:
-
-    '.\\Acme-POE-Knee-1.10.zip'
-
-This method is similar to the CPANPLUS::Backend method C<fetch>.
-
-=item * C<$module_object-E<gt>install()>
-
-This method will try to install the module.  It returns 1 for
-success and 0 for failure.
-
-A similar result can be achieved through the CPANPLUS::Backend method
-C<install>.
-
-=item * C<$module_object-E<gt>uptodate()>
-
-This method will check if the currently installed version of the
-module is the most recent distribution.  It returns 1 if it is
-and 0 if it is not.
-
-=back
-
-All these methods can take the same arguments as the corresponding
-Backend methods.  For example, the following is valid:
-
-    $module_object->install(force=>1);
+Refer to L<"MODULE OBJECTS"> for more information on using
+module objects.
 
 =head2 author_tree();
 
@@ -1001,46 +1085,66 @@ This function returns a hash reference with all authors.  Each key
 corresponds to a CPAN identification.  The values are author
 objects.
 
-Author objects belong to CPANPLUS::Internals::Author
-but should not be created manually.  Instead, use the objects
-returned by Backend methods.
+Refer to L<"AUTHOR OBJECTS"> for more information on using
+author objects.
 
-The following methods may be called with an author object:
+=head2 search(type => TYPE, list => [LIST], [data => PREVIOUS_RESULT], [authors_only => BOOL]);
+
+The search function accepts the following arguments:
 
 =over 4
 
-=item * C<$author_object-E<gt>distributions()>
+=item * C<type>
 
-This method will list all distributions by an author.  It returns
-a hash reference where each key is the name of a distribution and
-each value is a hash reference with additional information.  
+This indicates what type of search should be performed.  Any 
+module object key may be provided as a type.  The most common
+types are I<author> and I<module>.  For a complete list, refer
+to L<"MODULE OBJECTS">.
 
-Refer to the module object method C<distributions> for an example
-return.
+=item * C<list>
 
-=item * C<$author_object-E<gt>modules()>
+This argument indicates what should be searched for.  Multiple strings
+are joined in an 'or' search--modules which match any of the patterns
+are returned.  An 'and' search can be performed with multiple searches
+by the use of the I<data> argument.
 
-This method will return a a hash reference where each key is the name
-of a module and each value is a module object.
+Search strings should be specified as regular expressions.  
+If your version of perl supports it, you can use introduce
+flags with the (?f:) syntax.  Refer to L<perlre> for more information.
 
-Refer to the documentation for module_tree() for more information on
-module objects.
+=item * C<data>
+
+In order to perform a search which matches more than pattern (and),
+as opposed to matching any pattern supplied (or) as the list argument
+does, first search on one pattern, then perform the second search
+with the results of the first search input via the optional argument
+I<data>.
+
+=item * C<authors_only>
+
+With this flag, searches of type I<author> can be made to return
+a hash reference of author objects instead of module objects.  By
+default, its value is false.  The results of an author_only search
+can not be used as I<data> for subsequent searches.
 
 =back
 
-All these methods can take the same arguments as the corresponding
-Backend methods. 
+It returns a hash reference of module objects which matched any
+of the list criteria.
 
 =head2 details(modules => [LIST]);
 
-Given a list of strings of module names, this function will
-return a hash reference containing detailed information about
-the modules in the list.
+See L<"GENERAL NOTES"> for more information about methods with
+I<modules> arguments.
 
-Keys correspond to the modules specified in the call, while
-values are hash references which contain the following keys:
+Values of the returned hash reference are 0 for unavailable modules,
+or hash references containing the following keys:
 
 =over 4
+
+=item * C<Author>
+
+The CPAN identification of the module author.
 
 =item * C<Description>
 
@@ -1076,25 +1180,36 @@ This detail is expanded from dslip information.
 The version of the module.  If the version information is
 not available, the version will be I<None given>.
 
+This field is only available for modules, not distributions.
+
 =back
 
 For example, the module details for Apache::Leak look like this:
 
-    Development Stage => 'Beta testing'
-    Description       => 'Memory leak tracking routines'
-    Version           => '1.00'
-    Package           => 'mod_perl-1.26.tar.gz'
-    Language Used     => 'C and perl, a C compiler will be needed'
-    Interface Style   => 'plain Functions, no references used'
+    Author            => 'DOUGM',
+    Development Stage => 'Beta testing',
+    Description       => 'Memory leak tracking routines',
+    Version           => '1.00',
+    Package           => 'mod_perl-1.26.tar.gz',
+    Language Used     => 'C and perl, a C compiler will be needed',
+    Interface Style   => 'plain Functions, no references used',
     Support Level     => 'Mailing-list'
 
-=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS,
-makemakerflags => HASHREF_OF_FLAGS, perl => PERL, force => BOOL
-fetchdir => DIRECTORY, extractdir => DIRECTORY);
+=head2 readme(modules => [LIST]);
+
+See L<"GENERAL NOTES"> for more information about methods with
+I<modules> arguments.
+
+The values this method returns are the contents of the readme
+files, or 0 for errors. 
+
+=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING);
+
+See L<"GENERAL NOTES"> for more information about methods with
+I<modules> arguments.
 
 Install is a shortcut for performing C<fetch>, C<extract> and C<make>
-on the specified modules.   See the documentation on these methods
-for more information.
+on the specified modules.  
 
 Optional arguments can be used to override configuration information.
 
@@ -1106,11 +1221,17 @@ Identify the program to use for C<make>.
 
 =item * C<makeflags>
 
-Flags to use with make.  An example is C<--quiet>.
+Flags to use with make; may be a string, a hash reference, or an
+array reference.  In other words, all three forms below are equivalent:
+
+    makeflags => '--quiet UNINST=1'
+    makeflags => [ '--quiet', 'UNINST=1' ]
+    makeflags => { '--quiet' => undef, 'UNINST' => 1 }
 
 =item * C<makemakerflags>
 
-Flags for MakeMaker.  An example argument for MakeMaker is
+Flags for MakeMaker may be a string, an array reference, or a hash
+reference, just like C<makeflags>.  An example argument for MakeMaker is
 C<INST_LIB =E<gt> '/home/ann/perl/lib/'>.  See ExtUtils::MakeMaker
 for a complete list of possible arguments.
 
@@ -1129,7 +1250,8 @@ a true value.
 
 =item * C<fetchdir>
 
-The directory fetched files should be stored in.
+The directory fetched files should be stored in.  By default 
+it will store to the directory you started from.
 
 =item * C<extractdir>
 
@@ -1137,11 +1259,19 @@ The directory files will be extracted into.  For example, if you
 provide C</tmp> as an argument and the file being extracted is
 C<POE-0.17.tar.gz>, the extracted files will be in C</tmp/POE-0.17>.
 
+=item * C<target>
+
+The objective of this attempt.  It can be one of C<makefile>, C<make>,
+C<test>, C<install> (the default) or C<skiptest>.  Each target except
+C<skiptest> implies all preceding ones.
+
+The special C<skiptest> target has the same meaning as C<install>, but
+will skip the C<test> step.
+
 =back
 
-Install returns a hash reference.  The keys are the modules
-specified and the values are either 1 for success or 0 for
-failure.
+The values of the returned hash reference are 1 for success or 
+0 for failure.
 
 Note that a failure does not identify the source of the problem,
 which could be caused by a dependency rather than the named module.
@@ -1151,30 +1281,22 @@ necessary to examine the error object.
 
 =head2 fetch(modules => [LIST], force => BOOL, fetchdir => DIRECTORY);
 
-This function will retrieve the modules specified with the C<modules>
-argument.  Modules can be specified by name or by a fully qualified
-file name relative to the /authors/id directory on a CPAN mirror.
-Names which contain a I</> will be treated as files.
-
-The first example is a module by name, and the second is a fully
-qualified file name beginning with a I</>.
-
-=over 4
-
-=item * C<Acme::POE::Knee>
-
-=item * C</K/KA/KANE/Acme-POE-Knee-1.10.zip>
-
-=back
+This function will retrieve the distributions that contains the modules
+specified with the C<modules> argument. 
+Refer to L<"GENERAL NOTES"> for more information about methods with
+I<modules> arguments.
 
 The remaining arguments are optional.  A true value for force means
 that pre-existing files will be overwritten.  Fetchdir behaves like
 the C<install> argument of the same name.
 
-The method will return a hash reference where keys are the names of
-the modules in the list.  The value will either be the fully qualified
-path plus the file name of the saved module, or--in the case of a
-failure--0.
+The method will return a hash reference; values are either the 
+fully qualified path plus the file name of the saved module, 
+or--in the case of a failure--0.
+
+Here is an example of a successful return value:
+
+    '.\\Acme-POE-Knee-1.10.zip'
 
 =head2 extract(files => [FILES], extractdir => DIRECTORY);
 
@@ -1188,8 +1310,7 @@ to.  Failure results in a value of 0.
 Extractdir is optional and behaves like the C<install> argument
 of the same name.
 
-=head2 make(dirs => [DIRECTORIES], force => BOOL, makeflags => FLAGS,
-makemakerflags => FLAGS, perl => PERL);
+=head2 make(dirs => [DIRECTORIES], force => BOOL, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL);
 
 This function will attempt to install the module in the specified
 directory with C<perl Makefile.PL>, C<make>, C<make test>, and
@@ -1200,10 +1321,176 @@ Optional arguments are described fully in C<install>.
 The method returns a hash reference.  Directory names are keys and
 values are boolean indications of status.
 
+=head2 uninstall(modules => [LIST], type => TYPE)
+
+This function uninstalls the modules specified.  There are
+three possible arguments for type: I<prog>, I<man> and I<all>
+which specify what files should be uninstalled: program files,
+man pages, or both.  The default type is I<all>.
+
+It returns a hash reference where the value is 1 for success
+or 0 for failure.
+
+See L<"GENERAL NOTES"> for more information about this method.
+
+=head2 files(modules => [LIST]);
+
+This function lists all files belonging to a module if the module is
+installed.  See L<"GENERAL NOTES"> for more information about this
+method.
+
+It returns a hash reference.  
+The value will be 0 if the module is not installed.
+Otherwise, it returns an array reference of files as
+shown below.
+
+
+    [
+        'C:\\Perl\\site\\lib\\Acme\\POE\\demo_race.pl',
+        'C:\\Perl\\site\\lib\\Acme\\POE\\Knee.pm',
+        'C:\\Perl\\site\\lib\\Acme\\POE\\demo_simple.pl'
+    ];
+
+=head2 distributions(authors => [CPAN_ID [CPAN_ID]]);
+
+This provides a list of all distributions by the author of the
+module (given in the form of the CPAN author identification).  
+This information is provided by the CHECKSUMS file in the authors 
+directory.
+
+It returns a hash reference where each key is
+the name of a distribution and each value is a hash reference
+containing additional information: the last modified time, the
+CPAN short name, md5 and the distribution size in kilobytes.
+
+For example, the CPAN author id 'KANE' might return the following:
+
+    {
+        'Acme-POE-Knee-1.10.zip' => {
+            'mtime'     => '2001-08-23',
+            'shortname' => 'acmep110.zip',
+            'md5'       => '6314eb799a0f2d7b22595bc7ad3df369',
+            'size'      => '6625'
+                                    },
+        'Acme-POE-Knee-1.00.zip' => {
+            'mtime'     => '2001-08-13',
+            'shortname' => 'acmep100.zip',
+            'md5'       => '07a781b498bd403fb12e52e5146ac6f4',
+            'size'      => '12230'
+                                    },
+    }
+
+=head2 modules(authors => [CPAN_ID [CPAN_ID]]);
+
+Given a CPAN author identification, this function returns the modules
+by the author specified.  Multiple authors may be specified.
+
+It returns a hash reference where each key is a module name and
+each value is a module object.
+
+=head2 reports(modules => [LIST], all_versions => BOOL);
+
+This function queries the CPAN tester database at
+I<http://testers.cpan.org/> for test results of specified module objects,
+module names or distributions.
+
+The optional argument C<all_versions> controls whether all versions of
+a given distribution should be grabbed.  It defaults to false.
+
+The function returns a hash reference. 
+See L<"GENERAL NOTES"> for more information about this method.
+
+The values are themselves hash references, the keys to which are the
+distribution name and version.
+
+The values are hash references, the keys to which are the
+operating system name, operating system version and
+the architecture name.
+
+The values are the status of the test, which can be
+one of the following: UNKNOWN, PASS, FAIL or NA.
+
+For example,
+
+    $cp->reports(modules => ['DBI-1.21.tar.gz']);
+
+might return the following data structure:
+
+    '/T/TI/TIMB/DBI-1.21.tar.gz' => {
+        'DBI-1.21' => {
+            'solaris 2.7 sun4-solaris' => 'PASS',
+            'linux 2.4.8-11mdkenter i386-linux' => 'PASS',
+            'linux 2.2.14-5.0 i686-linux' => 'PASS',
+            'openbsd 3.0 OpenBSD.i386-openbsd' => 'PASS',
+            'MSWin32 4.0 MSWin32-x86-multi-thread' => 'PASS',
+            'cygwin 1.3.10(0.5132) cygwin-multi-64int' => 'PASS',
+            'openbsd 3.0 i386-openbsd' => 'PASS',
+            'freebsd 4.5-release i386-freebsd' => 'PASS'
+        },
+    }
+
+=head2 uptodate(modules => [LIST]);
+
+See L<"GENERAL NOTES"> for more information about this method.
+
+This function can be used to see if your installation of a
+specified module is up-to-date.
+See L<"GENERAL NOTES"> for more information about this method.
+
+Values of the returned hash reference
+may be undef if the module is not installed, or a hash
+reference.  The hash reference contains the following keys:
+I<uptodate>, I<version> and
+I<file>.  Their values are 0 or 1 if the file is not up-to-date
+or is up-to-date, the number of the most recent version found
+on the CPAN, and the file in which the most recent version was
+found.
+
+For example, assuming you have I<Acme::POE::Knee> but not I<XML::Twig>
+installed, and provide the argument C<['Acme::POE::Knee', 'XML::Twig'>
+the following data structure might be returned:
+
+    {
+        'XML::Twig' => undef,
+        'Acme::POE::Knee' => {
+            'version'  => '1.10',
+            'file'     => 'C:\\Perl\\site\\lib\\Acme\\POE\\Knee.pm',
+            'uptodate' => 1
+        }
+    } 
+
+=head2 validate(modules => [LIST]);
+
+See L<"GENERAL NOTES"> for information about the I<modules> argument
+or the keys of the returned hash reference.
+
+Hash reference values will be either
+an empty array reference (if no files are missing), an array reference 
+containing the missing files, or 0 if there was an error (such as
+the module not being installed).
+
+It is probably best to use the results of the C<installed>
+method because not all modules have proper names.  For
+instance, 'LWP' is installed as 'Libwww'.
+
+=head2 installed();
+
+This function returns all modules currently installed on
+your system.
+
+See L<"GENERAL NOTES"> for more information about this method.
+
+The values in the returned hash reference are module objects.
+
+If there was an ambiguity in finding the object, the value
+will be 0.  An example of an ambiguous module is LWP, which
+is in the packlist as 'libwww-perl', along with many other
+modules.
+
 =head2 flush(CACHE_NAME);
 
 This method allows flushing of caches.
-There are three which can be flushed:
+There are several things which can be flushed:
 
 =over 4
 
@@ -1211,6 +1498,12 @@ There are three which can be flushed:
 
 The return status of methods which have been attempted, such as
 different ways of fetching files.  It is recommended that automatic
+flushing be used instead.
+
+=item * C<uris>
+
+The return status of URIs which have been attempted, such as
+different hosts of fetching files.  It is recommended that automatic
 flushing be used instead.
 
 =item * C<modules>
@@ -1232,6 +1525,250 @@ Flush all three of the aforementioned caches.
 
 =back
 
+=head2 reload_indices([update_source => BOOL]);
+
+This method refetches and reloads index files.  It accepts
+one optional argument.  If the value of C<update_source> is
+true, CPANPLUS will download new source files regardless.
+Otherwise, if your current source files are up-to-date
+according to your config, it will not fetch them.
+
+It returns 0 in the event of failure, and 1 for success.
+
+=head2 pathname(to => MODULE);
+
+This function returns the path, from the CPAN author id, of
+the distribution.  It returns 0 for failure.
+
+The value for I<to> can be a module name, a module object, or
+part of a distribution name.  For instance, the following
+values for I<to> would all return C<'/M/MS/MSCHWERN/Test-Simple-0.42.tar.gz'>
+(as of this writing):
+
+=over 4
+
+=item * C<'Test::Simple'>
+
+=item * C<$cp->module_tree->{'Test::Simple'}>
+
+=item * C<'Test-Simple-0.42.tar.gz'>
+
+=back
+
+The first two examples will return the most recent version of the module,
+whereas the last will explicitly return version 0.42.
+
+=head1 MODULE OBJECTS
+
+=head2 Methods
+
+Module objects belong to CPANPLUS::Internals::Module but
+should not be created manually.  Instead, use the objects
+returned by Backend methods, such as I<module_tree>.
+
+For many Backend functions, it is also possible to call
+the function with a module object instead of a Backend
+object.  In this case the 'modules' argument of the Backend
+function is no longer valid--the (single) module is assumed
+to be the object through which the function is accessed.
+All other arguments available for the Backend method may
+be used.
+
+The functions return almost what the Backend method returns,
+except whereas the Backend method returns a hash reference
+where each module name is a key, the Module methods return
+only the value, because they can only be called on one module
+at a time.
+
+For example, C<$cp-E<gt>readme(modules =E<gt> 'Gtk');>
+will return
+
+    { 'Gtk' => $some_result }
+
+but the module method, C<$gtk_module_obj-E<gt>readme();>
+will return simply
+
+    $some_result
+
+The following methods are available:
+
+=over 4
+
+=item * C<$module_object-E<gt>details()>
+
+=item * C<$module_object-E<gt>readme()>
+
+=item * C<$module_object-E<gt>distributions()>
+
+=item * C<$module_object-E<gt>files()>
+
+Note that this method only works for installed modules, since it reads
+the F<.packlist> present on the local disk.
+
+=item * C<$module_object-E<gt>fetch()>
+
+=item * C<$module_object-E<gt>install()>
+
+=item * C<$module_object-E<gt>uninstall()>
+
+=item * C<$module_object-E<gt>uptodate()>
+
+=item * C<$module_object-E<gt>reports()>
+
+=item * C<$module_object-E<gt>pathname()>
+
+This method is an exception to the rule in that the module object
+does not replace the I<modules> argument but the I<to> argument.
+
+=item * C<$module_object-E<gt>modules()>
+
+This method is another exception in that the module object replaces
+the I<authors> argument instead of the I<modules> argument.
+
+=back
+
+In addition to these methods, access methods are available for
+all the keys in the module object.  These are simply the name of
+the key and return the value.
+
+For example, C<$module_object-E<gt>path()> for the object shown
+below would return C<'L/LB/LBROCARD'>.
+
+=head2 Object
+
+Here is a sample dump of the module object for Acme::Buffy:
+
+    'Acme::Buffy' => bless( {
+        'path' => 'L/LB/LBROCARD',
+        'description' => 'An encoding scheme for Buffy fans',
+        'dslip' => 'Rdph',
+        'status' => '',
+        'prereqs' => {},
+        'module' => 'Acme::Buffy',
+        'comment' => '',
+        'author' => 'LBROCARD',
+        '_id' => 6,
+        'package' => 'Acme-Buffy-1.2.tar.gz',
+        'version' => 'undef'
+      }, 'CPANPLUS::Internals::Module' )
+
+The module object contains the following information:
+
+=item * C<author>
+
+The CPAN identification for the module author.
+
+=item * C<comment>
+
+This is any comment which appears in the source files; it
+is largely unused.
+
+=item * C<description>
+
+The description of the module.
+
+=item * C<dslip>
+
+Information on development stage, support level, language used,
+interface style and public license.
+
+The dslip consists of single-letter codes which can be expanded with
+the C<details> method from either Backend or Modules.
+
+=item * C<module>
+
+The name of the module.
+
+=item * C<package>
+
+The file name of the module on CPAN.
+
+=item * C<path>
+
+The path of the module on CPAN, starting
+from the CPAN author id directory.  For example, if a module
+was found in
+C</pub/mirror/CPAN/authors/id/I/IR/IROBERTS/Crypt-OpenSSL-RSA-0.12.tar.gz>
+the value for path would be just
+C<I/IR/IROBERTS>.
+
+=item * C<prereqs>
+
+Currently not in use.
+
+=item * C<status>
+
+Currently not in use.
+
+=item * C<version>
+
+The version of the module.
+
+=item * C<_id>
+
+The internal identification number of the Backend object that
+created this object.
+
+=head1 AUTHOR OBJECTS
+
+=head2 Methods
+
+Author objects belong to CPANPLUS::Internals::Author
+but should not be created manually.  Instead, use the objects
+returned by Backend methods such as I<author_tree>.
+
+Functions which are available for author objects are also
+available for Backend objects.  Calling through the author
+object eliminates the need to use the I<authors> argument.
+
+Like the Module object methods, the Author object methods
+return the same results as the Backend methods, minus one
+level of references.
+
+The following methods may be called with an Author object:
+
+=over 4
+
+=item * C<$author_object-E<gt>distributions()>
+
+=item * C<$author_object-E<gt>modules()>
+
+=back
+
+In addition to these methods, access methods are available for
+all the keys in the author object.  These are simply the name of
+the key and return the value.
+
+=head2 Object
+
+Here is a sample dump of the author object for KANE:
+
+    'KANE' => bless( {
+        'cpanid' => 'KANE',
+        '_id' => 6,
+        'email' => 'boumans@frg.eur.nl',
+        'name' => 'Jos Boumans'
+    }, 'CPANPLUS::Internals::Author' );
+
+The author object contains the following information:
+
+=head2 cpanid
+
+The CPAN identification for the module author.
+
+=head2 email
+
+The author's email address.
+
+=head2 name
+
+The author's full name.
+
+=head2 _id
+
+The internal identification number of the Backend object that
+created this object.
+
 =head1 AUTHORS
 
 This module by
@@ -1252,6 +1789,7 @@ terms as Perl itself.
 =head1 SEE ALSO
 
 L<CPANPLUS::Shell::Default>, L<CPANPLUS::Configure>, L<CPANPLUS::Error>,
-L<ExtUtils::MakeMaker>, L<CPANPLUS::Internals::Module>
+L<ExtUtils::MakeMaker>, L<CPANPLUS::Internals::Module>, L<perlre>
+http://testers.cpan.org
 
 =cut

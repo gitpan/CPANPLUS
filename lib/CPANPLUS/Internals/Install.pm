@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals/Install.pm $
-# $Revision: #4 $ $Change: 3542 $ $DateTime: 2002/03/26 06:48:38 $
+# $File$
+# $Revision$ $Change$ $DateTime$
 
 #######################################################
 ###           CPANPLUS/Internals/Install.pm         ###
@@ -14,6 +14,7 @@ package CPANPLUS::Internals::Install;
 use strict;
 use CPANPLUS::Configure;
 use CPANPLUS::Error;
+use DirHandle;
 use FileHandle;
 use Data::Dumper;
 
@@ -34,29 +35,38 @@ sub _install_module {
 
     my $flag;
 
-    for my $href ( @{$args{"modules"}} ) {
+    for my $href ( @{$args{'modules'}} ) {
+        ### assuming no one is stupid enough to overload the deref of a variable, this
+        ### should work well enough; -kane
+        ### let's allow subclassing here -autrijus
 
-
-        ### check if we really got a hashref... just a double check ###
-        ### this doesn't work, the objects are now blessed, so we get a package name back.
-        #unless ( ref $href eq 'HASH' ) {
-            
-        ### assuming no one is stupid enough to overload the deref of a variable, this 
-        ### should work well enough; -kane    
-        unless ( ref $href eq 'CPANPLUS::Internals::Module' and "$href" =~ /HASH/ ) {
-            $err->trap(error => qq[You did not pass a proper module object! @_ ($href)].ref($href));
+        unless ( UNIVERSAL::isa( $href, 'CPANPLUS::Internals::Module' ) ) {
+            $err->trap(
+                error => "You did not pass a proper module object! @_ ($href)".
+                         ref($href),
+            );
             $flag = 1;
             next;
         }
 
         ### we use the name way too often, time to shortcut... ###
-	    my $m = $href->{module};
+            my $m = $href->{module};
+
+        ### check if any of the prereqs we're about to install wants us to get
+        ### a newer version of perl... if so, skip, we dont want to upgrade perl
+        if ($m =~ /^base$/i or $href->{package} =~ /^perl-\d/i ) {
+            $err->inform(
+                msg => "Cannot fetch $m (part of core perl distribution); skipping",
+            );
+
+            next;
+        }
 
         my $is_bundle = 1 if $m =~ /^bundle::/i;
 
         ### get a hashref with all module information ###
         #my $href;
-        #unless( $href = $self->{_modtree}->{$m} ) {
+        #unless( $href = $self->_module_tree->{$m} ) {
         #    $err->trap( error => "could not find information for module $m" );
         #    $flag = 1;
         #    next;
@@ -66,7 +76,7 @@ sub _install_module {
         ### get the name of the file it fetched back
         my $file;
         unless ( $file = $self->_fetch(data => $href) ) {
-            $err->trap( error => "could not fetch module $m" );
+            $err->trap( error => qq[Could not fetch module $m] );
             $flag = 1;
             next;
         }
@@ -79,32 +89,11 @@ sub _install_module {
 
 
         if ($check_md5) {
-            my $fetchdir = File::Spec->catdir (
-                                $conf->_get_build('base'),
-                                $conf->_get_ftp('base'),
-                                $href->{path},
-                            );
-
-            my $cs_file;
-            unless ( $cs_file = $self->_fetch(
-                                    dir         => $conf->_get_ftp('base') . $href->{path},
-                                    fetchdir    => $fetchdir,
-                                    file        => 'CHECKSUMS',
-                                    force       => 1,
-                    )
-            ) {
-                $err->trap( error => "could not fetch 'CHECKSUMS' for $file" );
-                $flag = 1;
-                next;
-            }
-
-
             unless ( $self->_check_md5(
-                                checksum_file   => $cs_file,
-                                data            => $href,
-                   )
-            ) {
-                $err->trap( error => "Checksums did not match for $file" );
+                        data        => $href,
+                    )
+             ) {
+                $err->trap( error => qq[Checksums did not match for $file] );
                 $flag = 1;
                 next;
             }
@@ -113,7 +102,7 @@ sub _install_module {
         ### extract the file, get the location it extracted to
         my $dir;
         unless ( $dir = $self->_extract( data => $href, %args ) ) {
-            $err->trap( error => "could not obtain extraction directory for module $m" );
+            $err->trap( error => qq[Could not obtain extraction directory for module $m] );
             $flag = 1;
             next;
         }
@@ -124,16 +113,16 @@ sub _install_module {
         ### in case we're not allowed to install them
         ### need to handle that case
         my $rv;
-        unless ( $rv = $self->_make(dir => $dir, module => $href) ) {
-            $err->trap( error => "error installing module $m" );
+        unless ( $rv = $self->_make(dir => $dir, module => $href, %args) ) {
+            $err->trap( error => qq[Error installing module $m] );
             $flag = 1;
             next;
         };
 
         if ( $is_bundle ) {
             my $res;
-            unless ( $res = $self->_install_bundle( dir => [ $dir ] ) ) {
-                $err->trap( error => "error installing bundle $m" );
+            unless ( $res = $self->_install_bundle( dir => [ $dir ], %args) ) {
+                $err->trap( error => qq[Error installing bundle $m] );
                 $flag = 1;
                 next;
             };
@@ -160,17 +149,17 @@ sub _install_bundle {
 
     my $flag;
     for my $dir ( @{$args{'dir'}} ) {
-        my $dh = new FileHandle;
+        my $dh = new DirHandle;
 
         ### open the dir of the newly extracted bundle
-        opendir $dh, "$dir" or (
-            $err->trap( error => "error opening dir $dir: $!" ) &&
-            ($flag = 1) && next
-        );
+        unless ($dh->opendir($dir)) {
+            $err->trap( error => "error opening dir $dir: $!" );
+            $flag = 1; next;
+        }
 
         ### find all files in the dir that end in '.pm'
-        my @files = grep { m|\.pm$|i && -f File::Spec->catfile( $dir, $_ ) } readdir $dh;
-        closedir $dh;
+        my @files = grep { m|\.pm$|i && -f File::Spec->catfile( $dir, $_ ) } $dh->readdir;
+        $dh->closedir;
 
         ### if there are .pm files we'll check them one by one for files to install
         ### although there really should be only ONE
@@ -253,8 +242,7 @@ sub _check_install {
 
     my $version = defined $args{version} # prevent warnings
                 ? $args{version}
-                : ( $self->{_modtree}->{$args{module}}->{version} || '0.0' );
-                #: $self->{_modtree}->{$args{module}}->{version};
+                : ( $self->_module_tree->{$args{module}}->{version} || '0.0' );
 
     ### avoid the 'undef' isn't numeric - warning ###
     $version = '0.0', if $version =~ /^undef/i;
@@ -319,14 +307,12 @@ sub _check_install {
             close $fh;
         }
     }
+    
     return $href;
 }
 
 ### uninstall a module ###
-### bug: we can't update the packlist properly.. so it will seem like the modules are
-### still around... so we need some fixes here... -kane
 sub _uninstall {
-
     my $self = shift;
     my %args = @_;
 
@@ -340,19 +326,51 @@ sub _uninstall {
     my $files;
     unless ( $files = $self->_files(%args) ) {
         $err->trap( error => qq[No files found for $mod!] );
-        return 0;
+        return;
     }
 
+    ### ditto for _directories()
+    my $dirtree;
+    unless ( $dirtree = $self->_directories(%args) ) {
+        $err->trap( error => qq[No directory tree found for $mod!] );
+        return;
+    }
+
+    ### remove the packlist file altogether
     my $flag;
-    for my $file ( @$files ) {
-        $err->inform( msg => qq[unlinking $file], quiet => !$conf->get_conf('verbose') );
+    for my $file ( @$files, $self->_packlist_file(%args)) {
+        $err->inform( 
+                    msg     => qq[unlinking $file], 
+                    quiet   => !$conf->get_conf('verbose') 
+                );
+        
         unless (unlink $file) {
             $err->trap( error => qq[could not unlink $file: $!] );
             $flag = 1;
         }
     }
 
-    return $flag ? 0 : 1;
+    for my $dir ( sort @$dirtree ) {
+        $err->inform( 
+                    msg     => qq[removing $dir], 
+                    quiet   => !$conf->get_conf('verbose') 
+                );
+
+        ### Check if the $dir is empty
+        local *DIR;
+        opendir DIR, $dir;
+        my @count = readdir(DIR);
+        close DIR;
+
+        next unless @count == 2; # . and ..
+
+        unless (rmdir $dir) {
+            $err->trap( error => qq[could not remove $dir: $!] );
+            $flag = 1;
+        }
+    }
+
+    return !$flag;
 }
 
 sub _check_md5 {
@@ -367,27 +385,27 @@ sub _check_md5 {
     ### check prerequisites
     my $use_list = { 'Digest::MD5' => '0.0' };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
-        my $file = File::Spec->catfile(
+        my $basedir = File::Spec->catdir(
                         $conf->_get_build('base'),
                         $conf->_get_ftp('base'),
                         $href->{'path'},
-                        $href->{'package'}
                     );
 
-        my $fh = new FileHandle;
-        $fh->open($args{'checksum_file'})
-                or $err->trap( error => "Could not open $args{checksum_file}: $!" );
+        ### full path to both the archive and the checksums file ###
+        my $archive = File::Spec->catfile( $basedir, $href->{'package'} );
+        my $cs_file = File::Spec->catfile( $basedir, 'CHECKSUMS' );
 
-        my $in;
-        { local $/; $in = <$fh> }
-        $fh->close;
+        my $fh = new FileHandle;
 
         ### open the archive file ###
-        $fh->open($file) or $err->trap( error => "Could not open $file: $!" );
+        unless ( $fh->open($archive) ) {
+            $err->trap( error => "Could not open $archive: $!" );
+            return 0;
+        }
 
-        ### set binmode, VERY important on windows
+        ### set binmode, VERY important on windows ###
         binmode $fh;
 
         ### calculate the MD5 of that file ###
@@ -395,22 +413,38 @@ sub _check_md5 {
         $md5->addfile($fh);
         my $digest = $md5->hexdigest;
 
-        ### eval into life the checksums file
-        ### another way would be VERY nice - kane
-        my $cksum;
-        {   #local $@; can't use this, it's buggy -kane
-            $cksum = eval $in or $err->trap( error => "eval error on checksums file: $@" );
-        }
 
-        #print "CHECKSUM IN FILE: $cksum->{ $href->{package} }->{md5} \n";
-        #print "CHECKSUM FOUND: $digest\n";
+        ### make a note wether or not we already had a CHECKSUMS file on our disk ###
+        my $flag;
+        if ( -e $cs_file ) { $flag = 1 }
 
-        if ( $cksum->{ $href->{'package'} }->{'md5'} eq $digest ) {
-            return 1;
-        } else {
-            $err->trap( error => "MD5 sums did not add up for $href->{package}" );
-            return 0;
-        }
+        my $checksums = $self->_get_checksums( mod => $href );
+
+        CHECK: {
+            if ( $checksums->{ $href->{'package'} }->{'md5'} eq $digest ) {
+                $err->inform( 
+                        msg     => qq[Checksum for $archive OK],
+                        quiet   => !$conf->get_conf('verbose')
+                );          
+                return 1;
+            
+            } else {
+                if ( !$flag and defined $checksums->{$href->{'package'}} ) {
+                    ### if we didnt already have a checksums file on our disk, we might have
+                    ### an outdated one... in that case we'll refetch it and try again to see
+                    ### if we get a matching MD5 -kane
+
+                    $checksums = $self->_get_checksums( mod => $href, force => 1 );
+                    $flag = 1;
+                    redo CHECK;
+
+                } else {
+                    $err->trap( error => "MD5 sums did not add up for $href->{package}" );
+                    return 0;
+                }
+            }
+        } #CHECK
+
     } else {
 
         $err->trap(

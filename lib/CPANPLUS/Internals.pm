@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #4 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
+# $Revision: #11 $ $Change: 3825 $ $DateTime: 2002/04/09 11:17:33 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -26,8 +26,10 @@ use CPANPLUS::Internals::Make;
 #use CPANPLUS::Internals::Module;
 use CPANPLUS::Internals::Search;
 use CPANPLUS::Internals::Source;
+use CPANPLUS::Internals::Report;
 
 use Cwd;
+use Config;
 use Data::Dumper;
 use FileHandle;
 use File::Path ();
@@ -47,9 +49,10 @@ BEGIN {
                         CPANPLUS::Internals::Make
                         CPANPLUS::Internals::Search
                         CPANPLUS::Internals::Source
+                        CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.02';
+    $VERSION    =   '0.03';
 }
 
 ### ROUGH FLOW OF THE MODULE ###
@@ -178,7 +181,7 @@ BEGIN {
 
 {
     my $idref = {};
-    my $count = 5;
+    my $count = 0;
 
 
     sub _inc_id { return ++$count; }
@@ -312,51 +315,12 @@ sub _init {
 
     $ENV{FTP_PASSIVE} = 1, if $conf->_get_ftp('passive');
 
-    ### a check to see if our source files are still up to date ###
-    $err->inform(
-        msg     => qq(checking if source files are up to date),
-        quiet   => !$conf->get_conf('verbose')
-    );
-
     ### this is failing if we simply delete ONE file...
     ### so an uptodate check for all of them is needed i think - Kane.
     ### we should also find a way to pass a 'force' flag to _check_uptodate
     ### to force refetching of the source files.
     ### there is a flag available in the sub, but how do we get the user to
     ### toggle it?
-
-    my $uptodate = 1;
-
-    for my $name (qw[auth mod dslip]) {
-        for my $file ( $conf->_get_source( $name ) ) {
-            $data->_check_uptodate(
-                file => File::Spec->catfile(
-                            $conf->_get_build('base'), $file
-                ),
-                name => $name,
-                update_source => 0
-            ) or $uptodate = 0;
-        }
-    }
-
-    $data->{_id} = $data->_inc_id();
-
-    ### build the trees ###
-    ### perhaps there should be a method that builds all of the trees? -jmb
-    $data->{_authortree}    = $data->_create_author_tree    (uptodate => $uptodate);
-    $data->{_modtree}       = $data->_create_mod_tree       (uptodate => $uptodate);
-
-    my $id = $data->_store_id(
-                _id         => $data->{_id},
-                _authortree => $data->{_authortree},
-                _modtree    => $data->{_modtree},
-                _error      => $data->{_error},
-                _conf       => $data->{_conf},
-    );
-
-    unless ( $id == $data->{_id} ) {
-        die qq[ID's do not match: $id vs $data->{_id}. Storage failed! -- ], $data->_whoami();
-    }
 
     return $data;
 }
@@ -365,9 +329,10 @@ sub _init {
 ### this is only used internally to see if we can use things like LWP or Net::FTP ###
 sub _can_use {
     my $self = shift;
-    my $href = shift;
+    my %args = @_;
     my $conf = $self->{_conf};
     my $err  = $self->{_error};
+
 
     ### we keep our own version of %INC, namely $self->{_inc}. This basically tells us
     ### whether or not we already did a '_can_use' on this module, and whether it was
@@ -375,6 +340,12 @@ sub _can_use {
     ### this gives us the chance to go through the scanning of usable modules faster
     ### (some modules are required by more then one method), whereas we still have the
     ### opportunity to force a re-check by deleting the key from $self->{_inc}
+
+    my $who = (caller 1)[3];
+    my $href = $args{'modules'} or die qq[$who did not give proper arguments];
+
+    ### optional argument. if true, we will complain about not having these modules ###
+    my $yell = $args{'complain'};
 
     for my $m (keys %$href) {
 
@@ -422,8 +393,9 @@ sub _can_use {
                         $self->{_inc}->{$m}->{usable} = 0;
 
                         $err->trap(
-                            error => "Using $m was unsuccessful for $list[3]: $@",
-                            quiet => 0
+                            error => "Using $m was unsuccessful for $list[3] "
+                                        ."[THIS MAY BE A PROBLEM!]: $@",
+                            quiet => !$yell
                         );
                         return 0;
 
@@ -439,8 +411,9 @@ sub _can_use {
                 $self->{_inc}->{$m}->{usable} = 0;
 
                 $err->trap(
-                    error => "Using $m was unsuccessful for $list[3]: Module not found",
-                    quiet => 0
+                    error => "Using $m was unsuccessful for $list[3] "
+                                ."[THIS MAY BE A PROBLEM!]: Module not found",
+                    quiet => !$yell
                 );
 
                 return 0;
@@ -448,6 +421,20 @@ sub _can_use {
         }
     }
     return 1;
+}
+
+### check if we can run some command ###
+sub _can_run {
+    my ($self, $command) = @_;
+
+    return unless $self->_can_use(
+        modules => { 'ExtUtils::MakeMaker' => '0.0' },
+    );
+
+    for my $dir (split /$Config{path_sep}/, $ENV{PATH}) {
+        my $abs = File::Spec->catfile($dir, $command);
+        return $abs if $abs = MM->maybe_command($abs);
+    }
 }
 
 sub _whoami { return (caller 1)[3] }
@@ -533,7 +520,7 @@ sub _cache_control {
             'Cwd'         => '0.0',
     };
 
-    if ($self->_can_use($use_list)) {
+    if ($self->_can_use(modules => $use_list)) {
 
         my $cache;
         unless( $cache = $conf->get_conf('cache') ) {
@@ -594,6 +581,113 @@ sub _cache_control {
         }
         return $size > $cache * 1024 ? 0 : 1;
     }
+}
+
+### parse a modname/distname/modobj into a ($name, $modobj) tuple --
+### $name is the package name for distributions, or module name for
+### modobj/modname entries. the $modobj is always a module object.
+### returns an empty list for malformed distnames or nonexistent modnames.
+sub _parse_module {
+    my ($self, $mod) = @_;
+    my $err = $self->{_error};
+
+    my ($name, $modobj);
+
+    ### simple heuristic: if $mod isn't a object, and contains non-word,
+    ### non-colon characters, we pad a leading '/' to signify it's a distname.
+    if (not ref($mod) and $mod =~ /[^\w:]/) {
+        $mod = "/$mod" unless $mod =~ m|^/|;
+    }
+
+    ### a distribution name - walk _modtree to find any module in it
+    if ( $mod =~ m|/| ) {
+        unless ($mod =~ m|.*/(.+)$|) {
+            $err->trap( error => "$mod is not a proper distribution name!" );
+            return ();
+        }
+
+        my $dist = $1;
+        my $modtree = $self->module_tree;
+
+        ### $guess contains our 'best guess' for the module entry
+        my $guess = $dist;
+        $guess =~ s/(?:[\.\d\-_])*\..*//;
+        $guess =~ s/-/::/g;
+
+        ### does the 'best guess' module exist?
+        if (exists $modtree->{$guess} and $modtree->{$guess}{package} eq $dist) {
+            ### yes - just assign it to $modobj then
+            $modobj = $modtree->{$guess};
+        }
+        else {
+            ### no - walk modtree to see if anything else matches
+            while (my ($key, $val) = each %{$modtree}) {
+                next unless $val->{package} eq $dist;
+                $modobj = $val;
+                keys %{$modtree}; last;
+            }
+        }
+
+        unless ($modobj) {
+            ### can't find any module in it -- must be an outdated dist
+            ### we'll forge a fake module object, deduced by its name
+
+            my @parts = split(/\/+/, $mod);
+
+            my $file   = pop @parts;
+            my $author = pop @parts;
+
+            unless (length $author) {
+                $err->trap( error => "$mod does not contain an author directory!" );
+                return ();
+            }
+
+            my $path = File::Spec::Unix->catdir(
+                substr($author, 0, 1), substr($author, 0, 2), $author
+            );
+
+            my $fetchdir = File::Spec->catdir(
+                $self->{_conf}->_get_build(qw[base autdir]),
+                $path,
+            );
+
+            $modobj = CPANPLUS::Internals::Module->new(
+                module      => $file,           # full module name
+                path        => $path,           # extended path, like /A/AB/ABIGAIL
+                fetchdir    => $fetchdir,       # the path on the local disk
+                author      => $parts[-1],      # module author
+                package     => $file,           # package name, like 'foo-bar-baz-1.03.tar.gz'
+                _error      => $self->{_error}, # error object
+                _conf       => $self->{_conf},  # configure object
+                _id         => $self->{_id},
+            );
+        }
+
+        $name = File::Spec::Unix->catdir('', $modobj->{path}, $modobj->{package});
+    }
+
+    ### the user asked us for a module, say Acme::Bleach
+    else {
+        ### either we pass it a module object, OR just a name
+        ### we have to accept objects to work properly with
+        ### CPANPLUS::Internals::Module, cuz IT doesn't store a
+        ### _modtree for $self.
+        if ( UNIVERSAL::isa($mod, 'CPANPLUS::Internals::Module') ) {
+            ### ok, it's an object
+            $modobj = $mod;
+        } else {
+            $modobj = $self->module_tree->{$mod} or return ();
+        }
+
+        unless ($modobj) {
+            $err->trap( error => "Cannot find $mod in the module tree!" );
+            return ();
+        }
+
+        $name = $modobj->{module};
+    }
+
+    return ($name, $modobj);
 }
 
 sub DESTROY { my $self = shift; $self->_remove_id( $self->{_id} ) }

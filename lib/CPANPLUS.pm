@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS.pm $
-# $Revision: #4 $ $Change: 3540 $ $DateTime: 2002/03/26 04:28:49 $
+# $Revision: #6 $ $Change: 3772 $ $DateTime: 2002/04/08 06:25:14 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -60,7 +60,7 @@ sub fetch {
                     error => "You passed an object. Use CPANPLUS::Backend for OO style interaction"
                 );
         return 0;
-    } elsif ( !$cpan->{_modtree}->{$mod} ) {
+    } elsif ( !$cpan->module_tree->{$mod} ) {
         $cpan->{_error}->trap(
                     error => "No such module: $mod"
                 );
@@ -198,8 +198,8 @@ terms as Perl itself.
 
 =head1 ACKNOWLEDGMENTS
 
-Andreas Koenig E<lt>andreas.koenig@anima.deE<gt> authored
-the original CPAN.pm module.
+Please see the F<AUTHORS> file in the CPANPLUS distribution
+for a list of Credits and Contributors.
 
 =head1 SEE ALSO
 

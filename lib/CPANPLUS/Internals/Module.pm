@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Module.pm $
-# $Revision: #8 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
+# $Revision: #13 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
 
 #######################################################
 ###            CPANPLUS/Internals/Module.pm         ###
@@ -26,6 +26,18 @@ BEGIN {
 }
 
 my $Class = "CPANPLUS::Backend";
+
+### install get/set accessors for this object.
+foreach my $key (qw{
+    _id author comment description dslip module package path prereqs status version
+}) {
+    no strict 'refs';
+    *{__PACKAGE__."::$key"} = sub {
+        my $self = shift;
+        $self->{$key} = $_[0] if @_;
+        return $self->{$key};
+    }
+}
 
 ### it's currently set to only allow creation, not modification
 ### of course you could poke into the object, but you really shouldn't. -kane
@@ -65,7 +77,7 @@ sub new {
     ### so for now, this is the alternative ###
     for my $key ( keys %$_data ) {
 
-        if ( $_data->{$key}->{required} && !$hash{$key} ) {
+        if ( $_data->{$key}->{required} && !exists($hash{$key}) ) {
             warn "Missing key $key\n";
             return 0;
         }
@@ -103,15 +115,7 @@ sub new {
 #          'Interface Style' => 'Object oriented using blessed references and/or inheritance',
 #          'Support Level' => 'Mailing-list'
 #        };
-sub details {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
-
-    my $href = $obj->details( @_, modules => [$self->{module}] );
-
-    return $href->{$self->{module}};
-}
+sub details { shift->_call_object( type => 'module', args => [ @_ ] ) };
 
 ### this will need a reference to the author_tree in the module object
 ### or internals will be unhappy. unfortunately, that's a catch22
@@ -137,33 +141,15 @@ sub details {
 #                                        'size' => '12230'
 #                                      }
 #        };.
-sub distributions {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
-
-    my $href = $obj->distributions( @_, authors => [$self->{author}] );
-
-    return $href->{$self->{author}};
-}
+sub distributions { shift->_call_object( type => 'author', args => [ @_ ] ) };
 
 ### will fetch the module.
-### invoked as $module_object->fetch.
 ### the return value would look something like this:
 ### 0 on failure, or the path to the file on success;
 ### $VAR1 = '.\\Acme-POE-Knee-1.10.zip';
-sub fetch {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
-
-    my $href = $obj->fetch( @_, modules => [$self] );
-
-    return $href->{$self->{module}};
-}
+sub fetch { shift->_call_object( type => 'module', args => [ @_ ] ) };
 
 ### will list all the files belonging to a module
-### invoked as $mod_object->files()
 ### return value is 0 if the module is not installed, or
 ### something like:
 #$VAR1 = [
@@ -171,32 +157,10 @@ sub fetch {
 #          'C:\\Perl\\site\\lib\\Acme\\POE\\Knee.pm',
 #          'C:\\Perl\\site\\lib\\Acme\\POE\\demo_simple.pl'
 #        ];
-sub files {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
-
-    my $href = $obj->files( @_, modules => [$self->{module}] );
-
-    return $href->{$self->{module}};
-}
-
-### this will install this modules
-### invoked as $mod_object->install
-### return value is 1 for success, 0 for fail.
-sub install {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
-
-    my $href = $obj->install( @_, modules => [$self] );
-
-    return $href->{$self->{module}};
-}
+sub files { shift->_call_object( type => 'module', args => [ @_ ] ) };
 
 
 ### similar to distributions, this will list all modules by an author.
-### invoked as $mod_object->modules.
 ### the return value would look something like this:
 #$VAR1 = {
 #          'Acme::POE::Knee' => bless( {
@@ -213,48 +177,60 @@ sub install {
 #                                        'package' => 'Acme-POE-Knee-1.10.zip'
 #                                      }, 'CPANPLUS::Internals::Module' )
 #        };
-sub modules {
-    my $self = shift;
+sub modules { shift->_call_object( type => 'author', args => [ @_ ] ) };
 
+### this will install this modules
+### return value is 1 for success, 0 for fail.
+sub install { shift->_call_object( type => 'module', args => [ @_ ] ) };
+
+### will check if a given module is uptodate
+### returns 1 if it is uptodate, 0 if not
+sub uptodate { shift->_call_object( type => 'module', args => [ @_ ] ) };
+
+### this will uninstall this modules
+### return value is 1 for success, 0 for fail.
+sub uninstall { shift->_call_object( type => 'module', args => [ @_ ] ) };
+
+### fetch the readme for this module ###
+sub readme { shift->_call_object( type => 'module', args => [ @_ ] ) };
+
+### fetches the test reports for a certain module ###
+sub reports { shift->_call_object( type => 'module', args => [ @_ ] ) };
+
+### pathname gives the full path from /authors/id dir onwards to the
+### given distribiution or module name|object;
+sub pathname {
+    my $self = shift;
     my $obj = $self->_make_object();
 
-    my $href = $obj->search( @_, type => 'author', list => ['^'.$self->{author}.'$'] );
-
-    my $rv;
-
-    for my $key (keys %$href ) {
-        $rv->{$key} = $obj->{_modtree}->{$key};
-    }
+    my $rv = $obj->pathname( @_, to => $self->{module} );
 
     return $rv;
 }
 
-### this will uninstall this modules
-### invoked as $mod_object->uninstall
-### return value is 1 for success, 0 for fail.
-sub uninstall {
-    my $self = shift;
+### wrapper function to make a Backend object and delegate call to it
+### takes one argument (the key of the caller object, and also the
+### option to be overridden); the rest are the arguments to be passed.
+sub _call_object {
+    my ($self, %args) = @_;
+    my $obj    = $self->_make_object();
 
-    my $obj = $self->_make_object();
+    my $args   = $args{args} or return 0;
+    my $key    = $args{type} or return 0;
 
-    my $href = $obj->uninstall( @_, modules => [$self->{module}] );
+    ### this is a hack: usually, the option in Backend.pm is simply the key it
+    ### expects plus 's'. but we want the caller to be able to override it, too.
+    my $option = $args{option} || ($args{type} . 's');
 
-    return $href->{$self->{module}};
+    my $method = ((caller(1))[3]);
+    $method =~ s/.*:://;
+
+    my $rv = $obj->$method( @{$args}, $option => [ $self->{$key} ] );
+
+    return ref($rv) eq 'HASH' ? $rv->{ $self->{$key} } : $rv;
 }
 
-### will check if a given module is uptodate
-### invoked as $mod_object->uptodate
-### returns 1 if it is uptodate, 0 if not
-sub uptodate {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
-
-    my $href = $obj->uptodate( @_, modules => [$self->{module}] );
-
-    return $href->{$self->{module}}->{uptodate};
-}
-
+### make a new backend object for us to use ###
 sub _make_object {
     my $self = shift;
 
@@ -279,82 +255,8 @@ CPAN modules.
 =head1 METHODS
 
 Because the only Module objects that should be used are returned
-by Backend methods, Module methods are documented in CPANPLUS::Backend
-under the function C<module_tree>.
-
-=head1 OBJECT
-
-Here is a sample dump of the module object for Acme::Buffy:
-
-    'Acme::Buffy' => bless( {
-        'path' => 'L/LB/LBROCARD',
-        'description' => 'An encoding scheme for Buffy fans',
-        'dslip' => 'Rdph',
-        'status' => '',
-        'prereqs' => {},
-        'module' => 'Acme::Buffy',
-        'comment' => '',
-        'author' => 'LBROCARD',
-        '_id' => 6,
-        'package' => 'Acme-Buffy-1.2.tar.gz',
-        'version' => 'undef'
-      }, 'CPANPLUS::Internals::Module' )
-
-The module object contains the following information:
-
-=head2 author
-
-The CPAN identification for the module author.
-
-=head2 comment
-
-This is any comment which appears in the source files; it
-is largely unused.
-
-=head2 description
-
-The description of the module.
-
-=head2 dslip
-
-Information on development stage, support level, language used,
-interface style and public license.
-
-The dslip consists of single-letter codes which can be expanded with
-the C<details> method from either Backend or Modules, both of which
-are documented in CPANPLUS::Backend.
-
-=head2 module
-
-The name of the module.
-
-=head2 package
-
-The file name of the module on CPAN.
-
-=head2 path
-
-The path of the module on CPAN, starting
-from the CPAN author id directory.  For example, if a module
-was found in
-C</pub/mirror/CPAN/authors/id/I/IR/IROBERTS/Crypt-OpenSSL-RSA-0.12.tar.gz>
-the value for path would be just
-C<I/IR/IROBERTS>.
-
-=head2 prereqs
-
-Currently not in use.
-
-=head2 status
-
-Currently not in use.
-
-=head2 version
-The version of the module.
-
-=head2 _id
-
-An internal identification number.
+by Backend methods, Module methods are documented in 
+L<CPANPLUS::Backend/"MODULE OBJECTS">.
 
 =head1 AUTHORS
 
@@ -370,11 +272,11 @@ copyright (c) 2001, 2002 Jos Boumans E<lt>kane@cpan.orgE<gt>.
 All rights reserved.
 
 This library is free software;
-you may redistribute and/or modify it under the same 
+you may redistribute and/or modify it under the same
 terms as Perl itself.
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
-L<CPANPLUS::Backend>
+L<CPANPLUS::Backend/"MODULE OBJECTS">
 
 =cut

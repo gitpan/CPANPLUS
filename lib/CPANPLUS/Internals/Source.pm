@@ -17,12 +17,44 @@ use CPANPLUS::Internals::Module;
 use CPANPLUS::Internals::Author;
 use CPANPLUS::Error;
 use Data::Dumper;
+use FileHandle;
 
 BEGIN {
     use Exporter    ();
     use vars        qw( @ISA $VERSION );
     @ISA        =   qw( Exporter );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
+}
+
+{
+    my $recurse; # flag to prevent recursive calls to *_tree functions
+
+    ### lazy loading of module tree
+    sub _module_tree {
+        my $self = shift;
+
+        unless ($self->{_modtree} or $recurse++ > 0) {
+            my $uptodate = $self->_check_trees;
+            $self->_build_trees(uptodate => $uptodate);
+        }
+
+        $recurse--;
+        return $self->{_modtree};
+    }
+
+    ### lazy loading of author tree
+    sub _author_tree {
+        my $self = shift;
+
+        unless ($self->{_authortree} or $recurse++ > 0) {
+            my $uptodate = $self->_check_trees;
+            $self->_build_trees(uptodate => $uptodate);
+        }
+
+        $recurse--;
+        return $self->{_authortree};
+    }
+
 }
 
 ### this builds a hash reference with the structure of the cpan module tree ###
@@ -41,7 +73,7 @@ sub _create_mod_tree {
 
 
     ### check if we can retrieve a frozen data structure with storable ###
-    my $storable = $self->_can_use( {'Storable' => '0.0'} ) if $conf->get_conf('storable');
+    my $storable = $self->_can_use( modules => {'Storable' => '0.0'} ) if $conf->get_conf('storable');
 
     ### find the location of the stored data structure ###
     ### bleh!  changed to use File::Spec->catfile -jmb
@@ -81,7 +113,7 @@ sub _create_mod_tree {
             my @data = split /\s+/;
 
             ### filter out the author and filename as well ###
-            my ($author, $package) = $data[2] =~ m|(\w+)/([^/]+)$|sg;
+            my ($author, $package) = $data[2] =~ m|([^/]+)/([^/]+)$|sg;
 
             ### remove file name from the path
             $data[2] =~ s|/[^/]+$||;
@@ -147,7 +179,7 @@ sub _create_author_tree {
     my $err  = $self->{_error};
 
     ### check if we can retrieve a frozen data structure with storable ###
-    my $storable = $self->_can_use( {'Storable' => '0.0'} ) if $conf->get_conf('storable');
+    my $storable = $self->_can_use( modules => {'Storable' => '0.0'} ) if $conf->get_conf('storable');
 
     ### $stored is the name of the frozen data structure ###
     ### changed to use File::Spec->catfile -jmb
@@ -203,7 +235,7 @@ sub _create_dslip_tree {
     my $err  = $self->{_error};
 
     ### check if we can retrieve a frozen data structure with storable ###
-    my $storable = $self->_can_use( {'Storable' => '0.0'} ) if $conf->get_conf('storable');
+    my $storable = $self->_can_use( modules => {'Storable' => '0.0'} ) if $conf->get_conf('storable');
 
     ### $stored is the name of the frozen data structure ###
     ### changed to use File::Spec->catfile -jmb
@@ -328,7 +360,7 @@ sub _dslip_defs {
 
 ### this method checks wether or not the source files we are using are still up to date
 ### josh, you changed a bunch on this sub, document please? -Kane
-# not really, but it will change soon anyway, and I will doc then -jmb
+### not really, but it will change soon anyway, and I will doc then -jmb
 sub _check_uptodate {
     my $self = shift;
     my %args = @_;
@@ -351,7 +383,7 @@ sub _check_uptodate {
                               # of previously stored hashrefs!
          } else {
               $err->inform(
-                  msg => "unable to update source, attempting to get away with using old source file!",
+                  msg => qq[Unable to update source, attempting to get away with using old source file!],
                   quiet => !$conf->get_conf('verbose')
               );
               return 1;
@@ -371,11 +403,6 @@ sub _update_source {
     my $conf = $self->{_conf};
     my $err  = $self->{_error};
 
-    $err->inform(
-        msg => "updating source files",
-        quiet => !$conf->get_conf('verbose')
-    );
-
     my $base = $conf->_get_build('base');
     my $now = time;
 
@@ -383,6 +410,13 @@ sub _update_source {
         ### no worries about the / -> we get it from the _ftp configuration, so
         ### it's not platform dependant. -kane
         my ($dir, $file) = $conf->_get_ftp( $args{'name'} ) =~ m|(.+/)(.+)$|sg;
+
+        $err->inform(
+            msg     => qq[Updating source file "$file"],
+            quiet   => !$conf->get_conf('verbose')
+        );
+
+
         my $rv = $self->_fetch(
                      file      => $file,
                      dir       => $dir,
@@ -406,4 +440,129 @@ sub _update_source {
     return 1;
 }
 
+
+### retrieve source files, and returns a boolean indicating if it's up to date
+sub _check_trees {
+    my ($self, %args) = @_;
+    my $conf          = $self->{_conf};
+    my $err           = $self->{_error};
+    my $update_source = $args{update_source}; # 1 means always update
+
+    ### a check to see if our source files are still up to date ###
+    $err->inform(
+        msg     => qq[Checking if source files are up to date],
+        quiet   => !$conf->get_conf('verbose')
+    ) unless $update_source;
+
+    ### this is failing if we simply delete ONE file...
+    ### so an uptodate check for all of them is needed i think - Kane.
+    ### we should also find a way to pass a 'force' flag to _check_uptodate
+    ### to force refetching of the source files.
+    ### there is a flag available in the sub, but how do we get the user to
+    ### toggle it?
+
+    my $uptodate = 1; # default return value
+
+    for my $name (qw[auth mod dslip]) {
+        for my $file ( $conf->_get_source( $name ) ) {
+            $self->_check_uptodate(
+                file => File::Spec->catfile(
+                            $conf->_get_build('base'), $file
+                ),
+                name => $name,
+                update_source => $update_source
+            ) or $uptodate = 0;
+        } 
+    }
+
+    return $uptodate;
+}
+
+
+### (re)build the trees ###
+### takes one optional argument, which indicates if we're already up-to-date. ###
+sub _build_trees {
+    my ($self, %args) = @_;
+    my $uptodate = $args{uptodate};
+    my $err      = $self->{_error};
+
+    $self->{_id} = $self->_inc_id();
+
+    ### build the trees ###
+    $self->{_authortree}    = $self->_create_author_tree    (uptodate => $uptodate);
+    $self->{_modtree}       = $self->_create_mod_tree       (uptodate => $uptodate);
+
+    my $id = $self->_store_id(
+                _id         => $self->{_id},
+                _authortree => $self->{_authortree},
+                _modtree    => $self->{_modtree},
+                _error      => $self->{_error},
+                _conf       => $self->{_conf},
+    );
+
+    unless ( $id == $self->{_id} ) {
+        $err->trap(
+            error => "IDs do not match: $id != $self->{_id}. Storage failed!",
+            quiet => 0
+        );
+    }
+
+    return 1;
+}
+
+sub _get_checksums {
+    my ($self, %args) = @_;
+    my $conf          = $self->{_conf};
+    my $err           = $self->{_error};
+
+    my $mod = $args{'mod'};
+
+    my $path = File::Spec::Unix->catdir(
+                    $conf->_get_ftp('base'),
+                    $mod->{path}
+                );
+
+    my $fetchdir = File::Spec->catdir(
+                                $conf->_get_build('base'),
+                                $path,
+                            );
+
+    ### we always get a new file... ###
+    my $file = $self->_fetch(
+                        file        => 'CHECKSUMS',
+                        dir         => $path,
+                        fetchdir    => $fetchdir,
+                        force       => $args{'force'},
+        ) or return 0;
+
+
+    my $fh = new FileHandle;
+    unless ($fh->open($file)) {
+        $err->trap( error => "Could not open $file: $!" );
+        return 0;
+    }
+
+    my $cksum;
+    my $dist; # the distribution we're currently parsing
+
+    while (<$fh>) { last if /^\$cksum = \{$/ } # skip till this line
+
+    while (<$fh>) {
+
+        if (/^\s*'([^']+)' => \{$/) {
+            $dist = $1;
+        }
+        elsif (/^\s*'([^']+)' => '?([^'\n]+)'?,?$/ and defined $dist) {
+            $cksum->{$dist}{$1} = $2;
+        }
+        elsif (/^\s*}[,;]?$/) {
+            undef $dist;
+        }
+        else {
+            $err->trap( error => "Malformed CHECKSUM line: $_" );
+        }
+    }
+
+    return $cksum;
+}
 1;

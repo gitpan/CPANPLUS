@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Author.pm $
-# $Revision: #8 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
+# $Revision: #12 $ $Change: 3808 $ $DateTime: 2002/04/09 06:44:56 $
 
 #######################################################
 ###            CPANPLUS/Internals/Author.pm         ###
@@ -26,6 +26,18 @@ BEGIN {
 }
 
 my $Class = "CPANPLUS::Backend";
+
+### install get/set accessors for this object.
+foreach my $key (qw{
+    _id cpanid email name
+}) {
+    no strict 'refs';
+    *{__PACKAGE__."::$key"} = sub {
+        my $self = shift;
+        $self->{$key} = $_[0] if @_;
+        return $self->{$key};
+    }
+}
 
 ### it's currently set to only allow creation, not modification
 ### of course you could poke into the object, but you really shouldn't. -kane
@@ -128,16 +140,16 @@ sub distributions {
 #                                      }, 'CPANPLUS::Internals::Module' )
 #        };
 sub modules {
-    my $self = shift;
-
-    my $obj = $self->_make_object();
+    my $self    = shift;
+    my $obj     = $self->_make_object();
+    my $modtree = $obj->module_tree();
 
     my $href = $obj->search( @_, type => 'author', list => ['^'.$self->{cpanid}.'$'] );
 
     my $rv;
 
     for my $key (keys %$href ) {
-        $rv->{$key} = $obj->{_modtree}->{$key};
+        $rv->{$key} = $modtree->{$key};
     }
 
     return $rv;
@@ -168,35 +180,6 @@ CPAN authors.
 
 Due to the fact that this module is only used in conjunction with
 CPANPLUS::Backend, all methods have been documented in that module. 
-
-=head1 OBJECT
-
-Here is a sample dump of the author object for KANE:
-
-    'KANE' => bless( {
-        'cpanid' => 'KANE',
-        '_id' => 6,
-        'email' => 'boumans@frg.eur.nl',
-        'name' => 'Jos Boumans'
-    }, 'CPANPLUS::Internals::Author' );
-
-The author object contains the following information:
-
-=head2 cpanid
-
-The CPAN identification for the module author.
-
-=head2 email
-
-The author's email address.
-
-=head2 name
-
-The author's full name.
-
-=head2 _id
-
-An internal identification number.
 
 =head1 AUTHORS
 
