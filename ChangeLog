@@ -1,0 +1,48 @@
+Changes for 0.050_02    Fri Dec 10 15:03:39 CET 2004
+====================================================
+
+*   Move CPANPLUS::Dist::(Deb|Ports) to it's on repository
+*   Fix error when Test::Reporter is unavaliable
+*   Various spelling fixes
+*   Added CPANPLUS::Hacking pod with instructions how to hack on
+    CPANPLUS
+*   Added an environment variable 'PERL5_CPANPLUS_IS_RUNNING' which
+    will be set to the current process id, so subprocesses can
+    recognize that they are running under CPANPLUS
+*   Some wordings have changed for the setup, to make things a bit
+    clearer
+*   Add 'do we have test::reporter support' probing code (used in
+    test suite)
+*   Add Mail::Send as a prerequisite for test::reporter support
+*   Don't attempt to actually send test reports from our test suite
+    -- Test::Reporter doesn't do that itself either, we might have 
+    failed tests due to Test::Reporter rather than ourselves
+*   Mention 'bundle::cpanplus::test::reporter' which has all the 
+    modules needed to have test::reporter support enabled
+*   Improved accuracy for core module detection logic and errors
+*   More support for connecting to remote machines using 
+    CPANPLUS::Daemon (not yet released, but will be soon)
+*   Add extra clean up arguments to our own Makefile to remove temp
+    files
+*   Extensive overhaul of CPANPLUS::Dist::Build to get Module::Build
+    support working properly (lots of workarounds for bugs in the M::B
+    API -- we now bundle a custom patched M::B (0.26061) to cope)
+*   Module::Build now accepts buildflags    
+*   Seperate inc path for installers (defacto only Module::Build
+    right now)
+*   Update various bundled modules like Object::Accessor, IPC::Cmd,
+    Archive::Extract.
+*   Smarter loading of bundled modules    
+*   Various speed optimizations
+*   't --force' can send a new test::report now
+*   Don't force current installer format onto prereqs, unless it's
+    explicitly requested
+*   Make the default shell be aware when it's running in noninteractive
+    mode, making sure it makes no suggestions with require interactivity
+*   Add a message about where the module was extracted to in verbose mode    
+    
+Changes for 0.050_1     Fri Dec 3 21:07:12 CET 2004
+====================================================    
+
+*   Initial beta release of CPANPLUS 0.050
+*   Complete ground up rewrite

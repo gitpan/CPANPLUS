@@ -401,7 +401,7 @@ ____________________________________________________________________________
 	   ! lib/CPANPLUS/Internals/Source.pm
 ____________________________________________________________________________
 [ 11399] By: kane                                  on 2004/11/25  19:06:52
-        Log: * be smarter about when we can not install/uninstall in
+        Log: * be smarter about when we cannot install/uninstall in
 	       tests
 	   ! t/20_CPANPLUS-Dist-MM.t
 	   ! t/21_CPANPLUS-Dist-Build.t

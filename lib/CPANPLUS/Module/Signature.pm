@@ -34,12 +34,12 @@ sub check_signature {
     
     my $dir = $self->status->extract or (
                 error( loc( "Do not know what dir '%1' was extracted to; ".
-                            "Can not check signature", $self->module ) ),
+                            "Cannot check signature", $self->module ) ),
                 return );
                                         
     my $cwd = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
-        error(loc(  "Could not chdir to '%1', can not verify distribution '%2'",
+        error(loc(  "Could not chdir to '%1', cannot verify distribution '%2'",
                     $dir, $self->module ));
         return;
     }       

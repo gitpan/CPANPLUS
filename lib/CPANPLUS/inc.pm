@@ -1,7 +1,7 @@
 package CPANPLUS::inc;
 
 use strict;
-use vars        qw[$DEBUG $VERSION $ENABLE_INC_HOOK];
+use vars        qw[$DEBUG $VERSION $ENABLE_INC_HOOK %LIMIT];
 use File::Spec  ();
 use Config      ();
 
@@ -9,6 +9,7 @@ use Config      ();
 use lib ();
 
 $DEBUG              = 0;
+%LIMIT              = ();
 
 =pod 
 
@@ -58,6 +59,10 @@ Returns the full path to the C<CPANPLUS/inc> directory.
 Returns the full path to be added to C<@INC> to load 
 C<CPANPLUS::inc> from.
 
+=head2 CPANPLUS::inc->installer_path()
+
+Returns the full path to C<CPANPLUS/inc/installers> directory.
+
 =cut
 
 {   my $ext     = '.pm';
@@ -73,11 +78,13 @@ C<CPANPLUS::inc> from.
     
     ### don't forget to quotemeta; win32 paths are special
     my $qm_osfile = quotemeta $osfile;
-    my $path_to_me  = $path; $path_to_me    =~ s/$qm_osfile$//i;
-    my $path_to_inc = $path; $path_to_inc   =~ s/$ext$//i;
+    my $path_to_me          = $path; $path_to_me    =~ s/$qm_osfile$//i;
+    my $path_to_inc         = $path; $path_to_inc   =~ s/$ext$//i;
+    my $path_to_installers  = File::Spec->catdir( $path_to_inc, 'installers' );
     
-    sub inc_path { return $path_to_inc  }
-    sub my_path  { return $path_to_me   }
+    sub inc_path        { return $path_to_inc  }
+    sub my_path         { return $path_to_me   }
+    sub installer_path  { return $path_to_installers }
 }
 
 =head2 CPANPLUS::inc->original_perl5lib
@@ -95,15 +102,37 @@ got loaded.
 Returns the value of @INC the way it was when C<CPANPLUS::inc> got 
 loaded.
 
+=head2 CPANPLUS::inc->limited_perl5opt(@modules);
+
+Returns a string you can assign to C<$ENV{PERL5OPT}> to have a limited
+include facility from C<CPANPLUS::inc>. It will roughly look like:
+
+    -I/path/to/cpanplus/inc -MCPANPLUS::inc=module1,module2
+
 =cut
 
 {   my $org_opt = $ENV{PERL5OPT}; 
     my $org_lib = $ENV{PERL5LIB};
     my @org_inc = @INC;
 
-    sub original_perl5opt   { $org_opt };
-    sub original_perl5lib   { $org_lib };
+    sub original_perl5opt   { $org_opt || ''};
+    sub original_perl5lib   { $org_lib || ''};
     sub original_inc        { @org_inc };
+    
+    sub limited_perl5opt    {
+        my $pkg = shift;
+        my $lim = join ',', @_ or return;
+ 
+        ### -Icp::inc -Mcp::inc=mod1,mod2,mod3
+        my $opt =   '-I' . __PACKAGE__->my_path . ' ' .
+                    '-M' . __PACKAGE__ . "=$lim";
+    
+        $opt .=     $Config::Config{'path_sep'} .
+                    CPANPLUS::inc->original_perl5opt
+                if  CPANPLUS::inc->original_perl5opt;  
+                
+        return $opt;                
+    }
 }
 
 =head2 CPANPLUS::inc->interesting_modules()
@@ -125,18 +154,18 @@ It would looks something like this:
         'File::Fetch'               => '0.05',
         #'File::Spec'                => '0.82', # can't, need it ourselves...
         'IPC::Run'                  => '0.77',
-        'IPC::Cmd'                  => '0.23',
-        'Locale::Maketext::Simple'	 => 0,
+        'IPC::Cmd'                  => '0.24',
+        'Locale::Maketext::Simple'  => 0,
         'Log::Message'              => 0,
         'Module::Load'              => '0.10',
-        'Module::Load::Conditional' => '0.05',
-        'Module::Build'             => '0.2605',
-        'Params::Check'             => '0.21',
-        'Term::UI'                  => '0.03',
-        'Archive::Extract'          => '0.03',
-        'Archive::Tar'              => '1.21',
-        'IO::Zlib'                  => '1.01',   
-        'Object::Accessor'          => '0.02',
+        'Module::Load::Conditional' => '0.06',
+        'Module::Build'             => '0.26061',
+        'Params::Check'             => '0.22',
+        'Term::UI'                  => '0.04',
+        'Archive::Extract'          => '0.07',
+        'Archive::Tar'              => '1.23',
+        'IO::Zlib'                  => '1.04',   
+        'Object::Accessor'          => '0.03',
         'Module::CoreList'          => '1.97',
         #'Config::Auto'             => 0,   # not yet, not using it yet
     };    
@@ -184,143 +213,217 @@ find out exactly what C<CPANPLUS::inc> is doing.
 
 =cut
 
-my $loaded;
-sub import {
-    ### up the debug level if required ###
-    $DEBUG++ if $_[1] && $_[1] eq 'DEBUG';
-
-    ### only load once ###
-    return 1 if $loaded++;
-
-    ### first, add our own private dir to the end of @INC:
-    {   
-        push @INC, __PACKAGE__->my_path, __PACKAGE__->inc_path;
-        
-        ### add the path to this module to PERL5OPT in case 
-        ### we spawn off some programs...
-        ### then add this module to be loaded in PERL5OPT...
-        {   local $^W;
-            $ENV{'PERL5LIB'} .= $Config::Config{'path_sep'} 
-                             . __PACKAGE__->my_path
-                             . $Config::Config{'path_sep'} 
-                             . __PACKAGE__->inc_path;
-                             
-            $ENV{'PERL5OPT'} = '-M'. __PACKAGE__ . ' ' 
-                             . ($ENV{'PERL5OPT'} || '');
-        }
-    }      
-
-    ### next, find the highest version of a module that
-    ### we care about. very basic check, but will
-    ### have to do for now.
-    lib->import( sub { 
-        my $path    = pop();                # path to the pm
-        my $module  = $path;                # copy of the path, to munge
-        my @parts   = split '/', $path;     # dirs + file name
-        my $file    = pop @parts;           # just the file name
-        my $map     = __PACKAGE__->interesting_modules;
-        
-        
-        ### translate file name to module name ###
-        $module =~ s|/|::|g; $module =~ s/\.pm//i;
-   
-        my $check_version; my $try;
-        ### does it look like a module we care about?   
-        ++$try if grep { $module =~ /^$_/ } keys %$map;    
-          
-        ### do we need to check the version too? 
-        ++$check_version if exists $map->{$module};
-
-        ### we don't care ###
-        unless( $try ) {
-            warn __PACKAGE__ .": Not interested in '$module'\n" if $DEBUG;
-            return;
-        }
-        
-        ### found filehandles + versions ###
-        my @found;
-        DIR: for my $dir (@INC) {
-            next DIR unless -d $dir;
-            
-            ### get the full path to the module ###
-            my $pm = File::Spec->catfile( $dir, @parts, $file );
-            
-            ### open the file if it exists ###
-            if( -e $pm ) {
-                my $fh;
-                unless( open $fh, "$pm" ) {
-                    warn __PACKAGE__ .": Could not open '$pm': $!\n" 
-                        if $DEBUG;    
-                    next DIR;
-                }      
-
-                my $found;
-                ### XXX stolen from module::load::conditional ###            
-                while (local $_ = <$fh> ) {
-
-                    ### the following regexp comes from the ExtUtils::MakeMaker
-                    ### documentation.
-                    if ( /([\$*])(([\w\:\']*)\bVERSION)\b.*\=/ ) {
-
-                        ### this will eval the version in to $VERSION if it
-                        ### was declared as $VERSION in the module.
-                        ### else the result will be in $res.
-                        ### this is a fix on skud's Module::InstalledVersion
+{   my $Loaded;
+    my %Cache;
     
-                        local $VERSION;
-                        my $res = eval $_;
+    
+    ### returns the path to a certain module we found
+    sub path_to {
+        my $self    = shift;
+        my $mod     = shift or return;
+
+        ### find the directory
+        my $path    = $Cache{$mod}->[0][2] or return;
         
-                        ### default to '0.0' if there REALLY is no version
-                        ### all to satisfy warnings
-                        $found = $VERSION || $res || '0.0';
-                        
-                        ### found what we came for                    
-                        last if $found;
-                    } 
-                }
+        ### probe them explicitly for a special file, because the
+        ### dir we found the file in vs our own paths may point to the
+        ### same location, but might not pass an 'eq' test.
 
-                ### no version defined at all? ###
-                $found ||= '0.0';
+        ### it's our inc-path
+        return __PACKAGE__->inc_path 
+                if -e File::Spec->catfile( $path, '.inc' );
 
-                warn __PACKAGE__ .": Found match for '$module' in '$dir' "
-                                 ."with version '$found'\n" if $DEBUG;
+        ### it's our installer path
+        return __PACKAGE__->installer_path
+                if -e File::Spec->catfile( $path, '.installers' );
 
-                ### reset the position of the filehandle ###
-                seek $fh, 0, 0;
+        ### it's just some dir...
+        return $path;
+    }        
+    
+    ### just a debug method
+    sub _show_cache { return \%Cache };
+    
+    sub import {
+        my $pkg = shift;
+    
+        ### filter DEBUG, and toggle the global
+        map { $LIMIT{$_} = 1 }  grep { /DEBUG/ ? ++$DEBUG && 0 : 1 } @_;     
+    
+        ### only load once ###
+        return 1 if $Loaded++;
+    
+        ### first, add our own private dir to the end of @INC:
+        {   
+            push @INC,  __PACKAGE__->my_path, __PACKAGE__->inc_path, 
+                        __PACKAGE__->installer_path;
             
-                ### store the found version + filehandle it came from ###
-                push @found, [ $found, $fh, $dir, $pm ];             
-            }   
+            ### add the path to this module to PERL5OPT in case 
+            ### we spawn off some programs...
+            ### then add this module to be loaded in PERL5OPT...
+            {   local $^W;
+                $ENV{'PERL5LIB'} .= $Config::Config{'path_sep'} 
+                                 . __PACKAGE__->my_path
+                                 . $Config::Config{'path_sep'} 
+                                 . __PACKAGE__->inc_path;
+                                 
+                $ENV{'PERL5OPT'} = '-M'. __PACKAGE__ . ' ' 
+                                 . ($ENV{'PERL5OPT'} || '');
+            }
+        }      
+    
+        ### next, find the highest version of a module that
+        ### we care about. very basic check, but will
+        ### have to do for now.
+        lib->import( sub { 
+            my $path    = pop();                # path to the pm
+            my $module  = $path or return;      # copy of the path, to munge
+            my @parts   = split '/', $path;     # dirs + file name
+            my $file    = pop @parts;           # just the file name
+            my $map     = __PACKAGE__->interesting_modules;
+            
+            
+            ### translate file name to module name ###
+            $module =~ s|/|::|g; $module =~ s/\.pm//i;
+       
+            my $check_version; my $try;
+            ### does it look like a module we care about?   
+            my ($interesting) = grep { $module =~ /^$_/ } keys %$map;    
+            ++$try if $interesting;  
+              
+            ### do we need to check the version too? 
+            ++$check_version if exists $map->{$module};
+    
+            ### we don't care ###
+            unless( $try ) {
+                warn __PACKAGE__ .": Not interested in '$module'\n" if $DEBUG;
+                return;
+                
+            ### we're not allowed             
+            } elsif ( $try and keys %LIMIT ) {
+                unless( grep { $module =~ /^$_/ } keys %LIMIT  ) {
+                    warn __PACKAGE__ .": Limits active, '$module' not allowed ".
+                                        "to be loaded" if $DEBUG;
+                    return;    
+                }
+            }
+    
+            ### found filehandles + versions ###
+            my @found;
+            DIR: for my $dir (@INC) {
+                next DIR unless -d $dir;
+                
+                ### get the full path to the module ###
+                my $pm = File::Spec->catfile( $dir, @parts, $file );
+                
+                ### open the file if it exists ###
+                if( -e $pm ) {
+                    my $fh;
+                    unless( open $fh, "$pm" ) {
+                        warn __PACKAGE__ .": Could not open '$pm': $!\n" 
+                            if $DEBUG;    
+                        next DIR;
+                    }      
+    
+                    my $found;
+                    ### XXX stolen from module::load::conditional ###            
+                    while (local $_ = <$fh> ) {
+    
+                        ### the following regexp comes from the 
+                        ### ExtUtils::MakeMaker documentation.
+                        if ( /([\$*])(([\w\:\']*)\bVERSION)\b.*\=/ ) {
+    
+                            ### this will eval the version in to $VERSION if it
+                            ### was declared as $VERSION in the module.
+                            ### else the result will be in $res.
+                            ### this is a fix on skud's Module::InstalledVersion
         
-        } # done looping over all the dirs
-        
-        ### nothing found? ###
-        unless (@found) {
-            warn __PACKAGE__ .": Unable to find any module named '$module'\n"
-                    if $DEBUG;
-            return;         
-        }
-        
-        ### find highest version 
-        ### or otherwise, newest file
-        my @sorted = sort { ($b->[0] <=> $a->[0]) ||
+                            local $VERSION;
+                            my $res = eval $_;
+            
+                            ### default to '0.0' if there REALLY is no version
+                            ### all to satisfy warnings
+                            $found = $VERSION || $res || '0.0';
+                            
+                            ### found what we came for                    
+                            last if $found;
+                        } 
+                    }
+    
+                    ### no version defined at all? ###
+                    $found ||= '0.0';
+    
+                    warn __PACKAGE__ .": Found match for '$module' in '$dir' "
+                                     ."with version '$found'\n" if $DEBUG;
+    
+                    ### reset the position of the filehandle ###
+                    seek $fh, 0, 0;
+                
+                    ### store the found version + filehandle it came from ###
+                    push @found, [ $found, $fh, $dir, $pm ];             
+                }   
+            
+            } # done looping over all the dirs
+            
+            ### nothing found? ###
+            unless (@found) {
+                warn __PACKAGE__ .": Unable to find any module named "
+                                    . "'$module'\n" if $DEBUG;
+                return;         
+            }
+            
+            ### find highest version 
+            ### or the one in the same dir as a base module already loaded
+            ### or otherwise, the one not bundled
+            ### or otherwise the newest
+            my @sorted = sort { 
+                            ($b->[0] <=> $a->[0])                   ||
+                            ($Cache{$interesting}  
+                                ?($b->[2] eq $Cache{$interesting}->[0][2]) <=>
+                                 ($a->[2] eq $Cache{$interesting}->[0][2])
+                                : 0 )                               ||
+                            (($a->[2] eq __PACKAGE__->inc_path) <=>
+                             ($b->[2] eq __PACKAGE__->inc_path))    ||
                             (-M $a->[3] <=> -M $b->[3])
-                      } @found;
-        
-        warn __PACKAGE__ .": Best match for '$module' is found in "
-                         ."'$sorted[0][2]' with version '$sorted[0][0]'\n"
-                if $DEBUG;                               
-        
-        if( $check_version and not ($sorted[0][0] >= $map->{$module}) ) {
-            warn __PACKAGE__ .": Can not find high enough version for " 
-                             ."'$module' -- need '$map->{$module}' but only "
-                             ." found '$sorted[0][0]'. Returning highest found "
-                             ." version but this may cause problems\n";                                  
-        };
-        
-        ### best matching filehandle ###
-        return $sorted[0][1];
-    } );    
+                          } @found;
+            
+            warn __PACKAGE__ .": Best match for '$module' is found in "
+                             ."'$sorted[0][2]' with version '$sorted[0][0]'\n"
+                    if $DEBUG;                               
+            
+            if( $check_version and not ($sorted[0][0] >= $map->{$module}) ) {
+                warn __PACKAGE__ .": Cannot find high enough version for " 
+                                 ."'$module' -- need '$map->{$module}' but "
+                                 ."only found '$sorted[0][0]'. Returning "
+                                 ."highest found version but this may cause "
+                                 ."problems\n";                                  
+            };
+            
+            ### right, so that damn )#$(*@#)(*@#@ Module::Build makes 
+            ### assumptions about the environment (especially its own tests)
+            ### and blows up badly if it's loaded via CP::inc :(
+            ### so, if we find a newer version on disk (which would happen when
+            ### upgrading or having upgraded, just pretend we didn't find it,
+            ### let it be loaded via the 'normal' way.
+            ### can't even load the *proper* one via our CP::inc, as it will
+            ### get upset just over the fact it's loaded via a non-standard way
+            if( $module =~ /^Module::Build/ and
+                $sorted[0][2] ne __PACKAGE__->inc_path and
+                $sorted[0][2] ne __PACKAGE__->installer_path
+            ) {
+                warn __PACKAGE__ .": Found newer version of 'Module::Build::*' "
+                                 ."elsewhere in your path. Pretending to not "
+                                 ."have found it\n" if $DEBUG;
+                return;                             
+            }                
+            
+            ### store what we found for this module
+            $Cache{$module} = \@sorted;
+            
+            ### best matching filehandle ###
+            return $sorted[0][1];
+        } );    
+    }
 }
 
 =pod

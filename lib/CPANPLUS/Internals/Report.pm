@@ -17,6 +17,67 @@ $Params::Check::VERBOSE = 1;
 ### for the version ###
 require CPANPLUS::Internals;
 
+=head2 _have_query_report_modules 
+
+This function checks if all the required modules are here for querying 
+reports. It returns true and loads them if they are, or returns false 
+otherwise.
+
+=head2 _have_send_report_modules
+
+This function checks if all the required modules are here for sending 
+reports. It returns true and loads them if they are, or returns false 
+otherwise.
+
+=cut
+{   my $query_list = {
+        LWP              => '0.0',
+        'LWP::UserAgent' => '0.0',
+        'HTTP::Request'  => '0.0',
+        URI              => '0.0',
+        YAML             => '0.0',
+    };
+
+    ### best add mail::send too, see here:
+    ### http://www.mail-archive.com/perl-qa-help@perl.org/msg01274.html
+    my $send_list = {
+        %$query_list,
+        'Mail::Send'     => '0.0',
+        'Test::Reporter' => 1.19,
+    };
+    
+    sub _have_query_report_modules {
+        my $self = shift;
+        my $conf = $self->configure_object;
+        my %hash = @_;
+        
+        my $tmpl = { 
+            verbose => { default => $conf->get_conf('verbose') },
+        };
+        
+        my $args = check( $tmpl, \%hash ) or return;
+        
+        return can_load( modules => $query_list, verbose => $args->{verbose} )
+                ? 1
+                : 0;
+    }  
+    
+    sub _have_send_report_modules {
+        my $self = shift;
+        my $conf = $self->configure_object;
+        my %hash = @_;
+        
+        my $tmpl = { 
+            verbose => { default => $conf->get_conf('verbose') },
+        };
+        
+        my $args = check( $tmpl, \%hash ) or return;
+        
+        return can_load( modules => $send_list, verbose => $args->{verbose} )
+                ? 1
+                : 0;
+    }
+}
 
 =head2 _query_report( module => $modobj, [all_versions => BOOL, verbose => BOOL] )
 
@@ -74,16 +135,9 @@ sub _query_report {
     };
     
     check( $tmpl, \%hash ) or return;       
-    
-    my $use_list = {
-        LWP              => '0.0',
-        'LWP::UserAgent' => '0.0',
-        'HTTP::Request'  => '0.0',
-        URI              => '0.0',
-        YAML             => '0.0',
-    };
 
-    return unless can_load( modules => $use_list, verbose => 1 );
+    ### check if we have the modules we need for querying
+    return unless $self->_have_query_report_modules( verbose => 1 );
     
     ### new user agent ###
     my $ua = LWP::UserAgent->new;
@@ -193,16 +247,16 @@ Defaults to your configuration settings
 
 =cut
 
-
 sub _send_report {
     my $self = shift;
     my $conf = $self->configure_object;
     my %hash = @_;
 
     ### do you even /have/ test::reporter? ###
-    unless( can_load(modules => {'Test::Reporter' => 1.19}, verbose => 1) ) {
-        error( loc( "You don't have '%1' installed, you can not report " .
-                    "test results.", 'Test::Reporter' ) );
+    unless( $self->_have_send_report_modules(verbose => 1) ) {
+        error( loc( "You don't have '%1' (or modules required by '%2') ".
+                    "installed, you cannot report test results.",
+                    'Test::Reporter', 'Test::Reporter' ) );
         return;              
     }
 

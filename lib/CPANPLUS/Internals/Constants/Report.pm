@@ -29,15 +29,16 @@ my %OS = (
     BSD         => 'bsdos|darwin|freebsd|openbsd|netbsd',
     Be          => 'beos',
     BeOS        => 'beos',
+    Cygwin      => 'cygwin',
     Darwin      => 'darwin',
     EBCDIC      => 'os390|os400|posix-bc|vmesa',
     HPUX        => 'hpux',
     Linux       => 'linux',
     MSDOS       => 'dos',
-    'bin\\d*Mac'=> 'MacOS', # binMac, bin56Mac, bin58Mac...
-    Mac         => 'MacOS',
+    'bin\\d*Mac'=> 'MacOS|darwin', # binMac, bin56Mac, bin58Mac...
+    Mac         => 'MacOS|darwin',
     MacPerl     => 'MacOS',
-    MacOS       => 'MacOS',
+    MacOS       => 'MacOS|darwin',
     MacOSX      => 'darwin',
     MPE         => 'mpeix',
     MPEiX       => 'mpeix',
@@ -51,8 +52,8 @@ my %OS = (
                    'svr4|sco_sv|unicos|unicosmk|solaris|sunos',
     VMS         => 'VMS',
     VOS         => 'VOS',
-    Win32       => 'MSWin32',
-    Win32API    => 'MSWin32',
+    Win32       => 'MSWin32|cygwin',
+    Win32API    => 'MSWin32|cygwin',
 );
 
 use constant GRADE_FAIL     => 'fail';
@@ -127,16 +128,18 @@ use constant REPORT_MESSAGE_HEADER
                                 
 ******************************** NOTE ********************************
 The comments below are created mechanically, possibly without manual
-checking by the sender.  Also, because many people perform automatic
-tests on CPAN, chances are that you will receive identical messages
-about the same problem.
+checking by the sender.  As there are many people performing automatic
+tests on each upload to CPAN, it is likely that you will receive 
+identical messages about the same problem.
 
 If you believe that the message is mistaken, please reply to the first
 one with correction and/or additional information, and do not take
 it personally.  (We appreciate your patience. :)
 **********************************************************************
 
-Hello, $author! Thanks for uploading your works to CPAN.
+Hello, $author! This is a computer-generated error report created
+automatically by CPANPLUS, version $VERSION.  Comments from the tester
+may appear at the end of this report, as well.
 
 .
                             };                                       
@@ -145,14 +148,15 @@ use constant REPORT_MESSAGE_FAIL_HEADER
                             => sub {
                                 my($version, $stage, $buffer) = @_;
                                 return << ".";
-This is an error report generated automatically by CPANPLUS,
-version $version.
 
-Below is the error stack during '$stage':
+Thanks for uploading your works to CPAN.  However, it appears that
+CPANPLUS encountered problems while testing your distribution.
+
+TEST RESULTS:
+
+Below is the error stack from stage '$stage':
 
 $buffer
-
-Additional comments:
 
 .
                             };                                
@@ -165,7 +169,10 @@ use constant REPORT_MISSING_PREREQS
                                     " # or a minimum working version"} @missing;
                                 
                                 return << ".";
-I noticed that the test suite seem to fail without these modules:
+
+MISSING PREREQUISITES:
+ 
+It was observed that the test suite seem to fail without these modules:
 
 $modules
 

@@ -4,7 +4,7 @@ use strict;
 use Carp        qw[carp];
 use vars        qw[$FATAL $DEBUG $AUTOLOAD $VERSION];
 
-$VERSION    = '0.02';
+$VERSION    = '0.03';
 $FATAL      = 0;
 $DEBUG      = 0;
 
@@ -68,10 +68,7 @@ inheritable.
 =cut 
 
 sub new {
-    my $class   = shift;
-    my $self    = bless {}, $class;
-
-    return $self;
+    return bless {}, $_[0];
 }
 
 =head2 $bool = $object->mk_accessors( @ACCESSORS );
@@ -94,10 +91,9 @@ section for details.
 =cut
 
 sub mk_accessors {
-    my $self = shift;
-    my @acc  = @_;
+    my $self = $_[0];
     
-    for my $acc (@acc) {
+    for my $acc (@_[1..$#_]) {
     
         ### already created apparently
         if( exists $self->{$acc} ) {
@@ -107,7 +103,7 @@ sub mk_accessors {
     
         _debug( "Creating accessor '$acc'");
     
-        ### initalize it 
+        ### explicitly vivify it, so that exists works in ls_accessors()
         $self->{$acc} = undef;
     }
     
@@ -123,8 +119,7 @@ by one to the C<can> method.
 =cut
 
 sub ls_accessors {
-    my $self = shift;
-    return sort keys %$self;
+    return sort keys %{$_[0]};
 }    
 
 =head2 $clone = $self->mk_clone;
@@ -135,13 +130,13 @@ accessors as the current object, but without the data stored in them.
 =cut
 
 sub mk_clone {
-    my $self    = shift;
+    my $self    = $_[0];
     my $class   = ref $self;
-    my @list    = $self->ls_accessors;
     
     my $clone   = $class->new;
     
-    $clone->mk_accessors( @list );
+    # copy the accessors from $self to $clone
+    $clone->mk_accessors( $self->ls_accessors );
     
     return $clone;
 }
@@ -156,12 +151,10 @@ Returns true on success and false on failure.
 =cut
 
 sub mk_flush {
-    my $self = shift;
-    my @list = $self->ls_accessors;
-    
-    for my $acc (@list) {
-        $self->$acc( undef );
-    }
+    my $self = $_[0];
+
+    # set each accessor's data to undef
+    $self->$_( undef ) for $self->ls_accessors;
     
     return 1;
 }    
@@ -187,8 +180,7 @@ See the C<SYNOPSIS> for more examples.
 
 ### custom 'can' as UNIVERSAL::can ignores autoload
 sub can {
-    my $self    = shift;
-    my $method  = shift;
+    my($self, $method) = @_;
     
     ### it's one of our regular methods
     if( $self->UNIVERSAL::can($method) ) {
@@ -203,7 +195,7 @@ sub can {
     }        
     
     ### we don't support it
-    _debug( "Can not '$method'" );
+    _debug( "Cannot '$method'" );
     return;
 }
 
@@ -213,24 +205,27 @@ sub DESTROY { 1 };
 ### use autoload so we can have per-object accessors, 
 ### not per class, as that is incorrect
 sub AUTOLOAD {
-    my $self    = shift;
-    my $method  = $AUTOLOAD;
-    $method     =~ s/.+:://g;
+    my $self    = $_[0];
+    my($method) = ($AUTOLOAD =~ /([^:']+$)/);
     
     unless( exists $self->{$method} ) {
         _error("No such accessor '$method'");
         return;
     }        
 
+    ### if there's more arguments than $self, then
+    ### replace the method called by the accessor.
     ### XXX implement rw vs ro accessors!
-    $self->{$method} = $_[0] if @_;
+    $self->{$method} = $_[1] if @_ > 1;
     
     return $self->{$method};
 }
 
 sub _debug { 
+    return unless $DEBUG;
+
     local $Carp::CarpLevel += 1;
-    carp(@_) if $DEBUG; 
+    carp(@_); 
 }
 
 sub _error { 

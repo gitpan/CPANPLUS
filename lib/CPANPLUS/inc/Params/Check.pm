@@ -150,7 +150,7 @@ This does a C<ref()> check on the argument provided. The C<ref> of the
 argument must be the same as the C<ref> of the default value for this
 check to pass.
 
-This is very usefull if you insist on taking an array reference as
+This is very useful if you insist on taking an array reference as
 argument for example.
 
 =item defined
@@ -221,7 +221,7 @@ This is a reference to a hash of named arguments which need checking.
 =item Verbose
 
 A boolean to indicate whether C<check> should be verbose and warn
-about whant went wrong in a check or not.
+about what went wrong in a check or not.
 
 You can enable this program wide by setting the package variable
 C<$Params::Check::VERBOSE> to a true value. For details, see the
@@ -366,7 +366,7 @@ sub check {
 =head2 allow( $test_me, \@criteria );
 
 The function that handles the C<allow> key in the template is also
-available for independant use. 
+available for independent use. 
 
 The function takes as first argument a key to test against, and
 as second argument any form of criteria that are also allowed by 
@@ -391,7 +391,7 @@ validation to pass.
 The provided subroutine MUST return true in order for the validation
 to pass and the argument accepted.
 
-(This is particularly usefull for more complicated data).
+(This is particularly useful for more complicated data).
 
 =item array ref
 
@@ -560,7 +560,7 @@ following global variables:
 =head2 $Params::Check::VERBOSE
 
 This controls whether Params::Check will issue warnings and
-explenations as to why certain things may have failed. 
+explanations as to why certain things may have failed. 
 If you set it to 0, Params::Check will not output any warnings.
 
 The default is 1 when L<warnings> are enabled, 0 otherwise;
@@ -575,7 +575,7 @@ The default is 0;
 =head2 $Params::Check::ALLOW_UNKNOWN
 
 If you set this flag, unknown options will still be present in the
-return value, rather than filtered out. This is usefull if your
+return value, rather than filtered out. This is useful if your
 subroutine is only interested in a few arguments, and wants to pass
 the rest on blindly to perhaps another subroutine.
 
@@ -620,10 +620,9 @@ Default is 0;
 
 =head2 $Params::Check::SANITY_CHECK_TEMPLATE
 
-If set to true, L<Params::Check> will sanity check every template 
-provided to valide against for errors and unknown keys. Although very
-usefull for debugging, this can be somewhat slow in hot-code and large
-loops.
+If set to true, L<Params::Check> will sanity check templates, validating
+for errors and unknown keys. Although very useful for debugging, this
+can be somewhat slow in hot-code and large loops.
 
 To disable this check, set this variable to C<false>.
 

@@ -55,6 +55,7 @@ is($mod->package_name,      'Text-Bastardize',        "Package name");
 is($mod->package_version,   '0.06',                   "Package version");
 is($mod->package_extension, 'tar.gz',                 "Package extension");
 ok(!$mod->package_is_perl_core,                       "Package not core");
+ok(!$mod->module_is_supplied_with_perl_core,          "Module not core" );
 ok(!$mod->is_bundle,                                  "Package not bundle");
 
 ### check objects ###
@@ -65,7 +66,7 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
     
 
 {   ### extract + error test ###
-    ok( !$mod->extract(),   "Can not extract unfetched file" );
+    ok( !$mod->extract(),   "Cannot extract unfetched file" );
     like( CPANPLUS::Error->stack_as_string, qr/You have not fetched/,
                             "   Error properly logged" );
 }      
@@ -206,8 +207,10 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
 {   my $core = $cb->module_tree('B::Deparse');
     isa_ok( $core,                  'CPANPLUS::Module' );
     ok($core->package_is_perl_core, "Package found in perl core" );
+    ok($core->module_is_supplied_with_perl_core,
+                                    "   Module also found in perl core");
     ok(! $core->install,            "   Package not installed" );
-    like( CPANPLUS::Error->stack_as_string, qr/Module .+ is perl-core/,
+    like( CPANPLUS::Error->stack_as_string, qr/core Perl/,
                                     "   Error properly logged" );
 }    
  

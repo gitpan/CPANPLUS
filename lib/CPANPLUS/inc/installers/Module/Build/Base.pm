@@ -54,15 +54,21 @@ sub resume {
   return $self;
 }
 
+
+my $Package_Num = 0;
 sub new_from_context {
   my ($package, %args) = @_;
   
   # XXX Read the META.yml and see whether we need to run the Build.PL
   
-  # Run the Build.PL
-  $package->run_perl_script('Build.PL');
+  # Run each Build.PL in its own package to avoid conflicts.
+  eval sprintf q{
+      package %s;
+      do './Build.PL';
+  }, "Module::Build::Build_PL::PACK".$Package_Num++;
+
   my $self = $package->resume;
-  $self->merge_args(%args);
+  $self->merge_args(undef, %args);
   return $self;
 }
 
@@ -939,6 +945,30 @@ sub make_executable {
 
 sub _startperl { shift()->{config}{startperl} }
 
+# Return any directories which are not in the default @INC for this
+# Perl.  For example, stuff passed in with -I.
+sub _added_to_INC {
+  my $self = shift;
+
+  my %seen;
+  $seen{$_}++ foreach $self->_default_INC;
+  return grep !$seen{$_}++, @INC;
+}
+
+# Determine the default @INC for this Perl
+sub _default_INC {
+  my $self = shift;
+
+  local $ENV{PERL5LIB};  # this is not considered part of the default.
+
+  my $perl = $self->perl;
+
+  my @inc =`$perl -le "print join qq[\n], \@INC"`;
+  chomp @inc;
+
+  return @inc;
+}
+
 sub print_build_script {
   my ($self, $fh) = @_;
   
@@ -947,7 +977,7 @@ sub print_build_script {
   my %q = map {$_, $self->$_()} qw(config_dir base_dir);
   $q{base_dir} = Win32::GetShortPathName($q{base_dir}) if $^O eq 'MSWin32';
 
-  my @myINC = @INC;
+  my @myINC = $self->_added_to_INC;
   for (@myINC, values %q) {
     $_ = File::Spec->canonpath( File::Spec->rel2abs($_) );
     s/([\\\'])/\\$1/g;
@@ -972,7 +1002,7 @@ BEGIN {
     die ('This script must be run from $q{base_dir}, not '.\$curdir."\\n".
 	 "Please re-run the Build.PL script here.\\n");
   }
-  \@INC = 
+  unshift \@INC,
     (
 $quoted_INC
     );

@@ -24,7 +24,7 @@ use constant ZIP            => 'zip';
 
 use vars qw[$VERSION $PREFER_BIN $PROGRAMS $WARN $DEBUG];
 
-$VERSION        = '0.03';
+$VERSION        = '0.07';
 $PREFER_BIN     = 0;
 $WARN           = 1;
 $DEBUG          = 0;
@@ -181,7 +181,7 @@ Returns a C<Archive::Extract> object on success, or false on failure.
         }          
                     
         ### don't know what type of file it is ###             
-        return __PACKAGE__->_error(loc("Can not determine file type for '%1'",
+        return __PACKAGE__->_error(loc("Cannot determine file type for '%1'",
                                 $parsed->{archive} )) unless $parsed->{type};
        
         return bless $parsed, $class;
@@ -242,9 +242,9 @@ sub extract {
     {   my $cp = $self->archive; $cp =~ s/\.gz$//i;
         $dir =  $self->is_gz ? dirname($to eq '.' ? $cp : $to) : $to; 
     }
-              
+
     $self->_gunzip_to( basename($to) ) if $self->is_gz;
-    
+ 
     ### make the dir if it doesn't exist ###
     unless( -d $dir ) {
         eval { mkpath( $dir ) };
@@ -415,7 +415,6 @@ sub _untar_bin {
     ### XXX solaris tar and bsdtar are having different outputs
     ### depending whether you run with -x or -t
     ### compensate for this insanity by running -t first, then -x
-    
     {    my $cmd = $self->is_tgz 
             ? [$self->bin_gzip, '-cdf', $self->archive, '|', 
                $self->bin_tar, '-tf', '-'] 
@@ -450,14 +449,9 @@ sub _untar_bin {
                                         |x ? $1 : $_); 
        
                     } split $/, $buffer;
-       
-            my ($dir) = -d $files[0] ? $files[0] : dirname($files[0]);
- 
+                    
             ### store the files that are in the archive ###
             $self->files(\@files);
-         
-            ### store the extraction dir ###
-            $self->extract_path( File::Spec->rel2abs($dir) );    
         }
     }
     
@@ -475,8 +469,15 @@ sub _untar_bin {
             return $self->_error(loc("Error extracting archive '%1': %2", 
                             $self->archive, $buffer ));
         }      
-    }      
 
+        ### now that we've extracted, figure out where we extracted to
+        my ($dir) = -d $self->files->[0] 
+                            ? $self->files->[0] 
+                            : dirname($self->files->[0]);
+
+        ### store the extraction dir ###
+        $self->extract_path( File::Spec->rel2abs($dir) ); 
+    }      
   
     ### we got here, no error happened
     return 1;    
@@ -486,7 +487,7 @@ sub _untar_bin {
 sub _untar_at {  
     my $self = shift;
 
-    ### we definately need A::T, so load that first
+    ### we definitely need A::T, so load that first
     {   my $use_list = { 'Archive::Tar' => '0.0' };
         
         unless( can_load( modules => $use_list ) ) {
@@ -796,7 +797,7 @@ sub _unzip_az {
 =head1 HOW IT WORKS
 
 C<Archive::Extract> tries first to determine what type of archive you 
-are passing it, by inspecting it's suffix. It does not do this by using
+are passing it, by inspecting its suffix. It does not do this by using
 Mime magic, or something related. See C<CAVEATS> below.
 
 Once it has determined the file type, it knows which extraction methods

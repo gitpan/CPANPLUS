@@ -19,7 +19,7 @@ BEGIN {
                         $USE_IPC_RUN $USE_IPC_OPEN3
                     ];
 
-    $VERSION        = '0.23';
+    $VERSION        = '0.24';
     $VERBOSE        = 0;
     $USE_IPC_RUN    = 1;
     $USE_IPC_OPEN3  = 1;
@@ -186,7 +186,8 @@ sub run {
 
     ### Abandon all hope; falls back to simple system() on verbose calls.
     } elsif ($verbose) {
-        system(@cmd);
+        ### quote for if we have pipes or anything else in there
+        system("@cmd");
         $err = $? ? $? : 0;
 
     ### Non-verbose system() needs to have STDOUT and STDERR muted.
@@ -203,7 +204,8 @@ sub run {
         open(STDERR, ">".File::Spec->devnull)
             or warn(loc("couldn't reopen STDERR: %1",$!)),   return;
 
-        system(@cmd);
+        ### quote for if we have pipes or anything else in there
+        system("@cmd");
 
         open(STDOUT, ">&SAVEOUT")
             or warn(loc("couldn't restore STDOUT: %1",$!)), return;
@@ -315,7 +317,7 @@ IPC::Cmd - finding and running system commands made easy
                     verbose => 0,
                     buffer  => \$buffer ) 
     ) {
-        print "fetched webpage succesfully\n";
+        print "fetched webpage successfully\n";
     }
 
 
@@ -461,7 +463,7 @@ will be adhered to nicely;
 =item *
 
 Otherwise, if you have the verbose argument set to true, we fall back
-to a simple system() call. We can not capture any buffers, but
+to a simple system() call. We cannot capture any buffers, but
 interactive commands will still work.
 
 =item *

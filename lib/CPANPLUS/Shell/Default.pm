@@ -24,7 +24,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_01';
+    $VERSION    =   '0.050_02';
 }
 
 load CPANPLUS::Shell;
@@ -236,13 +236,18 @@ sub dispatch_on_input {
     my $term = $self->term;
     my %hash = @_;
     
-    my $string;
+    my($string, $noninteractive);
     my $tmpl = {
-        input   => { required => 1, store => \$string }
+        input          => { required => 1, store => \$string },
+        noninteractive => { required => 0, store => \$noninteractive },
     };
     
     check( $tmpl, \%hash ) or return;
  
+    ### indicates whether or not the user will receive a shell
+    ### prompt after the command has finished.
+    $self->noninteractive($noninteractive) if defined $noninteractive;
+        
     my @cmds =  split ';', $string;
     while( my $input = shift @cmds ) {
         
@@ -268,7 +273,7 @@ sub dispatch_on_input {
             ($options,$input) = $term->parse_options($input) 
                 unless $key eq '!';
         }    
-        
+
         ### emtpy line? ###
         return unless $key;
     
@@ -285,19 +290,25 @@ sub dispatch_on_input {
         CPANPLUS::Error->flush unless $key eq 'p';
     
         ### connected over a socket? ###
-        if( my $remote = $self->remote->{'connection'} ) {
-            my $ans;
-            my $send = join "\0",   $self->remote->{'username'},
-                                    $self->remote->{'password'},
-                                    $org_input;
+        if( $self->remote ) {
             
-            print $remote $send . "\015\012";
-            recv($remote, $ans, 8*1024, 0);
+            ### unsupported commands ###
+            if( $key eq 'z' or
+                ($key eq 's' and $input =~ /^\s*edit/)
+            ) {
+                print "\n", loc("Command not supported over remote connection"),
+                        "\n\n";
             
-            $self->_pager_open if $ans =~ tr/\n// > $self->_term_rowcount;
-            print $ans;
-            $self->_pager_close;
+            } else {
+                my($status,$buff) = $self->__send_remote_command($org_input);
 
+                print "\n", loc("Command failed!"), "\n\n" unless $status;
+        
+                $self->_pager_open if $buff =~ tr/\n// > $self->_term_rowcount;
+                print $buff;
+                $self->_pager_close;
+            }
+            
         ### or just a plain local shell? ###    
         } else {
         
@@ -310,7 +321,7 @@ sub dispatch_on_input {
                 ### some methods don't need modules ###
                 my @mods;
                 @mods = $self->_select_modules($input) 
-                        unless grep {$key eq $_} qw[! m a v w x p s b /];
+                        unless grep {$key eq $_} qw[! m a v w x p s b / ? h];
                 
                 eval { $self->$method(  modules => \@mods, 
                                         options => $options,
@@ -437,7 +448,18 @@ sub _quit {
 my @Help;
 sub _help {
     my $self = shift;
+    my %hash    = @_;
 
+    my $input;
+    {   local $Params::Check::ALLOW_UNKNOWN = 1;
+
+        my $tmpl = {
+            input   => { required => 0, store => \$input }
+        };     
+     
+        my $args = check( $tmpl, \%hash ) or return;
+    }
+    
     @Help = (
 loc('[General]'                                                                     ),
 loc('    h | ?                  # display help'                                     ),
@@ -472,6 +494,9 @@ loc('    x                      # reload CPAN indices'                          
     ) unless @Help;
 
     $self->_pager_open if (@Help >= $self->_term_rowcount);
+    ### XXX: functional placeholder for actual 'detailed' help.
+    print "Detailed help for the command '$input' is not available.\n\n"
+      if length $input;
     print map {"$_\n"} @Help;
     $self->_pager_close;
 }
@@ -640,7 +665,6 @@ sub _shell {
     my $conf    = $cb->configure_object;
     my %hash    = @_;
     
-    
     my $shell = $conf->get_program('shell');
     unless( $shell ) {
         print   loc("Your config does not specify a subshell!"), "\n",
@@ -786,7 +810,7 @@ sub _install {
         print loc("Problem %tense(%1,present) one or more modules", $target);
         print "\n";
         print loc("*** You can view the complete error buffer by pressing '%1' ***\n", 'p')
-                unless $conf->get_conf('verbose');
+                unless $conf->get_conf('verbose') || $self->noninteractive;
     }
     print "\n";
     
@@ -972,6 +996,7 @@ sub _set_conf {
         return $rv;           
     
     } elsif ( $type eq 'edit' ) {
+    
         my $editor  = $conf->get_program('editor')
                         or( print(loc("No editor specified")), return );
         
@@ -1059,6 +1084,8 @@ sub _uptodate {
     for my $mod (@list) {
         ### skip this mod if it's up to date ###
         next if $mod->is_uptodate;
+        ### skip this mod if it's core ###
+        next if $mod->package_is_perl_core;
         
         if( $long or !$seen{$mod->package}++ ) {
             push @rv, $mod;
@@ -1150,9 +1177,9 @@ should use the same package manager to uninstall them
 ", $list);        
         
         return unless $term->ask_yn(
-                            prompt  => loc("Are you sure you want to continue?"),
-                            default => 'n',
-                        );     
+                        prompt  => loc("Are you sure you want to continue?"),
+                        default => 'n',
+                    );     
     }                
 
     ### first loop over all the modules to uninstall them ###
@@ -1177,9 +1204,10 @@ should use the same package manager to uninstall them
     if( !$flag ) {
         print loc("All modules %tense(uninstall,past) successfully"), "\n";
     } else {
-        print loc("Problem %tense(uninstalling,present) one or more modules" ), "\n";
-        print loc("*** You can view the complete error buffer by pressing '%1' ***\n", 'p')
-                unless $conf->get_conf('verbose');
+        print loc("Problem %tense(uninstalling,present) one or more modules" ),
+                    "\n";
+        print loc("*** You can view the complete error buffer by pressing '%1'".
+                    "***\n", 'p') unless $conf->get_conf('verbose');
     }
     print "\n";
     
@@ -1275,7 +1303,7 @@ sub _meta {
                             PeerAddr    => $host,
                             PeerPort    => $port,
                         ) or (
-                            error( loc( "Can not connect to port '%1' ".
+                            error( loc( "Cannot connect to port '%1' ".
                                         "on host '%2'", $port, $host ) ),
                             return
                         );                     
@@ -1298,28 +1326,48 @@ sub _meta {
             password    => $pass,
         };
         
-        my $ans;
-        my $send = join "\0", $user, $pass, 'VERSION';
-        print $remote $send . "\015\012";
-        recv  $remote, $ans, 80, 0;
-        chomp $ans;
-        
-        unless( $VERSION == $ans ) {
-            print loc(  "Incompatible version detected on the remote server: " .
-                        "Local version: %1, remote version: %2. " .
-                        "Can not continue connecting\n", $VERSION, $ans );
-            return;
-        }
-                                   
+        ### store the connection
         $self->remote( $con );
         
+        my($status,$buffer) = $self->__send_remote_command("VERSION=$VERSION");
+        
+        if( $status ) {
+            print "\n$buffer\n\n";
+
+            print loc(  "Succesfully connected to '%1' on port '%2'",
+                        $host, $port );
+            print "\n\n";                        
+            print loc(  "Note that no output will appear until a command ".
+                        "has completed\n-- this may take a while" );
+            print "\n\n";
+        
+            $self->prompt( $Brand .'@'. $host .'> ' );
+        
+        } else {
+            print "\n$buffer\n\n";
+
+            print loc(  "Failed to connect to '%1' on port '%2'",
+                        $host, $port );
+            print "\n\n";    
+            
+            $self->remote( undef );
+        }
+    
+        
     } elsif ( $cmd eq 'disconnect' ) {
-        $self->remote( {} );
+        print "\n", ($self->remote
+                        ? loc( "Disconnecting from remote host" )
+                        : loc( "Not connected to remote host" )
+                ), "\n\n";
+
+        $self->remote( undef );
+        $self->prompt( $Prompt );
     
     } elsif ( $cmd eq 'source' ) {
         while( my $file = shift @parts ) {
             my $fh = FileHandle->new("$file")
-                        or( error(loc("Could not open file '%1': %2", $file, $!)),
+                        or( error(loc("Could not open file '%1': %2", 
+                            $file, $!)),
                             return
                         );
             while( my $line = <$fh> ) {
@@ -1332,7 +1380,37 @@ sub _meta {
         return;
     }
     return 1;       
-}    
+}   
+
+### send a command to a remote host, retrieve the answer;
+sub __send_remote_command {
+    my $self    = shift;
+    my $cmd     = shift;
+    my $remote  = $self->remote or return;
+    my $user    = $remote->{'username'};
+    my $pass    = $remote->{'password'};
+    my $conn    = $remote->{'connection'};
+    my $end     = "\015\012";
+    my $answer;
+    
+    my $send = join "\0", $user, $pass, $cmd;
+    
+    print $conn $send . $end;
+
+    ### XXX why doesn't something like this just work?
+    #1 while recv($conn, $answer, 1024, 0);   
+    while(1) {
+        my $buff;
+        $conn->recv( $buff, 1024, 0 );
+        $answer .= $buff;
+        last if $buff =~ /$end$/;
+    }
+
+    my($status,$buffer) = split "\0", $answer;
+
+    return ($status, $buffer);
+}
+
 
 sub _read_configuration_from_rc {
     my $rc_file = shift;

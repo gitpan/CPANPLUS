@@ -74,7 +74,7 @@ if(0){
 
 You are using $^O with a perl version lower than perl-5.8 (namely $]).
 This is sadly not supported, because 'IPC::Run' doesn't work properly,
-meaning we can not run commandline programs reliably.
+meaning we cannot run commandline programs reliably.
 
 I'm afraid you will have to upgrade to perl-5.8 or higher to be able
 to use CPANPLUS on this operating system. This will be added to the
@@ -188,7 +188,7 @@ sub setup_needed {
             $HasPrev ? loc("Manually configure CPANPLUS ".
                             "based on previous settings?") :
             $HasOld  ? loc("Old settings detected. Do you " .
-                            "want to modify it?")
+                            "want to modify them?")
                       : loc("Do you want to configure CPANPLUS now?")
         );
     
@@ -250,7 +250,7 @@ sub write_makefile {
     print loc("
 ### PLEASE NOTE ###################################################
 
-Since CPANPLUS 0.050 has a changed API, we can not automatically 
+Since CPANPLUS 0.050 has a changed API, we cannot automatically 
 install extra modules for you using ExtUtils::AutoInstall. All 
 required non-core modules are therefore bundled with CPANPLUS and 
 you will not need to install anything extra to run CPANPLUS.
@@ -299,6 +299,7 @@ CPANPLUS:
     install_script  ($_) for glob('bin/*');
     requires        (%$Prereq_pm);
     makemaker_args  ( TESTS => $tests ) if $tests;
+    makemaker_args  ( clean => { FILES => 't/.*.output' } );
 
     ### write the makefile ###
     &WriteAll( check_nmake => 1, sign => 1 );

@@ -128,8 +128,12 @@ sub _resolve_prereqs {
     my $tmpl = {
         ### XXX perhaps this should not be required, since it may not be
         ### packaged, just installed...
-        format  => { required => 1, allow => [$conf->options(type => '_dist')], 
-                        store => \$format },
+        ### Let it be empty as well -- that means the $modobj->install
+        ### routine will figure it out, which is fine if we didn't have any
+        ### very specific wishes (it will even detect the favourite
+        ### dist_type).
+        format  => { required => 1, store => \$format,
+                        allow => ['',$conf->options(type => '_dist')], },
         prereqs => { required => 1, default => { }, 
                         strict_type => 1, store => \$prereqs },
         verbose => { default => $conf->get_conf('verbose'),

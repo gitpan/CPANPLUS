@@ -63,7 +63,7 @@ local $Params::Check::VERBOSE = 1;
 
 ### sub called to see if it is possible to create this type of dist
 ### on the environment we're running in. should warn about why this
-### dist can not be run on this environment. return true on possible,
+### dist cannot be run on this environment. return true on possible,
 ### false otherwise.
 sub format_available { 1; }
 

@@ -135,7 +135,7 @@ sub _extract {
     ### did we already fetch the file? ###
     my $file = $mod->status->fetch();
     unless( -s $file ) {
-        error( loc( "File '%1' has zero size: can not extract", $file ) );    
+        error( loc( "File '%1' has zero size: cannot extract", $file ) );    
         return;
     }
 
@@ -181,6 +181,8 @@ sub _extract {
         return;
     
     } else {    
+        msg(loc("Extracted '%1' to '%2'", $mod->module, $dir), $verbose);
+        
         ### register where we extracted the files to ###
         $mod->status->extract( $dir ); 
     }

@@ -24,6 +24,9 @@ use vars qw[@ISA $VERSION];
 @ISA     = qw[CPANPLUS::Internals];
 $VERSION = $CPANPLUS::Internals::VERSION;
 
+### mark that we're running under CPANPLUS to spawned processes
+$ENV{'PERL5_CPANPLUS_IS_RUNNING'} = $$;
+
 =pod
 
 =head1 NAME
@@ -51,6 +54,14 @@ CPANPLUS::Backend
 
 This module provides the programmer's interface to the C<CPANPLUS>
 libraries.
+
+=head1 ENVIRONMENT
+
+When C<CPANPLUS::Backend> is loaded, which is necessary for just
+about every <CPANPLUS> operation, the environment variable 
+C<PERL5_CPANPLUS_IS_RUNNING> is set to the current process id.
+
+This information might be useful somehow to spawned processes.
 
 =head1 METHODS 
 
@@ -524,7 +535,7 @@ sub parse_module {
             error( loc( "'%1' does not contain an author part", $mod ) );
         }
         
-        error( loc( "Can not find '%1' in the module tree", $mod ) );
+        error( loc( "Cannot find '%1' in the module tree", $mod ) );
     }
         
     return;

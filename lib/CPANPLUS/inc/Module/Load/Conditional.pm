@@ -14,7 +14,7 @@ BEGIN {
     use vars        qw[$VERSION @ISA $VERBOSE $CACHE @EXPORT_OK $ERROR];
     use Exporter;
     @ISA        =   qw[Exporter];
-    $VERSION    =   0.05;
+    $VERSION    =   '0.06';
     $VERBOSE    =   0;
 
     @EXPORT_OK  =   qw[check_install can_load requires];
@@ -250,7 +250,7 @@ C<can_load> will take a list of modules, optionally with version
 numbers and determine if it is able to load them. If it can load *ALL*
 of them, it will. If one or more are unloadable, none will be loaded.
 
-This is particularly usefull if you have More Than One Way (tm) to
+This is particularly useful if you have More Than One Way (tm) to
 solve a problem in a program, and only wish to continue down a path
 if all modules could be loaded, and not load them if they couldn't.
 
@@ -388,13 +388,13 @@ sub can_load {
 =head2 requires
 
 C<requires> can tell you what other modules a particular module
-requires. This is particularly usefull when you're intending to write
+requires. This is particularly useful when you're intending to write
 a module for public release and are listing it's prerequisites.
 
 C<requires> takes but one argument: the name of a module.
 It will then first check if it can actually load this module, and
 return undef if it can't.
-Otherwise, it will return a list of modules and pragma's that would
+Otherwise, it will return a list of modules and pragmas that would
 have been loaded on the module's behalf.
 
 Note: The list C<require> returns has originated from your current
@@ -432,7 +432,7 @@ following global variables:
 =head2 $Module::Load::Conditional::VERBOSE
 
 This controls whether Module::Load::Conditional will issue warnings and
-explenations as to why certain things may have failed. If you set it
+explanations as to why certain things may have failed. If you set it
 to 0, Module::Load::Conditional will not output any warnings.
 The default is 0;
 

@@ -26,7 +26,7 @@ for my $name (@ARGV) {
 
     ### find the corresponding module object ###
     my $obj = $cb->parse_module( module => $name ) or (
-            warn "Can not make a module object out of '$name' -- skipping\n",
+            warn "Cannot make a module object out of '$name' -- skipping\n",
             next );
 
     prepare( $obj );

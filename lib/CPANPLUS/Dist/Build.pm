@@ -8,6 +8,7 @@ use CPANPLUS::inc;
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Error;
 
+use Config;
 use Module::Build;
 use FileHandle;
 use Cwd;
@@ -141,7 +142,8 @@ sub init {
     my $status  = $dist->status;
    
     $status->mk_accessors(qw[build_pl build test created installed uninstalled
-                            _create_args _install_args _mb_object] );
+                             _create_args _install_args _mb_object _buildflags
+                            ]);
     
     return 1;
 }     
@@ -199,13 +201,14 @@ sub create {
             verbose         => {    default => $conf->get_conf('verbose'), 
                                     store   => \$verbose },
             perl            => {    default => $^X, store => \$perl },
-            ## can't do this yet
             buildflags      => {    default => $conf->get_conf('buildflags'), 
                                     store   => \$buildflags },
             skiptest        => {    default => $conf->get_conf('skiptest'), 
                                     store   => \$skiptest },
             prereq_target   => {    default => '', store => \$prereq_target },                     
-            prereq_format   => {    default => $self->status->installer_type,
+            ### don't set the default format to 'build' -- that is wrong!
+            prereq_format   => {    #default => $self->status->installer_type,
+                                    default => '',
                                     store   => \$prereq_format },
         };                                            
 
@@ -222,32 +225,70 @@ sub create {
         error( loc( "Could not chdir to build directory '%1'", $dir ) );
         return;
     }
+
+    ### by now we've loaded module::build, and we're using the API, so
+    ### it's safe to remove CPANPLUS::inc from our inc path, especially
+    ### because it can trip up tests run under taint (just like EU::MM).
+    ### turn off our PERL5OPT so no modules from CPANPLUS::inc get
+    ### included in make test -- it should build without.
+    ### also, modules that run in taint mode break if we leave
+    ### our code ref in perl5opt
+    local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
+    local $ENV{PERL5LIB} = CPANPLUS::inc->original_perl5lib;
+    local @INC           = CPANPLUS::inc->original_inc;
+
+    ### but don't do it *before* the new_from_context, as M::B seems
+    ### to be actually running the file...
+   
+    ### Since M::B will actually shell out and run the Build.PL, we must
+    ### make sure it refinds the proper version of M::B in the path.
+    ### that may be eitehr in our cp::inc or in site_perl, or even a
+    ### new M::B being installed. 
+    ### don't add anything else here, as that might screw up prereq checks
+    ### XXX this might be needed for Dist::MM too, if a makefile.pl is
+	###	masquerading as a Build.PL
     
-    ### XXX buildflags to new_from_context don't work yet -- see TODO
-    ### ken williams suggested using 'split_like_shell' to parse a string
-    ### into valid options, but it doesn't seem to work properly.. rather
-    ### than key=>value pairs, we get something like this:
-    # [kane@myriad ~...inc/Module]$ perlc -MModule::Build -le'print join $/, 
-    # Module::Build->split_like_shell(q[--verbose=1 --destdir=/tmp])'
-    # --verbose=1
-    # --destdir=/tmp
-    error(loc("'%1' does not support flags to it's '%2' method yet, so they ".
-                "will be ignored", 'Module::Build', 'new_from_context')) 
-        if $buildflags;
+    ### did we find the most recent module::build in our installer path?
+    ### XXX can't do changes to @INC, they're being ignored by 
+    ### new_from_context when writing a Build script. see ticket:
+    ### #8826 Module::Build ignores changes to @INC when writing Build 
+    ### from new_from_context 
+    ### XXX applied schwern's patches (as seen on CPANPLUS::Devel 10/12/04)
+    ### and upped the version to 0.26061 of the bundled version, and things
+    ### work again
+    {   if( CPANPLUS::inc->path_to('Module::Build') eq
+            CPANPLUS::inc->installer_path 
+        ) {
+            
+            ### if the module being installed is *not* Module::Build
+            ### itself -- as that would undoubtedbly be newer -- add
+            ### the path to the installers to @INC
+            ### if it IS module::build itself, add 'lib' to it's path,
+            ### as the Build.PL would do as well, but the API doesn't
+            ### this makes self updates possible
+            unshift @INC, $self->module eq 'Module::Build'
+                            ? 'lib'
+                            : CPANPLUS::inc->installer_path;
+        } 
+        
+        ### otherwise, just leave @INC untouched -- normal @INC loading
+        ### will find the proper module
+    }
+
+    ### this will generate warnings under anything lower than M::B 0.2606
+    my %buildflags = $dist->_buildflags_as_hash( $buildflags );
+    $dist->status->_buildflags( $buildflags );                    
 
     my $fail; my $prereq_fail; 
     RUN: {
-    
-        ### XXX currently doesn't accept args.. but when it does, it
-        ### wants key-val pairs, but we just have a string...
         ### piece of sh*t, stop DYING! --kane
-        my $mb = eval { Module::Build->new_from_context() };
-        
+        my $mb = eval { Module::Build->new_from_context( %buildflags ) };
+        #my $mb = eval { Module::Build->new_from_context( ) };
         if( !$mb or $@ ) {
-            error(loc("Could not create Module::Build object: %1",$@));
+            error(loc("Could not create Module::Build object: %1","$@"));
             $fail++; last RUN;
         }
-        
+
         $dist->status->_mb_object( $mb );
         
         ### resolve prereqs ###
@@ -263,11 +304,38 @@ sub create {
         for my $mod (keys %$prereqs) {
             my $modobj = $cb->module_tree($mod);
             unless( $modobj ) {
-                error(loc("Unable to find '%1' in the module tree ".
-                          "-- unable to satisfy prerequisites", $mod));
-                $fail++; last RUN;     
+                ### XXX just skip it for now.. not sure if it's the best
+                ### thing to do -- but some times a module (like Config)
+                ### is not in the index, but it's part of core...
+                #error(loc("Unable to find '%1' in the module tree ".
+                #          "-- unable to satisfy prerequisites", $mod));
+                #$fail++; last RUN;     
+                next;
             }
-            $mangled_prereqs->{ $mod } = $modobj->version;
+
+            ### ok, so there's several ways this can go.. either you don't
+            ### care about the version, then the $mb_version will be 'false'
+            ### otherwise you want 'a' version -- means $mb_version may only
+            ### contain \d. otherwise we don't know what the hell you
+            ### want, and just assume any old version is good enough
+            ### XXX of course, this is not necessarily correct *AT ALL*
+            my $mb_version = $prereqs->{$mod};
+            my $wanted;
+
+            ### anything will do
+            unless( $mb_version ) {
+                $wanted = 0;
+
+            ### a specific version
+            } elsif ( $mb_version =~ /^[\d.]+$/ ) {
+                $wanted = $mb_version;
+
+            ### eh, some sort of range...??
+            } else {
+                $wanted = 0;
+            }                
+                
+            $mangled_prereqs->{ $mod } = $wanted;
         }            
         
         ### this will set the directory back to the start
@@ -293,9 +361,9 @@ sub create {
             last RUN;
         } 
         
-        eval { $mb->dispatch('build') };
+        eval { $mb->dispatch('build', %buildflags) };
         if( $@ ) {
-            error(loc("Could not run '%1': %2", 'Build', $@));
+            error(loc("Could not run '%1': %2", 'Build', "$@"));
             $dist->status->build(0);
             $fail++; last RUN;
         }   
@@ -308,9 +376,9 @@ sub create {
         );
 
         unless( $skiptest ) {
-            eval { $mb->dispatch('test') };
+            eval { $mb->dispatch('test', %buildflags) };
             if( $@ ) {
-                error(loc("Could not run '%1': %2", 'Build test', $@));
+                error(loc("Could not run '%1': %2", 'Build test', "$@"));
                 
                 unless($force) {
                     $dist->status->test(0);
@@ -408,7 +476,7 @@ sub install {
     }
    
     my $fail;
-    
+    my $buildflags = $dist->status->_buildflags;
     ### hmm, how is this going to deal with sudo?
     ### for now, check effective uid, if it's not root,
     ### shell out, otherwise use the method
@@ -421,7 +489,7 @@ sub install {
         my @opts = split /\s+/, $ENV{'PERL5OPT'};
        
         my $cmd     = [$perl, @opts, '-MModule::Build', 
-                        BUILD->($dir), 'install'];
+                        BUILD->($dir), 'install', $buildflags];
         my $sudo    = $conf->get_program('sudo');
         unshift @$cmd, $sudo if $sudo;
 
@@ -435,9 +503,11 @@ sub install {
             $fail++;
         }    
     } else {
-        eval { $mb->dispatch('install') };       
+        my %buildflags = $dist->_buildflags_as_hash($buildflags);
+    
+        eval { $mb->dispatch('install', %buildflags) };       
         if( $@ ) {
-            error(loc("Could not run '%1': %2", 'Build install', $@));
+            error(loc("Could not run '%1': %2", 'Build install', "$@"));
             $fail++;
         }   
     }
@@ -449,6 +519,18 @@ sub install {
     
     return $dist->status->installed( $fail ? 0 : 1 );
 }   
+ 
+### returns the string 'foo=bar zot=quux' as (foo => bar, zot => quux) 
+sub _buildflags_as_hash {
+    my $self    = shift;
+    my $flags   = shift or return;
+    
+    my @argv    = Module::Build->split_like_shell($flags);
+    my ($argv)  = Module::Build->read_args(@argv);
+
+    return %$argv;
+}
+   
    
 =head1 KNOWN ISSUES
 
@@ -461,7 +543,7 @@ Module::Build's power.
 =item * Passing build flags to 'new_from_context'
 
 This is sadly not possible until Module::Build is patched to support
-the parsing of stringified arguments as options to it's 
+the parsing of stringified arguments as options to its 
 C<new_from_context> method. This means you are stuck with the default 
 behaviour of the Build.PL in the distribution.
 
@@ -474,7 +556,7 @@ C<packlist>, we are unable to remove any installations done by it.
 
 =item * Module::Build's version comparison is not supported.
 
-Module::Build has it's own way of defining what versions are considered
+Module::Build has its own way of defining what versions are considered
 satisfactory for a prerequisite, and which ones aren't. This syntax is
 something specific to Module::Build and we currently have no way to see
 if a module on disk, on cpan or something similar is satisfactory 

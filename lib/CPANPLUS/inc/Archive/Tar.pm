@@ -10,6 +10,7 @@ require 5.005_03;
 use strict;
 use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
             $DO_NOT_USE_PREFIX];
+            
 $DEBUG              = 0;
 $WARN               = 1;
 $FOLLOW_SYMLINK     = 0;
@@ -232,7 +233,7 @@ sub _read_tar {
         unless( $read++ ) {
             my $gzip = GZIP_MAGIC_NUM;
             if( $chunk =~ /$gzip/ ) {
-                $self->_error( qq[Can not read compressed format in tar-mode] );
+                $self->_error( qq[Cannot read compressed format in tar-mode] );
                 return;
             }
         }
@@ -354,7 +355,7 @@ Check if the archive contains a certain file.
 It will return true if the file is in the archive, false otherwise.
 
 Note however, that this function does an exact match using C<eq>
-on the full path. So it can not compensate for case-insensitive file-
+on the full path. So it cannot compensate for case-insensitive file-
 systems or compare 2 paths to see if they would point to the same
 underlying file.
 
@@ -1344,7 +1345,7 @@ try to make a copy of the original file, rather than throwing an error.
 
 This does require you to read the entire archive in to memory first,
 since otherwise we wouldn't know what data to fill the copy with.
-(This means that you can not use the class methods on archives that 
+(This means that you cannot use the class methods on archives that 
 have incompatible filetypes and still expect things to work).
 
 For other filetypes, like C<chardevs> and C<blockdevs> we'll warn that

@@ -38,36 +38,36 @@ use constant INSTALLER_BUILD
                             => 'build';
 use constant INSTALLER_MM   => 'makemaker';    
 use constant INSTALL_VIA_PACKAGE_MANAGER 
-                            => sub { my $fmt = shift or return;
+                            => sub { my $fmt = $_[0] or return;
                                      return 1 if $fmt ne INSTALLER_BUILD and
                                                  $fmt ne INSTALLER_MM;
                             };                                                 
 
-use constant IS_CODEREF     => sub { ref pop() eq 'CODE' };
-use constant IS_MODOBJ      => sub { UNIVERSAL::isa(pop(), 
+use constant IS_CODEREF     => sub { ref $_[-1] eq 'CODE' };
+use constant IS_MODOBJ      => sub { UNIVERSAL::isa($_[-1], 
                                             'CPANPLUS::Module') }; 
-use constant IS_FAKE_MODOBJ => sub { UNIVERSAL::isa(pop(),
+use constant IS_FAKE_MODOBJ => sub { UNIVERSAL::isa($_[-1],
                                             'CPANPLUS::Module::Fake') };
-use constant IS_AUTHOBJ     => sub { UNIVERSAL::isa(pop(),
+use constant IS_AUTHOBJ     => sub { UNIVERSAL::isa($_[-1],
                                             'CPANPLUS::Module::Author') };
 use constant IS_FAKE_AUTHOBJ
-                            => sub { UNIVERSAL::isa(pop(),
+                            => sub { UNIVERSAL::isa($_[-1],
                                             'CPANPLUS::Module::Author::Fake') };
 
-use constant IS_CONFOBJ     => sub { UNIVERSAL::isa(pop(),
+use constant IS_CONFOBJ     => sub { UNIVERSAL::isa($_[-1],
                                             'CPANPLUS::Configure') };
 
-use constant IS_RVOBJ       => sub { UNIVERSAL::isa(pop(),
+use constant IS_RVOBJ       => sub { UNIVERSAL::isa($_[-1],
                                             'CPANPLUS::Backend::RV') };
                                             
 use constant IS_INTERNALS_OBJ
-                            => sub { UNIVERSAL::isa(pop(),
+                            => sub { UNIVERSAL::isa($_[-1],
                                             'CPANPLUS::Internals') };                                            
                                             
-use constant IS_FILE        => sub { return 1 if -e pop() };                                            
+use constant IS_FILE        => sub { return 1 if -e $_[-1] };                                            
 
 use constant FILE_EXISTS    => sub {  
-                                    my $file = pop;
+                                    my $file = $_[-1];
                                     return 1 if IS_FILE->($file);
                                     local $Carp::CarpLevel = 
                                             $Carp::CarpLevel+2;
@@ -77,7 +77,7 @@ use constant FILE_EXISTS    => sub {
                             };    
 
 use constant FILE_READABLE  => sub {  
-                                    my $file = pop;
+                                    my $file = $_[-1];
                                     return 1 if -e $file && -r _;
                                     local $Carp::CarpLevel = 
                                             $Carp::CarpLevel+2;
@@ -85,10 +85,10 @@ use constant FILE_READABLE  => sub {
                                                 q[or does not exist], $file));
                                     return;
                             };    
-use constant IS_DIR         => sub { return 1 if -d pop() };
+use constant IS_DIR         => sub { return 1 if -d $_[-1] };
 
 use constant DIR_EXISTS     => sub { 
-                                    my $dir = pop;
+                                    my $dir = $_[-1];
                                     return 1 if IS_DIR->($dir);
                                     local $Carp::CarpLevel = 
                                             $Carp::CarpLevel+2;                                    
@@ -98,66 +98,66 @@ use constant DIR_EXISTS     => sub {
                             };   
 
 use constant MAKEFILE_PL    => sub { return @_
-                                        ? File::Spec->catfile( shift(),
+                                        ? File::Spec->catfile( $_[0],
                                                             'Makefile.PL' )
                                         : 'Makefile.PL';
                             };                   
 use constant MAKEFILE       => sub { return @_
-                                        ? File::Spec->catfile( shift(),
+                                        ? File::Spec->catfile( $_[0],
                                                             'Makefile' )
                                         : 'Makefile';
                             }; 
 use constant BUILD_PL       => sub { return @_
-                                        ? File::Spec->catfile( shift(),
+                                        ? File::Spec->catfile( $_[0],
                                                             'Build.PL' )
                                         : 'Build.PL';
                             };
 use constant BUILD_DIR      => sub { return @_
-                                        ? File::Spec->catdir(shift(), '_build')
+                                        ? File::Spec->catdir($_[0], '_build')
                                         : '_build';
                             }; 
 use constant BUILD          => sub { return @_
-                                        ? File::Spec->catfile(shift(), 'Build')
+                                        ? File::Spec->catfile($_[0], 'Build')
                                         : 'Build';
                             };
 use constant BLIB           => sub { return @_
-                                        ? File::Spec->catfile(shift(), 'blib')
+                                        ? File::Spec->catfile($_[0], 'blib')
                                         : 'blib';
                             };                  
 
 use constant LIB            => 'lib';
 use constant LIB_DIR        => sub { return @_
-                                        ? File::Spec->catdir(shift(), LIB)
+                                        ? File::Spec->catdir($_[0], LIB)
                                         : LIB;
                             }; 
 use constant AUTO           => 'auto';                            
 use constant LIB_AUTO_DIR   => sub { return @_
-                                        ? File::Spec->catdir(shift(), LIB, AUTO)
+                                        ? File::Spec->catdir($_[0], LIB, AUTO)
                                         : File::Spec->catdir(LIB, AUTO)
                             }; 
 use constant ARCH           => 'arch';
 use constant ARCH_DIR       => sub { return @_
-                                        ? File::Spec->catdir(shift(), ARCH)
+                                        ? File::Spec->catdir($_[0], ARCH)
                                         : ARCH;
                             }; 
 use constant ARCH_AUTO_DIR  => sub { return @_
-                                        ? File::Spec->catdir(shift(),ARCH,AUTO)
+                                        ? File::Spec->catdir($_[0],ARCH,AUTO)
                                         : File::Spec->catdir(ARCH,AUTO)
                             };                            
 
 use constant BLIB_LIBDIR    => sub { return @_
                                         ? File::Spec->catdir(
-                                                shift(), BLIB->(), LIB )
+                                                $_[0], BLIB->(), LIB )
                                         : File::Spec->catdir( BLIB->(), LIB );
                             };  
-use constant README         => sub { my $obj = shift;
+use constant README         => sub { my $obj = $_[0];
                                      my $pkg = $obj->package_name;
                                      $pkg .= '-' . $obj->package_version .
                                              '.readme';
                                      return $pkg;
                             };
 use constant OPEN_FILE      => sub {
-                                    my $file = shift; my $mode = shift || '';
+                                    my($file, $mode) = (@_, '');
                                     my $fh;
                                     open $fh, "$mode" . $file
                                         or error(loc(
@@ -169,7 +169,7 @@ use constant OPEN_FILE      => sub {
                             
 use constant STRIP_GZ_SUFFIX 
                             => sub {
-                                    my $file = shift or return;
+                                    my $file = $_[0] or return;
                                     $file =~ s/.gz$//i;
                                     return $file;
                             };            
@@ -183,17 +183,17 @@ use constant DOT_CPANPLUS   => '.cpanplus';
 use constant CPANPLUS_UA    => sub { "CPANPLUS/$CPANPLUS::Internals::VERSION" };
 use constant TESTERS_URL    => sub {
                                     "http://testers.cpan.org/show/" .
-                                    shift() .".yaml" 
+                                    $_[0] .".yaml" 
                                 };
 use constant TESTERS_DETAILS_URL
                             => sub {
                                     'http://testers.cpan.org/show/' .
-                                    shift() . '.html';
+                                    $_[0] . '.html';
                                 };         
 
 use constant CREATE_FILE_URI    
                             => sub { 
-                                    my $dir = shift or return;
+                                    my $dir = $_[0] or return;
                                     return $dir =~ m|^/| 
                                         ? 'file:/'  . $dir
                                         : 'file://' . $dir;   
@@ -208,13 +208,13 @@ use constant PREREQ_ASK     => 2;
 use constant PREREQ_BUILD   => 3;
 use constant BOOLEANS       => [0,1];
 use constant CALLING_FUNCTION   
-                            => sub { my $lvl = shift || 0;
+                            => sub { my $lvl = $_[0] || 0;
                                      return join '::', (caller(2+$lvl))[3] 
                                 };
 use constant DOT_EXISTS     => '.exists';     
 use constant PERL_CORE      => 'perl';
 
-use constant GET_XS_FILES   => sub { my $dir = shift or return;
+use constant GET_XS_FILES   => sub { my $dir = $_[0] or return;
                                      require File::Find;
                                      my @files;
                                      File::Find::find( 

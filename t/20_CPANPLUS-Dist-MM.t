@@ -196,6 +196,8 @@ SKIP: {
     $mod->status->prereqs( { strict => '0.001', Carp => '0.002' } );
 
     my $makefile_pl = MAKEFILE_PL->( $mod->status->extract );
+    my $makefile    = MAKEFILE->(    $mod->status->extract );
+    
     my $dist        = $mod->dist;
     ok( $dist,                  "Dist object built" );
 
@@ -207,8 +209,11 @@ SKIP: {
                                 "   Prior existance noted" );
 
     ### ok, unlink the makefile.pl, now really write one 
+    unlink $makefile;      
+
     ok( unlink($makefile_pl),   "Deleting Makefile.PL");
     ok( !-s $makefile_pl,       "   Makefile.PL deleted" );
+    ok( !-s $makefile,          "   Makefile deleted" );
     ok($dist->write_makefile_pl,"   Makefile.PL written" );
     
     ### see if we wrote anything sensible 
@@ -248,7 +253,10 @@ SKIP: {
         local *CPANPLUS::Dist::MM::write_makefile_pl = sub { 1 };
     
         unlink $makefile_pl;
+        unlink $makefile;      
+
         ok(!-s $makefile_pl,        "Makefile.PL deleted" );
+        ok(!-s $makefile,           "Makefile deleted" );
         ok( $dist->status->mk_flush,"Dist status flushed" );
         ok(!$dist->create,          "   Dist->create failed" );
         like( CPANPLUS::Error->stack_as_string, 

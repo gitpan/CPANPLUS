@@ -7,7 +7,7 @@
 
 package CPANPLUS::Config;
 
-$VERSION = "0.050_01";
+$VERSION = "0.050_02";
 
 use strict;
 

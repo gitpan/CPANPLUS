@@ -30,7 +30,7 @@ $Params::Check::ALLOW_UNKNOWN = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.050_01';
+    $VERSION    =   '0.050_02';
 }
 
 load CPANPLUS::Shell;
@@ -124,7 +124,7 @@ sub _input_loop {
             $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
         }
 
-        last if $self->_dispatch_on_input( input => $input );
+        last if $self->dispatch_on_input( input => $input );
 
         ### flush the lib cache ###
         $cb->_flush( list => [qw|lib|] );
@@ -419,7 +419,7 @@ sub _set_conf {
     my $type = shift @$aref;
     
     if( $type eq 'debug' ) {
-        print   qq[Sorry you can not set debug options through ] .
+        print   qq[Sorry you cannot set debug options through ] .
                 qq[this shell in CPANPLUS\n];
         return;
         
@@ -450,7 +450,7 @@ sub _set_conf {
             return;
         
         } elsif ($name eq 'defaults' ) {
-            print   qq[Sorry, CPANPLUS can not restore default for you.\n] .
+            print   qq[Sorry, CPANPLUS cannot restore default for you.\n] .
                     qq[Perhaps you should run the interactive setup again.\n] .
                     qq[\ttry running 'o conf init'\n];
             return;
@@ -741,8 +741,10 @@ sub _uptodate {
                 my @list = $cb->search( type    => 'module', 
                                         allow   => [qr/$1/i] ); 
                 
-                ### only add those that are installed
-                push @rv, grep { $_->installed_file } @list;
+                ### only add those that are installed and not core
+                push @rv, grep { not $_->package_is_perl_core }
+                          grep { $_->installed_file }
+                          @list;
                 
             } else {
                 my $obj = $cb->module_tree( $module ) or next;

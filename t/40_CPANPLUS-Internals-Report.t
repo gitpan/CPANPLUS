@@ -13,8 +13,11 @@ use CPANPLUS::inc;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants::Report;
 
-my $tests = 36;
-use Test::More                  tests => 61;
+my $send_tests  = 26;
+my $query_tests = 7;
+my $total_tests = $send_tests + $query_tests;
+
+use Test::More                  tests => 58;
 use Module::Load::Conditional   qw[can_load];
 
 use FileHandle;
@@ -42,7 +45,7 @@ my $map = {
         buffer  => missing_prereq_buffer(), 
         failed  => 1,
         match   => ['/The comments below are created mechanically/',
-                    '/error report generated automatically by CPANPLUS/',
+                    '/automatically by CPANPLUS/',
                     '/test suite seem to fail without these modules/',
                     '/floo/', 
                     '/FAIL/',
@@ -54,7 +57,7 @@ my $map = {
         buffer  => missing_tests_buffer(),
         failed  => 1,
         match   => ['/The comments below are created mechanically/',
-                    '/error report generated automatically by CPANPLUS/',
+                    '/automatically by CPANPLUS/',
                     '/ask for a simple test script/',
                     '/UNKNOWN/',
                     '/make test/',
@@ -100,6 +103,7 @@ my $map = {
         like( $header, qr/NOTE/,        "   Proper content found" );
         like( $header, qr/foo/,         "   Proper content found" );
         like( $header, qr/CPAN/,        "   Proper content found" );
+        like( $header, qr/comments/,    "   Proper content found" );
     }     
 
     {                                       # cp version, stage, buffer
@@ -108,7 +112,6 @@ my $map = {
         like( $header, qr/CPANPLUS/,    "   Proper content found" );
         like( $header, qr/stack/,       "   Proper content found" );
         like( $header, qr/buffer/,      "   Proper content found" );
-        like( $header, qr/comments/,    "   Proper content found" );
     }        
 
     {   my $prereqs = REPORT_MISSING_PREREQS->('Foo::Bar');
@@ -127,17 +130,11 @@ my $map = {
  
 ### test creating test reports ###
 SKIP: {
-    skip "No Test::Reporter & support modules installed", $tests
-        unless can_load( modules => {   'Test::Reporter' => 1.19, 
-                                        'YAML'           => '0.0',
-                                        LWP              => '0.0',
-                                        'LWP::UserAgent' => '0.0',
-                                        'HTTP::Request'  => '0.0',
-                                        URI              => '0.0',
-                                    } );
-    
-    skip "You have chosen not to enable test reporting", $tests,
+    skip "You have chosen not to enable test reporting", $total_tests,
         unless $cb->configure_object->get_conf('cpantest');
+
+    skip "No report send & query modules installed", $total_tests
+        unless $cb->_have_query_report_modules(verbose => 0);
     
     
     {   my @list = $mod->fetch_report;
@@ -155,6 +152,9 @@ SKIP: {
         
         ok( $href->{platform},              "   Has a platform" );
     }
+    
+    skip "No report sending modules installed", $send_tests
+        unless $cb->_have_send_report_modules(verbose => 0);
     
     for my $type ( keys %$map ) {
         
@@ -201,28 +201,30 @@ SKIP: {
         
         unlink $file;
         
-        
-        {   ### use a dummy 'editor' and see if the editor 
-            ### invocation doesn't break things
-            $conf->set_program( editor => "$^X -le1" );
-            $cb->_callbacks->edit_test_report( sub { 1 } );
-            
-            ### XXX whitebox test!!! Might change =/
-            ### this makes test::reporter not ask for what editor to use
-            ### XXX stupid lousy perl warnings;
-            local $Test::Reporter::MacApp = 1;
-            local $Test::Reporter::MacApp = 1;
-            
-            ### now try and mail the report to a /dev/null'd mailbox
-            my $ok = $cb->_send_report(
-                            module  => $mod,
-                            buffer  => $map->{$type}->{'buffer'},
-                            failed  => $map->{$type}->{'failed'},         
-                            address => NOBODY,
-                            dontcc  => 1,
-                        );
-            ok( $ok,                "   Mailed report to NOBODY" );
-        }
+ 
+### T::R tests don't even try to mail, let's not try and be smarter
+### ourselves
+#        {   ### use a dummy 'editor' and see if the editor 
+#            ### invocation doesn't break things
+#            $conf->set_program( editor => "$^X -le1" );
+#            $cb->_callbacks->edit_test_report( sub { 1 } );
+#            
+#            ### XXX whitebox test!!! Might change =/
+#            ### this makes test::reporter not ask for what editor to use
+#            ### XXX stupid lousy perl warnings;
+#            local $Test::Reporter::MacApp = 1;
+#            local $Test::Reporter::MacApp = 1;
+#            
+#            ### now try and mail the report to a /dev/null'd mailbox
+#            my $ok = $cb->_send_report(
+#                            module  => $mod,
+#                            buffer  => $map->{$type}->{'buffer'},
+#                            failed  => $map->{$type}->{'failed'},         
+#                            address => NOBODY,
+#                            dontcc  => 1,
+#                        );
+#            ok( $ok,                "   Mailed report to NOBODY" );
+#       }
     }
 }
 

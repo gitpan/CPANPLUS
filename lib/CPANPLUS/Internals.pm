@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
         
-$VERSION = '0.050_01';
+$VERSION = '0.050_02';
 
 =pod
 
@@ -90,9 +90,8 @@ for my $key ( qw[_conf _id _lib _perl5lib _modules _hosts _methods _status
 ) {
     no strict 'refs';
     *{__PACKAGE__."::$key"} = sub {
-        my $self = shift;
-        $self->{$key} = $_[0] if @_;
-        return $self->{$key};
+        $_[0]->{$key} = $_[1] if @_ > 1;
+        return $_[0]->{$key};
     }
 }
 

@@ -252,7 +252,7 @@ to point to the chosen location, so it can be found again.
                     and last CONFIG_FILE;
             }
            
-            print loc( "I can not write to %1, I don't have permission.", $loc), "\n";         
+            print loc( "I cannot write to %1, I don't have permission.", $loc), "\n";         
             redo CONFIG_FILE;        
         }
     }
@@ -651,7 +651,7 @@ like '%1'.
 If you do not have '%1' yet, you can get it from:
     %2
     
-        ], 'nmake.exe', 'ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe');    
+],      'nmake.exe', 'ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe');    
     }
 
     while( my($pgm,$default) = each %map ) {
@@ -819,13 +819,13 @@ If you don't understand this question, just press ENTER.
         
         my $type = 'makemakerflags';
         my $flags = $term->get_reply(
-                            prompt  => 'Makemakerflags?',
+                            prompt  => 'Makefile.PL flags?',
                             default => $self->_get( $type => $none ),
                     );                                     
     
         $flags = '' if $flags eq $none;
     
-        print   "\n", loc("Your '%1' have been set to:", $type),
+        print   "\n", loc("Your '%1' have been set to:", 'Makefile.PL flags'),
                 "\n    ", ( $flags ? $flags : loc('*nothing entered*')), 
                 "\n\n";    
     
@@ -850,7 +850,7 @@ Again, if you don't understand this question, just press ENTER.
 ");
         my $type        = 'makeflags';
         my $flags   = $term->get_reply(
-                                prompt  => 'Make flags?',
+                                prompt  => 'make flags?',
                                 default => $self->_get($type => $none),
                             );      
                             
@@ -869,7 +869,17 @@ An alternative to ExtUtils::MakeMaker and Makefile.PL there's a module
 called Module::Build which uses a Build.PL.
 
 If you would like to specify any flags to pass when executing the 
-Build.PL, please enter them below.
+Build.PL (and Build) script, please enter them below.
+
+For instance, if you would like to install modules to your private 
+user directory, you could enter:
+
+    install_base=/my/private/path
+
+Or to uninstall old copies of modules before updating, you might
+want to enter:
+
+    uninst=1
 
 Again, if you don't understand this question, just press ENTER.
 
@@ -877,13 +887,14 @@ Again, if you don't understand this question, just press ENTER.
  
         my $type    = 'buildflags';
         my $flags   = $term->get_reply(
-                                prompt  => 'Build flags?',
+                                prompt  => 'Build.PL and Build flags?',
                                 default => $self->_get($type => $none),
                             );      
                             
         $flags = '' if $flags eq $none;
     
-        print   "\n", loc("Your '%1' have been set to:", $type),
+        print   "\n", loc("Your '%1' have been set to:", 
+                            'Build.PL and Build flags'),
                 "\n    ", ( $flags ? $flags : loc('*nothing entered*')), 
                 "\n\n";    
     
@@ -918,10 +929,11 @@ Again, if you don't understand this question, just press ENTER.
 
     {
         print loc('
-If you like, CPAN++ can add extra directories to your @INC list starts
-during startup.  Enter a space separated list of list to be added to
-your @INC, quoting anything with embedded whitespace.  (To clear the
-current value enter a single space.)
+If you like, CPANPLUS can add extra directories to your @INC list during
+startup. These will just be used by CPANPLUS and will not change your
+external environment or perl interpreter.  Enter a space separated list of
+pathnames to be added to your @INC, quoting any with embedded whitespace.
+(To clear the current value enter a single space.)
 
 ');
     
@@ -1195,7 +1207,14 @@ to report success and failures of modules installed by CPANPLUS.  Would
 you like to do this?  Note that you will still be prompted before
 sending each report.
 
-");  
+If you don't have all the required modules installed yet, you should
+consider installing '%1'
+
+This package bundles all the required modules to enable test reporting
+and querying from CPANPLUS. 
+You can do so straight after this installation.
+
+", 'Bundle::CPANPLUS::Test::Reporter');  
 
         my $type = 'cpantest';
         my $yn   = $term->ask_yn(

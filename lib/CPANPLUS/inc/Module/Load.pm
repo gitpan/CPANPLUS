@@ -149,7 +149,7 @@ on Unix rather than the Win32 C<\>. Otherwise perl will not read it's
 own %INC accurately double load files if they are required again, or
 in the worst case, core dump.
 
-C<Module::Load> can not do implicit imports, only explicit imports.
+C<Module::Load> cannot do implicit imports, only explicit imports.
 (in other words, you always have to specify expliclity what you wish
 to import from a module, even if the functions are in that modules'
 C<@EXPORT>)

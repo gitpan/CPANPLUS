@@ -109,7 +109,7 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
         my $warning = CPANPLUS::Error->stack_as_string;
         like( $warning, qr/does not contain an author part/,
                                         "   Missing author part detected" );
-        like( $warning, qr/Can not find .+? in the module tree/,
+        like( $warning, qr/Cannot find .+? in the module tree/,
                                         "   Unable to find module" );
     }
 }         
@@ -183,6 +183,12 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
 
     $conf->set_conf( md5 => $old_md5 );
 }    
+
+### check ENV variable
+{   my $name = 'PERL5_CPANPLUS_IS_RUNNING';
+    ok( $ENV{$name},                "Env var '$name' set" );
+    is( $ENV{$name}, $$,            "   Set to current process id" );
+}
 
 __END__    
                                           

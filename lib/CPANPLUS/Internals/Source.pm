@@ -32,7 +32,7 @@ CPANPLUS::Internals::Source
 
 =head1 DESCRIPTION
 
-CPANPLUS::Internals::Source controls the updating of course files and
+CPANPLUS::Internals::Source controls the updating of source files and
 the parsing of them into usable module/author trees to be used by
 C<CPANPLUS>.
  
@@ -65,10 +65,10 @@ The flow looks like this:
 
     ### lazy loading of module tree
     sub _module_tree {
-        my $self = shift;
+        my $self = $_[0];
 
         unless ($self->{_modtree} or $recurse++ > 0) {
-            my $uptodate = $self->_check_trees( @_ );
+            my $uptodate = $self->_check_trees( @_[1..$#_] );
             $self->_build_trees(uptodate => $uptodate);
         }
 
@@ -78,10 +78,10 @@ The flow looks like this:
 
     ### lazy loading of author tree
     sub _author_tree {
-        my $self = shift;
+        my $self = $_[0];
 
         unless ($self->{_authortree} or $recurse++ > 0) {
-            my $uptodate = $self->_check_trees( @_ );
+            my $uptodate = $self->_check_trees( @_[1..$#_] );
             $self->_build_trees(uptodate => $uptodate);
         }
 
@@ -379,8 +379,8 @@ sub _build_trees {
                             path        => $path,
                             uptodate    => $uptodate && $use_stored,
                             verbose     => $args->{'verbose'},
-                        ) || {};                               
-    
+                        ) || {};
+
     ### build the trees ###
     $self->{_authortree} =  $stored->{_authortree} ||
                             $self->__create_author_tree(
@@ -523,6 +523,7 @@ sub _save_source {
     my $tmpl = {
         path     => { default => $conf->get_conf('base'), allow => DIR_EXISTS },
         verbose  => { default => $conf->get_conf('verbose') },
+        force    => { default => 1 },
     };
 
     my $args = check( $tmpl, \%hash ) or return;
@@ -539,7 +540,6 @@ sub _save_source {
     foreach my $key ( @$aref ) {
         next unless ref( $self->{$key} );
         $to_write->{$key} = $self->{$key};
-        
     }
 
     return unless keys %$to_write;
@@ -554,7 +554,7 @@ sub _save_source {
                             . '.stored'                     #append a suffix
                         );
 
-    if (-e $stored and not -w $stored) {
+    if (-e $stored && not -w $stored) {
         msg loc("%1 not writable; skipped.", $stored), $args->{'verbose'};
         return;
     }
@@ -625,7 +625,7 @@ sub __create_author_tree() {
 
     msg(loc("Rebuilding author tree, this might take a while"),
         $args->{verbose});
-    
+
     ### extract the file ###                        
     my $ae      = Archive::Extract->new( archive => $file ) or return;
     my $out     = STRIP_GZ_SUFFIX->($file);

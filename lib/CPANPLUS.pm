@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   "0.050_01";     #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   "0.050_02";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -192,7 +192,7 @@ Consult the C<CPANPLUS::Backend> documentation on how to use it.
 
 =head2 PLUGINS
 
-There are various plugins avaiable for C<CPANPLUS>. Below is a short
+There are various plugins available for C<CPANPLUS>. Below is a short
 listing of just a few of these plugins;
 
 =over 4
@@ -202,7 +202,7 @@ listing of just a few of these plugins;
 As already available in the C<0.04x> series, C<CPANPLUS> provides 
 various shells (as described in the C<SHELL> section above). There
 are also 3rd party shells you might get from a C<cpan> mirror near
-you like:
+you, such as:
 
 =over 8
 
@@ -212,7 +212,7 @@ A shell using C<libcurses>
 
 =item CPANPLUS::Shell::Tk
 
-A shell using the graphical tooklit C<Tk>
+A shell using the graphical toolkit C<Tk>
 
 =back
 
@@ -228,7 +228,7 @@ or by saying, to create for example, debian distributions:
     cpanp -i Acme::Bleach --format=debian
 
 There are a few package manager plugins available and/or planned 
-already, they include, but are not limited to:
+already; they include, but are not limited to:
 
 =over 8
 
@@ -263,7 +263,7 @@ the C<CPANPLUS::Shell::Default> manpage for details on that method.
 =item Scriptable Shell
 
 New in the C<0.05x> series is the possibility of scripting the default
-shell. This can be done by using it's C<dispatch_on_input> method.
+shell. This can be done by using its C<dispatch_on_input> method.
 See the C<CPANPLUS::Shell::Default> manpage for details on that method.
 
 Also, soon it will be possible to have a C<.rc> file for the default 

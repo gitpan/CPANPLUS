@@ -69,7 +69,7 @@ Set to 0 explicitly if something went wrong.
 
 =item make ()
 
-BOOL indicating if the C<make> (or C<Build>) command was succesful.
+BOOL indicating if the C<make> (or C<Build>) command was successful.
 
 =item test ()
 
@@ -218,7 +218,9 @@ sub create {
             skiptest        => {    default => $conf->get_conf('skiptest'), 
                                     store   => \$skiptest },
             prereq_target   => {    default => '', store => \$prereq_target }, 
-            prereq_format   => {    default => $self->status->installer_type,
+            ### don't set the default prereq format to 'makemaker' -- wrong!
+            prereq_format   => {    #default => $self->status->installer_type,
+                                    default => '',
                                     store   => \$prereq_format },                    
         };                                            
 
@@ -258,7 +260,7 @@ sub create {
                 
                 ### bail out if there's no makefile.pl ###
                 unless( -e MAKEFILE_PL->() ) {
-                    error( loc( "Could not find '%1' - can not continue", 
+                    error( loc( "Could not find '%1' - cannot continue", 
                                 MAKEFILE_PL->() ) );
         
                     ### mark that we screwed up ###
@@ -292,7 +294,7 @@ sub create {
                                 buffer  => \$captured,
                                 verbose => $run_verbose, # may be interactive   
             ) ) {
-                error( loc( "Could not run '%1 %2': %3 -- can not continue",
+                error( loc( "Could not run '%1 %2': %3 -- cannot continue",
                             $perl, MAKEFILE_PL->(), $captured ) );
                 
                 $dist->status->makefile(0);
@@ -425,7 +427,7 @@ sub create {
             verbose => $verbose,
             force   => $force,
         ) or error(loc("Failed to send test report for '%1'",
-                    $self->name ) );
+                    $self->module ) );
     }            
             
     return $dist->status->created( $fail ? 0 : 1);
@@ -460,7 +462,7 @@ sub _find_prereqs {
     
     my $fh = FileHandle->new();
     unless( $fh->open( $file ) ) {
-        error( loc( "Can not open '%1': %2", $file, $! ) );
+        error( loc( "Cannot open '%1': %2", $file, $! ) );
         return;
     }
     
@@ -512,7 +514,7 @@ sub install {
     
     unless( $dist->status->created ) {
         error( loc( "You have not successfully created a '%2' distribution yet " .
-                    "-- can not install yet", __PACKAGE__ ) );
+                    "-- cannot install yet", __PACKAGE__ ) );
         return;
     }
  
