@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Classic.pm $
-# $Revision: #2 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
+# $Revision: #4 $ $Change: 7722 $ $DateTime: 2003/08/26 12:26:47 $
 
 ##################################################
 ###            CPANPLUS/Shell/Classic.pm       ###
@@ -12,13 +12,11 @@ package CPANPLUS::Shell::Classic;
 ### TODO LIST ###
 # clean         make clean
 #
-# r             this will need a decent _installed method somehwere in internals..
-#               the current one kinda sucks
-#
 # u             we dont track this information
 
 use strict;
 use CPANPLUS::Backend;
+use CPANPLUS::Tools::Check qw[check];
 
 use Term::ReadLine;
 use Data::Dumper;
@@ -375,12 +373,6 @@ sub shell {
                 }
 
             } elsif ( $key =~ /^make|test|install|clean$/ ) {
-
-                if( $key eq 'clean' ) {
-                    print qq[Sorry, we don't know how to 'make clean' yet\n];
-                    next;
-                }
-
                 my $method = $cmd->{$key};
 
                 my $program = $conf->_get_build('make');
@@ -389,15 +381,44 @@ sub shell {
                 my $flags = $self->_stringify_makeflags($options);
 
                 for my $mod (split /\s+/, $input) {
+                    my $href = $cpan->parse_module( modules => [$mod] );
 
-                    my ($name,$obj) = %{ $cpan->parse_module( modules => [$mod] )->rv };
+                    unless ( $href ) {
+                        print loc("No such module '%1'", $mod );
+                        next;
+                    }      
 
-                    my $rv = $obj->install( target => $key );
+                    my ($name,$obj) = %{ $href->rv };
 
-                    my $status  = $rv->{install} ? 'OK' : 'NOT OK';
-                    my $add     = $key eq 'make' ? ''   : $key;
+                    if( $key eq 'clean' ) {
+                        #print qq[Running clean for module $name\n];
+                        #
+                        #my $cwd = cwd();
+                        #if( my $dir = $obj->status->extract ) {
+                        #    unless( chdir $dir ) {
+                        #        print qq[Could not chdir from $cwd to $dir: $!\n];
+                        #        next;
+                        #    }
+                        #    $cpan->_run( command => qq[$program clean], verbose => 1 );
+                        #
+                        #    unless( chdir $cwd ) {
+                        #        print qq[Could not chdir from $dir to $cwd: $!\n];
+                        #        next;
+                        #    }
+                        #} else {
+                        #    print qq[$name Has no own directory\n];
+                        #}
+                        print qq[Sorry, we don't know how to 'make clean' yet\n];
+                        last;
+                    } else {
 
-                    print qq[  "$program" $flags $add -- $status\n];
+                        my $rv = $obj->install( target => $key );
+
+                        my $status  = $rv ? 'OK' : 'NOT OK';
+                        my $add     = $key eq 'make' ? ''   : $key;
+
+                        print qq[  "$program" $flags $add -- $status\n];
+                    }
                 }
 
             } elsif ( $key eq 'reload' ) {
@@ -439,7 +460,7 @@ sub shell {
                         next;
                     }
 
-                    my $dir = $obj->status->{extract};
+                    my $dir = $obj->status->extract;
 
                     unless( $dir ) {
                         $obj->fetch();
@@ -590,17 +611,25 @@ sub _author {
 
 sub _pp_author {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $aref    = $args{'result'}   or return 0;
-    my $class   = $args{'class'}    or return 0;
-    my $input   = $args{'input'};    ### no input means 'all'
-    my $short   = $args{'short'};   ### display short version regardless?
+    my $tmpl = {
+            result  => { required => 1, default => [], strict_type => 1 },
+            class   => { required => 1 },
+            input   => { default => 'all' },
+            short   => { default => 0 },
+    };
 
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $aref    = $args->{'result'};
     my $results = @$aref;
+    my $short   = $args->{short};
+    my $class   = $args->{class};
 
     if ( $results == 0 ) {
-        print "No objects of type $class found for argument $input\n" unless $short;
+        print "No objects of type $class found for argument $args->{input}\n"
+                unless $short;
         next;
 
     } elsif ( ($results == 1) and !$short) {
@@ -613,9 +642,9 @@ sub _pp_author {
 
         my $obj = shift @$aref;
 
-        print "$class id = ", $obj->cpanid(), "\n";
-        printf "    %-12s %s\n", 'EMAIL', $obj->email();
-        printf "    %-12s %s%s\n", 'FULLNAME', $obj->name();
+        print "$class id = ",                   $obj->cpanid(), "\n";
+        printf "    %-12s %s\n", 'EMAIL',       $obj->email();
+        printf "    %-12s %s%s\n", 'FULLNAME',  $obj->name();
 
     } else {
 
@@ -725,14 +754,22 @@ sub _distribution {
 
 sub _pp_distribution {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $aref    = $args{'result'}   or return 0;
-    my $class   = $args{'class'}    or return 0;
-    my $input   = $args{'input'};   ### no input means 'all'
-    my $short   = $args{'short'};   ### display short version regardless?
+    my $tmpl = {
+            result  => { required => 1, default => [], strict_type => 1 },
+            class   => { required => 1 },
+            input   => { default => 'all' },
+            short   => { default => 0 },
+    };
 
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $aref    = $args->{'result'};
     my $results = @$aref;
+    my $short   = $args->{short};
+    my $class   = $args->{class};
+    my $input   = $args->{input};
 
     if ( $results == 0 ) {
         print "No objects of type $class found for argument $input\n" unless $short;
@@ -800,14 +837,22 @@ sub _module {
 
 sub _pp_module {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $aref    = $args{'result'}   or return 0;
-    my $class   = $args{'class'}    or return 0;
-    my $input   = $args{'input'};   ### no input means 'all'
-    my $short   = $args{'short'};   ### display short version regardless?
+    my $tmpl = {
+            result  => { required => 1, default => [], strict_type => 1 },
+            class   => { required => 1 },
+            input   => { default => 'all' },
+            short   => { default => 0 },
+    };
 
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $aref    = $args->{'result'};
     my $results = @$aref;
+    my $short   = $args->{short};
+    my $class   = $args->{class};
+    my $input   = $args->{input};
 
     if ( $results == 0 ) {
         print "No objects of type $class found for argument $input\n" unless $short;
@@ -889,11 +934,19 @@ sub _pp_dslip {
 
 sub _pp_uptodate {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $res     = $args{'result'}   or return 0;
-    my $class   = $args{'class'}    or return 0;
-    my $input   = $args{'input'};   ### no input means 'check all';
+    my $tmpl = {
+            result  => { required => 1, default => {}, strict_type => 1 },
+            class   => { required => 1 },
+            input   => { default => 'all' },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $res     = $args->{'result'};
+    my $class   = $args->{class};
+    my $input   = $args->{input};
 
     ### store the ones that are actually NOT uptodate ###
     ### keep a counter of how many results we got as well ###
@@ -992,10 +1045,17 @@ sub _uninstalled {
 
 sub _pp_ls {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $result = $args{result}  or return 0;
-    my $input   = $args{input}  or return 0;
+    my $tmpl = {
+            result  => { required => 1, default => {}, strict_type => 1 },
+            input   => { required => 1, default => [], strict_type => 1 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $result  = $args->{result};
+    my $input   = $args->{input};
 
     my $format = "%8d %10s %s/%s\n";
 

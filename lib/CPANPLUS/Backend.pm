@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #10 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
+# $Revision: #16 $ $Change: 7779 $ $DateTime: 2003/08/29 17:16:26 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -9,6 +9,7 @@
 
 package CPANPLUS::Backend;
 
+require 5.005;
 use strict;
 
 use CPANPLUS::I18N;
@@ -16,13 +17,18 @@ use CPANPLUS::Configure;
 use CPANPLUS::Internals;
 use CPANPLUS::Internals::Module;
 use CPANPLUS::Backend::RV;
-use CPANPLUS::Backend::InputCheck;
+# use CPANPLUS::Dist;
+# obsolete now, use CPANPLUS::Tools::Check instead
+#use CPANPLUS::Backend::InputCheck;
+
+use CPANPLUS::Tools::Check qw[check];
+
 use Data::Dumper;
 
 
 BEGIN {
     use vars        qw(@ISA $VERSION);
-    @ISA        =   qw(CPANPLUS::Internals  CPANPLUS::Backend::InputCheck);
+    @ISA        =   qw(CPANPLUS::Internals);
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -49,16 +55,20 @@ sub new {
 sub search {
     my $self = shift;
     my %hash = @_;
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
         type            => { required => 1, default => '' },
         list            => { required => 1, default => [] },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
         authors_only    => { default => 0 },
         data            => { default => {} },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     return undef unless $self->_check_input( %$args );
@@ -69,12 +79,29 @@ sub search {
     ### _query_author_tree will find authors matching the patterns
     ### and then do a _query_mod_tree with the finds
     if( $args->{'type'} eq 'author' ) {
-        $href = $self->_query_author_tree( %$args );
+        $href = $self->_query_author_tree(
+                    map { $_ => $args->{$_} } qw[list authors_only verbose]
+        );
     } else {
-        $href = $self->_query_mod_tree( %$args );
+        $href = $self->_query_mod_tree(
+                    map { $_ => $args->{$_} } qw[data list type verbose]
+        );
     }
 
     return $href;
+}
+
+### input check, mainly used by 'search' ###
+sub _check_input {
+    my $self = shift;
+    my %args = @_;
+
+    ### check if we're searching for some valid key ###
+    for( keys %{$self->module_tree->{ (each %{$self->module_tree})[0] }} ) {
+        if ( $_ eq $args{'type'} ) { return 1 }
+    }
+
+    return 0;
 }
 
 
@@ -85,8 +112,10 @@ sub install {
     my $conf    = $self->configure_object;
 
     my $_data = {
-        modules         => { required => 1, default=> [] },
-        force           => { default => undef },
+        modules         => { required => 1, default => [], strict_type => 1 },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
+        format          => { default => $conf->get_conf('format') },
         makeflags       => { default => undef }, # hashref
         make            => { default => undef },
         perl            => { default => undef },
@@ -95,32 +124,25 @@ sub install {
         extractdir      => { default => undef },
         skiptest        => { default => undef },
         target          => { default => 'install' },
-        type            => { default => 'MakeMaker' },
         prereq_target   => { default => '' },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
-    ### make target: may be 'makefile', 'make', 'test' or 'install' ###
-    unless( grep { lc $_ eq lc $args->{target} } (qw|makefile make test install|) ) {
-        $err->trap( error => loc(qq[Unknown target '$args->{target}', aborting..]) );
-        return undef;
-    }
-
     my $force = $args->{'force'};
-    $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     my $href;
     my $flag = 0;
     my $list;
 
-    my $name;
-    my $modobj;
     my $ab_prefix = $conf->_get_build('autobundle_prefix');
 
     for my $mod ( @{$args->{"modules"}} ) {
+
+        my $name;
+        my $modobj;
 
         ### autobundle caveat: we dont know how to install versions
         ### that are *not* the latest version.. pause provides not enough
@@ -128,7 +150,7 @@ sub install {
         ### so right now, we just install the latest rather than guessing
         ### but this needs fixing  --kane
         if( my $is_file = -f $mod       # path to a file
-            or ($ab_prefix and $mod =~ m|^$ab_prefix|)   # looks like a autobundle
+            or ($ab_prefix and $mod =~ m|^$ab_prefix|)   # looks like an autobundle
         ) {
 
             my $file;
@@ -190,12 +212,12 @@ sub install {
                 my $res =  $self->_check_install( module => $name, version => $modobj->{version}, verbose => 0 );
 
                 if ($res->{uptodate}) {
-                    my $do_install = ($args->{target} =~ /^install$/);
+                    my $do_install = $args->{target} eq 'install';
                     $err->inform(
                         msg => loc("Module %1 already up to date; ", $name).
                             ($do_install ? loc("won't install without force!")
                                          : loc("continuing anyway."))
-    		);
+    		    );
                     next if $do_install;
                 }
             }
@@ -203,62 +225,68 @@ sub install {
             $list = [$modobj];
         }
 
-        my $target = $args->{target} eq 'dist' ? 'test' : $args->{target};
+        my $format = $args->{format};
+        undef $format if $format and $format =~ /^MakeMaker$/i;
+
+        my $target = $format ? 'test' : $args->{target};
+
+        my %opts =  map     { $_ => $args->{$_} }
+                    grep    { defined $args->{$_} }
+                            qw[ force make makeflags makemakerflags perl fetchdir
+                                extractdir skiptest prereq_target];
+
+        ### a localised hash to store which prereqs where prompted for already
+        ### this means you'll only be asked /once/ about each prereq rather than
+        ### once each time a modules /says/ it has the prereq
+        local $self->{_todo}->{prereqs} = {};
 
         my $rv = $self->_install_module(
-                            modules         => $list,
-                            force           => $args->{force},
-                            make            => $args->{make},
-                            makeflags       => $args->{makeflags},
-                            makemakerflags  => $args->{makemakerflags},
-                            perl            => $args->{perl},
-                            fetchdir        => $args->{fetchdir},
-                            extractdir      => $args->{extractdir},
-                            skiptest        => $args->{skiptest},
-                            target          => $target,
-                            prereq_target   => $args->{prereq_target},
+                            %opts,
+                            modules => $list,
+                            target  => $target,
         );
 
-        for my $mod ( keys %$rv ) {
-            unless ( $rv->{$mod}->{install} ) {
-                if ($args->{target} eq 'test') {
-                    $err->trap( error => loc("Testing %2 failed!", $name) );
-                }
-                else {
-                    $err->trap( error => loc("Installing %2 failed!", $name) );
-                }
+        for my $mod ( sort keys %$rv ) {
+            my $mobobj = $self->module_tree->{$mod};
+
+            #unless ( $rv->{$mod}->install ) {
+            unless ( $modobj->status->make_overall ) {
+                $args->{target} eq 'test'
+                    ? $err->trap( error => loc("Testing %2 failed!", $name) )
+                    : $err->trap( error => loc("Installing %2 failed!", $name) );
                 $flag = 1;
             }
 
-            my $answer = $self->parse_module(modules => [$mod]);
+            ### if they wanted to make a dist: ###
+            if( $format && $args->{target} eq 'install' ) {
+                my $rv2 = $self->dist(
+                                    modules         => [$mobobj],
+                                    makeflags       => $args->{makeflags},
+                                    perl            => $args->{perl},
+                                    make            => $args->{make},
+                                    format          => $format,
+                );
 
-            $answer->ok or ($flag=1,next);
+                unless($rv2->ok) {
+                    $err->trap( error => loc("Error creating %1 from %2", $format, $mod) );
+                    $flag = 1;
+                    next;
+                }
 
-            my $mods = $answer->rv;
+                my $meth = "dist_\L$format";
 
-            my ($name2, $modobj2) = each %$mods;
+                unless( $modobj->status->$meth()->install ) {
+                    $err->trap( error => loc("Error installing %1 as %2", $mod, $format) );
+                    $flag = 1;
+                    next;
 
-            $href->{ $name2 } = { %{$rv->{$mod}} };
-        }
-
-        ### if they wanted to make a dist: ###
-        if( $args->{target} eq 'dist' ) {
-            my $rv2 = $self->dist(
-                                modules         => $list,
-                                makeflags       => $args->{makeflags},
-                                perl            => $args->{perl},
-                                make            => $args->{make},
-                                type            => $args->{type},
-            );
-
-            unless($rv2->ok) {
-                $err->trap( error => loc("Error creating %1 dist for %2", $args->{type}, $name) );
-                $href->{$name}->{dist} = 0;
-                $flag = 1;
-            } else {
-                my $dist = { %{$rv2->rv()}};
-                $href->{$name}->{dist} = { %{$dist->{$name}} };
+                }
             }
+
+            $modobj->status->install(!$flag);
+
+            ### set the return value ###
+            $href->{$mod} = $modobj->status->install;
         }
     }
 
@@ -273,7 +301,6 @@ sub install {
                                         rv      => $href,
                                         ok      => !$flag,
                                     );
-
     return $rv;
 }
 
@@ -281,21 +308,21 @@ sub install {
 sub fetch {
     my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
-    my $conf    = $self->{conf};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        modules     => { required => 1, default => [] },
+        modules     => { required => 1, default => [], strict_type => 1},
         fetchdir    => { default => '' },
-        force       => { default => undef },
+        force       => { default => $conf->get_conf('force') },
+        verbose     => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $force = $args->{'force'};
-    $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     ### perhaps we shouldn't do a "_check_install" if we just want to fetch?
 #    my @list;
@@ -333,7 +360,7 @@ sub fetch {
             $href->{ $name } = 0;
             $flag = 1;
         } else {
-            $href->{ $name } = $rv;
+            $href->{ $name } = $modobj->status->fetch;
         }
     }
 
@@ -352,30 +379,33 @@ sub fetch {
 sub extract {
     my $self    = shift;
     my %hash    = @_;
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        files       => { required => 1, default => [] },
-        targetdir   => { default => '' },
-        force       => { default => undef },
+        files       => { required => 1, default => [], strict_type => 1},
+        extractdir  => { default => '' },
+        force       => { default => $conf->get_conf('force') },
+        verbose     => { default => $conf->get_conf('verbose') },
         perl        => { default => $^X },
     };
 
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
     my $flag = 0;
 
-    for my $file ( @{$args->{'files'}} ) {
+    for my $file ( @{ delete $args->{'files'} } ) {
         #$args->{'file'} = $file;
 
         ### will either return a filename, or '0' for now
         my $rv = $self->_extract( file => $file, %$args );
 
         unless ($rv) {
-            $self->{_error}->trap( error => loc("extracting %1 failed!", $file) );
+            $err->trap( error => loc("extracting %1 failed!", $file) );
             $href->{ $file } = 0;
             $flag = 1;
         } else {
@@ -397,14 +427,15 @@ sub extract {
 sub make {
     my $self = shift;
     my %hash = @_;
-
-    my $err = $self->{_error};
+    my $err  = $self->error_object;
+    my $conf = $self->configure_object;
 
     ### input check ? ###
 
     my $_data = {
-        dirs            => { required => 1, default => [] },
-        force           => { default => undef },
+        dirs            => { required => 1, default => [], strict_type => 1 },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
         makeflags       => { default => undef }, # hashref
         make            => { default => undef },
         perl            => { default => undef },
@@ -417,7 +448,7 @@ sub make {
 
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -427,7 +458,7 @@ sub make {
 
         ### both the original module-directory, as all the prereqs
         ### will be in this rv
-        for my $mod ( keys %$rv ) {
+        for my $mod ( sort keys %$rv ) {
             unless ( $rv->{$mod}->{make}->{overall} ) {
                 $err->trap( error => loc("Making %1 failed!", $mod) );
                 $flag = 1;
@@ -475,19 +506,20 @@ sub configure_object { return shift->{_conf} };
 sub files {
     my $self    = shift;
     my %hash    = @_;
-
-    my $err = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     ### input check ? ###
     ### possible are: ``prog'', ``man'' or ``all'',
     my $_data = {
-        modules => { required => 1, default => [] },
+        modules => { required => 1, default => [], strict_type => 1 },
+        verbose => { default => $conf->get_conf('verbose') },
         type    => { default => 'all' },
     };
 
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -534,19 +566,21 @@ sub files {
 sub uninstall {
     my $self    = shift;
     my %hash    = @_;
-
-    my $err = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     ### input check ? ###
     ### possible are: ``prog'', ``man'' or ``all'',
     my $_data = {
-        modules => { required => 1, default => [] },
+        modules => { required => 1, default => [], strict_type => 1},
         type    => { default => 'all' },
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -568,7 +602,10 @@ sub uninstall {
             $href->{ $name } = 0;
             $flag = 1;
         } else {
-            $href->{ $name } = $rv;
+            $modobj->status->install(0);
+            $modobj->status->uninstall(1);
+
+            $href->{ $name } = $modobj->status->uninstall;
         }
     }
 
@@ -588,17 +625,17 @@ sub uninstall {
 sub uptodate {
     my $self    = shift;
     my %hash    = @_;
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
-    my $err = $self->{_error};
-
-    ### input check ? ###
-    ### possible are: ``prog'', ``man'' or ``all'',
     my $_data = {
-        modules => { required => 1, default => [] },
+        modules => { required => 1, default => [], strict_type => 1},
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -614,8 +651,11 @@ sub uptodate {
         my ($name, $modobj) = each %$mods;
 
         $href->{$name} = $self->_check_install(
-            module  => $modobj->{module},
-            version => $modobj->{version},
+            module  => $modobj->module,
+            version => $modobj->version,
+            #silence the 'Could not check version on URI::file' warnings
+            #verbose => $args->{verbose},
+            verbose => 0,
         );
 
         $flag = 1 unless $href->{$name};
@@ -635,22 +675,24 @@ sub uptodate {
 sub installed {
     my $self    = shift;
     my %hash    = @_;
-
-    my $err = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     ### input check ? ###
     my $_data = {
         modules => { default => undef }, # arrayref
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
     my $flag = 0;
 
-    if ($args->{'modules'}) {
+    if ($args->{'modules'} and ( ref $args->{'modules'} eq 'ARRAY') ) {
         for my $mod ( @{$args->{'modules'}} ) {
             my $answer = $self->parse_module(modules => [$mod]);
 
@@ -665,8 +707,8 @@ sub installed {
             $href->{$name} = $rv || 0;
             $flag = 1 unless $rv;
         }
-    }
-    else {
+
+    } else {
         $href = $self->_all_installed;
     }
 
@@ -685,16 +727,18 @@ sub installed {
 sub validate {
     my $self    = shift;
     my %hash    = @_;
-
-    my $err = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     ### input check ? ###
     my $_data = {
-        modules => { required => 1, default => [] },
+        modules => { required => 1, default => [], strict_type => 1 },
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -752,7 +796,7 @@ sub flush {
 
     my $flag;
     if ( $self->_flush( list => $list ) ) {
-        $self->{_error}->inform(
+        $self->error_object->inform(
                             msg     => loc("All cached data has been flushed"),
                             quiet   => !$conf->get_conf('verbose'),
                         );
@@ -772,7 +816,7 @@ sub get_conf {
 
     my $href;
     for my $opt ( @list ) {
-        $href->{$opt} = $self->{_conf}->get_conf($opt);
+        $href->{$opt} = $self->configure_object->get_conf($opt);
     }
 
     ### create a rv object ###
@@ -798,12 +842,12 @@ sub set_conf {
     my $href;
 
     my $flag = 0;
-    for my $key (keys %args) {
-        if ( $self->{_conf}->set_conf( $key => $args{$key} ) ) {
-            #$self->{_error}->inform( msg => "$key set to $args{$key}" );
+    for my $key (sort keys %args) {
+        if ( $self->configure_object->set_conf( $key => $args{$key} ) ) {
+            #$self->error_object->inform( msg => "$key set to $args{$key}" );
             $href->{$key} = $args{$key};
         } else {
-            $self->{_error}->inform( msg => loc("unknown key: %1", $key) );
+            $self->error_object->inform( msg => loc("unknown key: %1", $key) );
             $href->{$key} = undef;
             $flag = 1;
         }
@@ -823,14 +867,17 @@ sub set_conf {
 sub details {
     my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        modules => { required => 1, default => [] },
+        modules => { required => 1, default => [], strict_type => 1 },
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $dslip_def = $self->_dslip_defs();
@@ -856,13 +903,20 @@ sub details {
             or ($result->{$name} = 0, $flag=1, next);
 
         #### fill the result; distributions don't have a 'version'.
+        my $have;
+        if( my $rv = $modobj->uptodate( verbose => 0 ) ) {
+            $have = $rv->{version};
+        } else {
+            $have = loc('None');
+        }
+
         $result->{$name} = {
             Author              => loc("%1 (%2)", $author->{name}, $author->{email}),
             Package             => $modobj->{package},
             Description         => $modobj->{description} || loc('None given'),
         (!ref($name) and $name =~ /[^\w:]/) ? () : (
             'Version on CPAN'   => $modobj->{version}     || loc('None given'),
-            'Version Installed' => $modobj->uptodate->{version} || loc('None'),
+            'Version Installed' => $have,
         ) };
 
         for my $i (0 .. $#dslip) {
@@ -884,17 +938,19 @@ sub details {
 
 ### looks for all distributions by a given author ###
 sub distributions {
-    my $self = shift;
-
+    my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        authors => { required => 1, default => [] },
+        authors => { required => 1, default => [], strict_type => 1 },
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my @authors = map { "(?i:$_)" } @{$args->{authors}};
@@ -903,8 +959,8 @@ sub distributions {
 
     my $href;
     my $flag = 0;
-    for my $auth ( keys %$list ) {
-        my $rv = $self->_distributions( author => $auth );
+    for my $auth ( sort keys %$list ) {
+        my $rv = $self->_distributions( author => '^'.$auth.'$' );
 
         unless ( $rv ) {
             $err->trap( error => loc("Could not find distributions for %1", $auth));
@@ -928,17 +984,20 @@ sub distributions {
 
 ### looks up all the modules by a given author ###
 sub modules {
-    my $self = shift;
-
+    my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        authors => { required => 1, default => [] },
+        authors         => { required => 1, default => [], strict_type => 1 },
+        authors_only    => { default => 0 },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -947,12 +1006,14 @@ sub modules {
         my $result = $self->search(
             type         => 'author',
             list         => ['^'.$auth.'$'],
+
+            ### are we really supposed to be taking this argument here? ###
             authors_only => $args->{authors_only},
             data         => $args->{data},
         );
 
-        for my $key ( keys %$result ) {
-            $href->{$auth}->{$key} = $self->module_tree()->{$key};
+        for my $key ( sort keys %$result ) {
+            $href->{$auth}->{$key} = $self->module_tree->{$key};
         }
     }
 
@@ -972,20 +1033,20 @@ sub modules {
 sub readme {
     my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
-    my $conf    = $self->{conf};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        modules     => { required => 1, default => [] },
-        force       => { default => undef },
+        modules => { required => 1, default => [], strict_type => 1},
+        force   => { default => $conf->get_conf('force') },
+        verbose => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $force = $args->{'force'};
-    $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     my $href;
     my $flag = 0;
@@ -1010,7 +1071,9 @@ sub readme {
             $href->{ $name } = 0;
             $flag = 1;
         } else {
-            $href->{ $name } = $rv;
+            $modobj->status->readme( $rv );
+
+            $href->{ $name } = $modobj->status->readme;
         }
     }
 
@@ -1029,16 +1092,18 @@ sub readme {
 sub reports {
     my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
-    my $conf    = $self->{conf};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
-        modules      => { required => 1, default => [] },
-        all_versions => { default => 0 },
+        modules         => { required => 1, default => [], strict_type => 1 },
+        all_versions    => { default => 0 },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -1072,19 +1137,19 @@ sub reports {
 
 ### method to reload and optionally refetch the index files ###
 sub reload_indices {
-    my $self = shift;
-    my %hash = @_;
-
-    my $err     = $self->{_error};
-    my $conf    = $self->{conf};
+    my $self    = shift;
+    my %hash    = @_;
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
         update_source   => { required => 1, default => 0 },
-        force           => { default => undef },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     ### this forcibly refetches the source files if 'update_source' is true
@@ -1107,15 +1172,15 @@ sub reload_indices {
 ### canonizes a modobj, modname or distname into its pathname.
 sub pathname {
     my $self = shift;
-    my $err = $self->{_error};
     my %hash = @_;
+    my $err  = $self->error_object;
 
     my $_data = {
         to   => { required => 1, default => '' },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     ### only takes one argument, so raise exception if it's an arrayref
@@ -1144,15 +1209,15 @@ sub pathname {
 
 sub parse_module {
     my $self = shift;
-    my $err = $self->{_error};
     my %hash = @_;
+    my $err  = $self->error_object;
 
     my $_data = {
         modules => { required => 1, default => [] },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $href;
@@ -1182,20 +1247,20 @@ sub parse_module {
 
 sub dist {
     my $self = shift;
-    my $err = $self->{_error};
+    my $err = $self->error_object;
     my %hash = @_;
 
     my $_data = {
-        modules         => { required => 1, default => [] },
-        type            => { required => 1, default => 'MakeMaker' },
+        modules         => { required => 1, default => [], strict_type => 1 },
+        format          => { required => 1, allow => qr/^(?:MakeMaker|PPM|Ports|PAR|Build|RPM|Deb)$/i }, # add new ones here
         make            => { default => undef },
         perl            => { default => undef },
         makeflags       => { default => undef },
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
-    return undef unless $args;
+    my $args = check( $_data, \%hash ) or return undef;
+    $self->_can_use( modules => { 'CPANPLUS::Dist' => '0.0' } ) or return undef;
 
     my $href;
     my $flag = 0;
@@ -1211,28 +1276,27 @@ sub dist {
         my ($name, $modobj) = each %$mods;
 
         my $dist;
-        unless( $dist = $self->_make_dist_object(
-                                    type => $args->{type},
-                                    data => $modobj,
+        unless( $dist = CPANPLUS::Dist->new(
+                                    format  => $args->{format},
+                                    module  => $modobj,
         ) ) {
-            $err->trap( error => loc(qq[Could not create Dist::%1 object for %2], $args->{type}, $name) );
+            $err->trap( error => loc(qq[Could not create Dist::%1 object for %2], $args->{format}, $name) );
             $flag = 1;
             next;
         }
 
-        my $created = $dist->create(
-                    make            => $args->{make},
-                    makeflags       => $args->{makeflags},
-                    perl            => $args->{perl},
-        );
+        ### undef is a valid value too, so make sure to send options only
+        ### if they are defined
+        my %opts = map {
+                        $_ => $args->{$_}
+                    } grep { defined $args->{$_} } qw[make makeflags perl];
+
+        my $created = $dist->create( %opts );
 
         $flag = 1 unless values %$created;
 
-        $href->{$name} = {
-                    created => $created,
-                    object  => $dist,
-        };
-
+        my $format = 'dist_' . lc $args->{format};
+        $href->{$name} = $modobj->status->$format( $dist );
     }
 
     ### create a rv object ###
@@ -1244,6 +1308,146 @@ sub dist {
                                     ok      => !$flag,
                                 );
     return $rv;
+}
+
+### creates a local mirror of cpan with only the latest distributions
+sub local_mirror {
+    my $self = shift;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
+    my %hash = @_;
+
+    my $_data = {
+        path            => { default => $conf->_get_build('base') },
+        force           => { default => $conf->get_conf('force') },
+        verbose         => { default => $conf->get_conf('verbose') },
+        no_index_files  => { default => 0 },
+    };
+
+    ### Input Check ###
+    my $args = check( $_data, \%hash );
+    return undef unless $args;
+
+    $args->{path} = File::Spec->catdir( $args->{path}, $conf->_get_ftp('base') );
+
+    my $quiet = !$args->{'verbose'};
+
+    unless( -d $args->{path} ) {
+        unless( $self->_mkdir( dir => $args->{path} ) ) {
+            $err->trap(
+                    error   => loc(qq[Could not create '%1', giving up], $args->{path}),
+                    quiet   => $quiet,
+            );
+            return undef;
+        }
+    } elsif( ! -w _ ) {
+        $err->trap(
+                error   => loc(qq[Could not write to '%1', giving up], $args->{path}),
+                quiet   => $quiet,
+        );
+        return undef;
+    }
+
+    my $rv = {};
+    my $flag = 0;
+
+    my $uptodate = $self->_check_trees(
+        path            => $args->{path},
+        verbose         => $args->{verbose},
+        update_source   => $args->{force},
+    );
+    $self->_build_trees(uptodate => $uptodate);
+
+    for my $auth ( sort { $a->cpanid cmp $b->cpanid } values %{$self->author_tree} ) {
+
+        $err->inform(
+                msg     => loc(qq[Updating packages for '%1'], $auth->cpanid),
+                quiet   => $quiet,
+        );
+
+        my @mods = sort values %{ $auth->modules || {} };
+
+        ### take care of fetching the checkums file first ###
+        if(@mods) {
+
+            ### some code duplication here, should clean up later ###
+            {
+                my $obj = $mods[0];
+
+                my $path = File::Spec->catdir($args->{path}, $obj->path);
+
+                unless( -d $path ) {
+                    unless( $self->_mkdir( dir => $path ) ) {
+                        $err->trap(
+                                error => loc(qq[Could not create '%1'], $path),
+                                quiet => $quiet,
+                        );
+                        $flag = 1;
+                        next;
+                    }
+                }
+
+                unless( $self->_get_checksums( mod => $obj, fetchdir => $path ) ) {
+                    $err->trap(
+                            error => loc( qq[Could not fetch %1 file for %2],
+                                        'CHECKSUMS' . $auth->cpanid ),
+                            quiet => $quiet,
+                    );
+                    $flag = 1;
+                    next;
+                }
+            }
+
+            my %packages;
+            $packages{$_->package} = $_ for @mods;
+            for my $mod (map $packages{$_}, sort keys %packages) {
+                my $path = File::Spec->catdir($args->{path}, $mod->path);
+
+                my $full = File::Spec->catfile( $path, $mod->package );
+
+                if( -e $full ) {
+                    $err->inform(
+                            msg     => loc( q[package '%1' already up to date, skipping],
+                                            $mod->package ),
+                            quiet   => $quiet,
+                    );
+                    $rv->{ $mod->package } = $full;
+                    next;
+                }
+
+                unless( -d $path ) {
+                    unless( $self->_mkdir( dir => $path ) ) {
+                        $err->trap(
+                                error => loc(qq[Could not create '%1'], $path),
+                                quiet => $quiet,
+                        );
+                        $flag = 1;
+                        next;
+                    }
+                }
+
+                unless( $mod->fetch( fetchdir => $path ) ) {
+                    $err->trap(
+                            error => loc(qq[Could not fetch '%1'], $mod->package),
+                            quiet => $quiet,
+                    );
+                    $flag = 1;
+                    next;
+                } else {
+                    $rv->{ $mod->package } = $full;
+                }
+            }
+        }
+    }
+
+    ### create a rv object ###
+    return CPANPLUS::Backend::RV->new(
+                                    object  => $self,
+                                    type    => $self->_whoami(),
+                                    args    => $args,
+                                    rv      => $rv,
+                                    ok      => !$flag,
+                                );
 }
 
 
@@ -1283,7 +1487,7 @@ sub autobundle {
     };
 
     ### Input Check ###
-    my $args = $self->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
     return undef unless $args;
 
     my $flag;
@@ -1517,6 +1721,9 @@ install scripts or tailored shells.
 See CPANPLUS::Shell::Default if you are looking for a ready-made interactive
 interface.
 
+If you prefer to use a package manager to manage distributions,
+refer to CPANPLUS::Dist.
+
 The CPANPLUS::Backend interface will become stable with the release
 of CPANPLUS version 1.0.
 
@@ -1728,7 +1935,7 @@ I<modules> arguments.
 The C<rv()> values this method returns are the contents of
 the readme files, or 0 for errors.
 
-=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL, fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING, prereq_target => STRING, skiptest => BOOL)
+=head2 install(modules => [LIST], format => PM, make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL, fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING, prereq_target => STRING, skiptest => BOOL)
 
 See L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
@@ -1740,6 +1947,17 @@ treated as an autobundle.
 Optional arguments can be used to override configuration information.
 
 =over 4
+
+=item * C<format> 
+
+Run install with the format of the given package manager. This is 
+handy when you're, for example, on windows and like your perl package
+management done by C<PPM>. Entering a format will make C<CPANPLUS>
+build a package conforming to that package managers specifications 
+and install it as such.
+
+See L<CPANPLUS::Dist> for details on what package managers have 
+interfaces ot them available.
 
 =item * C<make>
 
@@ -1797,7 +2015,7 @@ preceding ones.
 
 =item * C<skiptest>
 
-If this flag is set to true, tests will be skipped.  
+If this flag is set to true, tests will be skipped.
 
 =item * C<prereq_target>
 
@@ -1862,7 +2080,7 @@ Below is an example of the data structure returned by C<rv()>:
     {
         'D:\\cpanplus\\5.6.0\\build\\Acme-Bleach-1.12' => {
             'install' => 1,
-            'dir' => 'D:\\cpanplus\\5.6.0\\build\\Acme-Bleach-1.12', 
+            'dir' => 'D:\\cpanplus\\5.6.0\\build\\Acme-Bleach-1.12',
             'prereq' => {},
             'overall' => 1,
             'test' => 1
@@ -1877,6 +2095,10 @@ which specify what files should be uninstalled: program files,
 man pages, or both.  The default type is I<all>.
 
 C<rv()> gives boolean indications of status for each module name key.
+
+Note that C<uninstall> only uninstalls the module you ask for --
+It does not track prerequisites for you, nor will it warn you if 
+you uninstall a module another module depends on!
 
 See L<"GENERAL NOTES"> for more information about this method.
 
@@ -2049,6 +2271,43 @@ If there was an ambiguity in finding the object, the value
 will be 0.  An example of an ambiguous module is LWP, which
 is in the packlist as 'libwww-perl', along with many other
 modules.
+
+=head2 local_mirror( path => WHERE, [no_index_files => BOOL, force => BOOL, verbose => BOOL] )
+
+Creates a local mirror of CPAN, of only the most recent sources in a
+location you specify. If you set this location equal to a custom host
+in your C<CPANPLUS::Config> you can use your local mirror to install 
+from.
+
+It takes the following argument:
+
+=over 4
+
+=item path
+
+The location where to create the local mirror
+
+=item no_index_files
+
+Disable fetching of index files. This is ok if you don't plan to use
+the local mirror as your primary sites, or if you'd like uptodate 
+index files be fetched from elsewhere.
+
+Defaults to false.
+
+=item force
+
+Forces refetching of packages, even if they are there already.
+
+Defaults to whatever setting you have in your C<CPANPLUS::Config>.
+
+=item verbose
+
+Prints more messages about what it's doing.
+
+Defaults to whatever setting you have in your C<CPANPLUS::Config>.
+
+=back
 
 =head2 flush(CACHE_NAME)
 
@@ -2224,6 +2483,16 @@ does not replace the I<modules> argument but the I<to> argument.
 This method is another exception in that the module object replaces
 the I<authors> argument instead of the I<modules> argument.
 
+=item * C<$module_object-E<gt>status()>
+
+This method returns an C<CPANPLUS::Internals::Module::Status> object,
+which provides methods to tell you about the current status of the 
+module object. For example, where it has been saved to, what prereqs
+it has and so on.
+
+Please refer to the L<CPANPLUS::Internals::Module::Status> manpage
+for details.
+
 =back
 
 In addition to these methods, access methods are available for
@@ -2241,7 +2510,7 @@ Here is a sample dump of the module object for Acme::Buffy:
         'path' => 'L/LB/LBROCARD',
         'description' => 'An encoding scheme for Buffy fans',
         'dslip' => 'Rdph',
-        'status' => '',
+        'status' => bless( {}, 'CPANPLUS::Internals::Module::Status' ),
         'prereqs' => {},
         'module' => 'Acme::Buffy',
         'comment' => '',

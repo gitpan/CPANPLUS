@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/t/0-signature.t $ $Author: autrijus $
-# $Revision: #3 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
+# $Revision: #6 $ $Change: 7707 $ $DateTime: 2003/08/25 18:50:40 $
 
 use strict;
 use lib 't/lib';
@@ -10,13 +10,12 @@ SKIP: {
     if (!-s 'SIGNATURE') {
 	skip("No signature file found", 1);
     }
+    elsif (!eval { require Module::Signature; 1 }) {
+	skip("Next time around, consider install Module::Signature, ".
+	     "so you can verify the integrity of this distribution.", 1);
+    }
     elsif (!eval { require Socket; Socket::inet_aton('pgp.mit.edu') }) {
 	skip("Cannot connect to the keyserver", 1);
-    }
-    elsif (!eval { require Module::Signature; 1 }) {
-	diag("Next time around, consider install Module::Signature,\n".
-	     "so you can verify the integrity of this distribution.\n");
-	skip("Module::Signature not installed", 1);
     }
     else {
 	ok(Module::Signature::verify() == Module::Signature::SIGNATURE_OK()

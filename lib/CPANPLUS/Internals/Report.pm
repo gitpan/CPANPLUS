@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #7 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
+# $Revision: #12 $ $Change: 7687 $ $DateTime: 2003/08/24 03:37:55 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -16,6 +16,7 @@ use File::Spec;
 use Data::Dumper;
 use File::Basename;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Cmd qw[can_run];
 use Fcntl;
 use AnyDBM_File;
 
@@ -117,8 +118,8 @@ sub _send_report {
             }
         }
 
-        my $stage = lc($self->{_error}->stack);
-        $stage =~ s/ failed.*//;
+        my $stage = $self->{_error}->stack;
+        $stage = 'fetch' unless $stage =~ s/^(MAKE [A-Z]+).*/\L$1\E/;
 
         return if $self->{_conf}->get_conf('cpantest') =~ /\bmaketest_only\b/i
                   and ($stage !~ /\btest\b/);
@@ -135,8 +136,7 @@ Additional comments:
 .
 
         my %missing;
-        $missing{$_} = 1 foreach ($buffer =~ m/\bCan't locate (\S+) in \@INC/g);
-
+        $missing{$_} = 1 foreach ($buffer =~ m/\bCan\'t locate (\S+) in \@INC/g);
         if (%missing) {
             my $modules = join("\n", map {
                 s/.pm$//; s|/|::|g; $_
@@ -246,15 +246,21 @@ it personally.  We appreciate your patience. :)
         push @inform, "$module->{author}\@cpan.org"
             if (!$already_sent or $nb_send < $max_send);
     }
-    elsif ($self->{_conf}->get_conf('cpantest') =~ /\balways_cc\b/i) {
+    elsif ($self->configure_object->get_conf('cpantest') =~ /\balways_cc\b/i) {
         push @inform, "$module->{author}\@cpan.org"
             if (!$already_sent or $nb_send < $max_send);
     }
 
-    my $reporter = Test::Reporter->new;
-    $reporter->grade($grade);
-    $reporter->distribution($dist);
-    $reporter->comments($text) if length $text;
+    my $reporter = Test::Reporter->new(
+        grade           => $grade,
+        distribution    => $dist,
+        via             => "CPANPLUS $CPANPLUS::Internals::VERSION",
+    );
+
+    my $from = $self->configure_object->_get_ftp('email');
+    $reporter->from($from)      if $from !~ /\@example\.\w+$/;
+    $reporter->comments($text)  if length $text;
+    $reporter->edit_comments    if $grade eq 'fail';
 
     $err->inform(
         msg   => loc("Sending report for %1", $dist),
@@ -284,6 +290,7 @@ sub _query_report {
         'LWP::UserAgent' => '0.0',
         'HTTP::Request'  => '0.0',
         URI              => '0.0',
+        YAML             => '0.0',
     };
 
     return 0 unless $self->_can_use( modules => $use_list, complain => 1 );
@@ -304,7 +311,7 @@ sub _query_report {
     ### it wasn't available yet in 5.51 but it was in 5.64...
     ### it's just a convenience method anyway (read: wrapper) for the
     ### following:
-    my $url = "http://testers.cpan.org/search?request=dist&dist=$name";
+    my $url = "http://testers.cpan.org/show/".$name.".yaml";
     my $request = HTTP::Request->new( GET => $url );
 
     $err->inform(
@@ -316,30 +323,28 @@ sub _query_report {
     my $response = $ua->request( $request );
 
     unless ($response->is_success) {
-        $err->trap( error => loc("Fetch report failed: %1", $response->message) );
+        $err->trap( error => loc("Fetch report failed on %2: %1", $response->message, $url) );
         return 0;
     }
 
     ### got the report, start parsing
-    my ($result) = ($response->content =~ /\n<dl>(.*?)\n<\/dl>\n/s);
+    my $result = YAML::Load($response->content);
 
     unless (defined $result) {
         $err->trap( error => loc("Error parsing testers.cpan.org results") );
         return 0;
     }
-
-    while ($result =~ s/<dt>\n.*<B>([^<\n]+)<\/B>\n([\d\D]*?)(?:\n<p>|$)//) {
-        my ($key, $val) = ($1, $2);
-        next unless $dist eq $key or $args{all_versions};
-
-        while ($val =~ s/<dd>(?:<a href="(.*?)">)?.*? ALT="([^"]+)"[^\n]*\n[^>]*>([^<]+)<//s) {
-            push @ret, {
-                platform => $3,
-                grade    => $2,
-                dist     => $key,
-                $1 ? (details => "$url$1") : (),
-	    };
-        }
+    
+    foreach my $ref (@$result) {
+        next unless $dist eq $ref->{distversion} or $args{all_versions};
+        push @ret, {
+            platform => $ref->{platform},
+            grade    => $ref->{action},
+            dist     => $ref->{distversion},
+            ($ref->{action} eq 'FAIL') ? (
+                details => "http://nntp.x.perl.org/group/perl.cpan.testers/".$ref->{id}
+            ) : (),
+        };
     }
 
     return @ret ? \@ret : 0;

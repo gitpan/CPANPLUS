@@ -1,11 +1,12 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/bin/cpanp $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 use strict;
 use vars '$VERSION';
 
 use CPANPLUS;
+use CPANPLUS::Tools::Term;
 use Term::ReadLine;
 
 $VERSION = CPANPLUS->VERSION;
@@ -83,6 +84,12 @@ while ($opt = shift(@ARGV)) {
     last;
 };
 
+while (@ARGV) {
+    $ARGV[0] =~ /^--(no)?(\w+)$/ or last;
+    push @cmd_stack, "s $2 ".($1 ? 0 : 1);
+    shift(@ARGV);
+}
+
 push @cmd_stack, map { "$opt $_" } @ARGV if ($opt and exists $cmd->{$opt});
 
 # special case: 'o' and 'b' may take zero arguments
@@ -125,6 +132,7 @@ if (@cmd_stack) {
     };
 
     *{'CPANPLUS::Shell::_Faked::ReadLine'} = sub { $TR };
+    *{'CPANPLUS::Shell::_Faked::parse_options'} = \&CPANPLUS::Tools::Term::parse_options;
 }
 
 shell();

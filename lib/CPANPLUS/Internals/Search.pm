@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Search.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 #######################################################
 ###            CPANPLUS/Internals/Search.pm         ###
@@ -13,7 +13,10 @@ package CPANPLUS::Internals::Search;
 
 use strict;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Check qw[check];
+
 use Data::Dumper;
+
 
 BEGIN {
     use vars        qw( $VERSION );
@@ -23,23 +26,32 @@ BEGIN {
 ### query the cpan tree based on the list of items to search for ###
 sub _query_mod_tree {
     my $self = shift;
-    my %args = @_;
-    my $modtree = $self->_module_tree;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+
+    my $tmpl = {
+        data    => { default => {}, strict_type => 1 },
+        list    => { required => 1, default => [], strict_type => 1 },
+        type    => { required => 1, allow => [qw|path module author comment package version dslip|] },
+        verbose => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
 
     #my $i = '0000'; ### keep a counter, it'll be the key of the hashref
     ### not any longer.. it was only used in shell.pm and it's kinda silly
     ### to enforce that upon everyone in Internals already.
-    my $href;
+    my $href = {};
 
     ### let's see if we got a custom tree (perhaps a sub search?) or
     ### we should use the default tree.
-    my $tree = keys %{$args{'data'}} ? $args{'data'} : $modtree;
+    my $tree = keys %{$args->{'data'}} ? $args->{'data'} : $self->_module_tree;
 
     ### loop over the list provided, compare every element against the
     ### proper entry of the hashref in the cpan module tree
     ### if it matches, put it in the hashref we'll return.
 
-    for my $el ( @{$args{'list'}} ) {
+    for my $el ( @{$args->{'list'}} ) {
 
         ### i dont recall why i used a quotemeta here... -kane
         ### if we get an 'author' query, then we'll already have qualified reqexes
@@ -50,7 +62,7 @@ sub _query_mod_tree {
 
         if ($el =~ /\w/) {
             for (sort keys %$tree) {
-                if ($tree->{$_}->{ $args{'type'} } =~ /$el/) {
+                if ($tree->{$_}->{ $args->{'type'} } =~ /$el/) {
                     $href->{$_} = $tree->{$_};
                 } #if
             } #for
@@ -64,15 +76,33 @@ sub _query_mod_tree {
 
 ### query the cpan tree based on the list of items to search for ###
 sub _query_author_tree {
-    my $self = shift;
-    my %args = @_;
+    my $self        = shift;
+    my %hash        = @_;
+    my $conf        = $self->configure_object;
+    my $err         = $self->error_object;
+    my $at          = $self->author_tree;
 
-    my $conf       = $self->{_conf};
-    my $err        = $self->{_error};
-    my $authortree = $self->_author_tree;
+    my $tmpl = {
+        data            => { default => {}, strict_type => 1 }, 
+        list            => { required => 1, default => [], strict_type => 1 },
+        authors_only    => { default => 0 },
+        verbose         => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
 
     my @list;
-
+    my $authortree;  
+    
+    ### in case of a limited search set ###
+    if( my @obs = values %{$args->{data}} ) {
+        for ( @obs ) {
+            $authortree->{ $_->author } = $at->{ $_->author };          
+        }
+    } else {
+        $authortree = $at;
+    }
+          
     ### loop over the list provided, compare every element against the
     ### proper entry of the hashref in the cpan author tree
     ### if it matches, put it in the hashref we'll return.
@@ -81,7 +111,7 @@ sub _query_author_tree {
     ### we then look in _query_mod_tree to find which modules are belonging
     ### to those id's
 
-    for my $el ( @{$args{'list'}} ) {
+    for my $el ( @{$args->{'list'}} ) {
 
         ### i dont recall why i used a quotemeta here... -kane
         # my $el = quotemeta $arg;
@@ -96,7 +126,7 @@ sub _query_author_tree {
     } #for
 
     ### in case we are only interested in the author object: ###
-    if ( $args{authors_only} ) {
+    if ( $args->{authors_only} ) {
         my $rv;
         for my $auth (@list) { $rv->{$auth} = $self->author_tree->{$auth} }
         return $rv;
@@ -105,22 +135,30 @@ sub _query_author_tree {
     ### if we are going to query again, we'll need to reconstruct the
     ### the regexp, else we'll get more matches than we bargained for;
     my @reglist = map { '^'.$_.'$' } @list;
-    return $self->_query_mod_tree(type => 'author', list => \@reglist);
+    return $self->_query_mod_tree( 
+                        type => 'author', 
+                        list => \@reglist, 
+                        data => $args->{data} 
+                    );
 
 } #_query_author_tree
 
 
-
-
 sub _distributions {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        verbose => { default => $conf->get_conf('verbose') },
+        author  => { required => 1 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
 
     ### all to please warnings...
-    my $auth = $args{'author'};
+    my $auth = $args->{'author'};
 
     my $modules = $self->_query_mod_tree( list => [$auth], type => 'author' );
 
@@ -159,10 +197,22 @@ sub _packlist_file {
 ### Utility function to return a ExtUtils::Installed object; not directly used
 sub _extutils_installed {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        verbose => { default => $conf->get_conf('verbose') },
+        type    => { default => '' },
+        module  => { required => 1 },
+        method  => { required => 1, allow =>  [qw|files directory_tree packlist|] },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $type    = $args->{'type'};
+    my $mod     = $args->{'module'};
+    my $method  = $args->{'method'};
 
     ### check prerequisites
     my $use_list = { 'ExtUtils::Installed' => '0.0' };
@@ -175,16 +225,11 @@ sub _extutils_installed {
             return 0;
         }
 
-        ### all to please warnings...
-        my $type = $args{'type'} || '';
-        my $mod = $args{'module'};
-
         {   ### happy happy happy, joy joy joy
             ### yet another module that thinks it's ok to croak
             ### instead of return 0.
             ### I am NOT happy -kane
 
-            my $method = $args{'method'};
             my @files  = eval { $inst->$method( $mod, $type ) };
 
             if ($@) {
@@ -198,7 +243,10 @@ sub _extutils_installed {
 
     } else {
 
-        $err->trap( error => loc("You don't have ExtUtils::Installed available - can not find files for %1", $args{'module'}) );
+        $err->trap(
+            error => loc(   "You don't have ExtUtils::Installed available - " .
+                            "can not find files for %1", $mod )
+        );
         return 0;
     }
 }
@@ -206,29 +254,37 @@ sub _extutils_installed {
 
 sub _readme {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        verbose => { default => $conf->get_conf('verbose') },
+        force   => { default => $conf->get_conf('force') },
+        module  => { required => 1, allow => sub { UNIVERSAL::isa( pop(),
+                                                'CPANPLUS::Internals::Module') }
+                    },
+    };
 
-    ### all to please warnings...
-    my $mod = $args{'module'} or return 0;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $mod     = $args->{'module'};
 
     ### build the path we need to look at on the cpan mirror ###
-    my $path = File::Spec::Unix->catdir(
-                    $conf->_get_ftp('base'),
-                    $mod->{path}
-                );
+    my $path    = File::Spec::Unix->catdir(
+                        $conf->_get_ftp('base'),
+                        $mod->path
+                    );
 
     ### and the dir we need to save to ###
     my $fetchdir = File::Spec->catdir(
                                 $conf->_get_build('base'),
                                 $conf->_get_ftp('base'),
-                                $mod->{path},
+                                $mod->path,
                             );
 
     ### what is the name of the file we need? ###
-    my $package = $mod->{package};
+    my $package = $mod->package;
 
     my $flag;
     if ( $package =~ s/(.+?)\.(?:(?:tar\.)?gz|tgz)$/$1\.readme/i ) {
@@ -240,7 +296,7 @@ sub _readme {
     }
 
     unless ($flag) {
-        $err->trap( error => loc("unknown package %1", $mod->{package}) );
+        $err->trap( error => loc("unknown package %1", $mod->package) );
         return 0;
     }
 
@@ -279,12 +335,18 @@ sub _readme {
 #}
 #'
 sub _installed {
-    my $self = shift;
-    my %args = @_;
+    my $self    = shift;
+    my %hash    = @_;
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
-    my $err = $self->error_object;
+    my $tmpl = {
+        module  => { default => '' },
+        verbose => { default => $conf->get_conf("verbose") },
+    };
 
-    my $modobj = $args{module} or return $self->_all_installed(%args);
+    my $args    = check( $tmpl, \%hash ) or return undef;
+    my $modobj  = $args->{module} or return $self->_all_installed(%$args);
 
     ### check prerequisites
     my $use_list = { 'File::Spec' => '0.0' };
@@ -308,11 +370,11 @@ sub _installed {
         ### silence it for now, if you're doing a generic 'what files do
         ### i have installed' it will flood your screen
         #$err->trap( error => qq[Could not find any files for $name] );
-        return 0;
+        return undef;
 
     } else {
         $err->trap( error => loc("You do not have File::Spec installed!") );
-        return 0;
+        return undef;
     }
 }
 
@@ -321,11 +383,10 @@ sub _installed {
 ### we try with a more CPAN.pm-like way and rename this one to _old_installed
 ### so we can switch back if required --kane
 sub _all_installed {
-    my $self = shift;
-    my %args = @_;
-
-    my $err = $self->{_error};
-    my $conf = $self->{_conf};
+    my $self    = shift;
+    #my %args    = @_;
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $uselist = { 'File::Find' => '0.0' };
 
@@ -360,13 +421,18 @@ sub _all_installed {
 
 sub _validate_module {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $err  = $self->error_object;
+    my $conf = $self->configure_object;
 
-    my $err = $self->{_error};
-    my $conf = $self->{_conf};
+    my $tmpl = {
+        module => { required => 1 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
 
     ### return 0 if we didn't get the proper arguments.. shouldn't happen tho
-    my $mod = $args{'module'} or return 0;
+    my $mod = $args->{'module'};
 
     ### let's first see if we have the module installed even
     ### will return undef if not, and a hashref if so -kane

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/README $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 This is the README file for CPANPLUS, Ameliorated interface to
 the Comprehensive Perl Archive Network, by Jos Boumans.
@@ -23,6 +23,7 @@ it to work just like CPAN.pm.
 
 CPANPLUS uses the standard perl module install process:
 
+cpansign -v             # see SIGNATURE for details
 perl Makefile.PL
 make
 make test
@@ -110,8 +111,11 @@ Test::More is
     Copyright 2001 by Michael G Schwern <schwern@pobox.com>.
 
 Test::Builder is
-    Copyright 2001 by chromatic <chromatic@wgz.org>,
+    Copyright 2002 by chromatic <chromatic@wgz.org>,
                       Michael G Schwern <schwern@pobox.com>.
+
+Test::MockObject is
+    Copyright 2002 by chromatic <chromatic@wgz.org>.
 
 File::Spec and File::Spec::* are authored by
     Kenneth Albanowski <kjahds@kjahds.com>,

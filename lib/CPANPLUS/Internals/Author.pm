@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Author.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 #######################################################
 ###            CPANPLUS/Internals/Author.pm         ###
@@ -14,11 +14,12 @@ package CPANPLUS::Internals::Author;
 use strict;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals;
+use CPANPLUS::Tools::Check qw[check];
 use Data::Dumper;
 
 BEGIN {
     use vars        qw(@ISA $VERSION);
-    @ISA        =   qw(CPANPLUS::Backend);
+    #@ISA        =   qw(CPANPLUS::Backend);
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -61,23 +62,7 @@ sub new {
     #    $object->{$key} = $args->{$key};
     #}
 
-    my $object;
-    ### so for now, this is the alternative ###
-    for my $key ( keys %$_data ) {
-
-        if ( $_data->{$key}->{required} && !$hash{$key} ) {
-            #warn "Missing key $key\n";
-            return 0;
-        }
-
-        if( defined $hash{$key} ) {
-            if( $hash{$key} ) {
-                $object->{$key} = $hash{$key};
-            }
-        } else {
-            $object->{$key} = $_data->{$key}->{default};
-        }
-    }
+    my $object = check( $_data, \%hash ) or return undef;
 
     return bless $object, $class;
 }

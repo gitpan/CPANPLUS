@@ -14,7 +14,10 @@ use strict;
 use overload bool => \&ok, fallback => 1;
 
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Check qw[check];
 use Data::Dumper;
+
+
 
 BEGIN {
     use Exporter    ();
@@ -53,7 +56,7 @@ sub new {
 
 
     ### Input Check ###
-    my $args = $obj->_is_ok( $_data, \%hash );
+    my $args = check( $_data, \%hash );
 
     unless( $args ) {
         $err->trap( error => loc("Error validating input to 'CPANPLUS::Backend::RV'") );

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Source.pm $
-# $Revision: #5 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
+# $Revision: #8 $ $Change: 7778 $ $DateTime: 2003/08/29 17:05:28 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###
@@ -14,6 +14,8 @@ package CPANPLUS::Internals::Source;
 use strict;
 use CPANPLUS::Internals::Module;
 use CPANPLUS::Internals::Author;
+use CPANPLUS::Tools::Check qw[check];
+use CPANPLUS::Tools::Cmd qw[can_run];
 use CPANPLUS::I18N;
 use Data::Dumper;
 use FileHandle;
@@ -57,16 +59,24 @@ BEGIN {
 ### this builds a hash reference with the structure of the cpan module tree ###
 sub _create_mod_tree {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    #$CPANPLUS::Tools::Check::ALLOW_UNKNOWN = 1;
+
+    my $tmpl = {
+        path     => { default => $conf->_get_build('base') },
+        uptodate => { default => 0 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
 
     ### this is test code to tinker with dslip information.. this might go in
     ### a seperate sub... - Kane
     ### seems to work fine now. fixed warnings regarding dslip, i think we can
     ### leave it in - Kane
-    my $dslip_tree = $self->_create_dslip_tree( %args );
+    my $dslip_tree = $self->_create_dslip_tree( %$args );
 
 
     ### check if we can retrieve a frozen data structure with storable ###
@@ -75,14 +85,14 @@ sub _create_mod_tree {
     ### find the location of the stored data structure ###
     ### bleh!  changed to use File::Spec->catfile -jmb
     my $stored = File::Spec->catfile(
-                                $conf->_get_build('base'),      #base dir
+                                $args->{path},                  #base dir
                                 $conf->_get_source('smod')      #file name
                                 . '.' .
                                 $Storable::VERSION              #the version of storable used to store
                                 . '.stored'                     #append a suffix
                             ) if $storable;
 
-    if ($storable && -e $stored && $args{'uptodate'}) {
+    if ($storable && -e $stored && -s _ && $args->{'uptodate'}) {
         $err->inform(
             msg     => loc("Retrieving %1", $stored),
             quiet   => !$conf->get_conf('verbose')
@@ -96,7 +106,7 @@ sub _create_mod_tree {
     } else {
 
         ### changed to use File::Spec->catfile(), now OS safe -jmb
-        my $file = File::Spec->catfile($conf->_get_build('base'), $conf->_get_source('mod'));
+        my $file = File::Spec->catfile($args->{path}, $conf->_get_source('mod'));
 
         my @list = split /\n/, $self->_gunzip( file => $file );
 
@@ -142,8 +152,8 @@ sub _create_mod_tree {
                     package     => $package,   # package name, like 'foo-bar-baz-1.03.tar.gz'
                     description => $dslip_tree->{ $data[0] }->{'description'},
                     dslip       => $dslip,
-                    prereqs     => {},
-                    status      => {},
+                    #prereqs     => {},
+                    #status      => {},
                     _id         => $self->{_id},    #id of this internals object
             );
 
@@ -176,10 +186,17 @@ sub _create_mod_tree {
 
 sub _create_author_tree {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path     => { default => $conf->_get_build('base') },
+        uptodate => { default => 0 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
 
     ### check if we can retrieve a frozen data structure with storable ###
     my $storable = $self->_can_use( modules => {'Storable' => '0.0'} ) if $conf->get_conf('storable');
@@ -187,14 +204,14 @@ sub _create_author_tree {
     ### $stored is the name of the frozen data structure ###
     ### changed to use File::Spec->catfile -jmb
     my $stored = File::Spec->catfile(
-                                $conf->_get_build('base'),      #base dir
+                                $args->{path},                  #base dir
                                 $conf->_get_source('sauth')     #file
                                 . '.' .
                                 $Storable::VERSION              #the version of storable used to store
                                 . '.stored'                     #append a suffix
                             ) if $storable;
 
-    if ($storable && -e $stored && $args{'uptodate'}) {
+    if ($storable && -e $stored && -s _ && $args->{'uptodate'}) {
         $err->inform(
             msg => loc("Retrieving %1", $stored),
             quiet => !$conf->get_conf('verbose')
@@ -208,7 +225,7 @@ sub _create_author_tree {
         my $tree = {};
 
         ### changed to use File::Spec->catfile(), now OS safe -jmb
-        my $file = File::Spec->catfile($conf->_get_build('base'), $conf->_get_source('auth'));
+        my $file = File::Spec->catfile($args->{path}, $conf->_get_source('auth'));
 
         my @list = split /\n/, $self->_gunzip(file => $file);
 
@@ -238,10 +255,17 @@ sub _create_author_tree {
 ### not used yet, have to think of better implementation ###
 sub _create_dslip_tree {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path     => { default => $conf->_get_build('base') },
+        uptodate => { default => 0 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
 
     ### check if we can retrieve a frozen data structure with storable ###
     my $storable = $self->_can_use( modules => {'Storable' => '0.0'} ) if $conf->get_conf('storable');
@@ -249,14 +273,14 @@ sub _create_dslip_tree {
     ### $stored is the name of the frozen data structure ###
     ### changed to use File::Spec->catfile -jmb
     my $stored = File::Spec->catfile(
-                                $conf->_get_build('base'),      #base dir
+                                $args->{path},                  #base dir
                                 $conf->_get_source('sdslip')    #file name
                                 . '.' .
                                 $Storable::VERSION              #the version of storable used to store
                                 . '.stored'                     #append a suffix
                             ) if $storable;
 
-    if ($storable && -e $stored && $args{'uptodate'}) {
+    if ($storable && -e $stored && -s _ && $args->{'uptodate'}) {
         $err->inform(
             msg     => loc("Retrieving %1", $stored),
             quiet   => !$conf->get_conf('verbose')
@@ -269,7 +293,7 @@ sub _create_dslip_tree {
     } else {
 
         ### get the file name of the source ###
-        my $file = File::Spec->catfile($conf->_get_build('base'), $conf->_get_source('dslip'));
+        my $file = File::Spec->catfile($args->{path}, $conf->_get_source('dslip'));
 
         my $in = $self->_gunzip(file => $file);
 
@@ -338,6 +362,7 @@ sub _dslip_defs {
             d   => loc('Developer'),
             u   => loc('Usenet newsgroup comp.lang.perl.modules'),
             n   => loc('None known, try comp.lang.perl.modules'),
+            a   => loc('Abandoned; volunteers welcome to take over maintainance'),
         }],
 
         # L
@@ -378,28 +403,36 @@ sub _dslip_defs {
 ### not really, but it will change soon anyway, and I will doc then -jmb
 sub _check_uptodate {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        file            => { required => 1 },
+        update_source   => { default => 0 },
+        name            => { required => 1 },
+        verbose         => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef
 
     my $flag;
-    unless ( -e $args{'file'} && (
-            ( stat $args{'file'} )[9]
-            + $self->{_conf}->_get_source('update') )
+    unless ( -e $args->{'file'} && (
+            ( stat $args->{'file'} )[9]
+            + $self->configure_object->_get_source('update') )
             > time ) {
         $flag = 1;
     }
 
-    if ( $flag or $args{'update_source'} ) {
+    if ( $flag or $args->{'update_source'} ) {
 
-         if ( $self->_update_source( name => $args{'name'} ) ) {
+         if ( $self->_update_source( name => $args->{'name'} ) ) {
               return 0;       # return 0 so 'uptodate' will be set to 0, meaning no use
                               # of previously stored hashrefs!
          } else {
               $err->inform(
                   msg => loc("Unable to update source, attempting to get away with using old source file!"),
-                  quiet => !$conf->get_conf('verbose')
+                  quiet => !$args->{verbose},
               );
               return 1;
          }
@@ -409,33 +442,94 @@ sub _check_uptodate {
     }
 }
 
+sub _save_source {
+    my $self = shift;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
+
+    my $map = {
+        _modtree    => 'smod',
+        _authortree => 'sauth',
+    };
+
+    ### check if we can retrieve a frozen data structure with storable ###
+    my $storable;
+    $storable = $self->_can_use( modules => {'Storable' => '0.0'} ) if $conf->get_conf('storable');
+    return undef unless $storable;
+
+    my $to_write;
+    foreach my $key ( sort keys %$map ) {
+        next unless ref($self->{$key});
+
+        ### $stored is the name of the frozen data structure ###
+        ### changed to use File::Spec->catfile -jmb
+        my $stored = File::Spec->catfile(
+                                $conf->_get_build('base'),  #base dir
+                                $conf->_get_source($map->{$key})   #file
+                                . '.' .
+                                $Storable::VERSION          #the version of storable used to store
+                                . '.stored'                 #append a suffix
+                            );
+
+        if (-e $stored and not -w $stored) {
+            $err->inform(
+                msg => loc("%1 not writable; skipped.", $stored),
+                quiet => !$conf->get_conf('verbose'),
+            );
+            next;
+        }
+
+        $to_write->{$stored} = $self->{$key};
+    }
+
+    return unless $to_write;
+
+    $err->inform( 
+	msg 	=> loc("Writing state information back to disk. This may take a little while."),
+	quiet 	=> !$conf->get_conf('verbose'), 
+    );
+
+    foreach my $file ( sort keys %$to_write ) {
+        Storable::nstore( $to_write->{$file}, $file )
+                or $err->trap( error => loc("could not store %1!", $file) );
+    }
+}
+
 
 ### this sub fetches new source files ###
 sub _update_source {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { default => $conf->_get_build('base') },
+        name    => { required => 1 },
+        verbose => { default => $conf->get_conf('verbose') },
+    };
 
-    my $base = $conf->_get_build('base');
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+
+    my $path = $args->{path};
     my $now = time;
 
     {   ### this could use a clean up - Kane
         ### no worries about the / -> we get it from the _ftp configuration, so
         ### it's not platform dependant. -kane
-        my ($dir, $file) = $conf->_get_ftp( $args{'name'} ) =~ m|(.+/)(.+)$|sg;
+        my ($dir, $file) = $conf->_get_ftp( $args->{'name'} ) =~ m|(.+/)(.+)$|sg;
 
         $err->inform(
             msg     => loc("Updating source file '%1'", $file),
-            quiet   => !$conf->get_conf('verbose')
+            quiet   => !$args->{'verbose'}
         );
 
 
         my $rv = $self->_fetch(
                      file      => $file,
                      dir       => $dir,
-                     fetchdir  => $base,
+                     fetchdir  => $path,
                      force     => 1,
                  );
 
@@ -443,12 +537,12 @@ sub _update_source {
         ### fix? -kane
         unless ($rv) {
             $err->trap( error => loc("Couldn't fetch %1 from %2", $file, $conf->_get_ftp('host') ) );
-            return 0;
+            return undef;
         }
 
         ### `touch` the file, so windoze knows it's new -jmb
         ### works on *nix too, good fix -Kane
-        utime ( $now, $now, File::Spec->catfile($base, $file) ) or
+        utime ( $now, $now, File::Spec->catfile($path, $file) ) or
             $err->trap( error => loc("Couldn't touch %1", $file) );
 
     }
@@ -458,15 +552,26 @@ sub _update_source {
 
 ### retrieve source files, and returns a boolean indicating if it's up to date
 sub _check_trees {
-    my ($self, %args) = @_;
-    my $conf          = $self->{_conf};
-    my $err           = $self->{_error};
-    my $update_source = $args{update_source}; # 1 means always update
+    my ($self, %hash) = @_;
+    my $conf          = $self->configure_object;
+    my $err           = $self->error_object;
+
+    my $tmpl = {
+        path            => { default => $conf->_get_build('base') },
+        update_source   => { default => 0 },
+        verbose         => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+
+    my $update_source   = $args->{update_source}; # 1 means always update
+    my $verbose         = $args->{verbose};
 
     ### a check to see if our source files are still up to date ###
     $err->inform(
         msg     => loc("Checking if source files are up to date"),
-        quiet   => !$conf->get_conf('verbose')
+        quiet   => !$verbose
     ) unless $update_source;
 
     ### this is failing if we simply delete ONE file...
@@ -481,11 +586,10 @@ sub _check_trees {
     for my $name (qw[auth mod dslip]) {
         for my $file ( $conf->_get_source( $name ) ) {
             $self->_check_uptodate(
-                file => File::Spec->catfile(
-                            $conf->_get_build('base'), $file
-                ),
+                file => File::Spec->catfile( $args->{path}, $file ),
                 name => $name,
-                update_source => $update_source
+                update_source => $update_source,
+                verbose => $verbose,
             ) or $uptodate = 0;
         }
     }
@@ -493,25 +597,39 @@ sub _check_trees {
     return $uptodate;
 }
 
-
 ### (re)build the trees ###
 ### takes one optional argument, which indicates if we're already up-to-date. ###
 sub _build_trees {
-    my ($self, %args) = @_;
-    my $uptodate = $args{uptodate};
-    my $err      = $self->{_error};
+    my ($self, %hash)   = @_;
+    my $err             = $self->error_object;
+    my $conf            = $self->configure_object;
+
+    my $tmpl = {
+        path        => { default => $conf->_get_build('base') },
+        verbose     => { default => $conf->get_conf('verbose') },
+        uptodate    => { required => 1 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $path = $args->{path};
+    my $uptodate = $args->{uptodate};
 
     ### build the trees ###
-    $self->{_authortree}    = $self->_create_author_tree    (uptodate => $uptodate);
-    $self->{_modtree}       = $self->_create_mod_tree       (uptodate => $uptodate);
+    $self->{_authortree} = $self->_create_author_tree(
+        uptodate => $uptodate, path => $path
+    );
+    $self->{_modtree}    = $self->_create_mod_tree(
+        uptodate => $uptodate, path => $path
+    );
 
     ### the old way, but ended up missing new keys that were added later =/ ###
     #    my $id = $self->_store_id(
     #                _id         => $self->{_id},
     #                _authortree => $self->{_authortree},
     #                _modtree    => $self->{_modtree},
-    #                _error      => $self->{_error},
-    #                _conf       => $self->{_conf},
+    #                _error      => $self->error_object,
+    #                _conf       => $self->configure_object,
     #    );
 
     my $id = $self->_store_id( $self );
@@ -526,19 +644,70 @@ sub _build_trees {
     return 1;
 }
 
-sub _get_checksums {
-    my ($self, %args) = @_;
-    my $conf          = $self->{_conf};
-    my $err           = $self->{_error};
+sub _get_detached_signature {
+    my ($self, %hash) = @_;
+    my $conf          = $self->configure_object;
+    my $err           = $self->error_object;
 
-    my $mod = $args{'mod'};
+
+    my $tmpl = {
+        mod         => { required => 1, allow => sub { UNIVERSAL::isa( pop(),
+                                                'CPANPLUS::Internals::Module') }
+                    },
+        fetchdir    => { default => '' },
+        force       => { default => $conf->get_conf('force') },
+        verbose     => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $mod = $args->{'mod'};
 
     my $path = File::Spec::Unix->catdir(
                     $conf->_get_ftp('base'),
-                    $mod->{path}
+                    $mod->path
                 );
 
-    my $fetchdir = $args{'fetchdir'} || File::Spec->catdir(
+    my $fetchdir = $args->{'fetchdir'} || File::Spec->catdir(
+                                            $conf->_get_build('base'),
+                                            $path,
+                                        );
+
+    ### we always get a new file... ###
+    return $self->_fetch(
+                        file        => $mod->package . ".sig",
+                        dir         => $path,
+                        fetchdir    => $fetchdir,
+                        force       => $args->{'force'},
+        ) or return 0;
+}
+
+sub _get_checksums {
+    my ($self, %hash) = @_;
+    my $conf          = $self->configure_object;
+    my $err           = $self->error_object;
+
+
+    my $tmpl = {
+        mod         => { required => 1, allow => sub { UNIVERSAL::isa( pop(),
+                                                'CPANPLUS::Internals::Module') }
+                    },
+        fetchdir    => { default => '' },
+        force       => { default => $conf->get_conf('force') },
+        verbose     => { default => $conf->get_conf('verbose') },
+        signature   => { default => $conf->get_conf('signature') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $mod = $args->{'mod'};
+
+    my $path = File::Spec::Unix->catdir(
+                    $conf->_get_ftp('base'),
+                    $mod->path
+                );
+
+    my $fetchdir = $args->{'fetchdir'} || File::Spec->catdir(
                                             $conf->_get_build('base'),
                                             $path,
                                         );
@@ -548,7 +717,7 @@ sub _get_checksums {
                         file        => 'CHECKSUMS',
                         dir         => $path,
                         fetchdir    => $fetchdir,
-                        force       => $args{'force'},
+                        force       => $args->{'force'},
         ) or return 0;
 
 
@@ -560,8 +729,12 @@ sub _get_checksums {
 
     my $cksum;
     my $dist; # the distribution we're currently parsing
+    my $signed; # is the checksum file pgp-signed?
 
-    while (<$fh>) { last if /^\$cksum = \{$/ } # skip till this line
+    while (<$fh>) {
+        last if /^\$cksum = \{$/; # skip till this line
+        $signed = 1 if /^-----BEGIN PGP SIGNED MESSAGE-----$/;
+    }
 
     while (<$fh>) {
 
@@ -582,8 +755,47 @@ sub _get_checksums {
         }
     }
 
+    close $fh;
+
+    my $use_list = { 'Module::Signature' => '0.06' };
+    if ($args->{signature} and $self->_can_use(modules => $use_list)) {
+        # check for PGP signature of CHECKSUM
+
+        if (not $signed) {
+            # we bail out once for PAUSE to have a chance to reload.
+            return {} unless $args->{force};
+
+            $err->trap( error => "CHECKSUM file not signed, aborting!" );
+            return 0;
+        }
+
+        local $Module::Signature::SIGNATURE = $file;
+
+        my $rv;
+        my $captured;
+        if (can_run('gpg') and
+            $self->_run( command => ['gpg', '--version'], buffer  => \$captured ) and
+            $captured =~ /GnuPG.*?(\S+)$/m)
+        {
+            $rv = Module::Signature::_verify_gpg($file, $file, $1);
+        }
+        elsif ($self->_can_use(modules => { 'Crypt::OpenPGP' => 0 })) {
+            $rv = Module::Signature::_verify_crypt_openpgp($file, $file);
+        }
+        else {
+            $err->trap( error => "Cannot use GnuPG or Crypt::OpenPGP, please install either one first!" );
+            return 0;
+        }
+
+        if ($rv != Module::Signature::SIGNATURE_OK()) {
+            $err->trap( error => "Signature bad for CHECKSUM!" );
+            return 0;
+        }
+    }
+
     return $cksum;
 }
+
 1;
 
 # Local variables:

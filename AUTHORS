@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/AUTHORS $
-# $Revision: #8 $ $Change: 3446 $ $DateTime: 2003/01/12 11:33:46 $
+# $Revision: #11 $ $Change: 7707 $ $DateTime: 2003/08/25 18:50:40 $
 
 [Credits]
 
@@ -34,10 +34,12 @@ patches or suggestions, or their bug reports or comments have inspired
 the appropriate patches.  Corrections, additions, deletions welcome:
 
 Abe Timmerman		(ABELTJE)
+Adam J. Foxson		(AFOXSON)
 Antti Lankila
 Alain Barbet		(ALIAN)
 Andy Lester		(PETDANCE)
 Andreas Marcel Riechert
+Casey West		(CWEST)
 chemboy
 Barrie Slaymaker	(RBS)
 Chia-Liang Kao		(CLKAO)
@@ -49,23 +51,26 @@ Jeroen Latour
 Jochen Stenzel		(JSTENZEL)
 Jonathan Leffler	(JOHNL)
 Jorrit Waalboer         (JUERD)
-Jost Krieger
+Jost Krieger		(JOST)
 Kay Roepke
 Lee Goddard		(LGODDARD)
 Lupe Christoph		(LUPE)
 Mark Fowler		(MARKF)
 Mark-Jason Dominus	(MJD)
 Matt Sergeant		(MSERGEANT)
+Nicholas Clark		(NWCLARK)
 Peter Barabas		(BARABAS)
 Peter Sergeant		(SARGIE)
 Phil Pennock
 Randy J. Ray		(RJRAY)
 Randy Kobes		(RKOBES)
+R Bernard Davison	(RBDAVISON)
 Richard Clamp		(RCLAMP)
-Richard Soderberg
+Richard Soderberg	(RSOD)
 Robert S Creager	(RCREAGER)
-Roland Bauer
-Ton Hospel
+Roland Bauer		(RBAUER)
+Ton Hospel		(THOSPEL)
 Tony Cook		(TONYC)
-Walt Mankowski
+Walt Mankowski		(WALTMAN)
+Wei-Hon Chen
 Yves Orton		(YVES)

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/bin/cpansmoke $
-# $Revision: #5 $ $Change: 3340 $ $DateTime: 2003/01/08 21:46:24 $
+# $Revision: #7 $ $Change: 7667 $ $DateTime: 2003/08/23 16:31:15 $
 
 use strict;
 use Cwd;
@@ -242,10 +242,11 @@ sub _check_existing {
             printf "%8s %s%s\n", @{$rv}{'grade', 'platform'},
                                  ($rv->{detail} ? ' (*)' : '') if $display;
 
-            my @tested = split /\s/, $rv->{ 'platform' };
-            $is_there = 1 if $^O eq $tested[0]
-                         and $Config{osvers} =~ /^\Q$tested[1]\E(?:[^-]|$)/
-                         and $Config{archname} =~ /^\Q$tested[2]\E(?:[^-]|$)/;
+            #my @tested = split /\s/, $rv->{ 'platform' };
+            $is_there = 1 #if $^O eq $tested[0]
+#                         and $Config{osvers} =~ /^\Q$tested[1]\E(?:[^-]|$)/
+#                         and $Config{archname}=~ /^\Q$tested[2]\E(?:[^-]|$)/;
+              if $Config{archname} eq $rv->{ 'platform' };
         }
     }
 

@@ -1,5 +1,5 @@
 This file contains message digests of all files listed in MANIFEST,
-signed via the Module::Signature module, version 0.21.
+signed via the Module::Signature module, version 0.35.
 
 To verify the content in this distribution, first make sure you have
 Module::Signature installed, then type:
@@ -14,53 +14,60 @@ not run its Makefile.PL or Build.PL.
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-SHA1 377babd41641ce16f440d86e650de68e44067598 AUTHORS
-SHA1 f41af03f94f34fb2df604ffaee4fda6e24d0dbae ChangeLog
-SHA1 6ad6a19476ece54a03e06811366b93814cbd6775 Changes
-SHA1 7ca2175989a5c543b2326093896f13ae8d1382ab MANIFEST
-SHA1 8e1bf631376fedfc3b5321a4c0c9c72654fe9bbe MANIFEST.SKIP
-SHA1 7d4de6220e8b267a59b1bf75b738c1c53fb131ac Makefile.PL
-SHA1 6424c0ac723650b9294da28c0a5898ff45a088d7 README
-SHA1 4cfed68da44f4528173825f4d4af87d2cbd4e851 bin/cpanp
-SHA1 4e0683cc95b37accae9515803b4e6f0b9ff622b4 bin/cpansmoke
-SHA1 9976d27ea76805ccf884fcdf80e214e6f6a7c52b inc/ExtUtils/AutoInstall.pm
-SHA1 7fea10698900db550b01f5b41ce51bace2afdc8f lib/CPANPLUS.pm
-SHA1 d5299e6332c4f40efe100c5fa7d04b152e1e9d48 lib/CPANPLUS/Backend.pm
-SHA1 24ec58c146fa696633a36e772a02c1d13fc27db0 lib/CPANPLUS/Backend/InputCheck.pm
-SHA1 e1646a40d3957b946b651c7aca12bbfca4a05a57 lib/CPANPLUS/Backend/RV.pm
-SHA1 6da653538a34195a75f2019cfc4925668698cc6f lib/CPANPLUS/Config.pm-orig
-SHA1 aa83a86e138b239c3f53c41f9a219fbe18fb2bda lib/CPANPLUS/Configure.pm
-SHA1 41d8c340eb4b3ac079890a3aec782233db396d7d lib/CPANPLUS/Configure/Setup.pm
-SHA1 2bbaf53007b35bd58c86bae6c5b6ed4c5293287e lib/CPANPLUS/Error.pm
-SHA1 bc67bac42c8501d6e6612024d42bf31e544b2038 lib/CPANPLUS/FAQ.pod
-SHA1 268072e9993a7d876115c19dff9e89fc2077a724 lib/CPANPLUS/I18N.pm
-SHA1 74b4282694f0723fc200cfd6c940354e60f51335 lib/CPANPLUS/I18N/CPANPLUS.pot
-SHA1 1b5898eb9c4c6dbcf28e6495f786fb5bc842fda9 lib/CPANPLUS/I18N/fr.po
-SHA1 20aa7e2d9cd937cb5c5f0dbf28545d983a908f2b lib/CPANPLUS/Internals.pm
-SHA1 d0deab077f4e8d69aa5c8fc1fc0944a268212cb9 lib/CPANPLUS/Internals/Author.pm
-SHA1 5d25b1b856b39b77821873ff82a510894b6a7aa0 lib/CPANPLUS/Internals/Extract.pm
-SHA1 8aa6051c4e1b148546eddce3120e2a60ceba302a lib/CPANPLUS/Internals/Fetch.pm
-SHA1 357287729d75374428ab4f4979486773cbdf2cd0 lib/CPANPLUS/Internals/Install.pm
-SHA1 cad2b279f080bfaef4b43edd9cd9a77526bc152d lib/CPANPLUS/Internals/Make.pm
-SHA1 f3cb2826bd19e9ec264ad45634f953fc4b3d75ec lib/CPANPLUS/Internals/Module.pm
-SHA1 0a0f9b613384b5a7aecfbdd9eba5a5abfbe5b7db lib/CPANPLUS/Internals/Report.pm
-SHA1 d01c20383f93767f87d4ae6d1580c98220aac07a lib/CPANPLUS/Internals/Search.pm
-SHA1 72c8bd4b0959e5220bd2e57b437e9eee70778a10 lib/CPANPLUS/Internals/Source.pm
-SHA1 1d154121805409f75cf81c05cb6f717238ff722a lib/CPANPLUS/Internals/System.pm
-SHA1 1fd183a01a07c38c01d80f29bde331609c7800b0 lib/CPANPLUS/Internals/Utils.pm
-SHA1 81d29a5db9e8cc4a678a924d865f5330b8f15a42 lib/CPANPLUS/Shell.pm
-SHA1 2af6429037123366fb5aa9903978d207fa0e64be lib/CPANPLUS/Shell/Classic.pm
-SHA1 df0f8af9aac6945e9f8d1cfeebe5206c7031764b lib/CPANPLUS/Shell/Default.pm
+SHA1 f551652360ee82d9404b508321d76ca8d1fa9296 AUTHORS
+SHA1 eb8b49637dfae892043f5959c31b3684a0e5850c ChangeLog
+SHA1 9b6aadca64171928fc1aeeb5f1b2e5c9572f58de Changes
+SHA1 6470dcf20f1a991d5c971f142115df367e060a71 MANIFEST
+SHA1 f5b7973a084094d05efe21ffe8b7dbe57c801268 MANIFEST.SKIP
+SHA1 609555681b93b7df2429a435ca81ece413d26c4a META.yml
+SHA1 3967b3541c921c3573bb3fe12f5100228c744b1c Makefile.PL
+SHA1 37e858c51409a297ef5d3fb35dc57cd3b57f9a4d PAUSE2003.pub
+SHA1 c83ba7a5869ddfefd47bc63a8aae2d4fba675bfc README
+SHA1 0f7678f0b7337cbb33a6e44ddf9ea6415c2149b5 bin/cpanp
+SHA1 4807ede9d90402443287e559474267a38b291b99 bin/cpansmoke
+SHA1 a27131f8c1480aef3400326bf9a50beb8be8a470 inc/ExtUtils/AutoInstall.pm
+SHA1 ee8b55819c7a5c27793fb7c064f1db0520f25e5f lib/CPANPLUS.pm
+SHA1 78bb753a2a6d707cee2634e314e7793d74252846 lib/CPANPLUS/Backend.pm
+SHA1 5534e25865287cf7549bd16035890706e0301b87 lib/CPANPLUS/Backend/RV.pm
+SHA1 ea3c990ef8cf16d58bd8d727b3257323ca3e642b lib/CPANPLUS/Config.pm-orig
+SHA1 a7839c2941b0f47afb27df877409e2dbadea968e lib/CPANPLUS/Configure.pm
+SHA1 835d218f33dcc88d9d114e7cd4440b0a02929c0c lib/CPANPLUS/Configure/Setup.pm
+SHA1 af07deeac05983fb9469da408ab4d6a30b34cd85 lib/CPANPLUS/Error.pm
+SHA1 21d912b34989938f10ef70cb602cd6335ffbe061 lib/CPANPLUS/FAQ.pod
+SHA1 293d4415abdff7eeb7c69a5e19fd4b1d781c9d41 lib/CPANPLUS/I18N.pm
+SHA1 e28ec93d2fc00da318be1b8607ec355afb745f65 lib/CPANPLUS/I18N/CPANPLUS.pot
+SHA1 96bad9d7b0567fc5ab4e78bbcaadba6bc0f588e4 lib/CPANPLUS/I18N/fr.po
+SHA1 0dc59dd64e73f869eb5bbd555c5efd8e4f988c91 lib/CPANPLUS/Internals.pm
+SHA1 1f5658fbd0caccd1e696b040950cf27af44b71cd lib/CPANPLUS/Internals/Author.pm
+SHA1 6e013dd537ce65fb0f5af91cc108e709d5b3fd63 lib/CPANPLUS/Internals/Extract.pm
+SHA1 b26b8f43f17e4da21532813d0b6dc5af4f9613b3 lib/CPANPLUS/Internals/Fetch.pm
+SHA1 ce93870b8f185b11434fb9086427c6caa8f608fd lib/CPANPLUS/Internals/Install.pm
+SHA1 000d2777f676f161c944df77879fff3a7f2c917c lib/CPANPLUS/Internals/Make.pm
+SHA1 f5c2bee033a3d96e6d42bb4f6b473536b4487640 lib/CPANPLUS/Internals/Module.pm
+SHA1 c8be50772d8ac25fdafdd8b0a83fee4c1a1dc3bf lib/CPANPLUS/Internals/Module/Status.pm
+SHA1 b74c089f45ed28d4775bea5a7d33dc3f23a55cf6 lib/CPANPLUS/Internals/Report.pm
+SHA1 123e1f68b2e49cb81840f551601a2ce4125a68a9 lib/CPANPLUS/Internals/Search.pm
+SHA1 acf9b8a39cfea19c3dbb0751d5593135dfb7401c lib/CPANPLUS/Internals/Source.pm
+SHA1 f4092191729f68222033ed8523c49c5fbcffb69e lib/CPANPLUS/Internals/System.pm
+SHA1 b032f136a153d3fe61899582a711e415a7263f1c lib/CPANPLUS/Internals/Utils.pm
+SHA1 87a0ce340ae84fec40af89408e687c0d95f6ed0f lib/CPANPLUS/Shell.pm
+SHA1 e651d2a814193daccd9d0dd21f2980038bee1979 lib/CPANPLUS/Shell/Classic.pm
+SHA1 5462cbf3a0543ac9fc5b6fc3f3b7ed463c457714 lib/CPANPLUS/Shell/Default.pm
 SHA1 9abf06726582281d29a012121ca01a1a194aa205 lib/CPANPLUS/Styleguide.pod
-SHA1 d737f0d4b3cbd562778a1b7dbdbfef4a9ff37414 lib/CPANPLUS/TesterGuide.pod
-SHA1 54d31c44d7f6ab3dd9cf5833930fb62210031d64 t/0-signature.t
-SHA1 264176c6efe48bb97510aafac1e07c5746c958dd t/1-basic.t
-SHA1 98ad28873275de4fc929d2c589c2dfb46bf0ac2e t/2-autoinstall.t
-SHA1 1f8aedde7e3de09c3fe24c040c7f41db345a1eeb t/3-backend.t
-SHA1 a7c81591cc7ebf767e7b581be033e5f17d474d24 t/CPANPLUS-Backend.t
-SHA1 e5fbfebb2584058cd1ad2148ecb6403befe9ee63 t/CPANPLUS.t
-SHA1 58c7997f90c111e484d9940f41790c6a7b5cd1d8 t/dummy-CPAN/authors/01mailrc.txt.gz
-SHA1 d99e4b369cad9eedae7b5a211e658dec6f25dd58 t/dummy-CPAN/authors/id/A/AY/AYRNIEU/CHECKSUMS
+SHA1 52e91b0dbeaab1fa8fb6dafd8b860181f6afa948 lib/CPANPLUS/TesterGuide.pod
+SHA1 9db5add8970f0a26de61b1f1124a7fe2cebdf17d lib/CPANPLUS/Tools/Check.pm
+SHA1 6dad5964f15fa982428916492b04b3f50d12d9fb lib/CPANPLUS/Tools/Cmd.pm
+SHA1 2116c3734b84707e822dbabccdd26531ff834c80 lib/CPANPLUS/Tools/Load.pm
+SHA1 75fbef8e097ef57ccb8e91d5be73ae21c713b6ed lib/CPANPLUS/Tools/Module.pm
+SHA1 2514fe8182c050993438effd819f4cebf2b834c9 lib/CPANPLUS/Tools/Term.pm
+SHA1 a10d1872ad7a431a7cda51a9b4fc1fb1c75804ce t/0-signature.t
+SHA1 3dfe074ef45c010154545d07f37556c27423d7a8 t/1-basic.t
+SHA1 0eb8a5629a9e6a73efa76ca1965fd16e3dee78b8 t/2-autoinstall.t
+SHA1 8c5b3792708c531e7085195b480bac76332eb2d0 t/3-backend.t
+SHA1 04976dcee4f59e152c3586fc4d3a1adff7270314 t/CPANPLUS-Backend.t
+SHA1 2002632d90f553c71d6259ee157640eafa9456ff t/CPANPLUS.t
+SHA1 6fd2d4427de2d812b6909bd668f27418b592e1c6 t/dummy-CPAN/authors/01mailrc.txt.gz
+SHA1 8f141479fd248cffc3a97e237e834285542f0747 t/dummy-CPAN/authors/id/A/AY/AYRNIEU/CHECKSUMS
 SHA1 54267f4a78bd8b3e484d7e3c0ccfbd652d60bcba t/dummy-CPAN/authors/id/A/AY/AYRNIEU/Text-Bastardize-0.06.readme
 SHA1 c15fbc73a2701421cbc5ff687c5959227d40247d t/dummy-CPAN/modules/02packages.details.txt.gz
 SHA1 5410ea0402c0f0fd59adf6f919970101f33d71cd t/dummy-CPAN/modules/03modlist.data.gz
@@ -75,9 +82,9 @@ SHA1 1febe2e170ead4f8f5865f31fd72746c03dd3cce t/lib/Test/Builder.pm
 SHA1 9237a6c0bba625aefe020f79c8b9625da1e3b364 t/lib/Test/MockObject.pm
 SHA1 51c49a3df7cc24f3507c97c16f11c0f87e6f51e7 t/lib/Test/More.pm
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.1 (Cygwin)
+Version: GnuPG v1.2.3 (FreeBSD)
 
-iD8DBQE+IWIb+Uv116YmbAwRAiHoAJ0dggTwvfpbomXOcmcCdOMP4Xr2tgCfQ5qc
-UAUQJC6rKO+UMqxLNATUFh0=
-=CxuA
+iD8DBQE/UhMCtLPdNzw1AaARArBSAKCr7mUsk8kKtUv0C1zJR6KlWJrNfQCfYwr2
+cyzWfwRS++qJZpEHjkT0FyM=
+=DX48
 -----END PGP SIGNATURE-----

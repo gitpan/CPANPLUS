@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Module.pm $
-# $Revision: #4 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
+# $Revision: #6 $ $Change: 7693 $ $DateTime: 2003/08/24 10:00:42 $
 
 #######################################################
 ###            CPANPLUS/Internals/Module.pm         ###
@@ -13,7 +13,10 @@ package CPANPLUS::Internals::Module;
 
 use strict;
 use CPANPLUS::Backend;
+use CPANPLUS::Internals::Module::Status;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Check qw[check];
+
 use Data::Dumper;
 
 BEGIN {
@@ -25,7 +28,7 @@ my $Class = "CPANPLUS::Backend";
 
 ### install get/set accessors for this object.
 foreach my $key (qw{
-    _id author comment description dslip module package path prereqs status version
+    _id author comment description dslip module package path version
 }) {
     no strict 'refs';
     *{__PACKAGE__."::$key"} = sub {
@@ -33,6 +36,13 @@ foreach my $key (qw{
         $self->{$key} = $_[0] if @_;
         return $self->{$key};
     }
+}
+
+sub status {
+    my $self = shift;
+    $self->{status} = $_[0] if @_;
+    $self->{status} ||= CPANPLUS::Internals::Module::Status->new;
+    return bless($self->{status}, 'CPANPLUS::Internals::Module::Status');
 }
 
 ### it's currently set to only allow creation, not modification
@@ -51,41 +61,15 @@ sub new {
         package     => { default => '', required => 1 },    # package name, like 'foo-bar-baz-1.03.tar.gz'
         description => { default => '' },                   # description of the module
         dslip       => { default => '    ' },               # dslip information
-        prereqs     => { default => {} },                   # any prerequisites known for this module
-        status      => { default => {} },                   # some status we can assign to a module
         _id         => { required => 1 },                   # id of the Internals object that spawned us
+        # seperate object now;
+        #prereqs     => { default => {} },                  # any prerequisites known for this module
+        #status      => { default => {} },                  # some status we can assign to a module
     };
 
 
-    ### we're unable to use this check now because it requires a working backend object ###
-#    my $cb = $class->_make_object();
-#
-#    my $args = $cb->_is_ok( $_data, \%hash );
-#    return 0 unless keys %$args;
-#
-#    my $object;
-#    ### put this in a loop so we can easily add stuff later if desired -kane
-#    for my $key ( keys %$args ) {
-#        $object->{$key} = $args->{$key};
-#    }
-
-    my $object;
-    ### so for now, this is the alternative ###
-    for my $key ( keys %$_data ) {
-
-        if ( $_data->{$key}->{required} && !exists($hash{$key}) ) {
-            warn loc("Missing key %1", $key), "\n";
-            return 0;
-        }
-
-        if( defined $hash{$key} ) {
-            if( $hash{$key} ) {
-                $object->{$key} = $hash{$key};
-            }
-        } else {
-            $object->{$key} = $_data->{$key}->{default};
-        }
-    }
+    my $object          = check( $_data, \%hash ) or return undef;
+    $object->{status}   = CPANPLUS::Internals::Module::Status->new;
 
     return bless $object, $class;
 }
@@ -148,14 +132,14 @@ sub extract {
     my $self    = shift;
     my $obj     = $self->_make_object();
 
-    my $file   = $self->status->{'fetch'};
+    my $file   = $self->status->fetch or return undef;
 
     my $rv = $obj->extract( @_, files => [$file] )->rv;
 
     my $return = ref($rv) eq 'HASH' ? $rv->{ $file } : $rv;
 
     ### store it back in the object ###
-    return $self->{status}->{'extract'} = $return;
+    return $self->status->extract( $return );
 }
 
 ### will fetch the module.
@@ -223,36 +207,59 @@ sub pathname {
     return $rv;
 }
 
+### fetches the test reports for a certain module ###
+sub package_name {
+    return $1 if shift->package =~ /^(.+)-(.+)\.(?:tar\.gz|zip|tgz)/i;
+}
+
+sub package_version {
+    return $2 if shift->package =~ /^(.+)-(.+)\.(?:tar\.gz|zip|tgz)/i;
+}
+
 ### wrapper function to make a Backend object and delegate call to it
 ### takes one argument (the key of the caller object, and also the
 ### option to be overridden); the rest are the arguments to be passed.
 sub _call_object {
-    my ($self, %args) = @_;
+    my ($self, %hash) = @_;
     my $obj    = $self->_make_object();
 
-    my $args   = $args{args} or return 0;
-    my $key    = $args{type} or return 0;
+    my $tmpl = {
+        args    => { required => 1, default => [], strict_type => 1 },
+        type    => { required => 1 },
+        option  => { default => '' },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $list   = $args->{args};
+    my $key    = $args->{type};
 
     ### this is a hack: usually, the option in Backend.pm is simply the key it
     ### expects plus 's'. but we want the caller to be able to override it, too.
-    my $option = $args{option} || ($args{type} . 's');
+    my $option = $args->{option} || ($args->{type} . 's');
 
     my $method = ((caller(1))[3]);
     $method =~ s/.*:://;
 
-    my $rv = $obj->$method( @{$args}, $option => [ $self->{$key} ] )->rv;
+    my $rv = $obj->$method( @{$list}, $option => [ $self->{$key} ] )->rv;
 
     ### special case; ->modules uses author name instead of module name as index
     $key = 'author' if $method eq 'modules';
+ 
 
-    return ref($rv) eq 'HASH' ? $rv->{ $self->{$key} } : $rv;
+    return ref($rv) eq 'HASH' 
+                    ? ref $rv->{ $self->{$key} } eq 'CPANPLUS::Internals::Module::Status' 
+                        ? $rv->{ $self->{$key} }->$method() 
+                        : $rv->{ $self->{$key} }
+                    : $rv;
+
 }
 
 ### make a new backend object for us to use ###
 sub _make_object {
     my $self = shift;
 
-    my $obj = CPANPLUS::Internals->_retrieve_id( $self->{_id} );
+    my $obj = CPANPLUS::Internals->_retrieve_id( $self->_id );
 
     return bless $obj, $Class;
 }

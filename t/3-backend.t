@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
 # $File: //depot/cpanplus/dist/t/3-backend.t $
-# $Revision: #5 $ $Change: 3381 $ $DateTime: 2003/01/10 02:26:24 $
+# $Revision: #14 $ $Change: 7810 $ $DateTime: 2003/08/31 15:15:42 $
 
 # This is going test all of CPANPLUS::Backend except the parts which
 # actually download and install modules.
 
 use strict;
 use lib 't/lib';
-use Test::More tests => 74;
+use Test::More tests => 73;
 
 BEGIN { use File::Path; mkpath 't/dummy-cpanplus' }
 END   { rmtree 't/dummy-cpanplus' }
@@ -15,6 +15,8 @@ END   { rmtree 't/dummy-cpanplus' }
 my $Class = 'CPANPLUS::Backend'; # I got tired of typing it out.
 
 use_ok $Class;
+use_ok 'CPANPLUS::I18N';
+CPANPLUS::I18N->import('loc');
 
 can_ok($Class, qw(
     new error_object configure_object
@@ -29,7 +31,7 @@ my $cp = $Class->new(
     _ftp => {
         urilist => [
             {
-                path    => 't/dummy-CPAN/',
+                path    => File::Spec->rel2abs('t/dummy-CPAN/'),
                 scheme  => 'file',
             }
         ],
@@ -67,7 +69,7 @@ my $authobj = $auths->{$author};
 
 is_deeply([sort keys %$authobj], [sort keys %TB], 'author object keys');
 
-foreach my $k (keys %TB) {
+foreach my $k (sort keys %TB) {
     my $v = $TB{$k};
     is_deeply( $authobj->{$k}, $v, "    $k (hash)" );
     is_deeply( eval "\$authobj->$k",   $v, "    $k (accesor)" );
@@ -81,12 +83,12 @@ my $distname = 'Text-Bastardize-0.06.tar.gz';
     _id         => $modobj->{_id},
     version     => 0.06,
     path        => 'A/AY/AYRNIEU',
-    comment     => '',
+    comment     => undef,
     author      => $author,
     package     => $distname,
     dslip       => 'cdpO',
-    status      => {},
-    prereqs     => {},
+    status      => bless( {}, 'CPANPLUS::Internals::Module::Status' ),
+    #prereqs     => {}, is now in status()
     module      => $modname,
     description => 'corrupts text in various ways'
 );
@@ -110,10 +112,10 @@ $rv = $cp->details(modules => [ $modname ])->rv;
 is_deeply($rv, { $modname => {
     'Version on CPAN'	=> '0.06',
     'Version Installed'	=> $rv->{$modname}{'Version Installed'},
-    'Language Used'     => 'Perl-only, no compiler needed, should be platform independent',
-    'Interface Style'   => 'Object oriented using blessed references and/or inheritance',
-    'Support Level'     => 'Developer',
-    'Development Stage' => 'under construction but pre-alpha (not yet released)',
+    'Language Used'     => loc('Perl-only, no compiler needed, should be platform independent'),
+    'Interface Style'   => loc('Object oriented using blessed references and/or inheritance'),
+    'Support Level'     => loc('Developer'),
+    'Development Stage' => loc('under construction but pre-alpha (not yet released)'),
     'Description'       => 'corrupts text in various ways',
     'Package'           => 'Text-Bastardize-0.06.tar.gz',
     'Author'            => 'julian fondren (julian@imaji.net)'
@@ -156,14 +158,16 @@ SKIP: {
 }
 
 SKIP: {
-    skip "$modname is installed", 5 if eval "use $modname; 1";
+    skip "$modname is installed", 4 if eval "use $modname; 1";
     local $cp->error_object->{ELEVEL} = 0; # shut up
 
     $rv = $cp->files(modules => [ $modname ])->rv;
     is_deeply($rv, {$modname => 0}, 'files()');
 
     $rv = $cp->uptodate(modules => [ $modname ])->rv;
-    is_deeply($rv, {$modname => {}}, 'uptodate()');
+
+    ### will return undef when a module is not installed ###
+    is_deeply($rv, { $modname => undef }, 'uptodate()');
     is_deeply($modobj->uptodate, $rv->{$modname}, '    module method');
 
     $rv = $cp->validate(modules => [ $modname ])->rv;
@@ -173,7 +177,6 @@ SKIP: {
 $rv = $cp->distributions(authors => [ $modobj->author ])->rv;
 
 my $modinfo = {
-    shortname  => 'textb006.tgz',
     mtime      => '1999-05-13',
     'md5-ungz' => '8a148408fb4f7e434b7d3ea3671960cc',
     md5        => '0567a1beaa950b5881c706ebc3dde0d5',
@@ -194,8 +197,16 @@ SKIP: {
         unless eval { require LWP; 1 };
     skip "requires HTML::HeadParser", 2
         unless eval { require HTML::HeadParser; 1 };
+    skip "requires YAML", 2
+        unless eval { require YAML; 1 };
     skip "requires internet connectivity", 2
         unless eval { require Socket; Socket::inet_aton('testers.cpan.org') };
+    skip "requires testers.cpan.org connectivity", 2
+        unless eval { require IO::Socket::INET; IO::Socket::INET->new(
+	    PeerAddr => "testers.cpan.org:80",
+	    Proto    => 'tcp',
+	    Timeout  => 5,
+	)->connected };
 
     diag "Connecting to testers.cpan.org; this may take a while";
     $rv = $cp->reports(modules => [ $modname ], all_versions => 1)->rv;

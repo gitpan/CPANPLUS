@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/TesterGuide.pod $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #4 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 =head1 NAME
 
@@ -7,7 +7,7 @@ CPANPLUS::TesterGuide - Becoming a CPAN Tester with CPANPLUS
 
 =head1 SYNOPSIS
 
- # This an article, not a module.
+ # This is an article, not a module.
 
 =head1 DESCRIPTION
 
@@ -67,7 +67,7 @@ that made them possible.
 
 First, you need a copy of B<CPANPLUS> 0.032 or above.  I recommend the
 tarball automatically built from the I<distribution branch>, available
-at L<http://egb.elixus.org/cpanplus-dist.tar.gz>; it should contain
+at L<http://p4.elixus.org/snap/cpanplus-dist.tar.gz>; it should contain
 the latest bug-fixes and features marked as I<stable>.
 
 Since Jos's article and README already contained install instructions,
@@ -76,8 +76,9 @@ dependency detection logic in F<Makefile.PL> has been changed since
 Jos's previous article, which means when faced with this prompt:
 
  [CPAN Test reporting]
- - Mail::Send           ...failed! (needs 0.01)
- - File::Temp           ...loaded. (0.13 >= 0.01)
+ - Net::SMTP            ...loaded. (2.24 >= 0.01)
+ - IPC::Run             ...loaded. (0.74 >= 0.55)
+ - Test::Reporter       ...failed! (needs 1.13)
  ==> Do you wish to install the 1 optional module(s)? [n] 
 
 You should generally answer C<y> here, as only modules that can safely
@@ -86,7 +87,7 @@ we don't recommend it; it merely means it isn't mandatory for the
 bare-bone B<CPANPLUS> to function.
 
 For this article's purpose, you need to answer C<y> to all such
-questions, since we will be using B<LWP>, B<Mail::Send> and B<IPC::Run>
+questions, since we will be using B<LWP>, B<IPC::Run> and B<Test::Reporter>
 extensively in testing-related functions.
 
 After running F<Makefile.PL>, you should run C<make test> [3] like every
@@ -157,7 +158,8 @@ instead of taking the laborious copy-and-paste path to report it?
 
 B<CPANPLUS> has a mailing list; other modules might not.  Worse, they
 may not even have a working contact address -- maybe the author is on
-vacation.
+vacation.  (Note that this problem is somewhat alleviated by the
+CPAN Bug Tracking service at L<http://rt.cpan.org/>.)
 
 =item *
 
@@ -168,7 +170,7 @@ developers to ignore his mail completely.
 
 =item *
 
-Even after a fix was made available, and posted as a patch on the
+Even after a fix is made available, and posted as a patch on the
 mailing list, other people about to install B<CPANPLUS> 0.03 still
 have no way to find out about it beforehand.  Thus, when the same
 problem occurs again, they may forget to search in the archives,
@@ -427,7 +429,7 @@ please refer to its POD documentation for additional options.
 However, normally you won't be using it directly, as B<CPANPLUS> offers
 the F<cpansmoke> wrapper, which consolidates the I<download =E<gt> test
 =E<gt> copy buffer =E<gt> run cpantest =E<gt> file report> procedure into
-a single command:
+a single command (with F<cpantest> replaced by B<Test::Reporter>):
 
  % cpansmoke Mail::Audit Mail::SpamAssassin          # by module
  % cpansmoke Mail-Audit-2.1 Mail-SpamAssassin-2.20   # by distname
@@ -550,14 +552,6 @@ If you need to fine-tune various aspects during testing (timeout,
 prerequisite handling, etc.), please consult the source code of
 F<cpansmoke>; most tricks involved are documented in comments.
 
-Unfortunately, the process of editing and sending out reports
-remains as the only non-programmable part, since the F<cpantest>
-script doesn't exist as a module.  Although Skud has a
-B<CPAN::Test::Reporter> on CPAN, its format is sadly out-of-sync
-with F<cpantest>, and may generate invalid reports (as of version
-C<0.02>).  Any offers to back-port the F<cpantest> script into
-that module will be greatly appreciated.
-
 =head2 Conclusion
 
 As I<purl> said, "CPAN is a cultural mechanism." [5] It is not an
@@ -565,14 +559,14 @@ abstraction filled with code, but rather depends on people caring enough
 to share code, as well as sharing useful feedback in order to improve
 each other's code.
 
-With the advent of bug-tracking service [6] and automatic testing,
-the social collaboration aspect of CPAN is greatly extended, and could
-be developed further into a full-featured Tinderbox system, or linked
-with each module's source-control repositories.
+With the advent of bug-tracking services [6] and automatic testing,
+the social collaboration aspect of CPAN has been greatly extended, and
+could be developed further into a full-featured Tinderbox system, or
+linked with each module's source-control repositories.
 
 Also, since B<CPANPLUS> is designed to accommodate different package
 formats and distribution systems, it provides a solid foundation for
-projects like B<Module::Build> (C<make>-less installs), B<NAPC>
+projects like B<Module::Build> (C<make>-less installation), B<NAPC>
 (distributed CPAN) and B<ExtUtils::AutoInstall> (feature-based
 dependency probing)... the possibilities are staggering, and you
 certainly won't be disappointed in finding an interesting project to

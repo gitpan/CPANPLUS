@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #5 $ $Change: 3340 $ $DateTime: 2003/01/08 21:46:24 $
+# $Revision: #7 $ $Change: 7725 $ $DateTime: 2003/08/26 13:46:16 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -80,14 +80,18 @@ BEGIN {
 }
 
 use CPANPLUS::Configure::Setup;
-use CPANPLUS::Backend;          # setup loads it anyway...
+#use CPANPLUS::Backend;          # setup loads it anyway...
 use CPANPLUS::Error;
 
 use Data::Dumper;
 use Exporter;
 use FileHandle ();
 
-use vars qw/$AUTOLOAD/;
+use vars qw/$AUTOLOAD $VERSION/;
+
+### because of a wonky bug in EU::MM, see RT ticket:
+### https://rt.cpan.org/Ticket/Display.html?id=3037
+$VERSION = $CPANPLUS::Internals::VERSION;
 
 my $conf = {};
 
@@ -103,11 +107,11 @@ my @types = qw(
 my %subtypes = (
     conf    => [qw( cpantest debug flush force lib makeflags
                     makemakerflags md5 prereqs shell storable
-                    verbose dist_type signature skiptest
+                    verbose format signature skiptest
                 )],
     _build  => [qw( curl ftp gzip lynx make ncftp ncftpget pager shell
                     tar unzip wget autdir base moddir startdir targetdir
-                    shell autobundle autobundle_prefix
+                    shell autobundle autobundle_prefix sudo rsync
                 )],
     _ftp    => [qw( auth base dslip email mod passive proto source
                     urilist
@@ -200,7 +204,8 @@ sub AUTOLOAD {
     #print "$type, $action\n";
 
     ## we don't work with invalid types
-    return 0, unless grep {/^$type$/} @types;
+    (warn loc("Invalid method type: '%1'", $type), return 0)
+                unless grep { $type eq $_ } @types;
 
     #return $self->hosts([@_]), if $type eq 'hosts';
 
@@ -226,7 +231,8 @@ sub AUTOLOAD {
         my $types = join ':', @{$subtypes{$type}};
 
         ## if even one arg type is invalid, we abort
-        map { return 0, unless $types =~ m/^$_:|:$_:|:$_$/ } keys %{$args};
+        map { (warn loc("Invalid method type: '%1'", $type), return 0)
+                unless $types =~ m/^$_:|:$_:|:$_$/ } keys %{$args};
 
         ## load up the passed settings
         map { $conf->{$type}->{$_} = $args->{$_} } keys %{$args};
@@ -235,6 +241,7 @@ sub AUTOLOAD {
 
     } #if
 
+    warn loc("Unknown error...");
     return 0; # must have failed - but I hate defaults
 
 } #AUTOLOAD

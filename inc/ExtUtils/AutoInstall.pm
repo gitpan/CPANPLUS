@@ -1,8 +1,8 @@
 # $File: //depot/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #7 $ $Change: 7682 $ $DateTime: 2003/08/23 18:12:25 $
 
 package ExtUtils::AutoInstall;
-$ExtUtils::AutoInstall::VERSION = '0.44';
+$ExtUtils::AutoInstall::VERSION = '0.52';
 
 use strict;
 
@@ -15,23 +15,26 @@ ExtUtils::AutoInstall - Automatic install of dependencies via CPAN
 
 =head1 VERSION
 
-This document describes version 0.44 of B<ExtUtils::AutoInstall>,
-released December 25, 2002.
+This document describes version 0.52 of B<ExtUtils::AutoInstall>,
+released May 16, 2003.
 
 =head1 SYNOPSIS
 
 In F<Makefile.PL>:
 
-    # ExtUtils::AutoInstall Bootstrap Code, version 5.
-    BEGIN{my$p='ExtUtils::AutoInstall';my$v=0.40;eval"use $p $v;1
-    "or do{my$e=$ENV{PERL_EXTUTILS_AUTOINSTALL};(!defined($e)||$e
-    !~m/--(?:default|skip|testonly)/and-t STDIN or eval"use Ext".
-    "Utils::MakeMaker;WriteMakefile('PREREQ_PM'=>{'$p',$v});1"and
-    exit)and print"==> $p $v required. Install it from CPAN? [Y".
-    "/n] "and<STDIN>!~/^n/i and print"*** Installing $p\n"and do{
-    eval{require CPANPLUS;CPANPLUS::install $p};eval"use $p $v;1"
-    or eval{require CPAN;CPAN::install$p};eval"use $p $v;1"or die
-    "*** Please install $p $v manually from cpan.org first.\n"}}}
+    # ExtUtils::AutoInstall Bootstrap Code, version 7.
+    BEGIN{my$p='ExtUtils::AutoInstall';my$v=0.45;$p->VERSION||0>=$v
+    or+eval"use $p $v;1"or+do{my$e=$ENV{PERL_EXTUTILS_AUTOINSTALL};
+    (!defined($e)||$e!~m/--(?:default|skip|testonly)/and-t STDIN or
+    eval"use ExtUtils::MakeMaker;WriteMakefile(PREREQ_PM=>{'$p',$v}
+    );1"and exit)and print"==> $p $v required. Install it from CP".
+    "AN? [Y/n] "and<STDIN>!~/^n/i and print"*** Installing $p\n"and
+    do{if (eval '$>' and lc(`sudo -V`) =~ /version/){system('sudo',
+    $^X,"-MCPANPLUS","-e","CPANPLUS::install $p");eval"use $p $v;1"
+    ||system('sudo', $^X, "-MCPAN", "-e", "CPAN::install $p")}eval{
+    require CPANPLUS;CPANPLUS::install$p};eval"use $p $v;1"or eval{
+    require CPAN;CPAN::install$p};eval"use $p $v;1"||die"*** Please
+    manually install $p $v from cpan.org first...\n"}}}
 
     # optional pre-install handler; takes $module_name and $version
     # sub MY::preinstall  { return 1; }	# return false to skip install
@@ -46,6 +49,7 @@ In F<Makefile.PL>:
 	-config		=> {
 	    make_args	=> '--hello'	# option(s) for CPAN::Config
 	    force	=> 1,		# pseudo-option to force install
+	    do_once	=> 1,		# skip previously failed modules
 	},
 	-core		=> [		# core modules; may also be 'all'
 	    Package0	=> '',		# any version would do
@@ -97,6 +101,10 @@ Using F<make> (or F<nmake>):
 B<ExtUtils::AutoInstall> lets module writers to specify a more
 sophisticated form of dependency information than the C<PREREQ_PM>
 option offered by B<ExtUtils::MakeMaker>.
+
+B<Module::Install> users should consult L<Module::Install::AutoInstall>
+for an alternative (and arguably more elegant) syntax to specify
+features, as demonstrated by this module's own F<Makefile.PL>.
 
 =head2 Prerequisites and Features
 
@@ -286,7 +294,7 @@ sub _init {
 	    $Config = [ split(',', $1) ];
 	}
 	elsif ($arg =~ /^--installdeps=(.*)$/) {
-	    __PACKAGE__->install($Config, split(',', $1));
+	    __PACKAGE__->install($Config, @Missing = split(/,/, $1));
 	    exit 0;
 	}
 	elsif ($arg =~ /^--default(?:deps)?$/) {
@@ -416,15 +424,19 @@ sub import {
 
     _check_lock(); # check for $UnderCPAN
 
-    print "*** Dependencies will be installed the next time you type 'make'.\n"
-	if (@Missing and not ($CheckOnly or $UnderCPAN));
+    if (@Missing and not ($CheckOnly or $UnderCPAN)) {
+	require Config;
+	print "*** Dependencies will be installed the next time you type '$Config::Config{make}'.\n";
+	# make an educated guess of whether we'll need root permission.
+	print "    (You may need to do that as the 'root' user.)\n" if eval '$>';
+    }
     print "*** $class configuration finished.\n";
 
     chdir $cwd;
 
     # import to main::
     no strict 'refs';
-    *{'main::WriteMakefile'} = \&Write;
+    *{'main::WriteMakefile'} = \&Write if caller(0) eq 'main';
 }
 
 # CPAN.pm is non-reentrant, so check if we're under it and have no CPANPLUS
@@ -473,6 +485,20 @@ sub install {
 
     return unless _connected_to('cpan.org');
 
+    my %args = @config;
+    my %failed;
+    local *FAILED;
+    if ($args{do_once} and open(FAILED, '.autoinstall.failed')) {
+	while (<FAILED>) { chomp; $failed{$_}++ }
+	close FAILED;
+
+	my @newmod;
+	while (my ($k, $v) = splice(@modules, 0, 2)) {
+	    push @newmod, ($k => $v) unless $failed{$k};
+	}
+	@modules = @newmod;
+    }
+
     if (_has_cpanplus()) {
 	_install_cpanplus(\@modules, \@config);
     }
@@ -487,7 +513,12 @@ sub install {
 	if (defined(_version_check(_load($pkg), $ver))) {
 	    push @installed, $pkg;
 	}
+	elsif ($args{do_once} and open(FAILED, '>> .autoinstall.failed')) {
+	    print FAILED "$pkg\n";
+	}
     }
+
+    close FAILED if $args{do_once};
 
     return @installed;
 }
@@ -567,6 +598,8 @@ sub _install_cpan {
     my $installed = 0;
     my %args;
 
+    require CPAN; CPAN::Config->load;
+
     return unless _can_write(MM->catfile($CPAN::Config->{cpan_home}, 'sources'));
 
     # if we're root, set UNINST=1 to avoid trouble unless user asked for it.
@@ -583,8 +616,6 @@ sub _install_cpan {
 	    if $opt =~ /^force$/; # pseudo-option
 	$CPAN::Config->{$opt} = $arg;
     }
-
-    require CPAN; CPAN::Config->load;
 
     while (my ($pkg, $ver) = splice(@modules, 0, 2)) {
 	MY::preinstall($pkg, $ver) or next if defined &MY::preinstall;
@@ -690,13 +721,36 @@ sub _can_write {
     my $path = shift;
     mkdir ($path, 0755) unless -e $path;
 
-    return (
-	-w $path or _prompt(qq(
+    require Config;
+    return 1 if -w $path and -w $Config::Config{sitelib};
+
+    print << ".";
 *** You are not allowed to write to the directory '$path';
     the installation may fail due to insufficient permissions.
+.
+
+    if (eval '$>' and lc(`sudo -V`) =~ /version/ and _prompt(qq(
+==> Should we try to re-execute the autoinstall process with 'sudo'?), 'y'
+    ) =~ /^[Yy]/) {
+	# try to bootstrap ourselves from sudo
+	print << ".";
+*** Trying to re-execute the autoinstall process with 'sudo'...
+.
+        my $missing = join(',', @Missing);
+        my $config  = join(',',
+	    UNIVERSAL::isa($Config, 'HASH') ? %{$Config} : @{$Config}
+        ) if $Config;
+
+	return unless system('sudo', $^X, $0, "--config=$config", "--installdeps=$missing");
+
+	print << ".";
+*** The 'sudo' command exited with error!  Resuming...
+.
+    }
+
+    return _prompt(qq(
 ==> Should we try to install the required module(s) anyway?), 'n'
-	) =~ /^[Yy]/
-    );
+    ) =~ /^[Yy]/
 }
 
 # load a module and return the version it reports
@@ -741,18 +795,7 @@ sub _version_check {
 # nothing; this usage is deprecated.
 sub main::PREREQ_PM { return {}; }
 
-# a wrapper to ExtUtils::MakeMaker::WriteMakefile
-sub Write {
-    require Carp;
-    Carp::croak "WriteMakefile: Need even number of args" if @_ % 2;
-
-    if ($CheckOnly) {
-	print << ".";
-*** Makefile not written in check-only mode.
-.
-	return;
-    }
-
+sub _make_args {
     my %args = @_;
 
     $args{PREREQ_PM} = { %{$args{PREREQ_PM} || {} }, @Existing, @Missing }
@@ -779,8 +822,25 @@ sub Write {
 
     $PostambleActions = (
 	$missing ? "\$(PERL) $0 --config=$config --installdeps=$missing"
-		 : "\$(NOOP)"
+		 : "\@\$(NOOP)"
     );
+
+    return %args;
+}
+
+# a wrapper to ExtUtils::MakeMaker::WriteMakefile
+sub Write {
+    require Carp;
+    Carp::croak "WriteMakefile: Need even number of args" if @_ % 2;
+
+    if ($CheckOnly) {
+	print << ".";
+*** Makefile not written in check-only mode.
+.
+	return;
+    }
+
+    my %args = _make_args(@_);
 
     no strict 'refs';
 
@@ -803,12 +863,14 @@ sub postamble {
     return << ".";
 
 config :: installdeps
+\t\@\$(NOOP)
 
 checkdeps ::
-	\$(PERL) $0 --checkdeps
+\t\$(PERL) $0 --checkdeps
 
 installdeps ::
-	$PostambleActions
+\t$PostambleActions
+
 .
 
 }
@@ -820,7 +882,7 @@ __END__
 =head1 SEE ALSO
 
 L<perlmodlib>, L<ExtUtils::MakeMaker>, L<Sort::Versions>, L<CPAN>,
-L<CPANPLUS>
+L<CPANPLUS>, L<Module::Install>
 
 =head1 ACKNOWLEDGEMENTS
 
@@ -837,7 +899,7 @@ Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>
 
 =head1 COPYRIGHT
 
-Copyright 2001, 2002 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
+Copyright 2001, 2002, 2003 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
 
 This program is free software; you can redistribute it and/or
 modify it under the same terms as Perl itself.

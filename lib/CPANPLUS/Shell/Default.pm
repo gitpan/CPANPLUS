@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #9 $ $Change: 3443 $ $DateTime: 2003/01/12 11:20:41 $
+# $Revision: #15 $ $Change: 7797 $ $DateTime: 2003/08/30 17:13:07 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -25,12 +25,13 @@ BEGIN {
 use CPANPLUS::Shell;
 use CPANPLUS::Backend;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Term;
+use CPANPLUS::Tools::Check qw[check];
 
 use Cwd;
 use Term::ReadLine;
 use Data::Dumper;
 use FileHandle;
-#use File::Spec;
 
 ### our command set ###
 my $cmd = {
@@ -117,7 +118,7 @@ sub _input_loop {
     $self->format("%5s %-50s %8s %-10s\n");
 
     my $term = $self->term;
-    my $cache;      # results of previous search
+    my $cache = [];      # results of previous search
     my $normal_quit;
 
     ### somehow it's caching previous input ###
@@ -144,7 +145,7 @@ sub _input_loop {
             $key = lc($1);
 
             ### grab command line options like --no-force and --verbose ###
-            ($input, $options) = $self->_parse_options($input);
+            ($options,$input) = $term->parse_options($input);
         }
 
 
@@ -267,6 +268,7 @@ sub _input_loop {
 
             ### this option is just for the o command, not for the backend methods ###
             my $long = delete $options->{long} if defined $options->{long};
+            delete $options->{short}; # backward compatibility
 
             my $inst = $cpan->installed( %$options, modules => @list ? \@list : undef );
 
@@ -274,7 +276,7 @@ sub _input_loop {
                 print loc("Could not find installation files for all the modules"), "\n";
                 return;
             }
-            my $href = $cpan->$method( %$options, modules => [keys %{$inst->rv}] );
+            my $href = $cpan->$method( %$options, modules => [sort keys %{$inst->rv}] );
 
             my $res = $href->rv;
             $cache = [ undef ]; # most carbon-based life forms count from 1
@@ -304,7 +306,7 @@ sub _input_loop {
                 my $have    = $self->_format_version( version => $res->{$module}->{version} );
                 my $can     = $self->_format_version( version => $version );
 
-                my $local_format = "%5s %8s %8s %-44s %-10s\n";
+                my $local_format = "%5s %10s %10s %-40s %-10s\n";
 
                 printf $local_format, $_, ($have, $can, $module, $author);
             }
@@ -421,15 +423,20 @@ sub _input_loop {
             my $status = $href->rv;
 
             for my $key ( sort keys %$status ) {
-                print $status->{$key}->{'install'}
-                      ? (loc("Successfully %tense(%1,past) %2", $target, $key), "\n")
-                      : (loc("Error %tense(%1,present) %2", $target, $key), "\n")
+
+                print $status->{$key}
+                    ? (loc("Successfully %tense(%1,past) %2", $target, $key), "\n")
+                    : (loc("Error %tense(%1,present) %2", $target, $key), "\n" );
+
             }
 
-            print $href->ok
-                    ? (loc("All modules %tense(%1,past) successfully", $target), "\n")
-                    : (loc("Problem %tense(%1,present) one or more modules", $target), "\n")
-
+            if( $href->ok and (keys %{$href->rv || {}} == @list)) {
+                print loc("All modules %tense(%1,past) successfully", $target), "\n";
+            } else {
+                print loc("Problem %tense(%1,present) one or more modules", $target), "\n";
+                warn loc("*** You can view the complete error buffer by pressing '%1' ***\n", 'p')
+                            unless $cpan->configure_object->get_conf('verbose');
+            }
 
         ### d is for downloading modules.. can take multiple input like i does.
         ### so this works: d LWP POE
@@ -669,19 +676,14 @@ sub _input_loop {
                 my $mods = $answer->rv;
                 my ($name, $obj) = each %$mods;
 
-                my $dir = $obj->status->{extract};
+                my $dir = $obj->status->extract;
 
-                unless( $dir ) {
-                    my $href = $cpan->fetch(
-                        fetchdir    => $cpan->configure_object->_get_build('startdir'),
-                        modules     => [ $obj ],
-                    );
+                unless( defined $dir ) {
+                    $obj->fetch;
                     $dir = $obj->extract();
                 }
 
-                #$dir = $obj->status->{extract};
-
-                unless( $dir ) {
+                unless( defined $dir ) {
                     print loc("Could not determine where %1 was extracted to", $mod), "\n";
                     next;
                 }
@@ -872,10 +874,20 @@ sub _complete {
 ### choose modules - either as digits (choose from $cache), or by name
 ### return the $key property of module object, or itself if there's no $key
 sub _select_modules {
-    my ($self, %args) = @_;
-    my ($input, $prompt, $cache, $key) = @args{qw|input prompt cache key|};
-    my $cpan = $self->{_backend};
-    my $modtree = $cpan->_module_tree;
+    my ($self, %hash) = @_;
+    my $modtree = $self->{_backend}->module_tree;
+
+    my $tmpl = {
+        input   => { required => 1 },
+        cache   => { required => 1, default => [], strict_type => 1 },
+        prompt  => { },
+        key     => { },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my ($input, $prompt, $cache, $key) = @{$args}{qw|input prompt cache key|};
+
     my @ret;
 
     ### expand .. in $input
@@ -933,13 +945,20 @@ sub _select_modules {
 
 sub _format_version {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $version = $args{'version'} or return 0;
+    my $tmpl = {
+        version => { default => 0 }
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+    my $version = $args->{version};
 
     ### fudge $version into the 'optimal' format
     $version = sprintf('%3.4f', $version);
     $version = '' if $version == '0.00';
+
+    ### do we have to use $&? speed hit all over the module =/ --kane
     $version =~ s/(00?)$/' ' x (length $&)/e;
 
     return $version;
@@ -948,30 +967,48 @@ sub _format_version {
 
 
 ### asks whether to report testing result or not
+### XXX should probably be moved then! XXX
 sub _ask_report {
     my $obj     = shift;
-    my %args    = @_;
+    my %hash    = @_;
 
     ### either it's called from Internals, or from the shell directly
     ### although the latter is unlikely...
     my $self   = $obj->{_shell} || $obj;
-    my $dist   = $args{dist};
-    my $grade  = $args{grade};
 
-    return $self->_ask_yn(
-        prompt  => loc("Report %1's testing result (%2)? [y/N]: ", $dist, uc($grade)),
-        default => 'n',
-    );
+
+    my $tmpl = {
+        grade   => { required => 1, allow => qr/^\w+$/ },
+        dist    => { required => 1, default => '', strict_type => 1 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+
+    return 'n' unless UNIVERSAL::can($self->term, 'ask_yn');
+    return $self->term->ask_yn(
+                        prompt  =>  loc("Report %1's testing result (%2)?: ",
+                                        $args->{dist}, uc($args->{grade})
+                                    ),
+                        default => 'n',
+            );
 }
 
 
 ### dumps a message stack
 sub _print_stack {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $stack = $args{'stack'};
-    my $file = $args{'file'};
+    my $tmpl = {
+        stack   => { required => 1 },
+        file    => { default => '' },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $stack = $args->{'stack'};
+    my $file = $args->{'file'};
 
     if ($file) {
         my $fh = new FileHandle;
@@ -1003,36 +1040,6 @@ sub _expand_inc {
         print qq[Added $lib to your \@INC\n];
     }
     return 1;
-}
-
-sub _parse_options {
-    my $self    = shift;
-    my $input   = shift;
-
-    my $return = {};
-
-    ### there's probably a more elegant way to do this... ###
-    while ( $input =~ s/(--[\w]+=("|').+?\2)\s*//   or
-            $input =~ s/(--[\w]+=\S+)\s*//          or
-            $input =~ s/(--[-\w]+)\s*//
-    ) {
-        my $match = $1;
-
-        if( $match =~ /^--(\w+)=(?:"|')(.+?)('|")$/ ) {
-            $return->{$1} = $2;
-
-        } elsif( $match =~ /^--no-?(\w+)$/i ) {
-            $return->{$1} = 0;
-
-        } elsif ( $match =~ /^--(\w+)$/ ) {
-            $return->{$1} = 1;
-
-        } else {
-            print qq[I do not understand option "$match"\n];
-        }
-    }
-
-    return ($input,$return);
 }
 
 ### shows help information

@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # $File: //depot/cpanplus/dist/t/1-basic.t $
-# $Revision: #3 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
+# $Revision: #4 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 use strict;
 use lib 't/lib';

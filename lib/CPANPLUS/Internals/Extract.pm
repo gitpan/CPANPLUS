@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #6 $ $Change: 7741 $ $DateTime: 2003/08/27 20:36:54 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -13,39 +13,54 @@ package CPANPLUS::Internals::Extract;
 
 use strict;
 use File::Path ();
+use Data::Dumper;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Check qw[check];
+
 
 BEGIN {
     use vars        qw($VERSION);
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
-### workaround to prevent Archive::Tar from setting uid, which
-### is a potential security hole. -autrijus
-BEGIN {
-    no strict 'refs';
-    *Archive::Tar::chown = sub {};
-}
-
 sub _extract {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
     ### check if we got a specific file argument,
     ### or if we're trying to extract a package (module data)
     ### no argument supplied, we should return
     #my $file = $args{'file'} || $args{'data'}->{'package'} || return 0;
 
+
+    my $tmpl = {
+        file        => { default => '' },
+        perl        => { default => $conf->_get_build('perl') || $^X },
+        force       => { default => $conf->get_conf('force') },
+        verbose     => { default => $conf->get_conf('verbose') },
+        extractdir  => { default => '' },
+        data        => { allow => sub { ref $_[1] &&
+                                        $_[1]->isa('CPANPLUS::Internals::Module')
+                                  } },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    unless( $args->{file} or $args->{data} ) {
+        $err->trap( error => 'Do not know what file you want me to extract!' );
+        return undef;
+    }
+
     ### hack to allow CPAN style dir structure
-    my $file = $args{file}
+    my $file = $args->{file}
             || File::Spec->catfile(
                    $conf->_get_build('base'),
                    $conf->_get_ftp('base'),
-                   $args{data}->{path},
-                   $args{data}->{package},
+                   $args->{data}->path,
+                   $args->{data}->package,
                );
 
     unless( -s $file ) {
@@ -53,19 +68,22 @@ sub _extract {
         return 0;
     }
 
-    my $force = $args{force};
-    $force = $conf->get_conf('force') unless defined $force;
-
-    my $perl = $args{perl} || $conf->_get_build('perl') || $^X;
+    my $force   = $args->{force};
+    my $perl    = $args->{perl};
+    my $verbose = $args->{verbose};
 
     ### we already extracted this file once this run.
     ### so return the dir, unless force is in effect -kane
-    if ( my $loc = $self->{_extracted}->{$file} and !$force ) {
+    my $loc =   $self->{_extracted}->{$file} ||
+                (ref $args->{data} ? $args->{data}->status->extract : '');
+
+
+    if ( $loc and !$force ) {
         $err->inform(
-                msg     =>  loc("Already extracted '%1' to '%2'. Won't extract again without force", $file, $loc),
-                quiet   => !$conf->get_conf('verbose'),
+                msg     => loc("Already extracted '%1' to '%2'. Won't extract again without force", $file, $loc),
+                quiet   => !$verbose,
         );
-        return $self->{_extracted}->{$file};
+        return $loc;
     }
 
     ### clean up path - File::Spec->catfile assumes the last arg is *only* a file but we
@@ -75,7 +93,7 @@ sub _extract {
     my $perl_version = $self->_perl_version( perl => $perl );
 
     ### chdir to the cpanplus build base directory
-    my $base = $args{'extractdir'}
+    my $base = $args->{'extractdir'}
             || File::Spec->catdir(
                             $conf->_get_build('base'),
                             $perl_version,
@@ -88,7 +106,7 @@ sub _extract {
         unless( $self->_mkdir( dir => $base ) ) {
             $err->inform(
                 msg   => loc("Could not create %1", $base),
-                quiet => !$conf->get_conf('verbose'),
+                quiet => !$verbose,
             );
             return 0;
         }
@@ -134,26 +152,48 @@ sub _extract {
 
 sub _untar {
     my $self = shift;
-    my %args = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $file = $args{'file'};
+    my %hash = @_;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+            file    => { required => 1, allow => sub { -e pop() && -s _ } },
+            verbose => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $file    = $args->{'file'};
+    my $verbose = $args->{'verbose'};
 
     my $dir;
 
     ### check prerequisites
-    ### maybe we should check that at top of module?
-    my $use_list = { 'Archive::Tar' => '0.0' };
-
-    my $verbose = $conf->get_conf('verbose');
+    my $use_list    = { 'Archive::Tar' => '0.0' };
     my $have_module = $self->_can_use( modules => $use_list );
-
 
     ### have to use eval here; Tar.pm has all kinds of bugs we can't trap
     ### beforehand; even the latest version breaks on some debian systems.
     if ( $have_module ) { eval {
+    
+        ### workaround to prevent Archive::Tar from setting uid, which
+        ### is a potential security hole. -autrijus
+        ### have to do it here, since A::T needs to be /loaded/ first ###
+        {   no strict 'refs'; local $^W; local $SIG{__WARN__} = sub {};
+            
+            ### older versions of archive::tar <= 0.23
+            *Archive::Tar::chown = sub {};
+
+            eval {
+                require Archive::Tar::Constant;
+                *Archive::Tar::Constant::CAN_CHOWN = sub { 0 };
+            }
+        }    
+        
+        ### for version of archive::tar > 1.04
+        local $Archive::Tar::Constant::CHOWN = 0;
+        
         $err->inform(
             msg     => "Untarring $file",
             quiet   => !$verbose
@@ -209,7 +249,10 @@ sub _untar {
         ### use 0.22.. and yes, that does suck. hopefully a new(er) release of AS
         ### will actually have C::Zlib 1.13 and we can upgrade.
         ### (should ask brev) - Kane
-    } }
+
+    }; # end eval
+        $err->trap( error => loc("An error occurred extracting %1: %2", $args->{file}, $@) ) if $@;
+    } # end if
 
     if ( !$dir and my ($tar, $gzip) = $conf->_get_build( qw|tar gzip| ) ) {
         ### either Archive::Tar failed, or the user doesn't have it installed
@@ -259,15 +302,22 @@ sub _untar {
 
 sub _unzip {
     my $self = shift;
-    my %args = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $file = $args{'file'};
+    my %hash = @_;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+            file    => { required => 1, allow => sub { -e pop() && -s _ } },
+            verbose => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $file    = $args->{'file'};
+    my $verbose = $args->{'verbose'};
 
     my $dir;
-    my $verbose = $conf->get_conf('verbose'); # avoid multiple calls
 
     ### check prerequisites
     ### maybe we should check that at top of module?
@@ -357,10 +407,21 @@ sub _unzip {
 
 sub _gunzip {
     my $self = shift;
-    my %args = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my %hash = @_;
+
+    my $tmpl = {
+            file => { required => 1, allow => sub { -e pop() && -s _ } },
+            name => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $file = $args->{'file'};
+    my $name = $args->{'verbose'};
+
 
     my $use_list = { 'Compress::Zlib' => '0.0' };
 
@@ -368,30 +429,25 @@ sub _gunzip {
     if ($self->_can_use(modules => $use_list)) {
 
         $err->inform(
-            msg   => loc("Gunzipping %1", $args{'file'}),
+            msg   => loc("Gunzipping %1", $file),
             quiet => !$conf->get_conf('verbose')
         );
 
-        ### gzip isn't catching the error properly if the file
-        ### is non-existent apparently... -Kane
-        unless ( -e $args{'file'} ) {
-            $err->trap( error => loc("Can't find file %1", $args{'file'}) );
-            return 0;
-        }
-
-        my $gz = Compress::Zlib::gzopen($args{'file'}, 'rb');
+        my $gz = Compress::Zlib::gzopen($file, 'rb');
 
         unless( $gz ) {
-            $err->trap( error => loc("unable to open %1: %2", $args{'file'}, $Compress::Zlib::gzerrno) );
+            $err->trap(
+                    error => loc("unable to open %1: %2", $file, $Compress::Zlib::gzerrno)
+            );
             return 0;
         }
 
         my $buffer;
 
         ### check if we have an output file to print to ###
-        if ($args{'name'}) {
+        if ($name) {
             my $fh;
-            unless( $fh = FileHandle->new(">$args{name}") ) {
+            unless( $fh = FileHandle->new(">$name") ) {
                 $err->trap( error => loc("File creation failed: %1", $!) );
                 return 0;
             }
@@ -412,7 +468,7 @@ sub _gunzip {
         my $str = '';
 
         unless( $self->_run(
-            command => [ $gzip, '-cdf', $args{file} ],
+            command => [ $gzip, '-cdf', $file ],
             buffer  => \$str,
             verbose => 0,
         ) ) {
@@ -421,9 +477,9 @@ sub _gunzip {
         }
 
         ### check if we have an output file to print to ###
-        if ($args{'name'}) {
+        if ($name) {
             my $fh;
-            unless( $fh = FileHandle->new(">$args{name}") ) {
+            unless( $fh = FileHandle->new(">$name") ) {
                 $err->trap( error => loc("File creation failed: %1", $!) );
                 return 0;
             }

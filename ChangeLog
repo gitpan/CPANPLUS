@@ -1,7 +1,49 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #8 $ $Change: 3446 $ $DateTime: 2003/01/12 11:33:46 $
+# $Revision: #9 $ $Change: 7704 $ $DateTime: 2003/08/25 18:06:00 $
 
-[Changes for 0.042 - January 12, 2002]
+[Changes for 0.043 - August 31, 2003]
+
+This long-awaited version is mainly a bug fix version, and is likely
+to be the final one in the 0.04x series, since new developments are
+all directed at the 0.050 branch.
+
+* New Features
+
+ - Supports "sudo" during install, so users will not need to run
+   cpanp as root anymore.
+
+ - Ships with a MIRRORED.BY just in case ftp.cpan.org is down.
+
+ - Supports Archive::Tar 1.0 and later.
+
+ - Supports testers.cpan.org's machine-readable metadata in YAML.
+
+ - Supports detached signatures in the form of Foo-Bar-0.01.tar.gz.sig.
+
+* Bug fixes
+
+ - Ownership in files extracted by Archive::Tar could be
+   inconsistent when running as root.
+
+ - In messages, singular/plural handling via %quant() was broken.
+
+ - Many bugfixes uncovered by hash randomisation; in particular,
+   the build order for dependencies are now guaranteed to happen
+   in alphabetical order.
+
+ - Some versions of "curl" do not support --remote-time uption, 
+   caused spurious error messages.
+
+ - Multiple instances of CPANPLUS::Backend objects used to cause
+   referential corruptions in storable images.
+
+ - A number of ommisions and typos in CPANPLUS::TesterGuide
+   was found and fixed.
+
+ - t/1-basic.t used to fail when the user refuses to run the
+   first-time setup.  It will not be run now.
+   
+[Changes for 0.042 - January 12, 2003]
 
 This version fixed a significant number of bugs uncovered by 0.041,
 as well as integrating the Test::Reporter support from the -devel
@@ -33,7 +75,10 @@ branch.
 
  - 'make install' was skipping reports even if requested. (Richard Soderberg)
 
-[Changes for 0.041 - January 5, 2002]
+ - 'o --short' is now made the default; to get the original (verbose)
+   output, use 'o --long'.
+
+[Changes for 0.041 - January 5, 2003]
 
 This "Happy New Year!" edition brought in numerous bugfixes and the
 French translation.

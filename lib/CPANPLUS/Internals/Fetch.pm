@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #7 $ $Change: 3421 $ $DateTime: 2003/01/11 12:14:25 $
+# $Revision: #9 $ $Change: 7692 $ $DateTime: 2003/08/24 09:50:27 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###
@@ -15,6 +15,7 @@ use strict;
 use FileHandle;
 use Data::Dumper;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Check qw[check];
 
 BEGIN {
     use vars        qw( $VERSION );
@@ -24,10 +25,9 @@ BEGIN {
 ### method to download a file from CPAN
 sub _fetch {
     my $self = shift;
-    my %args = @_;
-
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
     ### test for Backend->flush
     ###print "this is methods: ", Dumper $self->{_methods};
@@ -46,28 +46,43 @@ sub _fetch {
     ###
     ### -jmb
 
-    my ($path, $remote_path);
+    my $tmpl = {
+        file        => { default => '' },
+        dir         => { default => '' },
+        fetchdir    => { default => '' },
+        force       => { default => $conf->get_conf('force') },
+        verbose     => { default => $conf->get_conf('verbose') },
+        data        => { allow => sub { ref $_[1] &&
+                                          $_[1]->isa('CPANPLUS::Internals::Module')
+                                      } },
+    };
 
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose = $args->{verbose};
+    my $force   = $args->{force};
+
+    my $remote_path;
     ### get the file name and remote path
-
-    if ($args{data}) {
+    if (my $modobj = $args->{data}) {
         ### they gave us a module 'object'
         $remote_path = File::Spec::Unix->catfile(
                           $conf->_get_ftp('base'),
-                          $args{data}->{path},
-                          $args{data}->{package},
+                          $modobj->path,
+                          $modobj->package,
                       );
 
     } else {
         ### no module, must 'build' our own
-        $remote_path = File::Spec::Unix->catfile($args{dir}, $args{file});
+        $remote_path = File::Spec::Unix->catfile( $args->{dir}, $args->{file} );
     }
 
     ### with no remote path we can't really expect to fetch anything!
     unless ($remote_path) {
         $err->inform(
             msg   => loc("No remote file given to download!"),
-            quiet => !$conf->get_conf('verbose')
+            quiet => !$verbose
         );
         return 0;
     }
@@ -76,11 +91,11 @@ sub _fetch {
     ### ($args{file} and $args{fetchdir} will always override)
     ### the default local path will now look like remote - we 'mirror' CPAN -jmb
 
-    my $local_path = $args{fetchdir}
+    my $local_path = $args->{fetchdir}
                   || File::Spec->catdir(
                          $conf->_get_build('base'),
                          $conf->_get_ftp('base'),
-                         $args{data}->{path},
+                         $args->{data}->path,
                      );
 
     ### must insure that this directory exists or we will get errors later
@@ -94,10 +109,11 @@ sub _fetch {
         }
     }
 
-    my $local_file = $args{file} || $args{data}->{package};
-    #my $local_file = $args{file} || $args{data}->{path};
+    my $local_file = $args->{file} || $args->{data}->package;
 
-    $path->{local} = File::Spec->catfile($local_path, $local_file);
+    my $path = {
+        local => File::Spec->catfile($local_path, $local_file)
+    };
 
     ### no sense in dl'ing the file if we already have it - unless you force
     ### BUG HERE - tried to delete my root-dir (d:/cpandevel) when updating sources
@@ -107,9 +123,6 @@ sub _fetch {
     ### perhaps we should return in this case?
     ### I had assumed you may have passed the file in $args{fetchdir} -jmb
     if (-e $path->{local}) {
-        my $force = $args{force};
-        $force = $conf->get_conf('force') unless defined $force;
-
         if ($force) {
 
             ### on at least two of the _*_get methods an existing file will
@@ -117,18 +130,18 @@ sub _fetch {
             unlink $path->{local}
                 or $err->inform(
                        msg   => loc("Could not delete %1, some methods may fail to force a download", $path->{local}),
-                       quiet => !$conf->get_conf('verbose'),
+                       quiet => !$verbose
                    );
         } else {
 
             ### the file exists and you didn't force - we return the old version
             $err->inform(
                 msg   => loc("Already downloaded %1, won't download again without force", $path->{local}),
-                quiet => !$conf->get_conf('verbose'),
+                quiet => !$verbose,
             );
 
             ### store this info in the object if we got an object ###
-            if ($args{data} ) { $args{data}->{status}->{fetch} = $path->{local} }
+            if ($args->{data}) { $args->{data}->status->fetch( $path->{local} ) }
 
             return $path->{local};
         }
@@ -139,31 +152,35 @@ sub _fetch {
         http => [ qw|lwp wget curl lynx| ],
         ftp  => [ qw|lwp netftp ncftpget wget curl lynx ftp ncftp| ],
         file => [ qw|lwp curl file| ],
+        rsync => [ qw|filersyncp rsync| ],
     };
 
     ### potential bad hosts -- won't know for sure until there's one successful later
     my @bad_uris;
 
     HOST:
-    for my $uri (@{$self->{_conf}->_get_ftp('urilist')}) {
+    for my $uri ( @{$self->configure_object->_get_ftp('urilist')} ) {
         ### some URIs does not work
         next if exists $self->{_uris}{$uri} and !$self->{_uris}{$uri};
 
         ### full path to remote file
         $path->{remote} = File::Spec::Unix->catdir($uri->{path}, $remote_path);
 
-        $args{path} = $path;
-        $args{uri}  = $uri;
-        $uri->{host} = '' unless defined $uri->{host};
-        $uri->{scheme} = '' unless defined $uri->{scheme};
+        ### add these arguments for calls to the *get methods ###
 
         #print map { Data::Dumper->Dump([$args{$_}], [$_]) } keys %args;
 
         $err->inform(
-                msg   => loc("Trying to get %1 from %2", $args{'path'}->{'remote'},
-                             ($uri->{host} || loc('local disk'))),
-                quiet => !$conf->get_conf('verbose'),
+                msg   => loc("Trying to get %1 from %2 via %3", $path->{'remote'},
+                             ($uri->{host} || loc('local disk')), $uri->{scheme}),
+                quiet => !$verbose,
         );
+
+        my $meth_args = {
+                path    => $path,
+                uri     => $uri,
+                verbose => $verbose,
+        };
 
         METHOD:
         ### tests by kane: ncftpget seems to work great
@@ -180,7 +197,7 @@ sub _fetch {
             if ($self->{_methods}->{$method}
              || ! exists $self->{_methods}->{$method}) {
 
-                if (my $file = $self->$method(%args)) {
+                if (my $file = $self->$method(%$meth_args)) {
                     ### this host is good, previous ones are not
                     $self->{_uris}{$uri} = 1;
                     $self->{_uris}{$_} = 0 foreach @bad_uris;
@@ -191,12 +208,12 @@ sub _fetch {
                         $err->inform(
                             msg   => loc("%1 said it fetched %2, but it was not created!",
                                          $method, $path->{local}),
-                            quiet => !$conf->get_conf('verbose'),
+                            quiet => !$verbose,
                         );
 
                     } else {
                         ### store this info in the object if we got an object ###
-                        if ($args{data} ) { ($args{data}->{status} ||= {})->{fetch} = $file }
+                        if ($args->{data} ) { $args->{data}->status->fetch( $file ) }
 
                         return $file;
                     }
@@ -219,7 +236,7 @@ sub _fetch {
 
         $err->inform(
             msg     => loc("Fetch failed: no way to download source file!"),
-            quiet   => !$conf->get_conf('verbose')
+            quiet   => !$verbose
         );
         return 0;
 
@@ -232,7 +249,7 @@ sub _fetch {
     ### it would be better to force them to set up correctly -jmb
     $err->inform(
         msg     => loc("Fetch failed: host list exhausted - are you connected today?"),
-        quiet   => !$conf->get_conf('verbose')
+        quiet   => !$verbose
     );
     return 0;
 
@@ -241,10 +258,19 @@ sub _fetch {
 
 sub _lwp_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
 
     ### hard coding is not very graceful
     ### i propose this as a more elegant solution:
@@ -272,11 +298,11 @@ sub _lwp_get {
 
         ### create a URI
         ### it doesn't work to pass the scheme here for some reason
-        my $uri = URI->new($args{path}->{remote});
+        my $uri = URI->new( $args->{path}->{remote} );
 
         ### set scheme and host
-        $uri->scheme($args{uri}->{scheme});
-        $uri->host($args{uri}->{host}) unless $uri->scheme eq 'file';
+        $uri->scheme( $args->{uri}->{scheme} );
+        $uri->host( $args->{uri}->{host} ) unless $uri->scheme eq 'file';
 
         ### set user/password
         ### it doesn't like the u/p set when it's a 'file://' scheme....
@@ -295,7 +321,7 @@ sub _lwp_get {
         $ua->from($email);
 
         ### get the file!
-        my $res = $ua->mirror($uri, $args{path}->{local});
+        my $res = $ua->mirror($uri, $args->{path}->{local});
 
         ### we need better handlers... especially for 304
         ### we already throw out 304's with the force check so remove this -jmb
@@ -303,23 +329,23 @@ sub _lwp_get {
 
         if ($res->code == 304) {
             $err->inform(
-                msg     => loc("%1 is up to date", $args{path}->{local}),
-                quiet   => !$conf->get_conf('verbose')
+                msg     => loc("%1 is up to date", $args->{path}->{local}),
+                quiet   => !$verbose
             );
             ### we shouldn't return the same thing in two different places -jmb
             ### solution? - Kane
-            return $args{path}->{local};
+            return $args->{path}->{local};
         }
 
         ### the only acceptable return from this is OK (200)
         if ($res->code == 200) {
-            return $args{path}->{local};
+            return $args->{path}->{local};
         } else {
             $err->trap(
                 error => loc("Fetch failed! HTTP response code: %1 [%2]", $res->code,
                              HTTP::Status::status_message($res->code)),
             );
-            return 0;
+            return undef;
         }
 
     } else {
@@ -328,10 +354,10 @@ sub _lwp_get {
 
         $err->inform(
             msg => loc("Can't use LWP"),
-            quiet => !$conf->get_conf('verbose')
+            quiet => !$verbose
         );
 
-        return 0;
+        return undef;
     }
 
 } #_lwp_get
@@ -339,13 +365,21 @@ sub _lwp_get {
 
 sub _file_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
 
     my $use_list = {
         'File::Spec'  => '0.82',
@@ -364,13 +398,13 @@ sub _file_get {
         ### this might not be necessary this way, so feel free to change/patch
         ### -kane
 
-        my ($volume, $path, $file)  = File::Spec->splitpath( $args{path}->{remote} );
+        my ($volume, $path, $file)  = File::Spec->splitpath( $args->{path}->{remote} );
         my @dirs                    = File::Spec->splitdir( $path );
 
-        unshift @dirs, $args{uri}->{host} if defined $args{uri}->{host};
+        unshift @dirs, $args->{uri}->{host} if defined $args->{uri}->{host};
 
         my $remote = File::Spec->catfile( @dirs, $file );
-        my $local = $args{path}->{local};
+        my $local = $args->{path}->{local};
 
         {
             ### file::copy is littered with DIE statements
@@ -416,7 +450,7 @@ sub _file_get {
 
         $err->inform(
             msg => loc("Can't use File::* functions. They should be core modules!"),
-            quiet => !$conf->get_conf('verbose')
+            quiet => !$verbose
         );
 
         return 0;
@@ -425,13 +459,22 @@ sub _file_get {
 
 sub _ftp_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
 
     if (my $ftp = $conf->_get_build('ftp')) {
         my $fh = FileHandle->new;
@@ -443,14 +486,14 @@ sub _ftp_get {
         }
 
         my $email = $conf->_get_ftp('email');
-        my ($remote, $local) = ($args{path}->{remote}, $args{path}->{local});
+        my ($remote, $local) = ($args->{path}->{remote}, $args->{path}->{local});
 
         my @remote_path = split('/', $remote); $remote = pop @remote_path;
         my @local_path  = split('/', $local);  $local  = pop @local_path;
 
         my @dialog = (
             "lcd ".join('/', @local_path),
-            "open $args{uri}{host}",
+            "open $args->{uri}->{host}",
             "user anonymous $email",
             "cd /",
             (map { "cd $_" } grep { length } @remote_path),
@@ -462,20 +505,28 @@ sub _ftp_get {
         foreach (@dialog) { $fh->print($_, "\n") }
         $fh->close;
 
-        return -e $args{path}->{local} ? $args{path}->{local} : 0;
+        return -e $args->{path}->{local} ? $args->{path}->{local} : undef;
     }
 }
 
 
 sub _netftp_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
 
     ### check prerequisites
     my $use_list = { 'Net::FTP' => '0.0' };
@@ -496,14 +547,14 @@ sub _netftp_get {
 
         ### connect
         my $ftp;
-        unless ($ftp = Net::FTP->new($args{uri}->{host})) {
+        unless ($ftp = Net::FTP->new($args->{uri}->{host})) {
             $err->trap( error => loc("ftp creation failed: %1", $@) );
             return 0;
         };
 
         ### login
         unless ($ftp->login('anonymous', $conf->_get_ftp('email'))) {
-            $err->trap( error => loc("could not log in to %1", $args{uri}->{host}) );
+            $err->trap( error => loc("could not log in to %1", $args->{uri}->{host}) );
             return 0;
         };
 
@@ -523,13 +574,13 @@ sub _netftp_get {
         $ftp->binary;
 
         ### temps to keep the line lengths in order :o)
-        my ($remote, $local) = ($args{path}->{remote}, $args{path}->{local});
+        my ($remote, $local) = ($args->{path}->{remote}, $args->{path}->{local});
 
         ### get the damn thing
         my $target;
         unless ($target = $ftp->get($remote, $local)) {
             $err->trap(
-                error => loc("could not fetch %1 from %2", $remote, $args{uri}->{host})
+                error => loc("could not fetch %1 from %2", $remote, $args->{uri}->{host})
             );
             return 0;
         };
@@ -545,7 +596,7 @@ sub _netftp_get {
 
         $err->inform(
             msg   => loc("Can't use Net::FTP"),
-            quiet => !$conf->get_conf('verbose')
+            quiet => !$verbose
         );
         return 0;
     }
@@ -555,22 +606,30 @@ sub _netftp_get {
 ### lynx is stupid - it decompresses any .gz file it finds to be text
 sub _lynx_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
 
     if (my $lynx = $conf->_get_build('lynx')) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
 
-        my $url = "$args{uri}->{scheme}://"
-                . $args{uri}->{host}
-                . $args{path}->{remote};
+        my $url = $args->{uri}->{scheme} . q[://]
+                . $args->{uri}->{host}
+                . $args->{path}->{remote};
 
         my $email = $conf->_get_ftp('email');
         my $captured;
@@ -590,36 +649,36 @@ sub _lynx_get {
         }
 
         my $local = new FileHandle;
-        unless ($local->open(">$args{path}->{local}")) {
-            $err->trap( error => loc("Could not open %1: %2", $args{path}->{local}, $!) );
+        unless ($local->open(">$args->{path}->{local}")) {
+            $err->trap( error => loc("Could not open %1: %2", $args->{path}->{local}, $!) );
             return 0;
         }
 
         binmode $local;
         unless ($local->print($captured)) {
-            $err->trap( error => loc("Could not write to %1: %2", $args{path}->{local}, $!) );
+            $err->trap( error => loc("Could not write to %1: %2", $args->{path}->{local}, $!) );
             return 0;
         }
 
         unless ($local->close) {
             $err->inform(
-                msg   => loc("Could not close %1: %2", $args{path}->{local}, $!),
-                quiet => !$conf->get_conf('verbose'),
+                msg   => loc("Could not close %1: %2", $args->{path}->{local}, $!),
+                quiet => !$verbose,
             );
         }
 
-        return $args{path}->{local};
+        return $args->{path}->{local};
 
     } else {
         ### set _methods so we don't try this again
         $self->{_methods}->{$method} = 0;
 
         $err->inform(
-            msg   => loc("lynx not available"),
-            quiet => !$conf->get_conf('verbose')
+            msg   => loc("%1 not available", "lynx"),
+            quiet => !$verbose
         );
 
-        return 0;
+        return undef;
     }
 
 }
@@ -627,25 +686,32 @@ sub _lynx_get {
 
 sub _ncftpget_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
 
-    my $use_list = { 'File::Spec' => '0.82' };
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
+    my $use_list    = { 'File::Spec' => '0.82' };
 
     if (my $ncftpget = $conf->_get_build('ncftpget') and $self->_can_use(modules => $use_list) ) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
 
-        unless ($args{uri}->{scheme} eq 'ftp') {
+        unless ($args->{uri}->{scheme} eq 'ftp') {
             $err->inform(
                 msg   => loc("ncftpget only works with ftp capable hosts"),
-                quiet => !$conf->get_conf('verbose')
+                quiet => !$verbose
             );
             return 0;
         }
@@ -653,7 +719,7 @@ sub _ncftpget_get {
         my $email = $conf->_get_ftp('email');
 
         ### portably find the full local directory path
-        my ($vol, $dir, $file) = File::Spec->splitpath($args{path}->{local});
+        my ($vol, $dir, $file) = File::Spec->splitpath($args->{path}->{local});
         my $local_dir          = File::Spec->catdir($vol, $dir);
         my $captured;
 
@@ -662,32 +728,33 @@ sub _ncftpget_get {
                 $ncftpget,             # program
                 '-V',                  # not verbose
                 '-p', $email,          # $email as pwd
-                $args{uri}->{host},    # ftp host
+                $args->{uri}->{host},    # ftp host
                 $local_dir,            # local dir for file
-                $args{path}->{remote}, # remote path to file
+                $args->{path}->{remote}, # remote path to file
             ],
             buffer  => \$captured,
             verbose => 0,
         ) ) {
             $captured =~ s/\n/ /g;
             $err->trap( error => loc("command failed: %1", $captured) );
+
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
-            return 0;
+            return undef;
         }
 
-        return $args{path}->{local};
+        return $args->{path}->{local};
 
     } else {
         ### set _methods so we don't try this again
         $self->{_methods}->{$method} = 0;
 
         $err->inform(
-            msg   => loc("ncftpget not available"),
-            quiet => !$conf->get_conf('verbose')
+            msg   => loc("%1 not available", "ncftpget"),
+            quiet => !$verbose
         );
 
-        return 0;
+        return undef;
     }
 
 }
@@ -699,22 +766,30 @@ sub _ncftpget_get {
 ### buggy on redhat 7.1 in my experience - kane
 sub _wget_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
 
     if (my $wget = $conf->_get_build('wget')) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
 
-        my $url = "$args{uri}->{scheme}://"
-                . $args{uri}->{host}
-                . $args{path}->{remote};
+        my $url = $args->{uri}->{scheme} . q[://]
+                . $args->{uri}->{host}
+                . $args->{path}->{remote};
 
         my $email = $conf->_get_ftp('email');
         my $captured;
@@ -724,7 +799,7 @@ sub _wget_get {
                     $wget,
                     '--quiet',
                     '--execute', "passwd=$email",
-                    '--output-document', $args{path}->{local},
+                    '--output-document', $args->{path}->{local},
                     $url,
             ];
 
@@ -739,23 +814,24 @@ sub _wget_get {
         ) ) {
             $captured =~ s/\n/ /g;
             $err->trap( error => loc("command failed: %1", $captured) );
+
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
-            return 0;
+            return undef;
         }
 
-        return $args{path}->{local};
+        return $args->{path}->{local};
 
     } else {
         ### set _methods so we don't try this again
         $self->{_methods}->{$method} = 0;
 
         $err->inform(
-            msg   => loc("wget not available"),
-            quiet => !$conf->get_conf('verbose')
+            msg   => loc("%1 not available", "wget"),
+            quiet => !$verbose
         );
 
-        return 0;
+        return undef;
     }
 
 }
@@ -764,78 +840,95 @@ sub _wget_get {
 ### only works with older versions of ncftp
 sub _ncftp_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.+::(.+?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.+::(.+?)|;
 
     if (my $ncftp = $conf->_get_build('ncftp')) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
 
-        unless ($args{uri}->{scheme} eq 'ftp') {
+        unless ($args->{uri}->{scheme} eq 'ftp') {
             $err->inform(
                 msg   => loc("ncftp only works with ftp capable hosts"),
-                quiet => !$conf->get_conf('verbose')
+                quiet => !$verbose
             );
             return 0;
         }
 
-        my $url = "$args{uri}->{scheme}://"
-                . $args{uri}->{host}
-                . $args{path}->{remote};
+        my $url = $args->{uri}->{scheme} . q[://]
+                . $args->{uri}->{host}
+                . $args->{path}->{remote};
 
         my $captured;
         unless ( $self->_run(
-            command => "$ncftp -a $url > $args{path}{local}",
+            command => "$ncftp -a $url > $args->{path}{local}",
             buffer  => \$captured,
             verbose => 0,
         ) ) {
             $captured =~ s/\n.*//gs;
             $err->trap( error => loc("command failed: %1", $captured) );
+
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
-            return 0;
+            return undef;
         }
 
-        return $args{path}->{local};
+        return $args->{path}->{local};
 
     } else {
         ### set _methods so we don't try this again
         $self->{_methods}->{$method} = 0;
 
         $err->inform(
-            msg   => loc("ncftp not available"),
-            quiet => !$conf->get_conf('verbose')
+            msg   => loc("%1 not available", "ncftp"),
+            quiet => !$verbose
         );
 
-        return 0;
+        return undef;
     }
 
 }
 
 sub _curl_get {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
 
-    my $subname = $self->_whoami();
-    my ($method) = $subname =~ m|.::(.?)|;
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.::(.?)|;
 
     if (my $curl = $conf->_get_build('curl')) {
 
         ### set _methods so we use this one
         $self->{_methods}->{$method} = 1;
 
-        my $url = "$args{uri}->{scheme}://"
-                . $args{uri}->{host}
-                . $args{path}->{remote};
+        my $url = $args->{uri}->{scheme} . q[://]
+                . ($args->{uri}->{host} || '')  # might be local host 
+                . $args->{path}->{remote};
 
         my $email = $conf->_get_ftp('email');
         my $captured;
@@ -843,9 +936,9 @@ sub _curl_get {
         ### these long opts are self explanatory - I like that -jmb
 	    my $cmd = [ $curl ];
 
-	    push(@$cmd, '--silent') unless $conf->_get_conf('verbose');
+	    push(@$cmd, '--silent') unless $verbose;
 
-    	if ($args{uri}->{scheme} eq 'ftp') {
+    	if ($args->{uri}->{scheme} eq 'ftp') {
     		push(@$cmd, '-P', '-') unless $conf->_get_ftp('passive');
     		push(@$cmd, '--user', "anonymous:$email");
     	}
@@ -853,8 +946,9 @@ sub _curl_get {
         unless ( $self->_run(
             command => [
                 @$cmd,
-		        '--fail', '--remote-time',
-		        '--output', $args{path}->{local},
+		        #'--remote-time', # it's not supported by stock osx curl
+		        '--fail', 
+		        '--output', $args->{path}->{local},
 		        $url,
             ],
             buffer  => \$captured,
@@ -862,26 +956,168 @@ sub _curl_get {
         ) ) {
             $captured =~ s/\n/ /g;
             $err->trap( error => loc("command failed: %1", $captured) );
+
             ### we don't want to try a new host, the command itself failed
             $self->{_methods}->{$method} = 0;
-            return 0;
+            return undef;
         }
 
-        return $args{path}->{local};
+        return $args->{path}->{local};
 
     } else {
         ### set _methods so we don't try this again
         $self->{_methods}->{$method} = 0;
 
         $err->inform(
-            msg   => loc("curl not available"),
-            quiet => !$conf->get_conf('verbose')
+            msg   => loc("%1 not available", "curl"),
+            quiet => !$verbose
         );
 
-        return 0;
+        return undef;
     }
 }
 
+sub _rsync_get {
+    my $self = shift;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
+
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.::(.?)|;
+
+    if (my $rsync = $conf->_get_build('rsync')) {
+
+        ### set _methods so we use this one
+        $self->{_methods}->{$method} = 1;
+
+        my $url = $args->{uri}->{scheme} . q[://]
+                . $args->{uri}->{host}
+                . $args->{path}->{remote};
+
+        my $captured;
+
+        my $cmd = [ $rsync ];
+        push(@$cmd, '-v') if $verbose;
+
+        unless ( $self->_run(
+            command => [ @$cmd, '-L', $url, $args->{path}->{local} ],
+            buffer  => \$captured,
+            verbose => 0,
+        ) ) {
+            $captured =~ s/\n/ /g;
+            $err->trap( error => loc("command failed: %1", $captured) );
+
+            ### we don't want to try a new host, the command itself failed
+            $self->{_methods}->{$method} = 0;
+            return undef;
+        }
+
+        return $args->{path}->{local};
+
+    } else {
+        ### set _methods so we don't try this again
+        $self->{_methods}->{$method} = 0;
+
+        $err->inform(
+            msg   => loc("%1 not available", "rsync"),
+            quiet => !$verbose
+        );
+
+        return undef;
+    }
+}
+
+sub _filersyncp_get {
+    my $self = shift;
+    my %hash = @_;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
+
+    my $tmpl = {
+        path    => { required => 1, default => {}, strict_type => 1 },
+        uri     => { required => 1, default => {}, strict_type => 1 },
+        verbose => { default =>$conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $verbose     = $args->{verbose};
+    my $subname     = $self->_whoami();
+    my ($method)    = $subname =~ m|.::(.?)|;
+
+    ### check prerequisites
+    my $use_list = { 'File::RsyncP' => '0.0', 'File::Basename' => '0.0' };
+
+    if ($self->_can_use(modules => $use_list)) {
+        ### set _methods so we use this one
+        $self->{_methods}->{$method} = 1;
+
+        my ($user, $pass, $host, $port) = ($1, $2, $3, $4)
+            if ($args->{uri}->{host} =~ /(?:([^:]+):([^@]+)@)?([^:]+)(?::(\d+))?/);
+
+        my ($module, $remote) = ($1, $2)
+            if $args->{path}->{remote} =~ m!^/?([^/]+)/?(.+)!;
+
+        my ($local) = (File::Basename::fileparse($args->{path}->{local}))[1];
+
+        my $rs = File::RsyncP->new({
+            logLevel    => ($verbose ? 1 : 0),
+            rsyncArgs  => [ ($verbose ? "-v" : ()), '-L' ]
+        });
+        my $captured = $rs->serverConnect($host, $port) or
+                       $rs->serverService($module)      or
+                       $rs->serverStart(1, $remote)     or
+                       $rs->go($local);
+
+        if ($captured) {
+            $err->trap( error => loc("command failed: %1", $captured) );
+
+            ### we don't want to try a new host, the command itself failed
+            $self->{_methods}->{$method} = 0;
+            return undef;
+        }
+
+        $rs->serverClose;
+        return $args->{path}->{local};
+
+    } else {
+        ### set _methods so we don't try this again
+        $self->{_methods}->{$method} = 0;
+
+        $err->inform(
+            msg   => loc("%1 not available", "rsync"),
+            quiet => !$verbose
+        );
+
+        return undef;
+    }
+}
+
+### give a list of still (possibly) working uris
+sub _good_uris {
+    my $self = shift;
+    my $conf = $self->configure_object;
+
+    my @good = grep {
+                defined $self->{_uris}->{$_}
+                    ? $self->{_uris}->{$_} == 0
+                        ? 0                     # failed before this session
+                        : 1                     # proven to work
+                    : 1                         # we dont know yet
+            } @{ $conf->_get_ftp('urilist') };
+
+    return \@good;
+}
 1;
 
 # Local variables:

@@ -1,8 +1,9 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #6 $ $Change: 3443 $ $DateTime: 2003/01/12 11:20:41 $
+# $Revision: #18 $ $Change: 7809 $ $DateTime: 2003/08/31 15:13:42 $
 
 use strict;
+use 5.00503;
 
 use Cwd;
 use Config;
@@ -24,7 +25,7 @@ use CPANPLUS::I18N;
 
 # tests that doesn't require setup
 use constant BASIC_TESTS => join (' ', map { File::Spec->catfile('t', $_) } qw{
-    1-basic.t 2-autoinstall.t
+    2-autoinstall.t
 });
 
 {
@@ -248,7 +249,7 @@ that defaults to 'Y', there might be _unpredictable failures_!
     my $ipc_ok   = (!_is_win9x()   and ($^O ne 'cygwin'));
     my $term_mod = _is_unix()         ? 'Term::Size'     :
                    ($^O eq 'MSWin32') ? 'Win32::Console' : undef;
-
+    my $shell    = $ConfigObj->get_conf('shell') || '';
 
     ExtUtils::AutoInstall->import(
         -version                => 0.27,
@@ -262,12 +263,15 @@ that defaults to 'Y', there might be _unpredictable failures_!
             ### - Compress::Zlib works but fails tests on Darwin.
             -skiptest           => 1,
             -prereqs            => 1,
+            -do_once            => 1,
         ],
         loc('Uncompress .tar files')      => [
             -default            => (!_can_run('tar')),
-            'Archive::Tar'      => 0.01,
+            'Compress::Zlib'    => 0.01,
+            'IO::Zlib'          => 0.01,
+            'Archive::Tar'      => 1.05,
         ],
-        loc('PPM and .zip files support') => [
+        loc('.zip files support') => [
             -default            => 0,
             'Archive::Zip'      => 0.01,
         ],
@@ -288,18 +292,41 @@ that defaults to 'Y', there might be _unpredictable failures_!
     $have_pgp ? (
         loc('PGP signatures')             => [
             -default            => $ConfigObj->get_conf('signature'),
-            'Module::Signature' => 0.06,
+            'Module::Signature' => 0.33,
         ],
     ) : (),
     ($] >= 5.006) ? (
-        loc('Module::Build support')      => [
+        loc('Module::Build distribution')      => [
             -default            => 0,
             'Module::Build'     => 0.11,
         ],
     ) : (),
+(0) ? (
+    ($^O eq 'MSWin32') ? (
+        loc('PPM distribution') => [
+            -default            => 0,
+            'Archive::Zip'      => 0.01,
+            'PPM'               => 0,
+        ],
+    ) : (),
+    ($^O eq 'freebsd') ? (
+        loc('FreeBSD ports distribution') => [
+            -default              => 0,
+            'ExtUtils::MakeMaker' => 6.00,
+        ],
+    ) : (),
+        loc('PAR distribution') => [
+            -default              => 0,
+            'PAR::Dist'           => 0,
+        ],
+) : (),
         loc('Net::FTP support')           => [
             -default            => (!grep {_can_run($_)} qw|wget lynx ncftp ncftp3 ncftpget|),
             'Net::FTP'          => 2.00,
+        ],
+        loc('File::RsyncP support')       => [
+            -default            => 0,
+            'File::RsyncP'      => 0,
         ],
         loc('LWP & CPAN test query')      => [
             -default            => 0,
@@ -328,7 +355,8 @@ that defaults to 'Y', there might be _unpredictable failures_!
     $ipc_ok ? (
             'IPC::Run'          => 0.55,
     ) : (),
-            'Test::Reporter'    => 1.13,
+            'Test::Reporter'    => 1.20,
+            'YAML'              => 0,
         ],
     _supports_readline() ? (
         loc('ReadLine support')           => [
@@ -350,9 +378,24 @@ that defaults to 'Y', there might be _unpredictable failures_!
         loc('Localized messages')         => [
             -default            => 0,
             'Locale::Maketext'  => 0.20,
-            'Locale::Maketext::Lexicon' => 0.14,
+            'Locale::Maketext::Lexicon' => 0.28,
+        ],
+        loc('Curses Shell') => [
+            -default            => ($shell eq 'CPANPLUS::Shell::Curses'),
+            'CPANPLUS::Shell::Curses'   => 0.02,
+        ],
+        loc('Tk Shell') => [
+            -default            => ($shell eq 'CPANPLUS::Shell::Tk'),
+            'CPANPLUS::Shell::Tk'   => 0.02,
         ],
     );
+
+    if (_can_run('gpg')) {
+        print "Importing the PAUSE signing key(s) to GnuPG... ";
+        system('gpg', '--quiet', '--import', <PAUSE*.pub>);
+	print "done!\n";
+    }
+
 }
 
 # check if we can run some module

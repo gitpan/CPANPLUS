@@ -4,6 +4,7 @@ Changes				Changelog
 MANIFEST			This list of files
 MANIFEST.SKIP			List of files to skip
 Makefile.PL			Makefile writer
+PAUSE2003.pub			The PAUSE 2003 signing key
 README				The Instructions
 SIGNATURE			Module Signature
 bin/cpanp			The CPANPLUS launcher
@@ -11,7 +12,6 @@ bin/cpansmoke			CPAN Smoke Tester
 inc/ExtUtils/AutoInstall.pm	Support file - Not installed
 lib/CPANPLUS.pm			Command-line access to CPANPLUS
 lib/CPANPLUS/Backend.pm		Object-oriented interface for CPAN++
-lib/CPANPLUS/Backend/InputCheck.pm	Utility functions to validate inputs to Backend
 lib/CPANPLUS/Backend/RV.pm	Module to provide a return value class for CPAN++
 lib/CPANPLUS/Config.pm-orig	Skeleton of the Configuration file
 lib/CPANPLUS/Configure.pm	Configuration Object
@@ -28,6 +28,7 @@ lib/CPANPLUS/Internals/Fetch.pm	Fetch-related code
 lib/CPANPLUS/Internals/Install.pm	Install-related code
 lib/CPANPLUS/Internals/Make.pm	Make-related code
 lib/CPANPLUS/Internals/Module.pm	Module objects
+lib/CPANPLUS/Internals/Module/Status.pm
 lib/CPANPLUS/Internals/Report.pm	CPAN Test reporting code
 lib/CPANPLUS/Internals/Search.pm	Search-related code
 lib/CPANPLUS/Internals/Source.pm	Source-related code
@@ -38,6 +39,11 @@ lib/CPANPLUS/Shell/Classic.pm	Backwards compatible shell for CPAN++
 lib/CPANPLUS/Shell/Default.pm	The default shell
 lib/CPANPLUS/Styleguide.pod	Style guide for CPANPLUS contributions
 lib/CPANPLUS/TesterGuide.pod	Becoming a CPAN Tester with CPANPLUS
+lib/CPANPLUS/Tools/Check.pm	Input checker
+lib/CPANPLUS/Tools/Cmd.pm	Running system commands
+lib/CPANPLUS/Tools/Load.pm	Runtime require modules
+lib/CPANPLUS/Tools/Module.pm	Lookup module info
+lib/CPANPLUS/Tools/Term.pm	Term::ReadLine control
 t/0-signature.t			Signature test 
 t/1-basic.t			Sanity test
 t/2-autoinstall.t		Autoinstaller test
@@ -59,3 +65,4 @@ t/lib/File/Spec/Win32.pm	Support file - Not installed
 t/lib/Test/Builder.pm		Support file - Not installed
 t/lib/Test/MockObject.pm	Support file - Not installed
 t/lib/Test/More.pm		Support file - Not installed
+META.yml                                Module meta-data (added by MakeMaker)

@@ -4,11 +4,9 @@
 ^Makefile$
 ^Makefile.old$
 ^MANIFEST.bak$
-^TODO$
 ^lib/CPANPLUS/Tee.pm$
 ^lib/CPANPLUS/Config\.pm$
 ^lib/CPANPLUS/Config\.pm~$
-^lib/CPANPLUS/Dist/
-^lib/CPANPLUS/Dist.pm$
 ^pm_to_blib$
 ^prereqs$
+^TODO$

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
 
 ###################################################
 ###               CPANPLUS/Shell.pm             ###
@@ -13,6 +13,7 @@ package CPANPLUS::Shell;
 
 use strict;
 use CPANPLUS::Configure;
+use CPANPLUS::Tools::Check qw[check];
 use CPANPLUS::I18N;
 
 use vars qw(@ISA $SHELL $DEFAULT);
@@ -49,14 +50,16 @@ sub import {
             ### if we already tried the default shell - which is the shell we ship
             ### with the dist as DEFAULT, something is VERY wrong! -kane
             if( $SHELL eq $DEFAULT ) {
-                die loc("Your default shell %1 is not available: %2", $DEFAULT, $@), "\n",
+                my $err = $@;
+                die loc("Your default shell %1 is not available: %2", $DEFAULT, $err), "\n",
                     loc("Check your installation!"), "\n";
 
             ### otherwise, we just tried the shell the user entered... well, that might
             ### be a broken or even a non-existant one. So, warn the user it didn't work
             ### and we'll try our default shell instead.
             } else {
-                warn loc("Failed to use %1: %2", $SHELL, $@), "\n",
+                my $err = $@;
+                warn loc("Failed to use %1: %2", $SHELL, $err), "\n",
                      loc("Switching to the default shell %1", $DEFAULT), "\n";
                 $SHELL = $DEFAULT;
                 redo EVAL;
@@ -79,6 +82,7 @@ use vars qw($AUTOLOAD);
 
 use File::Path;
 use CPANPLUS::I18N;
+use CPANPLUS::Tools::Check qw[check];
 
 ### CPANPLUS::Shell::Default needs it's own constructor, seeing it will just access
 ### CPANPLUS::Backend anyway
@@ -226,10 +230,22 @@ sub _pager_close {
 }
 
 ### parse and set configuration options: $method should be 'set_conf'
+### XXX also, we should be using the configure object for this, NOT
+### the backend functions
 sub _set_config {
-    my ($self, %args) = @_;
+    my ($self, %hash) = @_;
 
-    my ($key, $value, $method) = @args{qw|key value method|};
+    my $tmpl = {
+            key     => { required => 1 },
+            value   => { required => 1 },
+            method  => { required => 1 },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $key     = $args->{key};
+    my $value   = $args->{value};
+    my $method  = $args->{method};
 
     my $cpan = $self->backend;
 
@@ -279,36 +295,17 @@ sub _ask_prereq {
 
     print "\n", loc("%1 is a required module for this install.", $mod), "\n";
 
-    return $self->_ask_yn(
-        prompt  => loc("Would you like me to install it? [Y/n]: "),
+    return $self->term->ask_yn(
+        prompt  => loc("Would you like me to install it?"),
         default => 'y',
     ) ? $mod : 0;
-}
-
-
-### generic yes/no question interface
-sub _ask_yn {
-    my ($self, %args) = @_;
-    my $prompt  = $args{prompt};
-    my $default = $args{default};
-
-    while ( defined (my $input = $self->term->readline($prompt)) ) {
-        $input = $default unless length $input;
-
-        if ( $input =~ /^y/i ) {
-            return 1;
-        } elsif ( $input =~ /^n/i ) {
-            return 0;
-        } else {
-            print loc("Improper answer, please reply 'y[es]' or 'n[o]'"), "\n";
-        }
-    }
 }
 
 sub AUTOLOAD {
     my $self = shift;
 
     $AUTOLOAD =~ s/.+:://;
+
 
     ### some debug code ###
     #print "\n----------------\nmethod: $AUTOLOAD\n";
@@ -364,11 +361,11 @@ for your default shell.
 
 =head1 AVAILABLE SHELLS
 
-CPANPLUS ships with two shells: 
+CPANPLUS ships with two shells:
 
 =over 4
 
-=item I<Default> 
+=item I<Default>
 
 Consists of single-character commands.
 

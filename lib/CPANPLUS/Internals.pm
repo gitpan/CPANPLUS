@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #9 $ $Change: 3419 $ $DateTime: 2003/01/11 12:10:11 $
+# $Revision: #15 $ $Change: 7740 $ $DateTime: 2003/08/27 17:00:08 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -15,7 +15,7 @@ use strict;
 
 BEGIN {
     use vars        qw( @ISA $VERSION );
-    $VERSION    =   '0.042';
+    $VERSION    =   0.043;
 }
 
 ### required files. I think we can now get rid of Carp, since we use Error.pm
@@ -29,11 +29,13 @@ use CPANPLUS::Internals::Extract;
 use CPANPLUS::Internals::Fetch;
 use CPANPLUS::Internals::Install;
 use CPANPLUS::Internals::Make;
-#use CPANPLUS::Internals::Module;
 use CPANPLUS::Internals::Search;
 use CPANPLUS::Internals::Source;
 use CPANPLUS::Internals::Report;
 use CPANPLUS::Internals::Utils;
+
+use CPANPLUS::Tools::Module qw[can_load];
+use CPANPLUS::Tools::Check qw[check];
 
 use Cwd;
 use Config;
@@ -53,6 +55,10 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 }
+
+### can't use F::S::F - FreeBSD stable does not ship with it
+### no big worry, F::S::F is just a wrapper for F::S anyway
+#use File::Spec::Functions;
 
 ### ROUGH FLOW OF THE MODULE ###
 
@@ -270,6 +276,9 @@ BEGIN {
 
         return delete $idref->{$id};
     }
+
+    sub _return_all_objects { return values %$idref }
+
 }
 
 
@@ -280,8 +289,9 @@ sub _init {
     ### temporary warning until we fix the storing of multiple id's
     ### and their serialization:
     if( _last_id() ) {
-        warn qq[CPANPLUS currently only supports one Backend object per running program\n];
-        return undef;
+        # make it a singleton.
+        warn loc(qq[CPANPLUS currently only supports one Backend object per running program\n]);
+        return $class->_retrieve_id(_last_id());
     }
 
     ### constructor options to Configure need to be added -> Josh ###
@@ -358,6 +368,8 @@ sub _init {
     ### there is a flag available in the sub, but how do we get the user to
     ### toggle it?
 
+    $data->_store_id($data);
+
     return $data;
 }
 
@@ -365,113 +377,14 @@ sub _init {
 ### this is only used internally to see if we can use things like LWP or Net::FTP ###
 sub _can_use {
     my $self = shift;
-    my %args = @_;
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-
-    ### we keep our own version of %INC, namely $self->{_inc}. This basically tells us
-    ### whether or not we already did a '_can_use' on this module, and whether it was
-    ### successful (1) or not (0).
-    ### this gives us the chance to go through the scanning of usable modules faster
-    ### (some modules are required by more then one method), whereas we still have the
-    ### opportunity to force a re-check by deleting the key from $self->{_inc}
-
-    my $who = (caller 1)[3];
-    my $href = $args{'modules'} or die qq[$who did not give proper arguments];
-
-    ### optional argument. if true, we will complain about not having these modules ###
-    my $yell = $args{'complain'};
-
-    ### optional argument. if true, ignore the cached results ###
-    my $no_cache = $args{'no_cache'};
-
-    for my $m (keys %$href) {
-
-        ### check if we already successfully 'use'd this module ###
-        if ( !$no_cache and $self->{_inc}->{$m}->{usable} ) {
-            next;
-
-        ### else, check if the hash key is defined already, meaning $mod => 0,
-        ### indicating UNSUCCESSFUL prior attempt of usage
-        } elsif ( !$no_cache and defined $self->{_inc}->{$m}->{usable}
-                    && ($self->{_inc}->{$m}->{version} >= $href->{$m} )
-                ) {
-
-            $err->trap(
-                error => loc("Already attempted to use %1, which was unsuccessful", $m),
-                quiet => 1
-            );
-            return;
-
-        ### if we got here, this is the first time we're trying to use this module,
-        ### or more accurately, there's no record of us trying in $self->{_inc}
-        ### or the version is a LOWER one then we tried to use before...
-        } else {
-            my @list = caller 1;
-
-            ### check if we have AN version of the module installed
-            ### maybe we should expand on the version stuff in the future,
-            ### allowing to check for say, 'Archive::Tar 0.22' or so
-            my $mod_data = $self->_check_install( module => $m, version => $href->{$m} );
-
-            #print Dumper $mod_data;
-
-            $self->{_inc}->{$m}->{version} = $href->{$m};
-
-            if ( $mod_data->{uptodate} ) {
-
-                ### if we found the module in @INC, we eval it in to our package ###
-                {   #local $@; can't use this, it's buggy -kane
-                    eval "use $m";
-
-                    ### in case anything goes wrong, log the error, the fact we tried to
-                    ### use this module and return 0;
-                    if ( $@ ) {
-
-                        $self->{_inc}->{$m}->{usable} = 0;
-
-                        $err->trap(
-                            error => loc("Using %1 was unsuccessful for %2 [THIS MAY BE A PROBLEM!]: %3", $m, $list[3], $@),
-                            quiet => !$yell
-                        );
-
-                        return 0;
-
-                    ### no error, great. log in _inc and check the next one
-                    } else {
-                        $self->{_inc}->{$m}->{usable} = 1;
-                        next;
-                    }
-            }
-
-            ### module not found in @INC, store the result in _inc and return 0
-            } else {
-                $self->{_inc}->{$m}->{usable} = 0;
-
-                $err->trap(
-                    error => loc("Using %1 was unsuccessful for %2 [THIS MAY BE A PROBLEM!]: %3", $m, $list[3], loc("Module not found")),
-                    quiet => !$yell
-                );
-
-                return 0;
-            }
-        }
-    }
-    return 1;
-}
-
-### check if we can run some command ###
-sub _can_run {
-    my ($self, $command) = @_;
-
-    return unless $self->_can_use(
-        modules => { 'ExtUtils::MakeMaker' => '0.0' },
-    );
-
-    for my $dir (split /$Config{path_sep}/, $ENV{PATH}) {
-        my $abs = File::Spec->catfile($dir, $command);
-        return $abs if $abs = MM->maybe_command($abs);
+    unless( can_load( @_ ) ) {
+        $err->trap( error => $CPANPLUS::Tools::Module::ERROR, quiet => 1 );
+        return undef;
+    } else {
+        return 1
     }
 }
 
@@ -481,8 +394,8 @@ sub _whoami { return (caller 1)[3] }
 ### not actually used yet
 sub _auto_upgrade {
     my $self = shift;
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
     my $subname = $self->_whoami();
 
@@ -529,12 +442,18 @@ sub _auto_upgrade {
 ### flush cached data
 sub _flush {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
-    for my $cache( @{$args{'list'}} ) {
+    my $tmpl = {
+            list    => { default => [], required => 1, strict_type => 1 }
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    for my $cache( @{$args->{'list'}} ) {
         unless ($cache eq '_lib') {
             delete $self->{$cache};
         } else {
@@ -551,8 +470,8 @@ sub _cache_control {
     my $self = shift;
     my %args = @_;
 
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
     my $subname = $self->_whoami();
     my ($method) = $subname =~ m|.+::(.+?)|;
@@ -633,11 +552,17 @@ sub _cache_control {
 ### returns an empty list for malformed distnames or nonexistent modnames.
 sub _parse_module {
     my $self = shift;
-    my %args = @_;
+    my %hash = @_;
 
-    my $err = $self->{_error};
+    my $err = $self->error_object;
 
-    my $mod = $args{mod} or return 0;
+    my $tmpl = {
+        mod => { required => 1 }
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $mod = $args->{mod};
 
     my ($name, $modobj);
 
@@ -717,20 +642,20 @@ sub _parse_module {
             );
 
             my $fetchdir = File::Spec->catdir(
-                $self->{_conf}->_get_build(qw[base autdir]),
+                $self->configure_object->_get_build(qw[base autdir]),
                 $path,
             );
 
             $modobj = CPANPLUS::Internals::Module->new(
                 module      => $file,           # full module name
                 path        => $path,           # extended path, like /A/AB/ABIGAIL
-                fetchdir    => $fetchdir,       # the path on the local disk
+                #fetchdir    => $fetchdir,       # the path on the local disk
                 author      => $author,         # module author
                 package     => $file,           # package name, like 'foo-bar-baz-1.03.tar.gz'
 
                 ### it doesn't use these -kane
-                #_error      => $self->{_error}, # error object
-                #_conf       => $self->{_conf},  # configure object
+                #_error      => $self->error_object, # error object
+                #_conf       => $self->configure_object,  # configure object
                 _id         => $self->{_id},
             );
         }
@@ -766,14 +691,26 @@ sub _parse_module {
 ### Execute a command: $cmd may be a scalar or an arrayref of cmd and args
 ### $bufout is an scalar ref to store outputs, $verbose can override conf
 sub _run {
-    my ($self, %args) = @_;
-    my ($cmd, $buffer, $verbose) = @args{qw|command buffer verbose|};
-    my $err = $self->{_error};
-    my ($buferr, $bufout);
+    my ($self, %hash) = @_;
+
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
+
+    my $tmpl = {
+        command => { required => 1 },
+        buffer  => { },
+        verbose => { default => $conf->get_conf('verbose') },
+    };
+
+    my $args = check( $tmpl, \%hash ) or return undef;
+
+    my $cmd     = $args->{command};
+    my $buffer  = $args->{buffer};
+    my $verbose = $args->{verbose};
 
     $$buffer = '';
-    $verbose = $self->{_conf}->get_conf('verbose')
-        unless defined $verbose;
+
+    my ($buferr, $bufout);
 
     ### STDOUT message handler
     my $_out_handler = sub {
@@ -795,12 +732,14 @@ sub _run {
     ### Kludge! This enables autoflushing for each perl process we launched.
     ### this stops warnings if $ENV{PERL5OPT} is not yet defined.
     ### patch proposed by: Jonathan Leffler - jleffler@us.ibm.com
-    local $ENV{PERL5OPT} .= ' -MCPANPLUS::Internals::System=autoflush=1';#
+    #local $ENV{PERL5OPT} .= ' -MCPANPLUS::Internals::System=autoflush=1';#
+    ### moved to the system() calls only, since /they/ are the ones blocking
+    ### but it does pollute test environments...
 
     ### inform the user. note that we don't want to used mangled $verbose.
     $err->inform(
         msg   => loc("Running [%1]...", "@cmd"),
-        quiet => !$self->{_conf}->get_conf('verbose'),
+        quiet => !$self->configure_object->get_conf('verbose'),
     );
 
     ### First, we prefer Barrie Slaymaker's wonderful IPC::Run module.
@@ -813,7 +752,7 @@ sub _run {
         @cmd = ref($cmd) ? ( [ @cmd ], \*STDIN )
                          : map { /[<>|&]/ ? $_ : [ split / +/ ] } split(/\s*([<>|&])\s*/, $cmd);
 
-        IPC::Run::run(@cmd, $_out_handler, $_err_handler);
+        IPC::Run::run(@cmd, $_out_handler, $_err_handler, noinherit => 1 );
     }
 
     ### Next, IPC::Open3 is know to fail on Win32, but works on Un*x.
@@ -825,12 +764,14 @@ sub _run {
 
     ### Abandon all hope; falls back to simple system() on verbose calls.
     elsif ($verbose) {
+        local $ENV{PERL5OPT} .= ' -MCPANPLUS::Internals::System=autoflush=1';
         system(@cmd);
     }
 
     ### Non-verbose system() needs to have STDOUT and STDERR muted.
     else {
         local *SAVEOUT; local *SAVEERR;
+        local $ENV{PERL5OPT} .= ' -MCPANPLUS::Internals::System=autoflush=1';
 
         open(SAVEOUT, ">&STDOUT")
             or ($err->trap( error => loc("couldn't dup STDOUT: %1", $!) ), return);
@@ -860,7 +801,7 @@ sub _run {
 ### IPC::Run::run emulator, using IPC::Open3.
 sub _open3_run {
     my ($self, $cmdref, $_out_handler, $_err_handler) = @_;
-    my $err = $self->{_error};
+    my $err = $self->error_object;
     my @cmd = @{$cmdref};
 
     ### Following code are adapted from Friar 'abstracts' in the
@@ -921,34 +862,45 @@ sub _open3_run {
 ### can't use this.. then if ONE of the objects would go out of scope,
 ### it would remove the reference to the internals ID, and no more sub
 ### sequent ones could be generated. this, of course, is bad --kane
-sub DESTROY { 1 } #my $self = shift; $self->_remove_id( $self->{_id} ) }
+# sub DESTROY { my $self = shift; $self->_remove_id( $self->{_id} ) } }
 
+### this will save the current modified module/author tree
+### however, this will need to be cleaned up when we support multiple
+### backend objects
+sub END {
+    my @obs = __PACKAGE__->_return_all_objects;
+
+    $obs[0]->_save_source if scalar @obs
+}
+
+#$_[0]->
 ### sub to find the version of a certain perlbinary we've been passed ###
 sub _perl_version {
     my $self = shift;
-    my %args = @_;
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
-
-    return 0 unless $args{perl};
+    my %hash = @_;
+    my $tmpl = { perl => { required => 1 } };
+    my $args = check( $tmpl, \%hash ) or return undef;
+    my $conf = $self->configure_object;
+    my $err  = $self->error_object;
 
     ### there might be a more elegant way to do this... ###
-    my $cmd = $args{perl} . ' -MConfig -eprint+Config::config_vars+version';
+    my $cmd = $args->{perl} . ' -MConfig -eprint+Config::config_vars+version';
+
     my ($perl_version) = (`$cmd` =~ /version='(.*)'/);
 
     return $perl_version;
 }
+
 ### sub to find the os version of a certain perlbinary we've been passed ###
 sub _os_version {
     my $self = shift;
-    my %args = @_;
-    my $conf = $self->{_conf};
-    my $err  = $self->{_error};
+    my %hash = @_;
 
-    return 0 unless $args{perl};
+    my $tmpl = { perl => { required => 1 } };
+    my $args = check( $tmpl, \%hash ) or return undef;
 
     ### there might be a more elegant way to do this... ###
-    my $cmd = $args{perl} . ' -MConfig -eprint+Config::config_vars+osvers';
+    my $cmd = $args->{perl} . ' -MConfig -eprint+Config::config_vars+osvers';
     my ($perl_version) = (`$cmd` =~ /osvers='(.*)'/);
 
     return $perl_version;
@@ -960,10 +912,10 @@ sub _reconfigure {
     my %args = @_;
 
     if( $args{conf} ) {
-        $self->{_conf} = $args{conf};
+        $self->configure_object( $args{conf} );
 
     } else {
-        $self->{_conf} = CPANPLUS::Configure->new( %args );
+        $self->configure_object( CPANPLUS::Configure->new( %args ) );
     }
 
     return 1;

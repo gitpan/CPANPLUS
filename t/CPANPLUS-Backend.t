@@ -1,12 +1,12 @@
 #!/usr/bin/perl -w
 # $File: //depot/cpanplus/dist/t/CPANPLUS-Backend.t $
-# $Revision: #3 $ $Change: 1930 $ $DateTime: 2002/11/04 13:59:15 $
+# $Revision: #6 $ $Change: 7684 $ $DateTime: 2003/08/23 18:23:18 $
 
 BEGIN { chdir 't' if -d 't' };
 
 use strict;
 use lib '../lib', 'lib';
-use Test::More tests => 36;
+use Test::More tests => 10;
 use Test::MockObject;
 
 # Setting up the testing environment {{{
@@ -73,27 +73,30 @@ is( $result, 'return value', 'author_tree() should return $self->_author_tree' )
 
 $mock = Test::MockObject->new();
 $mock->fake_module( 'CPANPLUS::Backend::RV', new => sub { 'return value' } );
-$mock->set_false( '_is_ok' );
+$mock->set_always( 'error_object', $mock )
+     ->set_always( 'configure_object', $mock )
+     ->set_true( 'get_conf' )
+     ->set_false( '_check_input' );
 
-$result = CPANPLUS::Backend::search( $mock, foo => 'bar' );
-($method, $args) = $mock->next_call();
-is( $method, '_is_ok', 'search() should verify input' );
-is( join('-', %{ $args->[2] }), 'foo-bar', '... passing user data' );
+$result = CPANPLUS::Backend::search( $mock, type => 'foo', list => 'bar' );
+($method, $args) = $mock->next_call(5);
+is( $method, '_check_input', 'search() should verify input' );
+like( join('-', @$args), qr/(?=.*type-foo)(?=.*list-bar)/, '... passing user data' );
 
 ok( ! $result, '... return false given bad input' );
 
-$mock->mock( '_is_ok', sub { $_[2] } )
-     ->set_false( '_check_input' );
+__END__
+
+$mock->mock( '_is_ok', sub { $_[2] } );
 
 $result = CPANPLUS::Backend::search( $mock, foo => 'bar' );
-($method, $args) = $mock->next_call(2);
-is( $method, '_check_input', 'search() should verify input again with _check_input' );
-is( join('-', @$args), "$mock-foo-bar", '... passing dereferenced data' );
+($method, $args) = $mock->next_call(1);
+is( $method, 'error_object', 'search() should raise error on bad data' );
 
 $mock->mock( '_query_author_tree', sub { join('-', @_) } )
      ->set_true( '_check_input' );
 $result = CPANPLUS::Backend::search( $mock, type => 'author' );
-($method, $args) = $mock->next_call(3);
+($method, $args) = $mock->next_call(6);
 is( join('-', $method, @$args), "_query_author_tree-$mock-type-author", 'search( type => "author" ) should call $self->_query_author_tree' );
 is( $result, "$mock-type-author", '... and pass back its return value' );
 

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Error.pm $
-# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
+# $Revision: #6 $ $Change: 7690 $ $DateTime: 2003/08/24 09:23:37 $
 
 ###############################################
 ###              CPANPLUS/Error.pm          ###
@@ -47,6 +47,8 @@ sub new {
                         ? $args{error_level}
                         : 1,
         COUNTER => 0,
+        ECALLBACK => undef,
+        ICALLBACK => undef,
     };
     return bless $self, $class;
 }
@@ -82,6 +84,8 @@ sub trap {
         # Debug level of 1 reports all errors right away
         carp($self->{ERROR}) if ($self->{ELEVEL});
     }
+
+    $self->{ECALLBACK}->($self->{ERROR}) if $self->{ECALLBACK};
 
     ### Return that the error was handled ###
     return 1;
@@ -145,6 +149,8 @@ sub inform {
     unshift @{$self->{INFORM}}, [ $msg, ++$self->{COUNTER} ];
 
     $self->{MSG} = $msg;
+
+    $self->{ICALLBACK}->($self->{MSG}) if $self->{ICALLBACK};
 
     ### indicate the error was handled
     return 1;

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/I18N.pm $
-# $Revision: #1 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #5 $ $Change: 7726 $ $DateTime: 2003/08/26 14:01:15 $
 
 ##############################
 ###    CPANPLUS/I18N.pm    ###
@@ -51,16 +51,42 @@ sub loc {
         $str =~ s/[\~\[\]]/~$&/g;
         $str =~ s/(^|[^%\\])%([A-Za-z#*]\w*)\(([^\)]*)\)/"$1\[$2,"._unescape($3)."]"/eg;
         $str =~ s/(^|[^%\\])%(\d+|\*)/$1\[_$2]/g;
-        return $LangHandle->maketext($str, @_);
+        if (Locale::Maketext::Lexicon->VERSION == 0.27 and $str =~ /^\n/ and chomp $str) {
+            return $LangHandle->maketext($str, @_) . "\n";
+        }
+        else {
+            return $LangHandle->maketext($str, @_);
+        }
     }
 
     # stub code
     $str =~ s{
-	%(?:\d+|(\w+)\(%\d+([^)]*)\))
+	%			# leading symbol
+	(?:			# either one of
+	    \d+			#   a digit, like %1
+	    |			#     or
+	    (\w+)\(		#   a function call -- 1
+		%\d+		#	  with a digit 
+		(?:		#     maybe followed
+		    ,		#       by a comma
+		    ([^),]*)	#       and a param -- 2
+		)?		#     end maybe
+		(?:		#     maybe followed
+		    ,		#       by another comma
+		    ([^),]*)	#       and a param -- 3
+		)?		#     end maybe
+		[^)]*		#     and other ignorable params
+	    \)			#   closing function call
+	)			# closing either one of
     }{
-	shift(@_) . (($1 and $1 eq 'tense')
-	    ? (($2 eq ',present') ? 'ing' : 'ed')
-	    : '');
+	my $digit = shift;
+	$digit . (
+	    $1 ? (
+		($1 eq 'tense') ? (($2 eq ',present') ? 'ing' : 'ed') :
+		($1 eq 'quant') ? ' ' . (($digit > 1) ? ($3 || "$2s") : $2) :
+		''
+	    ) : ''
+	);
     }egx;
 
     return $str;
