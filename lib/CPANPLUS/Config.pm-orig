@@ -7,7 +7,7 @@
 
 package CPANPLUS::Config;
 
-$VERSION = "0.052";
+$VERSION = "0.053";
 
 $MIN_CPANPLUS_VERSION = '0.050_03';
 

@@ -103,6 +103,7 @@ lib/CPANPLUS/Shell.pm
 lib/CPANPLUS/Shell/Classic.pm
 lib/CPANPLUS/Shell/Default.pm
 Makefile.PL
+META.yml
 MANIFEST			This list of files
 MANIFEST.SKIP
 README
