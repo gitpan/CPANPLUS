@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -12,16 +12,15 @@
 package CPANPLUS::Internals::Make;
 
 use strict;
+use Data::Dumper;
 use File::Spec;
 use FileHandle;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
+use Config;
 use Cwd;
+use CPANPLUS::I18N;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -33,322 +32,481 @@ sub _make {
     my $modtree = $self->_module_tree;
 
     my $dir    = $args{'dir'};
-    my $data   = $args{'module'};
 
-    ### make target: may also be 'makefile', 'make', 'test' or 'skiptest'
+    ### yes, this is an evil hack.. make can either handle module objects or directories
+    ### but since it also stores some data back INTO the object it got, we have to hashify
+    ### the dir argument at *least*. So blessing it into Internals::Module is the easiest thing
+    ### to do right now. Note we can't call it properly OO, since we are missing a lot of the
+    ### required parameters. This data construct is ONLY to be used in _make()!!! -kane
+    ### we have to store it in %args as well, since we unshift that in our make-queue later on
+    ### if there are unsatisfied dependencies
+    $args{'module'} ||= bless { module => $dir, _id => $self->{_id} }, "CPANPLUS::Internals::Module";
+    my $data = $args{'module'};
+
+    ### make target: may also be 'makefile', 'make', 'test' or 'dist'
     my $target        = lc($args{'target'}) || 'install';
-    ### target of prereqs: may also be 'makefile', 'make', 'test' or 'skiptest'
-    my $prereq_target = lc($args{'prereq_target'}) || 'install';
 
-    ### test for Backend->flush
-    ###print "this is todo: ", Dumper $self->{_todo};
-
-    unless (chdir $dir) {
-        $err->trap(
-            error => "Make couldn't chdir to $dir! I am in " . cwd " . now"
-        );
-        return 0;
-    }
+    ### target of prereqs: may also be 'makefile', 'make', 'test'
+    my $prereq_target = lc($args{'prereq_target'});
+    $prereq_target ||= $conf->get_conf('prereqs') == 3
+                        ? 'test'
+                        : 'install';
 
     ### perhaps we shouldn't store the version of perl in config, but just use the one
     ### we were invoked with ($^X) unless the user specifies one specifically...
     ### i think that would make a few users happier -kane
-    my ($perl, $force, $make, $report, $mmflags, $makeflags)
-        = @args{qw|perl force make cpantest makemakerflags makeflags|};
+    my ($perl, $force, $make, $report, $mmflags, $makeflags, $type, $skiptest)
+         = @args{qw|perl force make cpantest makemakerflags makeflags type skiptest|};
+
 
     ### fill in the defaults; checks for definedness, not truth value. -autrijus
-    $perl      = $^X                               unless defined $perl;
-    $force     = $conf->get_conf('force')          unless defined $force;
-    $make      = $conf->_get_build('make')         unless defined $make;
-    $report    = $conf->get_conf('cpantest')       unless defined $report;
-    $mmflags   = $conf->get_conf('makemakerflags') unless defined $mmflags;
-    $makeflags = $conf->get_conf('makeflags')      unless defined $makeflags;
- 
+    $perl      = $^X                                unless defined $perl;
+    $force     = $conf->get_conf('force')           unless defined $force;
+    $make      = $conf->_get_build('make')          unless defined $make;
+    $report    = $conf->get_conf('cpantest')        unless defined $report;
+    $mmflags   = $conf->get_conf('makemakerflags')  unless defined $mmflags;
+    $makeflags = $conf->get_conf('makeflags')       unless defined $makeflags;
+    $type      = $conf->get_conf('dist_type')       unless defined $type;
+    $skiptest  = $conf->get_conf('skiptest')        unless defined $skiptest;
+
     my $verbose = $conf->get_conf('verbose');
     my $captured; # capture buffer of _run
 
-    ### try to install the module ###
+    ### if the prereq_target, which might be this modules target, is
+    ### not 'install', then this function will go in an infinite loop:
+    ### it will try to install the prereq needed, find that it may only
+    ### go upto say, test and then return 1. the original module still won't
+    ### find the prereq in @INC and it will keep on going. That's why we have
+    ### to add it to @INC manually in a few special cases
 
-    ### 'perl Makefile.PL' ###
-    ### check if the makefile.pl exists
-    unless ( -e 'Makefile.PL' ) {
-        $err->inform(
-            msg     => "Author did not supply a Makefile.PL - Attempting to generate one",
-            quiet   => !$verbose
-        );
+    ### prereqs == 3 is a new setting that says 'build them for testing purposes
+    ### but dont install them. Tricky setting, definately experimental
 
-        ### if not, we make our own, return 0 if that fails
-        unless ( $self->_make_makefile( data => $args{module} ) ) {
 
-            ### store it if a module failed to install for some reason ###
-            $self->{_todo}->{failed}->{ $data->{module} } = 1;
+    if( ($target ne 'install') or ($conf->get_conf('prereqs') == 3) ) {
+        my $lib     = File::Spec->catfile($dir,'blib', 'lib');
+        my $arch    = File::Spec->catfile($dir,'blib', 'arch');
 
+        my $p_lib = quotemeta $lib;
+        my $p_arch = quotemeta $arch;
+
+        unless( grep /^$p_lib/i, @INC )  { push @INC, $lib }
+        unless( grep /^$p_arch$/i, @INC ) { push @INC, $arch }
+
+        {   local $^W;      ### it will be complaining if $ENV{PERL5LIB]
+                            ### is not defined (yet).
+            my %p5lib = map { $_ => 1 } split $Config{path_sep}, $ENV{PERL5LIB};
+
+            my @add;
+            unless( $p5lib{$lib} )  { push @add, $lib }
+            unless( $p5lib{$arch} ) { push @add, $arch }
+
+            $ENV{PERL5LIB} = join(
+                $Config{path_sep},
+                split($Config{path_sep}, $ENV{PERL5LIB}),
+                @add
+            );
+        }
+    }
+
+    ### mark the extraction dir in the module object ###
+    $data->{status}->{make}->{dir} = $dir;
+
+    ### container for recursive rv's ###
+    my $return;
+
+    ### set this flag and say 'last SCOPE' to exit the sub prematurely and have the
+    ### startdir restored, as well as the proper RV returned and the proper report
+    ### sent out, if the user wanted that
+    my $fail;
+    SCOPE: {
+        unless (chdir $dir) {
             $err->trap(
-                error => "Could not generate Makefile.PL - Aborting"
+                error => loc("Make couldn't chdir to %1! I am in %2 now", $dir, cwd()),
             );
-            $self->_restore_startdir;
-            return 0;
-        }
-    }
-
-    ### we can only use open, backticks or system. and only the latter allows
-    ### interactive mode. so we're screwed =/ -Kane
-    ### not really; there's open3 -- see the _run() method. -autrijus
-
-    PERL_MAKEFILE: {
-        ### we can check for a 'Makefile' but that might be have produced a
-        ### Makefile that CAME from a different version of perl
-        ### thus screwing everything up.
-        ### i suggest uncommenting this once we have a way to pass make options like 'clean'
-
-        #if ( -e 'Makefile' && !$force ) {
-        #    $err->inform( msg => qq[Makefile already exists, not running 'perl Makefile.PL' again, unless you force!], quiet => !$verbose );
-        #    last PERL_MAKEFILE;
-        #}
-
-        my @args = @{$self->_flags_arrayref($mmflags)};
-
-        ### BIG CAVEAT: We're forced to use the $|=1 trick to ensure proper
-        ###             ordering of STDIN, STDOUT and STDERR in captured buffer
-        unless( $self->_run(
-            command => [$perl, 'Makefile.PL', @args],
-            buffer  => \$captured,
-            verbose => 1
-        ) ) {
-            ### store it if a module failed to install for some reason ###
-            $self->{_todo}->{failed}->{ $data->{module} } = 1;
-
-            $err->trap( error => "BUILDING MAKEFILE failed! - $!" );
-            $self->_send_report( module => $data, buffer => $captured) if $report;
-            $self->_restore_startdir;
-            return 0;
+            $fail = 1;
+            last SCOPE;
         }
 
-        if ($target eq 'makefile') {
-            $self->_restore_startdir;
-            return 1;
+        ### try to install the module ###
+
+        ### 'perl Makefile.PL' ###
+        ### check if the makefile.pl exists
+        unless ( -e 'Makefile.PL' ) {
+            $err->inform(
+                msg     => loc("Author did not supply a Makefile.PL - Attempting to generate one"),
+                quiet   => !$verbose
+            );
+
+            ### if not, we make our own, return 0 if that fails
+            unless ( $self->_make_makefile( data => $args{module} ) ) {
+
+                ### store it if a module failed to install for some reason ###
+                $self->{_todo}->{failed}->{ $data->{module} } = 1;
+
+                $err->trap(
+                    error => loc("Could not generate Makefile.PL - Aborting")
+                );
+
+                $fail = 1;
+                last SCOPE;
+            }
         }
-    }
+
+        ### we can only use open, backticks or system. and only the latter allows
+        ### interactive mode. so we're screwed =/ -Kane
+        ### not really; there's open3 -- see the _run() method. -autrijus
+
+        PERL_MAKEFILE: {
+            ### we can check for a 'Makefile' but that might be have produced a
+            ### Makefile that CAME from a different version of perl
+            ### thus screwing everything up.
+            ### i suggest uncommenting this once we have a way to pass make options like 'clean'
+
+            ### changed the dir structure so that every version of perl gets it's own
+            ### build/ dir.. so it's safe to use this now -kane
+
+            ### we must fix _extract first so it won't have to delete the dir
+            ### every time =/ -kane
+
+            if ( -e 'Makefile' && !$force ) {
+                $err->inform( msg => loc("Makefile already exists, not running 'perl Makefile.PL' again, unless you force!"), quiet => !$verbose );
+                last PERL_MAKEFILE;
+            }
+
+            my @args = @{$self->_flags_arrayref($mmflags)};
+
+            unless( $self->_run(
+                command => [$perl, 'Makefile.PL', @args],
+                buffer  => \$captured,
+                verbose => 1,
+            ) ) {
+                ### store it if a module failed to install for some reason ###
+                $self->{_todo}->{failed}->{ $data->{module} } = 1;
+
+                $fail = 1;
+
+                $err->trap( error => loc("BUILDING MAKEFILE failed! - %1", $!) );
+
+                last SCOPE;
+                ### failure, return overall => 0
+                ### restore startdir
+            }
+
+            ### store that makefile was made successfully ###
+            $data->{status}->{make}->{makefile} = 1;
+
+            if ($target eq 'makefile') {
+                last SCOPE;
+
+                ### succesfull, return overall => 1
+                ### restore startdir
+            }
+        }
 
 
-    ### this is where we find out what prereqs this module has,
-    ### and install them accordingly.
-    ### this probably needs some tidying up ###
+        ### this is where we find out what prereqs this module has,
+        ### and install them accordingly.
+        ### this probably needs some tidying up ###
 
 
-    my $prereq = $self->_find_prereq( dir => $dir );
+        my $prereq = $self->_find_prereq( dir => $dir );
+        $data->{status}->{make}->{prereq} = $prereq;
 
-    ### check if the prereq this module wants is something we already tried to install
-    ### earlier this session: if so $self->{_todo}->{failed} will be 1.
-    ### a successfull install will set the above variable to 0. this way we can still
-    ### check for 'defined'-ness.
-    #print Dumper $self->{_todo}->{failed};
+        ### check if the prereq this module wants is something we already tried to install
+        ### earlier this session: if so $self->{_todo}->{failed} will be 1.
+        ### a succesfull install will set the above variable to 0. this way we can still
+        ### check for 'defined'-ness.
+        #print Dumper $self->{_todo}->{failed};
 
-    {   my $flag;
+        {   my $flag;
+            for my $mod (keys %$prereq) {
+                if ( $self->{_todo}->{failed}->{$mod} ) {
+                    $err->inform(
+                        msg => loc("According to the cache, %1 failed to install before in this session.. returning!", $mod),
+                        quiet => !$verbose
+                    );
+
+                    $flag = 1;
+                }
+            }
+
+            if ($flag) {
+                ### make sure we REMOVE this dir from the TODO list then, else we'll go into
+                ### an infinite loop
+                @{$self->{_todo}{make}} = grep { $_->{dir} ne $dir } @{$self->{_todo}{make}};
+
+                #print "dumpering _todo->make\n";
+                #print Dumper $self->{_todo}->{make};
+
+                $fail = 1;
+                last SCOPE;
+            }
+        }
+
+        ### if we're not allowed to follow prereqs, and there are some
+        ### we return the list of prerequisites, and leave it at that.
+        #print Dumper $prereq;
+
+        ### this is gonna get messy... we need to know not only if we have a module yet or not
+        ### but also whether or not we are trying to install it right now
+        ### and what level of prereq we're in...
+        ### i have an idea: an array ref in the object, with hashrefs in it
+        ### one hashref for every time we found the prereqs, adding the hashrefs to the front
+        ### of the array ref as we go.
+        ### then, check the array ref for what modules are installed already
+        ### yes, i know, messy... -kane
+
+        ### we now also have module objects, so i suppose we should start storing this information
+        ### THERE instead? definately a TODO!
+
+        my $must_install;
+        my %list;
+
         for my $mod (keys %$prereq) {
-            if ( $self->{_todo}->{failed}->{$mod} ) {
-                $err->inform(
-                    msg => "According to the cache, $mod failed to install before in this session.. returning!",
-                    quiet => !$verbose
-                );
 
-                $flag = 1;
-            }
-        }
+            ### check if the module (with specified version) is installed yet
+            my $mod_data = $self->_check_install( module => $mod, version => $prereq->{$mod} );
 
-        if ($flag) {
-            $self->_restore_startdir;
-            return 0;
-        }
-    }
+            #print Dumper $mod_data;
+            if ( $mod_data->{uptodate} ) {
 
-    ### if we're not allowed to follow prereqs, and there are some
-    ### we return the list of prerequisites, and leave it at that.
-    #print Dumper $prereq;
+                ### make sure we DONT install this ###
+                ### $self->{_todo}->{install}->{$mod} = 0;
+                $must_install->{$mod} = 0;
 
-    ### this is gonna get messy... we need to know not only if we have a module yet or not
-    ### but also whether or not we are trying to install it right now
-    ### and what level of prereq we're in...
-    ### i have an idea: an array ref in the object, with hashrefs in it
-    ### one hashref for every time we found the prereqs, adding the hashrefs to the front
-    ### of the array ref as we go.
-    ### then, check the array ref for what modules are installed already
-    ### yes, i know, messy... -kane
-
-    ### we now also have module objects, so i suppose we should start storing this information
-    ### THERE instead? definately a TODO!
-
-    my $must_install;
-    my %list;
-
-    for my $mod (keys %$prereq) {
-
-        ### check if the module (with specified version) is installed yet
-        my $mod_data = $self->_check_install( module => $mod, version => $prereq->{$mod} );
-
-        #print Dumper $mod_data;
-        if ( $mod_data->{uptodate} ) {
-
-            ### make sure we DONT install this ###
-            ### $self->{_todo}->{install}->{$mod} = 0;
-            $must_install->{$mod} = 0;
-
-        } else {
-            ### check if we're supposed to NOT install prereqs
-            if ( (keys %list) && !$conf->get_conf('prereqs') ){
-                $err->inform(
-                    msg     => "Prereqs are found, but not allowed to install! Returning list of prereqs",
-                    quiet   => !$verbose
-                );
-
-                $self->_restore_startdir;
-                return \@{[ keys %list ]};
-            }
-
-            unless ( keys(%{$modtree->{$mod}}) ) {
-                $err->trap( error => "No such module: $mod, cannot satisfy dependency" );
-                next;
-            }
-
-            if ( grep { $_->{module}{module} eq $mod } @{$self->{_todo}{make}} ) {
-                $err->trap( error => "Recursive dependency detected in $mod, skipping" );
-                next;
-            }
-            elsif ( defined $self->{_todo}->{failed}->{$mod} ) {
-                $err->inform(
-                    msg => "According to the cache, prerequisite $mod is already installed",
-                    quiet => !$verbose
-                );
-                next;
-            }
-
-            ### check if we're in shell mode, and if we should ask to follow prereqs.
-            ### should probably use words rather than numbers -kane
-            if ( $self->{_shell} and $conf->get_conf('prereqs') == 2 ) {
-                $list{$mod} = 1 if $self->{_shell}->_ask_prereq( mod => $mod );
             } else {
-                ### must install this
-                $list{$mod} = 1;
-            }
+                ### check if we're supposed to NOT install prereqs
+                if ( (keys %list) && !$conf->get_conf('prereqs') ){
+                    $err->inform(
+                        msg     => loc("Prereqs are found, but not allowed to install! Returning list of prereqs"),
+                        quiet   => !$verbose
+                    );
 
-            if ( $list{$mod} ) {
-                $err->inform(
-                    msg     => "Installing $mod to satisfy dependency",
-                    quiet   => !$verbose
-                );
-            }
-        }
-    }
-
-
-    ### see if we have anything to install, if so, we'll need to exit this make, and install
-    ### the prereqs first.
-    if (%list) {
-
-        ### store this dir and modname, we'll have to finish the make here later.
-        unshift @{$self->{_todo}->{make}}, \%args;
-
-        ### enqueue this modules prereqs ###
-        unshift @{$self->{_todo}->{install}}, [ map {
-            $modtree->{$_}
-        } keys %list ];
-
-        while (my $mod_ref = shift @{$self->{_todo}->{install}} ) {
-            $self->_install_module(
-                modules       => $mod_ref,
-                target        => $prereq_target,
-                prereq_target => $prereq_target,
-            );
-        }
-
-    } else {
-        my @args = @{$self->_flags_arrayref($makeflags)};
-
-        INSTALL: {
-            ### ok, so we have no prereqs to take care of, let's go on with installing ###
-
-            MAKE: {
-                ### we can check for a 'blib' but that might be a run from a 'make' that was run on a
-                ### Makefile that CAME from a different version of perl
-                ### thus screwing everything up.
-                ### i suggest uncommenting this once we have a way to pass make options like 'clean'
-
-                #if ( -d 'blib' && !$force ) {
-                #    $err->inform( msg => qq[Already ran 'make' for this module. Not running again unless you force!], quiet => !$verbose );
-                #    last MAKE;
-                #}
-
-                unless ( $self->_run(
-                    command => [$make, @args],
-                    buffer  => \$captured,
-                ) ) {
-                    ### store it if a module failed to install for some reason ###
-                    $self->{_todo}->{failed}->{ $data->{module} } = 1;
-
-                    $err->trap( error => "MAKE failed! - $!" );
-                    $self->_send_report( module => $data, buffer => $captured) if $report;
                     $self->_restore_startdir;
-                    return 0;
+                    return \@{[ keys %list ]};
                 }
 
-                last INSTALL if $target eq 'make';
+                unless ( keys(%{$modtree->{$mod}}) ) {
+                    $err->trap( error => loc("No such module: %1, cannot satisfy dependency", $mod) );
+                    next;
+                }
+
+                if ( grep { $_->{module}{module} eq $mod } @{$self->{_todo}{make}} ) {
+                    $err->trap( error => loc("Recursive dependency detected in %1, skipping", $mod) );
+                    next;
+                }
+                elsif ( defined $self->{_todo}->{failed}->{$mod}
+                        or
+                        ( defined $modtree->{$mod}->{status}->{install}
+                          && $modtree->{$mod}->{status}->{install} == 0
+                        )
+                ) {
+                    $err->inform(
+                        msg => loc("According to the cache, prerequisite %1 is already installed", $mod),
+                        quiet => !$verbose
+                    );
+                    next;
+                }
+
+                ### check if we're in shell mode, and if we should ask to follow prereqs.
+                ### should probably use words rather than numbers -kane
+                if ( $self->{_shell} and $conf->get_conf('prereqs') == 2 ) {
+                    $list{$mod} = 1 if $self->{_shell}->_ask_prereq( mod => $mod );
+                } else {
+                    ### must install this
+                    $list{$mod} = 1;
+                }
+
+                if ( $list{$mod} ) {
+                    $err->inform(
+                        msg     => loc("Installing %1 to satisfy dependency", $mod),
+                        quiet   => !$verbose
+                    );
+                }
+            }
+        }
+
+
+        ### see if we have anything to install, if so, we'll need to exit this make, and install
+        ### the prereqs first.
+        if (%list) {
+
+            ### store this dir and modname, we'll have to finish the make here later.
+            unshift @{$self->{_todo}->{make}}, \%args;
+
+            ### enqueue this modules prereqs ###
+            unshift @{$self->{_todo}->{install}}, [ map {
+                $modtree->{$_}
+            } keys %list ];
+
+            while (my $mod_ref = shift @{$self->{_todo}->{install}} ) {
+
+                my $rv = $self->_install_module(
+                    perl            => $perl,
+                    modules         => $mod_ref,
+                    target          => $prereq_target,
+                    prereq_target   => $prereq_target,
+                    force           => $force,
+                    make            => $make,
+                    makemakerlfags  => $mmflags,
+                    makeflags       => $makeflags,
+                    type            => $type,
+                );
+
+                ### add all the modules to the return value ###
+                map { $return->{$_} = $rv->{$_} } keys %$rv;
             }
 
-            if ($target ne 'skiptest') {
-                unless ( $self->_run(
-                    command => [$make, @args, 'test' ],
-                    buffer  => \$captured,
-                    verbose => 1
-                ) ) {
-                    ### store it if a module failed to install for some reason ###
-                    $self->{_todo}->{failed}->{ $data->{module} } = 1;
+        ### no prereqs need doing, let's go on installing ###
+        } else {
 
-                    $err->trap( error => "MAKE TEST failed! - $!" );
-                    $self->_send_report( module => $data, buffer => $captured) if $report;
+            my @args = @{$self->_flags_arrayref($makeflags)};
 
-                    unless ($force) {
-                        $self->_restore_startdir;
-                        return 0;
+            INSTALL: {
+
+                MAKE: {
+                    ### we can check for a 'blib' but that might be a run from a 'make' that was run on a
+                    ### Makefile that CAME from a different version of perl
+                    ### thus screwing everything up.
+                    ### i suggest uncommenting this once we have a way to pass make options like 'clean'
+
+                    ### changed the dir structure so that every version of perl gets it's own
+                    ### build/ dir.. so it's safe to use this now -kane
+
+                    ### we must fix _extract first so it won't have to delete the dir
+                    ### every time =/ -kane
+
+                    if ( -d 'blib' && !$force ) {
+                        $err->inform( msg => loc("Already ran 'make' for this module. Not running again unless you force!"), quiet => !$verbose );
+                        last MAKE;
                     }
-                }
-                else {
-                    $self->_send_report( module => $data, buffer => $captured) if $report;
+
+                    unless ( $self->_run(
+                        command => [$make, @args],
+                        buffer  => \$captured,
+                    ) ) {
+                        ### store it if a module failed to install for some reason ###
+                        $fail = 1;
+
+                        $err->trap( error => loc("MAKE failed! - %1", $!) );
+
+                        last SCOPE;
+                        ### failed to run make, set overall => 0
+                        ### restore startdir
+
+                    }
+
+                    $data->{status}->{make}->{make} = 1;
+
+                    last INSTALL if $target eq 'make';
+                    ### all ok, set overall => 1
+                    ### restore startdir
+
+                } ### end of MAKE
+
+                unless ($skiptest) {
+
+                    unless ( $self->_run(
+                        command => [$make, @args, 'test'],
+                        buffer  => \$captured,
+                        verbose => 1
+                    ) ) {
+                        ### store it if a module failed to install for some reason ###
+                        $fail = 1;
+
+                        $err->trap( error => loc("MAKE TEST failed! - %1", $!) );
+
+                        unless ($force) {
+                            $fail = 1;
+                            last SCOPE;
+
+                            ### failed to run make test, set overall => 0
+                            ### restore startdir
+                        }
+                    }
+
+                    $data->{status}->{make}->{test} = 1;
+
+                    last INSTALL if $target eq 'test';
+                    ### all ok, set overall => 1
+                    ### restore startdir
                 }
 
-                last INSTALL if $target eq 'test';
-            }
-
-            {
                 unless ( $self->_run(
                     command => [$make, @args, 'install'],
                 ) ) {
-                    ### store it if a module failed to install for some reason ###
-                    $self->{_todo}->{failed}->{ $data->{module} } = 1;
 
-                    $err->trap( error => "MAKE INSTALL failed! - $!" );
-                    $self->_restore_startdir;
-                    return 0;
+                    $err->trap( error => loc("MAKE INSTALL failed! - %1", $!) );
+
+                    $fail = 1;
+                    last SCOPE;
+                    ### failed to run make test, set overall => 0
+                    ### restore startdir
+
                 }
-            }
 
+                $data->{status}->{make}->{install} = 1;
+                ### all ok, set overall => 1
+                ### restore startdir
+
+                ### nothing went wrong, but we DID install... mark that as well ###
+                if( $target eq 'install' ) {
+                    $self->{_todo}->{failed}->{ $data->{module} } = 0;
+                }
+
+            } ### end of INSTALL
         }
 
-        $self->_restore_startdir;
+    } ### end of SCOPE:
 
-        ### nothing went wrong, but we DID install... mark that as well ###
-        $self->{_todo}->{failed}->{ $data->{module} } = 0;
+    if($fail) {
 
-        return 1;
+        $self->{_todo}->{failed}->{ $data->{module} } = 1;
+
+    } else {
+        ### extra return status, makes it easier to check ###
+        $data->{status}->{make}->{overall} = 1;
     }
+
+    ### add this data to the return value ###
+    $return->{ $data->module() } = $data->{status};
+
+    ### set it back to the start dir we had when we entered this _make
+    $self->_restore_startdir;
+
+    ### send an error report if the user wants that ###
+    $self->_send_report(
+        module => $data, buffer => $captured, failed => $fail
+    ) if $report;
+
 
     ### if we still have modules left to do in our _tomake list, this is the time to do it!
-    if ( @{$self->{_todo}->{make}} ) {
-        $self->_make( %{ $self->{_todo}{make}->[0] } );
+    if ( $self->{_todo}->{make} and @{$self->{_todo}->{make}} ) {
+
+        ### get the stored data for this session of 'make' ###
+        my $stored = $self->{_todo}{make}->[0];
+
+        ### retrieve the module object ###
+        my $obj = $stored->{module};
+
+        ### if we're trying to go _make in a dir we are already
+        ### in, well, that's kinda stupid ;) -kane
+
+        unless( $dir eq $stored->{dir} ) {
+            ### call ourselves recursively to finish the make ###
+            my $rv = $self->_make( %$stored );
+
+            ### and return the data ###
+            $return->{ $obj->module() } = $rv->{ $obj->module() };
+        }
+
+        ### and dump it off the TODO-stack ###
         shift @{$self->{_todo}{make}};
+
     }
 
-    ### indicate success ###
-    return 1;
+    return $return;
 
 } #_make
 
@@ -396,7 +554,7 @@ sub _restore_startdir {
     return 1 if chdir($conf->_get_build('startdir'));
 
     $err->inform(
-        msg     => "Invalid start dir!",
+        msg     => loc("Invalid start dir!"),
         quiet   => !$verbose
     );
 
@@ -414,7 +572,7 @@ sub _make_makefile {
     my $fh = new FileHandle;
 
     unless ( $fh->open(">Makefile.PL") ) {
-        $err->trap( error => "Could not create Makefile.PL - $!" );
+        $err->trap( error => loc("Could not create Makefile.PL - %1", $!) );
         return 0;
     }
 
@@ -444,7 +602,7 @@ sub _find_prereq {
 
     ### open the Makefile
     unless ( $fh->open(File::Spec->catfile($args{'dir'}, "Makefile") ) ) {
-        $err->trap( error => "Can't find the Makefile: $!" );
+        $err->trap( error => loc("Can't find the Makefile: %1", $!) );
         return 0;
     }
 
@@ -465,7 +623,7 @@ sub _find_prereq {
             ### In case a prereq is mentioned twice, complain.
             if ( defined $p{$1} ) {
                 $err->inform(
-                    msg   => "Warning: PREREQ_PM mentions $1 more than once, last mention wins!",
+                    msg   => loc("Warning: PREREQ_PM mentions %1 more than once, last mention wins!", $1),
                     quiet => !$conf->get_conf('verbose')
                 );
             }
@@ -474,6 +632,28 @@ sub _find_prereq {
         last;
     }
     return \%p;
+}
+
+sub _make_dist_object {
+    my $self = shift;
+    my %args = @_;
+
+    my $type = $args{type}  or return 0;
+    my $data = $args{data} or return 0;
+
+    my $map = {
+            RPM         => 'CPANPLUS::Dist::RPM',
+            PPM         => 'CPANPLUS::Dist::PPM',
+            DEB         => 'CPANPLUS::Dist::Deb',
+            MakeMaker   => 'CPANPLUS::Dist::MakeMaker',
+    };
+
+    ### get the proper module to use for this type, or return 0
+    my $mod = $map->{$type} or return 0;
+
+    return 0 unless $self->_can_use( modules => { $mod => '0.0' }, complain => 1 );
+
+    return $mod->new( module => $data ) || 0;
 }
 
 1;

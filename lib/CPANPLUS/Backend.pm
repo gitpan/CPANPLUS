@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Backend.pm $
+# $Revision: #5 $ $Change: 1951 $ $DateTime: 2002/11/04 15:29:02 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -11,17 +11,18 @@ package CPANPLUS::Backend;
 
 use strict;
 
-use Carp;
+use CPANPLUS::I18N;
 use CPANPLUS::Configure;
 use CPANPLUS::Internals;
 use CPANPLUS::Internals::Module;
+use CPANPLUS::Backend::RV;
+use CPANPLUS::Backend::InputCheck;
 use Data::Dumper;
 
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( CPANPLUS::Internals Exporter );
+    use vars        qw(@ISA $VERSION);
+    @ISA        =   qw(CPANPLUS::Internals  CPANPLUS::Backend::InputCheck);
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -58,9 +59,9 @@ sub search {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
-    return 0 unless $self->_check_input( %$args );
+    return undef unless $self->_check_input( %$args );
 
     my $href;
 
@@ -80,7 +81,8 @@ sub search {
 sub install {
     my $self    = shift;
     my %hash    = @_;
-    my $err     = $self->{_error};
+    my $err     = $self->error_object;
+    my $conf    = $self->configure_object;
 
     my $_data = {
         modules         => { required => 1, default=> [] },
@@ -90,54 +92,184 @@ sub install {
         perl            => { default => undef },
         makemakerflags  => { default => undef }, # hashref
         fetchdir        => { default => undef },
+        extractdir      => { default => undef },
+        skiptest        => { default => undef },
         target          => { default => 'install' },
-        prereq_target   => { default => 'install' },
-        type            => { default => 'MakeMaker', }
+        type            => { default => 'MakeMaker' },
+        prereq_target   => { default => '' },
     };
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
+
+    ### make target: may be 'makefile', 'make', 'test' or 'install' ###
+    unless( grep { lc $_ eq lc $args->{target} } (qw|makefile make test install|) ) {
+        $err->trap( error => loc(qq[Unknown target '$args->{target}', aborting..]) );
+        return undef;
+    }
 
     my $force = $args->{'force'};
     $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     my $href;
+    my $flag = 0;
+    my $list;
+
+    my $name;
+    my $modobj;
+    my $ab_prefix = $conf->_get_build('autobundle_prefix');
+
     for my $mod ( @{$args->{"modules"}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
 
-        my ($name, $modobj) = each %$mods;
+        ### autobundle caveat: we dont know how to install versions
+        ### that are *not* the latest version.. pause provides not enough
+        ### information for that =/
+        ### so right now, we just install the latest rather than guessing
+        ### but this needs fixing  --kane
+        if( my $is_file = -f $mod       # path to a file
+            or $mod =~ m|^$ab_prefix|   # looks like a autobundle
+        ) {
 
-        unless ( $name =~ m|/| or $name =~ /^Bundle::/ or $force ) {
-            my $res =  $self->_check_install( module => $name );
+            my $file;
+            unless ( $is_file ) {
+                my $guess = File::Spec->catfile(
+                                    $conf->_get_build('base'),
+                                    $self->_perl_version( perl => $args->{perl} || $^X ),
+                                    $conf->_get_build(qw|distdir autobundle|),
+                                    $mod . '.pm'
+                            );
+                unless( -f $guess && -r _ ) {
+                    $err->trap( error => loc(qq[Could not read from %1], $guess) );
+                    $flag = 1;
+                    next;
 
-            if ($res->{uptodate}) {
-                my $do_install = ($args->{target} =~ /^(?:install|skiptest)$/);
-                $err->inform(
-                    msg => "Module $name already up to date; ".
-                           ($do_install ? "won't install without force!"
-                                        : "continuing anyway.")
-		);
-                next if $do_install;
+                } else {
+                    $file = $guess;
+                }
+
+            } else {
+                $file = $mod;
+            }
+
+            $list = $self->_bundle_files( file => $file );
+
+            unless( $list ) {
+                $err->trap( error => loc(qq[Problem parsing %1], $file) );
+                $flag = 1;
+                next;
+            }
+
+        } else {
+            my $answer = $self->parse_module(modules => [$mod]);
+
+            ### input checker.. if we couldn't parse this module, make sure we warn
+            ### about it
+            unless( $answer->ok ) {
+                $err->trap( error => loc( qq[Unknown module '%1'; Could not parse it properly.], $mod ) );
+                $flag = 1;
+                next;
+            }
+
+            my $mods = $answer->rv;
+
+            ### this *could* lead to problems if someone specified a bunch of
+            ### modules, then a snapshot and more modules and wanted to turn
+            ### the snapshot into a dist and that failed -- yes, i know a VERY
+            ### unlikely scenario and a 'well dont do that then' sort of thing.
+            ### but in that case $name would still be pointing at the *previous*
+            ### module object, rather than at the one for the snapshot
+            ($name, $modobj) = each %$mods;
+
+
+            unless( $name =~ m|/|           # it's a location on a cpan server
+                    or $name =~ /^Bundle::/ # it's a bundle file
+                    or $force               # or force was enabled
+                ) {
+
+                my $res =  $self->_check_install( module => $name );
+
+                if ($res->{uptodate}) {
+                    my $do_install = ($args->{target} =~ /^install$/);
+                    $err->inform(
+                        msg => loc("Module %1 already up to date; ", $mod).
+                            ($do_install ? loc("won't install without force!")
+                                         : loc("continuing anyway."))
+    		);
+                    next if $do_install;
+                }
+            }
+
+            $list = [$modobj];
+        }
+
+        my $target = $args->{target} eq 'dist' ? 'test' : $args->{target};
+
+        my $rv = $self->_install_module(
+                            modules         => $list,
+                            force           => $args->{force},
+                            make            => $args->{make},
+                            makeflags       => $args->{makeflags},
+                            makemakerflags  => $args->{makemakerflags},
+                            perl            => $args->{perl},
+                            fetchdir        => $args->{fetchdir},
+                            extractdir      => $args->{extractdir},
+                            skiptest        => $args->{skiptest},
+                            target          => $target,
+                            prereq_target   => $args->{prereq_target},
+        );
+
+        for my $mod ( keys %$rv ) {
+            unless ( $rv->{$mod}->{install} ) {
+                $err->trap( error => loc("Installing %1 failed!", $name) );
+                $flag = 1;
+            }
+
+            my $answer = $self->parse_module(modules => [$mod]);
+
+            $answer->ok or ($flag=1,next);
+
+            my $mods = $answer->rv;
+
+            my ($name2, $modobj2) = each %$mods;
+
+            $href->{ $name2 } = { %{$rv->{$mod}} };
+        }
+
+        ### if they wanted to make a dist: ###
+        if( $args->{target} eq 'dist' ) {
+            my $rv2 = $self->dist(
+                                modules         => $list,
+                                makeflags       => $args->{makeflags},
+                                perl            => $args->{perl},
+                                make            => $args->{make},
+                                type            => $args->{type},
+            );
+
+            unless($rv2->ok) {
+                $err->trap( error => loc("Error creating %1 dist for %2", $args->{type}, $name) );
+                $href->{$name}->{dist} = 0;
+                $flag = 1;
+            } else {
+                my $dist = { %{$rv2->rv()}};
+                $href->{$name}->{dist} = { %{$dist->{$name}} };
             }
         }
-
-        $args->{modules} = [ $modobj ];
-        my $rv = $self->_install_module( %$args );
-
-        unless ($rv) {
-            $err->trap( error => "Installing $name failed!" );
-            $href->{ $name } = 0;
-        } else {
-            $href->{ $name } = $rv;
-        }
-
     }
 
     ### flush the install status of the modules we installed so far ###
-    $self->flush('modules') if $self->get_conf('flush');
+    $self->flush('modules') if $self->configure_object->get_conf('flush');
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+
+    return $rv;
 }
 
 
@@ -155,7 +287,7 @@ sub fetch {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $force = $args->{'force'};
     $force = $self->{_conf}->get_conf('force') unless defined $force;
@@ -174,9 +306,14 @@ sub fetch {
 
 
     my $href;
+    my $flag = 0;
 
     for my $mod ( @{$args->{'modules'}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
@@ -187,14 +324,23 @@ sub fetch {
         );
 
         unless ($rv) {
-            $err->trap( error => "fetching $name failed!" );
+            $err->trap( error => loc("fetching %1 failed!", $name) );
             $href->{ $name } = 0;
+            $flag = 1;
         } else {
             $href->{ $name } = $rv;
         }
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 
@@ -206,28 +352,40 @@ sub extract {
         files       => { required => 1, default => [] },
         targetdir   => { default => '' },
         force       => { default => undef },
+        perl        => { default => $^X },
     };
 
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
+
     for my $file ( @{$args->{'files'}} ) {
-        $args->{'file'} = $file;
+        #$args->{'file'} = $file;
 
         ### will either return a filename, or '0' for now
-        my $rv = $self->_extract( %$args );
+        my $rv = $self->_extract( file => $file, %$args );
 
         unless ($rv) {
-            $self->{_error}->trap( error => "extracting $file failed!" );
+            $self->{_error}->trap( error => loc("extracting %1 failed!", $file) );
             $href->{ $file } = 0;
+            $flag = 1;
         } else {
             $href->{ $file } = $rv;
         }
     }
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 
@@ -246,6 +404,7 @@ sub make {
         make            => { default => undef },
         perl            => { default => undef },
         makemakerflags  => { default => undef }, # hashref
+        skiptest        => { default => undef },
         target          => { default => 'install' },
         prereq_target   => { default => 'install' },
         type            => { default => 'MakeMaker' },
@@ -254,21 +413,41 @@ sub make {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
     for my $dir ( @{$args->{'dirs'}} ) {
         my $rv = $self->_make( dir => $dir, %$args );
 
-        unless ( $rv ) {
-            $err->trap( error => "make'ing for $dir failed!");
-            $href->{ $dir } = 0;
-        } else {
-            $href->{ $dir } = $rv;
+        ### both the original module-directory, as all the prereqs
+        ### will be in this rv
+        for my $mod ( keys %$rv ) {
+            unless ( $rv->{$mod}->{make}->{overall} ) {
+                $err->trap( error => loc("Making %1 failed!", $mod) );
+                $flag = 1;
+            }
+
+            $href->{ $mod } = $rv->{$mod}->{make};
         }
+
+        #unless ( $rv ) {
+        #    $err->trap( error => "make'ing for $dir failed!");
+        #    $href->{ $dir } = 0;
+        #} else {
+        #    $href->{ $dir } = $rv;
+        #}
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 
@@ -304,25 +483,40 @@ sub files {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
+
     for my $mod ( @{$args->{'modules'}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
         my $rv = $self->_files( module => $modobj->{module}, %$args );
 
         unless ( $rv ) {
-            $err->trap( error => "Could not get files for $name");
+            $err->trap( error => loc("Could not get files for %1", $name));
             $href->{ $name } = 0;
+            $flag = 1;
         } else {
             $href->{ $name } = $rv;
         }
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 ### wrapper for CPANPLUS::Internals::_uninstall ###
@@ -348,24 +542,40 @@ sub uninstall {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
+
     for my $mod ( @{$args->{'modules'}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
         my $rv = $self->_uninstall( module => $modobj->{module}, %$args );
 
         unless ( $rv ) {
-            $err->trap( error => "Could not uninstall $name");
+            $err->trap( error => loc("Could not uninstall %1", $name));
             $href->{ $name } = 0;
+            $flag = 1;
         } else {
             $href->{ $name } = $rv;
         }
     }
-    return $href;
+
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 ### wrapper for CPANPLUS::Internals::_check_install ###
@@ -384,11 +594,17 @@ sub uptodate {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
+
     for my $mod ( @{$args->{'modules'}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
@@ -396,12 +612,69 @@ sub uptodate {
             module  => $modobj->{module},
             version => $modobj->{version},
         );
+
+        $flag = 1 unless $href->{$name};
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
-sub installed { shift->_installed() }
+sub installed {
+    my $self    = shift;
+    my %hash    = @_;
+
+    my $err = $self->{_error};
+
+    ### input check ? ###
+    my $_data = {
+        modules => { default => undef }, # arrayref
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return undef unless $args;
+
+    my $href;
+    my $flag = 0;
+
+    if ($args->{'modules'}) {
+        for my $mod ( @{$args->{'modules'}} ) {
+            my $answer = $self->parse_module(modules => [$mod]);
+
+            $answer->ok or ($flag=1,next);
+
+            my $mods = $answer->rv;
+
+            my ($name, $modobj) = each %$mods;
+
+            my $rv = $self->_installed( module  => $modobj );
+
+            $href->{$name} = $rv || 0;
+            $flag = 1 unless $rv;
+        }
+    }
+    else {
+        $href = $self->_all_installed;
+    }
+
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,       # no real way to check
+                                    );
+    return $rv;
+}
 
 ### validates if all files for a module are actually there, as per .packlist ###
 sub validate {
@@ -417,20 +690,36 @@ sub validate {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
+
     for my $mod ( @{$args->{'modules'}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
         my $rv = $self->_validate_module( module  => $modobj->{module} );
 
         $href->{$name} = (UNIVERSAL::isa($rv, 'ARRAY') and scalar @$rv) ? $rv : 0;
+        $flag = 1 unless $href->{$name};
     }
 
-    return $href;
+
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 
@@ -446,25 +735,27 @@ sub flush {
     my $cache = {
         methods => [ qw( _methods ) ],
         uris    => [ qw( _uris ) ],
-        modules => [ qw( _todo ) ],
+        modules => [ qw( _todo _lib) ],
         path    => [ qw( _inc ) ],
         extract => [ qw( _extract ) ],
-        all     => [ qw( _uris _methods _todo _inc _extract ) ],
+        lib     => [ qw( _lib ) ],
+        all     => [ qw( _uris _methods _todo _inc _extract _lib) ],
     };
 
     my $list;
-    return 0 unless $list = $cache->{ lc $input };
+    return undef unless $list = $cache->{ lc $input };
 
+    my $flag;
     if ( $self->_flush( list => $list ) ) {
         $self->{_error}->inform(
-                            msg     => "All cached data has been flushed",
+                            msg     => loc("All cached data has been flushed"),
                             quiet   => !$conf->get_conf('verbose'),
                         );
-        return 1;
+        $flag = 1;
     }
 
-    ### should never get here ###
-    return 0;
+    return $flag;
+
 }
 
 ### wrapper for CPANPLUS::Configure::get_conf ###
@@ -472,13 +763,23 @@ sub get_conf {
     my $self = shift;
     my @list = @_;
 
-    return 0 unless @list;
+    return undef unless @list;
 
     my $href;
     for my $opt ( @list ) {
         $href->{$opt} = $self->{_conf}->get_conf($opt);
     }
-    return $href;
+
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => \@list,
+                                        rv      => $href,
+                                        ok      => 1
+                                    );
+    return $rv;
+
 }
 
 ### wrapper for CPANPLUS::Configure::set_conf ###
@@ -487,21 +788,31 @@ sub set_conf {
 
     # is there a better way to check this without a warning?
     my %args = @_, if scalar(@_) % 2 == 0;
-    return 0 unless %args;
+    return undef unless %args;
 
     my $href;
 
+    my $flag = 0;
     for my $key (keys %args) {
         if ( $self->{_conf}->set_conf( $key => $args{$key} ) ) {
             #$self->{_error}->inform( msg => "$key set to $args{$key}" );
             $href->{$key} = $args{$key};
         } else {
-            $self->{_error}->inform( msg => "unknown key: $key" );
-            $href->{$key} = 0;
+            $self->{_error}->inform( msg => loc("unknown key: %1", $key) );
+            $href->{$key} = undef;
+            $flag = 1;
         }
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => \%args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 sub details {
@@ -515,7 +826,7 @@ sub details {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $dslip_def = $self->_dslip_defs();
     my $modtree   = $self->module_tree();
@@ -523,32 +834,47 @@ sub details {
     my @modules   = @{$args->{modules}};
 
     my $result;
+    my $flag = 0;
 
     for my $mod ( @modules ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
         my @dslip = split '', $modobj->{dslip};
         my $author = $authtree->{$modobj->{'author'}}
-            or ($result->{$name} = 0, next);
+            or ($result->{$name} = 0, $flag=1, next);
 
         #### fill the result; distributions don't have a 'version'.
         $result->{$name} = {
-            Author      => "$author->{name} ($author->{email})",
-            Package     => $modobj->{package},
-            Description => $modobj->{description} || 'None given',
+            Author              => loc("%1 (%2)", $author->{name}, $author->{email}),
+            Package             => $modobj->{package},
+            Description         => $modobj->{description} || loc('None given'),
         (!ref($name) and $name =~ /[^\w:]/) ? () : (
-            Version     => $modobj->{version}     || 'None given',
+            'Version on CPAN'   => $modobj->{version}     || loc('None given'),
+            'Version Installed' => $modobj->uptodate->{version} || loc('None'),
         ) };
 
         for my $i (0 .. $#dslip) {
             $result->{$name}->{ $dslip_def->[$i]->[0] } =
-                $dslip_def->[$i]->[1]->{ $dslip[$i] } || 'Unknown';
+                $dslip_def->[$i]->[1]->{ $dslip[$i] } || loc('Unknown');
         }
     }
 
-    return $result;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $result,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 ### looks for all distributions by a given author ###
@@ -564,25 +890,35 @@ sub distributions {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my @authors = map { "(?i:$_)" } @{$args->{authors}};
 
     my $list = $self->_query_author_tree( list => \@authors, authors_only => 1 );
 
     my $href;
+    my $flag = 0;
     for my $auth ( keys %$list ) {
         my $rv = $self->_distributions( author => $auth );
 
         unless ( $rv ) {
-            $err->trap( error => "Could not find distributions for $auth");
+            $err->trap( error => loc("Could not find distributions for %1", $auth));
             $href->{ $auth } = 0;
+            $flag = 1;
         } else {
             $href->{ $auth } = $rv;
         }
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 ### looks up all the modules by a given author ###
@@ -598,23 +934,31 @@ sub modules {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
-    my $rv;
+    my $href;
     for my $auth ( @{$args->{authors}} ) {
 
-        my $href = $self->search(
+        my $result = $self->search(
             type         => 'author',
             list         => ['^'.$auth.'$'],
             authors_only => $args->{authors_only},
             data         => $args->{data},
         );
 
-        for my $key (keys %$href ) {
-            $rv->{$auth}->{$key} = $self->module_tree()->{$key};
+        for my $key ( keys %$result ) {
+            $href->{$auth}->{$key} = $self->module_tree()->{$key};
         }
     }
 
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => 1,
+                                    );
     return $rv;
 }
 
@@ -633,15 +977,20 @@ sub readme {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $force = $args->{'force'};
     $force = $self->{_conf}->get_conf('force') unless defined $force;
 
     my $href;
+    my $flag = 0;
 
     for my $mod ( @{$args->{'modules'}} ) {
-        my $mods = $self->parse_module(modules => [$mod]) or next;
+        my $answer = $self->parse_module(modules => [$mod]);
+
+        $answer->ok or ($flag=1,next);
+
+        my $mods = $answer->rv;
 
         my ($name, $modobj) = each %$mods;
 
@@ -652,14 +1001,23 @@ sub readme {
         );
 
         unless ($rv) {
-            $err->trap( error => "fetching readme for $name failed!" );
+            $err->trap( error => loc("fetching readme for %1 failed!", $name) );
             $href->{ $name } = 0;
+            $flag = 1;
         } else {
             $href->{ $name } = $rv;
         }
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 ### displays the CPAN test result of given distributions; a wrapper for Report.pm
@@ -676,25 +1034,35 @@ sub reports {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     my $href;
+    my $flag = 0;
+
     foreach my $mod (@{$args->{modules}}) {
-        my ($name, $modobj) = $self->_parse_module(mod => $mod) or next;
+        my ($name, $modobj) = $self->_parse_module( mod => $mod );
 
         if (my $dist = $modobj->{package}) {
             $href->{$name} = $self->_query_report(
                 package      => $dist,
                 all_versions => $args->{all_versions},
-            ) or next;
+            ) or ($flag=1,next);
 
         }
         else {
-            $err->trap( error => "Cannot find distribution for $mod, skipping" );
+            $err->trap( error => loc("Cannot find distribution for %1, skipping", $mod) );
         }
     }
 
-    return $href;
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
+    return $rv;
 }
 
 ### method to reload and optionally refetch the index files ###
@@ -712,19 +1080,19 @@ sub reload_indices {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
     ### this forcibly refetches the source files if 'update_source' is true
     ### if false, it checks whether they are still up to date (as compared to
     ### the TTL in Config.pm -kane
-    $self->_check_trees(update_source => $args->{update_source} );
+    my $uptodate = $self->_check_trees(update_source => $args->{update_source} );
 
-    {   ### uptodate => 0 means they'll have to be rebuilt ###
+    unless($uptodate) {   ### uptodate => 0 means they'll have to be rebuilt ###
         my $rv = $self->_build_trees( uptodate => 0 );
 
         unless ($rv) {
-            $err->trap( error => qq[Error rebuilding trees!] );
-            return 0;
+            $err->trap( error => loc("Error rebuilding trees!") );
+            return undef;
         }
     }
 
@@ -743,18 +1111,28 @@ sub pathname {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
-    ### only takes one argument, so only pick the first if it's an arrayref
+    ### only takes one argument, so raise exception if it's an arrayref
     my $to = $args->{to};
     if (ref($to) eq 'ARRAY') {
-        $err->trap( error => "Array reference passed, but 'to' only takes one argument." );
-        return 0;
+        $err->trap( error => loc("Array reference passed, but 'to' only takes one argument.") );
+        return undef;
     }
 
-    my $mods = $self->parse_module(modules => [$to]) or return 0;
+    my $rv = $self->parse_module(modules => [$to]);
+
+    $rv->ok or return undef;
+
+    my $mods = $rv->rv;
 
     my ($name, $modobj) = each %$mods;
+
+    ### have to explicitly check for File::Spec::Unix since it won't be
+    ### already use'd on non-nix platforms
+    return undef unless $self->_can_use(
+        modules => { 'File::Spec::Unix' => '0.0' },
+    );
 
     return File::Spec::Unix->catdir('', $modobj->{path}, $modobj->{package});
 }
@@ -770,186 +1148,237 @@ sub parse_module {
 
     ### Input Check ###
     my $args = $self->_is_ok( $_data, \%hash );
-    return 0 unless $args;
+    return undef unless $args;
 
-    my $rv;
+    my $href;
+    my $flag = 0;
+
     for my $mod ( @{$args->{modules}} ) {
 
         my ($name, $modobj) = $self->_parse_module( mod => $mod );
 
         if ($name) {
-            $rv->{$name} = $modobj;
+            $href->{$name} = $modobj;
+        } else {
+            $flag = 1;
         }
     }
 
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                        object  => $self,
+                                        type    => $self->_whoami(),
+                                        args    => $args,
+                                        rv      => $href,
+                                        ok      => !$flag,
+                                    );
     return $rv;
 }
 
-### input checks ###
-{
-    ### scoped variables for the input check methods ###
-    my ($data, $args);
+sub dist {
+    my $self = shift;
+    my $err = $self->{_error};
+    my %hash = @_;
 
+    my $_data = {
+        modules         => { required => 1, default => [] },
+        type            => { required => 1, default => 'MakeMaker' },
+        make            => { default => undef },
+        perl            => { default => undef },
+        makeflags       => { default => undef },
+    };
 
-    # Return 1 if the specified key is part of %_data; 0 otherwise
-    sub _is_ok{
-        my $self    = shift;
-        $data       = shift;
-        my $href    = shift;
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return undef unless $args;
 
-        #print Dumper $data, $href;
+    my $href;
+    my $flag = 0;
 
-        my $err = $self->{_error};
-        my $verbose = $self->{_conf}->get_conf( 'verbose' );
+    for my $mod ( @{$args->{modules}} ) {
 
-        #%$args = map { my $k = lc $_; $k, $href->{$_} } keys %$href;
-        # same thing, but no temp needed -jmb
-        %$args = map { lc, $href->{$_} } keys %$href;
+        my $answer = $self->parse_module(modules => [$mod]);
 
-        ### check if the required keys have been entered ###
-        my $flag;
-        for my $key ( %$data ) {
+        $answer->ok or ($flag=1,next);
 
-            ### check if the key is required and whether or not it was supplied
-            my $rv = $self->_hasreq( $key );
+        my $mods = $answer->rv;
 
-            unless ( $rv ) {
-                $err->trap(
-                    error => qq(Required option "$key" is not provided for ) . (caller(1))[3],
-                );
-                $flag = 1;
-            }
+        my ($name, $modobj) = each %$mods;
+
+        my $dist;
+        unless( $dist = $self->_make_dist_object(
+                                    type => $args->{type},
+                                    data => $modobj,
+        ) ) {
+            $err->trap( error => loc(qq[Could not create Dist::%1 object for %2], $args->{type}, $name) );
+            $flag = 1;
+            next;
         }
 
-        ### if $flag is set, at least one required option wasn't passed, and we return 0
-        return 0 if $flag;
+        my $created = $dist->create(
+                    make            => $args->{make},
+                    makeflags       => $args->{makeflags},
+                    perl            => $args->{perl},
+        );
 
-        ### set defaults for all arguments ###
-        my ($defs) = $self->_hashdefs();
+        $flag = 1 unless values %$created;
 
-        ### check if all keys are valid ###
-        for my $key ( keys %$args ) {
+        $href->{$name} = {
+                    created => $created,
+                    object  => $dist,
+        };
 
-            my $rv = $self->_iskey( $key );
-
-
-            ### if the key exists, override the default with the provided value ###
-            if ( $rv ) {
-
-                ### this is NOT quite working... trying to check if both data types
-                ### are of the same ref. but it's screwing up =/
-
-                #print qq(ref $defs->{$key} eq ref $args->{$key});
-                #if ( ref $defs->{$key} eq ref $args->{$key} ) {
-
-                if(1){
-                    $defs->{$key} = $args->{$key};
-                } else {
-                    $err->inform(
-                        msg     => qq( "$key" is not of a valid type for ) .
-                                    (caller(1))[3] . ", using default instead!",
-                        quiet   => !$verbose,
-                    );
-                }
-
-            ### no $rv, means $key isn't a valid option. we just inform for this
-            } else {
-                $err->inform(
-                    msg     => qq("$key" is not a valid option for ) . (caller(1))[3],
-                    quiet   => !$verbose,
-                );
-            }
-        }
-
-        ### return the 'updated' $args
-        return $defs;
     }
 
-
-    ### check if the key exists in $data ###
-    sub _iskey {
-        my ($self, $key) = @_;
-
-        return 0 unless ($self->_okcaller());
-
-        return 1 if $data->{$key};
-
-        return 0;
-    }
-
-
-    ### check if the $key is required, and if so, whether it's in $args ###
-    sub _hasreq {
-        my ($self, $key) = @_;
-        my $reqs = $self->_listreqs();
-        my $err  = $self->{_error};
-
-
-        return 0 unless ($self->_okcaller());
-
-        if ( $reqs->{$key} ) {
-            return exists $args->{$key} ? 1 : 0;
-        } else {
-            return 1;
-        }
-    }
-
-
-    # Return a hash ref of $_data keys with required values
-    sub _listreqs {
-        my %hash = map { $_ => 1 } grep { $data->{$_}->{required} } keys %$data;
-        return \%hash;
-    }
-
-
-    # Return a hash of $data keys with default values => defaults
-    sub _hashdefs {
-        my %hash = map {
-            $_ => $data->{$_}->{default}
-        } grep {
-            $data->{$_}->{default}
-        } keys %$data ;
-
-        return \%hash;
-    }
-
-
-    sub _okcaller {
-        my $self = shift;
-        my $err  = $self->{_error};
-
-        my $package = __PACKAGE__;
-        my $caller = (caller(2))[3];
-
-        # Couldn't get a caller
-        unless ( $caller ) {
-            $err->trap( error => "Unable to identify caller");
-            return 0;
-        }
-
-        # Caller is part of current package
-        return 1 if ($caller =~ /^$package/);
-
-        # Caller is not part of current package
-        $err->trap( error => "Direct access to private method ".
-                (caller(1))[3]." is forbidden");
-
-        return 0;
-    }
+    ### create a rv object ###
+    my $rv = CPANPLUS::Backend::RV->new(
+                                    object  => $self,
+                                    type    => $self->_whoami(),
+                                    args    => $args,
+                                    rv      => $href,
+                                    ok      => !$flag,
+                                );
+    return $rv;
 }
 
 
-### input check, mainly used by 'search' ###
-sub _check_input {
+### doesn't allow you to write your own filenames right now..
+### too much hassle splitting directories, finding the proper
+### file, printing out whether it can be installed with just the
+### filename or needing the full path, etc...
+sub autobundle {
     my $self = shift;
-    my %args = @_;
+    my %hash; # = @_;
 
-    ### check if we're searching for some valid key ###
-    for( keys %{$self->module_tree->{ (each %{$self->module_tree})[0] }} ) {
-        if ( $_ eq $args{'type'} ) { return 1 }
+    my $err  = $self->error_object;
+    my $conf = $self->configure_object;
+
+    ### default directory for the bundle ###
+    my $dir = File::Spec->catdir(
+                $conf->_get_build('base'),
+                $self->_perl_version( perl => $^X ),
+                $conf->_get_build(qw|distdir autobundle|),
+            );
+
+    ### default filename for the bundle ###
+    my($year,$month,$day) = (localtime)[5,4,3];
+    $year += 1900; $month++; my($ext) = 0;
+
+    my $prefix = $conf->_get_build('autobundle_prefix');
+    my $format = "${prefix}_%04d_%02d_%02d_%02d";
+
+    my $name        = sprintf( $format, $year, $month, $day, $ext);
+    my $filename    = $name . '.pm';
+
+    my $_data = {
+        file    => { default => $filename },
+        dir     => { default => $dir },
+        force   => { default => 0 },
+    };
+
+    ### Input Check ###
+    my $args = $self->_is_ok( $_data, \%hash );
+    return undef unless $args;
+
+    my $flag;
+
+    unless( -d $args->{dir} ) {
+        unless( $self->_mkdir( dir => $args->{dir} ) ) {
+            $err->trap( error => loc( qq[Could not create directory '%1'], $args->{dir} ) );
+            $flag = 1;
+        }
     }
 
-    return 0;
+    my $path;
+    my $force = $args->{force} || $conf->get_conf('force');
+
+    BLOCK: {
+    unless( $flag ) {
+        $path = File::Spec->catfile($args->{dir}, $args->{file});
+
+        while (-f $path) {
+
+            #if( $hash{file} && !$force) {
+            #    $err->trap( error => loc( qq[File already exists: %1. Will not overwrite unless you force], $path ));
+            #    $flag = 1;
+            #    last BLOCK;
+            #
+            #} else {
+                $name           = sprintf($format, $year, $month, $day, ++$ext);
+                $args->{file}   = $name . '.pm';
+                $path           = File::Spec->catfile($dir,$args->{file});
+            #}
+        }
+
+        my $FH;
+        unless( open $FH, ">$path" ) {
+            $err->trap( error => loc( qq[Could not open %1 for writing: %2\n], $path, %! ));
+            $flag = 1;
+            last BLOCK;
+        }
+
+
+        #my $string;
+        #for my $mod ( sort keys %{$self->installed->rv} ) {
+        #    my $version = $mod->version || 'undef';
+        #    $string .= qq[$mod $version\n\n];
+        #}
+
+        my $string = join "\n\n",
+                        map {
+                            my $modobj = $self->module_tree->{$_};
+                            qq[$_ ] . ($modobj->uptodate->{version} || 'undef')
+                        } sort keys %{$self->installed->rv};
+
+        my $now     = scalar localtime;
+        my $head    = '=head1';
+        my $pkg     = __PACKAGE__;
+        my $version = $self->VERSION;
+        my $perl_v  = join '', `$^X -V`;
+
+        print $FH <<EOF;
+package $name;
+
+\$VERSION = '0.01';
+
+1;
+
+__END__
+
+$head NAME
+
+$name - Snapshot of your installation at $now
+
+$head SYNOPSIS
+
+perl -MCPANPLUS -e "install $name"
+
+$head CONTENTS
+
+$string
+
+$head CONFIGURATION
+
+$perl_v
+
+$head AUTHOR
+
+This bundle has been generated autotomatically by
+    $pkg $version
+
+EOF
+
+    close $FH;
+    } } ### end unless, end BLOCK
+
+    ### create a rv object ###
+    return CPANPLUS::Backend::RV->new(
+                                    object  => $self,
+                                    type    => $self->_whoami(),
+                                    args    => $args,
+                                    rv      => $path,
+                                    ok      => !$flag,
+                                );
 }
 
 
@@ -970,16 +1399,18 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
     my $cp = new CPANPLUS::Backend;
 
 
-    ##### Methods which return objects #####
-
-    my $err  = $cp->error_object();
-    my $conf = $cp->configure_object();
+    ##### Methods which return trees of objects #####
 
     my $module_obj  = $cp->module_tree()->{'Dir::Purge'};
     my $all_authors = $cp->author_tree();
 
 
-    ##### Methods which return hash references #####
+    ##### Methods which return objects #####
+
+    my $err  = $cp->error_object();
+    my $conf = $cp->configure_object();
+
+    ### Methods returning RV objects
 
     my $mod_search = $cp->search(type => 'module',
                                  list => ['xml', '^dbix?']);
@@ -990,6 +1421,8 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
                                   authors_only => 1);
 
     $cp->flush('modules');
+
+    my $bundle = $cp->autobundle();
 
     my $extract = $cp->extract(files => [$fetch_result->{B::Tree},
                                          '/tmp/POE-0.17.tar.gz']);
@@ -1005,9 +1438,17 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
 
     ### Backend methods with corresponding Module methods
 
-    # The same result, first with a Backend then a Module method
-    my $fetch_result = $cp->fetch(modules  => ['Dir::Purge']);
-    $fetch_result = $module_obj->fetch();
+    ##
+    # Backend method
+    my $fetch_result = $cp->fetch(modules  => ['Dir::Purge'])
+    my $rv = $fetch_result->rv();
+
+    # Module method
+    # The value of $rv->{'Dir::Purge'} is returned by the module method
+    my $module = $cp->module_tree()->{'Dir::Purge'};
+    $module->fetch();
+    ##
+
 
     # Backend method
     my $txt = $cp->readme(modules => ['Mail::Box',
@@ -1035,13 +1476,18 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
 
     ### Backend methods with corresponding Module and Author methods
 
-    # The same result via Backend, Module and Author methods
+    ## The same result via Backend, Module and Author methods
     my $mods_by_same_auth = $cp->modules(authors => ['JV']);
-    $mods_by_same_auth    = $module_obj->modules();
-    $mods_by_same_auth    = $all_authors->{'JV'}->modules();
+    my $result = $mods_by_same_auth->rv();
+
+    my $dt = $cp->module_tree()->{'Debug::Trace'};
+    $$result{'JV'} = $dt->modules();
+
+    $$result{'JV'} = $all_authors->{'JV'}->modules();
+    ##
 
     # Backend method
-    my $dists_by_same_auth = $cp->distributions(authors => 'Acme::USIG');
+    my $dists_by_same_auth = $cp->distributions(authors => ['KANE']);
 
 
     ##### Methods with other return values #####
@@ -1050,11 +1496,11 @@ CPANPLUS::Backend - Object-oriented interface for CPAN++
 
     # Backend method
     my $path = $cp->pathname(to => 'C::Scan');
-
-
-    ### Backend methods
-
     my $reload = $cp->reload_indices(update_source => 1);
+
+    ### Module methods
+    my $result = $module_obj->extract();
+
 
 =head1 DESCRIPTION
 
@@ -1064,6 +1510,9 @@ install scripts or tailored shells.
 
 See CPANPLUS::Shell::Default if you are looking for a ready-made interactive
 interface.
+
+The CPANPLUS::Backend interface will become stable with the release
+of CPANPLUS version 1.0.
 
 =head1 METHODS
 
@@ -1084,17 +1533,35 @@ So, for example, the following are all valid values for I<modules>:
 
 =back
 
-In general these methods return hash references
-where the keys correspond to the names of listed modules, or, in
-the case of distributions, the name of the distribution from the
-CPAN author id directory, as returned by the C<pathname> method.
+In general the return values of these methods will be a
+I<CPANPLUS::Backend::RV> object.  If the RV object cannot
+be created, I<undef> will be returned.  Versions before 0.04
+returned hash references.
 
-=head2 new(CONFIGURATION);
+A synopsis of the result can be obtained by using the RV method
+C<ok>, which will return a boolean value indicating success or failure.
+For instance:
+
+    my $err = $cp->error_object();
+
+    ...
+
+    my $result = $cp->some_backend_function(modules => ['Acme::Comment']);
+    print 'Error: '.$err->stack() unless $result->ok();
+
+In boolean context, the RV object returns the value of C<ok>, so the
+last line could actually be written like this:
+
+    print 'Error: '.$err->stack() unless ($result);
+
+If you want to examine the results in more detail, please refer
+to L<CPANPLUS::Backend::RV> for descriptions of the other methods available.
+
+=head2 new(CONFIGURATION)
 
 This creates and returns a backend object.
 
-Arguments may be provided to override CPAN++ settings.  Settings
-can also be modified with C<set_conf>.
+Arguments may be provided to override CPAN++ settings.
 
 Provide either a single CPANPLUS::Configure object:
 
@@ -1107,7 +1574,7 @@ or use the following syntax:
 
 Refer to L<CPANPLUS::Configure> for a list of available options.
 
-=head2 error_object();
+=head2 error_object()
 
 This function returns a CPANPLUS::Error object which maintains errors
 and warnings for this backend session.
@@ -1117,7 +1584,7 @@ programs.
 
 See L<CPANPLUS::Error> for details on using the error object.
 
-=head2 configure_object();
+=head2 configure_object()
 
 This function returns a CPANPLUS::Configure object for the current
 invocation of Backend.
@@ -1125,7 +1592,7 @@ invocation of Backend.
 See L<CPANPLUS::Configure> for available methods and note that you
 modify this object at your own risk.
 
-=head2 module_tree();
+=head2 module_tree()
 
 This method will return a hash reference where each key in the
 hash is a module name and the values are module objects.
@@ -1133,7 +1600,7 @@ hash is a module name and the values are module objects.
 Refer to L<"MODULE OBJECTS"> for more information on using
 module objects.
 
-=head2 author_tree();
+=head2 author_tree()
 
 This function returns a hash reference with all authors.  Each key
 corresponds to a CPAN identification.  The values are author
@@ -1142,7 +1609,7 @@ objects.
 Refer to L<"AUTHOR OBJECTS"> for more information on using
 author objects.
 
-=head2 search(type => TYPE, list => [LIST], [data => PREVIOUS_RESULT], [authors_only => BOOL]);
+=head2 search(type => TYPE, list => [LIST], [data => PREVIOUS_RESULT], [authors_only => BOOL])
 
 The search function accepts the following arguments:
 
@@ -1183,16 +1650,14 @@ can not be used as I<data> for subsequent searches.
 
 =back
 
-It returns a hash reference of module objects which matched any
-of the list criteria.
-
-=head2 details(modules => [LIST]);
+=head2 details(modules => [LIST])
 
 See L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
 
-Values of the returned hash reference are 0 for unavailable modules,
-or hash references containing the following keys:
+Values for the I<rv> section of the RV object are 0 for unavailable
+modules.  Available modules have hash references with the following
+keys:
 
 =over 4
 
@@ -1249,21 +1714,22 @@ For example, the module details for Apache::Leak look like this:
     Interface Style   => 'plain Functions, no references used',
     Support Level     => 'Mailing-list'
 
-=head2 readme(modules => [LIST]);
+=head2 readme(modules => [LIST])
 
 See L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
 
-The values this method returns are the contents of the readme
-files, or 0 for errors.
+The C<rv()> values this method returns are the contents of
+the readme files, or 0 for errors.
 
-=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL, fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING, prereq_target => STRING);
+=head2 install(modules => [LIST], make => PROGRAM, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, force => BOOL, fetchdir => DIRECTORY, extractdir => DIRECTORY, target => STRING, prereq_target => STRING, skiptest => BOOL)
 
 See L<"GENERAL NOTES"> for more information about methods with
 I<modules> arguments.
 
 Install is a shortcut for performing C<fetch>, C<extract> and C<make>
-on the specified modules.
+on the specified modules.  If a full filename is supplied, it will be
+treated as an autobundle.
 
 Optional arguments can be used to override configuration information.
 
@@ -1294,18 +1760,22 @@ flags.
 
 =item * C<perl>
 
-The path to Perl to use.
+The path of the perl to use.
+This will default to $^X (ie. the perl used to start the script).
 
 =item * C<force>
 
 Force downloads even if files of the same name exist and
 force installation even if tests fail by setting force to
-a true value.
+a true value.  It will also force installation even if the
+module is up-to-date.
 
 =item * C<fetchdir>
 
 The directory fetched files should be stored in.  By default
-it will store to the directory you started from.
+it will store in your cpanplus home directory.  If called
+from the command line (as in C<perl -MCPANPLUS -e'fetch POE'>),
+it will default to the current working directory.
 
 =item * C<extractdir>
 
@@ -1316,32 +1786,34 @@ C<POE-0.17.tar.gz>, the extracted files will be in C</tmp/POE-0.17>.
 =item * C<target>
 
 The objective of this attempt.  It can be one of C<makefile>, C<make>,
-C<test>, C<install> (the default) or C<skiptest>.  Each target except
-C<skiptest> implies all preceding ones.
+C<test>, or C<install> (the default).  Each target implies all the
+preceding ones.
 
-The special C<skiptest> target has the same meaning as C<install>, but
-will skip the C<test> step.
+=item * C<skiptest>
+
+If this flag is set to true, tests will be skipped.  
 
 =item * C<prereq_target>
 
 This argument is the objective when making prerequisite modules.
 It takes the same range of values as C<target> and also defaults
 to C<install>.  Usually C<install> is the correct value, or the
-parent module won't make properly, but you may want to set it to
-C<skiptest> if some of the prerequisites are known to fail.
+parent module won't make properly.
+
+If the prerequisite target is set to test, prerequisites won't be
+installed, but their build directory will be added to the PERL5LIB
+environment variable, so it will be in the path.  This option is
+useful when building distributions.
 
 =back
 
-The values of the returned hash reference are 1 for success or
-0 for failure.
-
-Note that a failure does not identify the source of the problem,
+Note that a failure in C<ok()> does not identify the source of the problem,
 which could be caused by a dependency rather than the named module.
 It also does not indicate in what stage of the installation procedure
 the failure occurred.  For more detailed information it is
-necessary to examine the error object.
+necessary to examine the RV and/or error objects.
 
-=head2 fetch(modules => [LIST], force => BOOL, fetchdir => DIRECTORY);
+=head2 fetch(modules => [LIST], force => BOOL, fetchdir => DIRECTORY)
 
 This function will retrieve the distributions that contains the modules
 specified with the C<modules> argument.
@@ -1352,27 +1824,26 @@ The remaining arguments are optional.  A true value for force means
 that pre-existing files will be overwritten.  Fetchdir behaves like
 the C<install> argument of the same name.
 
-The method will return a hash reference; values are either the
-fully qualified path plus the file name of the saved module,
-or--in the case of a failure--0.
+The return value for C<rv()> will be a hash reference for each
+module; values are either the fully qualified path plus the file
+name of the saved module, or, in the case of failure, 0.
 
 Here is an example of a successful return value:
 
-    '.\\Acme-POE-Knee-1.10.zip'
+    'C:\\temp\\Acme-POE-Knee-1.10.zip'
 
-=head2 extract(files => [FILES], extractdir => DIRECTORY);
+=head2 extract(files => [FILES], extractdir => DIRECTORY)
 
 Given the full local path and file name of a module, this function
 will extract it.
 
-A hash reference will be returned.  Keys are the files specified.
-If successful, the value is the directory the file was extracted
-to.  Failure results in a value of 0.
+Successful C<rv()> values will be the directory the file was
+extracted to.
 
 Extractdir is optional and behaves like the C<install> argument
 of the same name.
 
-=head2 make(dirs => [DIRECTORIES], force => BOOL, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, target => string, prereq_target => STRING);
+=head2 make(dirs => [DIRECTORIES], force => BOOL, makeflags => FLAGS, makemakerflags => FLAGS, perl => PERL, target => string, prereq_target => STRING)
 
 This function will attempt to install the module in the specified
 directory with C<perl Makefile.PL>, C<make>, C<make test>, and
@@ -1380,8 +1851,17 @@ C<make install>.
 
 Optional arguments are described fully in C<install>.
 
-The method returns a hash reference.  Directory names are keys and
-values are boolean indications of status.
+Below is an example of the data structure returned by C<rv()>:
+
+    {
+        'D:\\cpanplus\\5.6.0\\build\\Acme-Bleach-1.12' => {
+            'install' => 1,
+            'dir' => 'D:\\cpanplus\\5.6.0\\build\\Acme-Bleach-1.12', 
+            'prereq' => {},
+            'overall' => 1,
+            'test' => 1
+    }
+
 
 =head2 uninstall(modules => [LIST], type => TYPE)
 
@@ -1390,22 +1870,18 @@ three possible arguments for type: I<prog>, I<man> and I<all>
 which specify what files should be uninstalled: program files,
 man pages, or both.  The default type is I<all>.
 
-It returns a hash reference where the value is 1 for success
-or 0 for failure.
+C<rv()> gives boolean indications of status for each module name key.
 
 See L<"GENERAL NOTES"> for more information about this method.
 
-=head2 files(modules => [LIST]);
+=head2 files(modules => [LIST])
 
 This function lists all files belonging to a module if the module is
 installed.  See L<"GENERAL NOTES"> for more information about this
 method.
 
-It returns a hash reference.
-The value will be 0 if the module is not installed.
-Otherwise, it returns an array reference of files as
-shown below.
-
+The module's C<rv()> value will be 0 if the module is not installed.
+Otherwise, it will be an array reference of files as shown below:
 
     [
         'C:\\Perl\\site\\lib\\Acme\\POE\\demo_race.pl',
@@ -1413,115 +1889,105 @@ shown below.
         'C:\\Perl\\site\\lib\\Acme\\POE\\demo_simple.pl'
     ];
 
-=head2 distributions(authors => [CPAN_ID [CPAN_ID]]);
+=head2 distributions(authors => [CPAN_ID [CPAN_ID]])
 
 This provides a list of all distributions by the author of the
 module (given in the form of the CPAN author identification).
 This information is provided by the CHECKSUMS file in the authors
 directory.
 
-It returns a hash reference where each key is
-the name of a distribution and each value is a hash reference
-containing additional information: the last modified time, the
-CPAN short name, md5 and the distribution size in kilobytes.
+Here is a cropped example of the CPAN author id 'KANE':
 
-For example, the CPAN author id 'KANE' might return the following:
-
-    {
-        'Acme-POE-Knee-1.10.zip' => {
-            'mtime'     => '2001-08-23',
-            'shortname' => 'acmep110.zip',
-            'md5'       => '6314eb799a0f2d7b22595bc7ad3df369',
-            'size'      => '6625'
-                                    },
-        'Acme-POE-Knee-1.00.zip' => {
-            'mtime'     => '2001-08-13',
-            'shortname' => 'acmep100.zip',
-            'md5'       => '07a781b498bd403fb12e52e5146ac6f4',
-            'size'      => '12230'
-                                    },
+    ...
+    'rv' => {
+        'KANE' => {
+            'CPANPLUS-0.033.tar.gz' => {
+                'md5-ungz' => 'ccf827622d95479d6c02aa2f851468f2',
+                'mtime' => '2002-04-30',
+                'shortname' => 'cpan0033.tgz',
+                'md5' => 'ce911062b432dcbf93a19a0f1ec87bbc',
+                'size' => '192376'
+            },
+            'Acme-POE-Knee-1.01.zip' => {
+                'mtime' => '2001-08-14',
+                'shortname' => 'acmep101.zip',
+                'md5' => '4ba5db4c515397ec1b841f7474c8f406',
+                'size' => '14246'
+            },
+            'Acme-Comment-1.00.tar.gz' => {
+                'md5-ungz' => '166b8df707a22180a46c9042bd0deef8',
+                'mtime' => '2002-05-12',
+                'shortname' => 'acmec100.tgz',
+                'md5' => 'dec0c064ba3055042fecffc5e0add648',
+                'size' => '6272'
+            },
+        }
     }
 
-=head2 modules(authors => [CPAN_ID [CPAN_ID]]);
+=head2 modules(authors => [CPAN_ID [CPAN_ID]])
 
-Given a CPAN author identification, this function returns the modules
-by the author specified.  Multiple authors may be specified.
+Given a CPAN author identification, this function will return
+modules by the author specified as an RV object.
 
-It returns a hash reference where each key is a module name and
-each value is a module object.
-
-=head2 reports(modules => [LIST], all_versions => BOOL);
+=head2 reports(modules => [LIST], all_versions => BOOL)
 
 This function queries the CPAN tester database at
 I<http://testers.cpan.org/> for test results of specified module objects,
 module names or distributions.
 
 The optional argument C<all_versions> controls whether all versions of
-a given distribution should be grabbed.  It defaults to false.
-
-The function returns a hash reference.
-See L<"GENERAL NOTES"> for more information about this method.
-
-The values are themselves array references, the keys to which are the
-distribution name and version.
-
-The values are hash references, the keys to which are the
-operating system name, operating system version and
-the architecture name.
-
-The values are the status of the test, which can be
-one of the following: UNKNOWN, PASS, FAIL or NA.
-
-For example,
-
-    $cp->reports(modules => [ 'CPANPLUS' ], all_versions => 1);
-
-might return the following data structure:
-
-    { 'CPANPLUS' => [
-        {
-            'grade'    => 'PASS',
-            'dist'     => 'CPANPLUS-0.031',
-            'platform' => 'freebsd 4.5-release i386-freebsd'
-        },
-        {
-            'grade'    => 'FAIL',
-            'dist'     => 'CPANPLUS-0.03',
-            'platform' => 'freebsd 4.2-stable i386-freebsd',
-            'details'  => 'http://testers.cpan.org/search?request=dist&dist=CPANPLUS#0.03+freebsd+4.2-stable+i386-freebsd'
-        },
-        {
-            'grade'    => 'PASS',
-            'dist'     => 'CPANPLUS-0.01',
-            'platform' => 'linux 2.4.8-11mdkenter i386-linux'
-        },
-        {
-            'grade'    => 'PASS',
-            'dist'     => 'CPANPLUS-0.01',
-            'platform' => 'MSWin32 4.0 MSWin32-x86-multi-thread',
-            'details'  => 'http://testers.cpan.org/search?request=dist&dist=CPANPLUS#0.01+MSWin32+4.0+MSWin32-x86-multi-thread'
-        },
-    ] }
-
-=head2 uptodate(modules => [LIST]);
+a given distribution should be grabbed.  It defaults to false
+(fetching only reports for the current version).
 
 See L<"GENERAL NOTES"> for more information about this method.
+
+The C<rv()> function will give the following data structure:
+
+    'Devel::Size' => [
+        {
+            'dist' => 'Devel-Size-0.54',
+            'grade' => 'PASS',
+            'platform' => 'linux 2.2.16c32_iii i586-linux'
+        },
+        {
+            'dist' => 'Devel-Size-0.54',
+            'grade' => 'PASS',
+            'platform' => 'linux 2.4.16-6mdksmp i386-linux'
+        },
+        {
+            'dist' => 'Devel-Size-0.54',
+            'grade' => 'PASS',
+            'platform' => 'solaris 2.7 sun4-solaris'
+        },
+        {
+            'dist' => 'Devel-Size-0.54',
+            'grade' => 'PASS',
+            'platform' => 'solaris 2.8 sun4-solaris'
+        }
+    ]
+
+The status of the test can be one of the following:
+UNKNOWN, PASS, FAIL or NA (not applicable).
+
+=head2 uptodate(modules => [LIST])
 
 This function can be used to see if your installation of a
 specified module is up-to-date.
 See L<"GENERAL NOTES"> for more information about this method.
 
-Values of the returned hash reference
-may be undef if the module is not installed, or a hash
-reference.  The hash reference contains the following keys:
+Values for the module from C<rv()> may be undef if the module
+is not installed, or a hash reference.  The hash reference
+contains the following keys:
 I<uptodate>, I<version> and
-I<file>.  Their values are 0 or 1 if the file is not up-to-date
-or is up-to-date, the number of the most recent version found
-on the CPAN, and the file in which the most recent version was
-found.
+I<file>.
+
+The version is your currently installed version.
+The file is where the module is installed on your system.
+Uptodate is 1 if your version is equal to or higher than the
+most recent version found on the CPAN, and 0 if it is not.
 
 For example, assuming you have I<Acme::POE::Knee> but not I<XML::Twig>
-installed, and provide the argument C<['Acme::POE::Knee', 'XML::Twig'>
+installed, and provide the argument C<['Acme::POE::Knee', 'XML::Twig']>
 the following data structure might be returned:
 
     {
@@ -1533,35 +1999,52 @@ the following data structure might be returned:
         }
     }
 
-=head2 validate(modules => [LIST]);
+
+=head2 validate(modules => [LIST])
 
 See L<"GENERAL NOTES"> for information about the I<modules> argument
 or the keys of the returned hash reference.
 
-Hash reference values will be either
+The C<rv()> module values will be either
 an empty array reference (if no files are missing), an array reference
 containing the missing files, or 0 if there was an error (such as
-the module not being installed).
+the module in question is not installed).
 
 It is probably best to use the results of the C<installed>
 method because not all modules have proper names.  For
 instance, 'LWP' is installed as 'Libwww'.
 
-=head2 installed();
+=head2 installed()
 
 This function returns all modules currently installed on
 your system.
 
 See L<"GENERAL NOTES"> for more information about this method.
 
-The values in the returned hash reference are module objects.
+Values of modules returned by C<rv()> will be the location
+of the module.
+
+For example, the following code:
+
+    my $rv = $cp->installed();
+    print Dumper $rv->rv();
+
+might give something like the following (example cropped):
+
+    $VAR1 = {
+        ...
+        'URI::telnet' => '/usr/local/lib/perl5/site_perl/5.005/URI/telnet.pm'
+        'Tie::Array' => '/usr/local/lib/perl5/5.6.1/Tie/Array.pm',
+        'URI::file' => '/usr/local/lib/perl5/site_perl/5.005/URI/file.pm',
+        ...
+    }
 
 If there was an ambiguity in finding the object, the value
 will be 0.  An example of an ambiguous module is LWP, which
 is in the packlist as 'libwww-perl', along with many other
 modules.
 
-=head2 flush(CACHE_NAME);
+=head2 flush(CACHE_NAME)
 
 This method allows flushing of caches.
 There are several things which can be flushed:
@@ -1593,13 +2076,18 @@ The location of modules on the local system.
 
 List of archives extracted.
 
+=item * C<lib>
+
+This resets PERL5LIB which is changed to ensure that while installing
+modules they are in our @INC.
+
 =item * C<all>
 
-Flush all three of the aforementioned caches.
+Flush all of the aforementioned caches.
 
 =back
 
-=head2 reload_indices([update_source => BOOL]);
+=head2 reload_indices([update_source => BOOL])
 
 This method refetches and reloads index files.  It accepts
 one optional argument.  If the value of C<update_source> is
@@ -1607,12 +2095,18 @@ true, CPANPLUS will download new source files regardless.
 Otherwise, if your current source files are up-to-date
 according to your config, it will not fetch them.
 
-It returns 0 in the event of failure, and 1 for success.
+=head2 autobundle()
 
-=head2 pathname(to => MODULE);
+This method autobundles your current installation as
+I<$cpanhome/$version/dist/autobundle/Snapshot_xxxx_xx_xx_xx.pm>.
+For example, it might create:
+
+    D:\cpanplus\5.6.0\dist\autobundle\Snapshot_2002_11_03_03.pm
+
+=head2 pathname(to => MODULE)
 
 This function returns the path, from the CPAN author id, of
-the distribution.  It returns 0 for failure.
+the distribution when C<rv()> is used.  0 is used for failure.
 
 The value for I<to> can be a module name, a module object, or
 part of a distribution name.  For instance, the following
@@ -1648,21 +2142,42 @@ to be the object through which the function is accessed.
 All other arguments available for the Backend method may
 be used.
 
-The functions return almost what the Backend method returns,
-except whereas the Backend method returns a hash reference
-where each module name is a key, the Module methods return
-only the value, because they can only be called on one module
-at a time.
+Module methods return a subsection of what Backend methods
+return.  The value of the module name key in the I<rv> portion
+of the RV object is returned.  For example,
+C<$cp-E<gt>uptodate(modules =E<gt> ['Devel::Size']);>
+might return:
 
-For example, C<$cp-E<gt>readme(modules =E<gt> 'Gtk');>
-will return
+    bless( {
+        'args' => {
+            'modules' => [
+                'Devel::Size'
+            ]
+        },
+        'rv' => {
+            'Devel::Size' => {
+                'version' => '0.54',
+                'file' => '/usr/local/lib/perl5/site_perl/5.6.1/i386-freebsd/Dev
+el/Size.pm',
+                'uptodate' => 1
+             }
+         },
+         '_id' => 1,
+             'type' => 'CPANPLUS::Backend::uptodate',
+             'ok' => '1'
+         }, 'CPANPLUS::Backend::RV' );
 
-    { 'Gtk' => $some_result }
+but when called as the Module method C<$ds-E<gt>uptodate();> just
+the following will be returned:
 
-but the module method, C<$gtk_module_obj-E<gt>readme();>
-will return simply
+    {
+        'version' => '0.54',
+        'file' => '/usr/local/lib/perl5/site_perl/5.6.1/i386-freebsd/Devel/Size.pm',
+        'uptodate' => 1
+    };
 
-    $some_result
+Refer to the Backend methods to determine what type of data structure
+will be returned for the Module method of the same name.
 
 The following methods are available:
 
@@ -1688,6 +2203,10 @@ the F<.packlist> present on the local disk.
 =item * C<$module_object-E<gt>uptodate()>
 
 =item * C<$module_object-E<gt>reports()>
+
+=item * C<$module_object-E<gt>extract()>
+
+In order to use this method, you must have first used I<fetch()>.
 
 =item * C<$module_object-E<gt>pathname()>
 
@@ -1723,7 +2242,7 @@ Here is a sample dump of the module object for Acme::Buffy:
         'author' => 'LBROCARD',
         '_id' => 6,
         'package' => 'Acme-Buffy-1.2.tar.gz',
-        'version' => 'undef'
+        'version' => '1.3'
       }, 'CPANPLUS::Internals::Module' )
 
 The module object contains the following information:
@@ -1768,11 +2287,12 @@ C<I/IR/IROBERTS>.
 
 =item * C<prereqs>
 
-Currently not in use.
+Currently not in use, but this information is included in
+the return value for C<make()> and C<install()>
 
 =item * C<status>
 
-Currently not in use.
+Internal storage for module status.
 
 =item * C<version>
 
@@ -1796,8 +2316,9 @@ available for Backend objects.  Calling through the author
 object eliminates the need to use the I<authors> argument.
 
 Like the Module object methods, the Author object methods
-return the same results as the Backend methods, minus one
-level of references.
+return the value of C<$rv{rv}{'Name'}> where 'Name' corresponds
+to the name of the author (or module, in the case of the
+Module methods) and $rv is a return value object.
 
 The following methods may be called with an Author object:
 
@@ -1863,6 +2384,7 @@ terms as Perl itself.
 =head1 SEE ALSO
 
 L<CPANPLUS::Shell::Default>, L<CPANPLUS::Configure>, L<CPANPLUS::Error>,
+L<CPANPLUS::Backend::RV>, L<CPANPLUS::Dist>,
 L<ExtUtils::MakeMaker>, L<CPANPLUS::Internals::Module>, L<perlre>
 http://testers.cpan.org
 

@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/devel/AUTHORS $
-# $Revision: #7 $ $Change: 4087 $ $DateTime: 2002/05/02 01:07:02 $
+# $File: //depot/cpanplus/dist/AUTHORS $
+# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
 
 [Credits]
 
@@ -8,13 +8,15 @@ CPANPLUS project:
 
 Jos Boumans (KANE) is the leader of this project and the primary contributor.
 
-Joshua Boschert (JAMBE) works on setup and configuration.
+Ann Barcomb (KUDRA) is responsible for CPANPLUS documentation.
 
 Autrijus Tang (AUTRIJUS) is another developer and the release technician.
 
-Michael G Schwern (MSCHWERN) wrote the test suite.
+chromatic (CHROMATIC) provided the unit test suite.
 
-Ann Barcomb (KUDRA) is responsible for CPANPLUS documentation.
+Joshua Boschert (JAMBE) works on setup and configuration.
+
+Michael G Schwern (MSCHWERN) wrote the test suite.
 
 Yves Orton (YVES) is working on the Classic shell to emulate CPAN.pm's shell.
 
@@ -32,8 +34,11 @@ patches or suggestions, or their bug reports or comments have inspired
 the appropriate patches.  Corrections, additions, deletions welcome:
 
 Abe Timmerman
+Antti Lankila
+Alain Barbet		(ALAIN)
 Andy Lester		(PETDANCE)
 Andreas Marcel Riechert
+chemboy
 Barrie Slaymaker	(RBS)
 Chia-Liang Kao		(CLKAO)
 Dave Rolsky		(DROLSKY)
@@ -45,6 +50,7 @@ Jorrit Waalboer
 Jost Krieger
 Kay Roepke
 Lee Goddard		(LGODDARD)
+Lupe Christoph		(LUPE)
 Mark Fowler
 Mark-Jason Dominus	(MJD)
 Matt Sergeant		(MSERGEANT)
@@ -56,4 +62,5 @@ Randy Kobes		(RKOBES)
 Robert S Creager
 Ton Hospel
 Tony Cook		(TONYC)
+Walt Mankowski
 Yves Orton		(YVES)

@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -46,8 +46,35 @@
 package CPANPLUS::Configure;
 
 use strict;
+use CPANPLUS::I18N;
 
-use CPANPLUS::Config;
+BEGIN {
+    ### this will make cpanplus use an alternative config ###
+    #$ENV{PERL5_CPANPLUS_CONFIG} = 'C:/Documents and Settings/Administrator/.cpanplus_config';
+
+    sub _load_cpanplus_config {
+        my $tried;
+
+        if ( defined $ENV{PERL5_CPANPLUS_CONFIG} ) {
+            eval qq[require "$ENV{PERL5_CPANPLUS_CONFIG}"];
+            $tried++;
+        }
+
+        my $ok;
+        $@
+            ? warn loc("Could not load your personal config: %1: %2", $ENV{PERL5_CPANPLUS_CONFIG}, $@), "\n", loc("Falling back to system-wide config."), "\n"
+            : ($ok = 1) if $tried;
+
+        unless($ok) {
+            eval "use CPANPLUS::Config";
+            die $@ if $@;
+        }
+    }
+
+    _load_cpanplus_config();
+}
+
+#use CPANPLUS::Config; # making it overidable by an $ENV var
 use CPANPLUS::Configure::Setup;
 use CPANPLUS::Error;
 
@@ -69,9 +96,17 @@ my @types = qw(
 
 ## valid subtypes - must add anything new for Config.pm here
 my %subtypes = (
-    conf    => [ qw(cpantest debug flush force lib makeflags makemakerflags md5 prereqs shell storable verbose) ],
-    _build  => [ qw(ftp gzip lynx make ncftp ncftpget pager shell tar unzip wget autdir base moddir startdir targetdir) ],
-    _ftp    => [ qw(auth base dslip email mod passive proto source urilist) ],
+    conf    => [qw( cpantest debug flush force lib makeflags
+                    makemakerflags md5 prereqs shell storable
+                    verbose dist_type signature skiptest
+                )],
+    _build  => [qw( curl ftp gzip lynx make ncftp ncftpget pager shell
+                    tar unzip wget autdir base moddir startdir targetdir
+                    shell autobundle autobundle_prefix
+                )],
+    _ftp    => [qw( auth base dslip email mod passive proto source
+                    urilist
+                )],
     _source => [ qw(auth dslip hosts mod sauth sdslip smod update) ],
 );
 
@@ -271,7 +306,7 @@ sub _load_args {
 ## (takes no arguments, returns no values)
 ##
 sub save {
-    shift->_save_pm;
+    shift->_save_pm(@_);
     #my $self   = shift;
     #my ($conf) = @_;
 
@@ -279,7 +314,7 @@ sub save {
 
 
 sub can_save {
-    my $file = $INC{'CPANPLUS/Config.pm'};
+    my $file = shift || $INC{'CPANPLUS/Config.pm'};
     return 1 unless -e $file;
 
     chmod 0644, $file;
@@ -297,14 +332,14 @@ sub _save_pm {
     );
 
     ## ultimately $file should be passed in or divined from Config.pm
-    my $file = $INC{'CPANPLUS/Config.pm'};
+    my $file = shift || $INC{'CPANPLUS/Config.pm'};
     chmod 0644, $file;
 
     my $mode;
     if (-f $file) {
         $mode = (stat _)[2]; ## do we really need all this?
         if ($mode && ! -w _) {
-            $err->trap(error => "$file is not writable");
+            $err->trap(error => loc("%1 is not writable", $file));
         } #if
     } #if
 
@@ -346,12 +381,12 @@ _END_OF_CONFIG_
 
     my $fh = FileHandle->new;
     $fh->open(">$file")
-        or $err->trap(error => "Couldn't open >$file: $!");
+        or $err->trap(error => loc("Couldn't write to %1: %2", $file, $!));
     $fh->print($msg);
     $fh->close;
 
-    delete $INC{'CPANPLUS/Config.pm'};
-    require CPANPLUS::Config;
+    delete $INC{$file};
+    require $file;
 } #_save_pm
 
 
@@ -392,7 +427,6 @@ sub subtypes {
 
 } #types
 
-
 1;
 __END__
 
@@ -413,7 +447,7 @@ CPANPLUS::Configure - Configuration interface for CPAN++
     $conf->load('options' => {'conf' => {'md5' => 1, 'flush' => 0}});
 
     my $_md5_setting = $conf->get_md5();
-    $conf->set_debug(0); 
+    $conf->set_debug(0);
 
     print $conf->dump();
 
@@ -426,7 +460,7 @@ settings for CPANPLUS.
 
 =head1 METHODS
 
-=head2 new(conf => {CONFIGURATION});
+=head2 new(conf => {CONFIGURATION})
 
 The constructor will make a Config object.  It will attempt to use a
 saved Config.pm if it exists.  Arguments for 'conf' can be specified
@@ -436,31 +470,31 @@ options are specified in set_conf().
 If no Config.pm is found, or it is corrupt, you will be bumped to
 CPANPLUS::Configure::Setup to create one.
 
-=head2 load(options => {OPTIONS});
+=head2 load(options => {OPTIONS})
 
 Load is almost like the constructor, except that it takes a hash
 called 'options' which can contain keys such as 'conf'.  Valid
-arguments which are passed will override Config settings. 
+arguments which are passed will override Config settings.
 
-=head2 save();
+=head2 save()
 
 The save() function saves the Configure object to Config.pm,
 which is the default configuration for all CPANPLUS operations.
 
-=head2 @subtypes = subtypes('conf');
+=head2 @subtypes = subtypes('conf')
 
 This method will return a list of the subtypes of 'conf', which is
 the only public type.  Every subtype in the array can be used as
 an argument in get_conf() and set_conf().
 
-=head2 get_conf(SUBTYPE);
+=head2 get_conf(SUBTYPE)
 
-This function can be used to see the configuration setting of 
-the named subtype.  
+This function can be used to see the configuration setting of
+the named subtype.
 
 Available subtypes are listed in set_conf().
 
-=head2 set_conf(SUBTYPE => SETTING);
+=head2 set_conf(SUBTYPE => SETTING)
 
 This method can be used to set any of the subtypes to new settings.
 
@@ -478,7 +512,7 @@ verbosity settings.
 
 =item * C<flush>
 
-This is a boolean value; a true value means that the cache will be 
+This is a boolean value; a true value means that the cache will be
 automatically flushed.
 
 =item * C<force>
@@ -486,6 +520,8 @@ automatically flushed.
 This is a boolean value.  A true setting means that CPANPLUS will
 attempt to install modules even if they fail 'make test.'  It will
 also force re-fetching of modules which have already been downloaded.
+Furthermore, force will install a module even if it is already
+up-to-date.
 
 =item * C<lib>
 
@@ -502,9 +538,14 @@ make command.
 =item * C<prereqs>
 
 This argument relates to the treatment of prerequisite modules and
-has a value of 0, 1 or 2.  A 0 indicates that prerequisites are
+has a value of 0, 1, 2 or 3.  A 0 indicates that prerequisites are
 disallowed, a 1 enables automatic prerequisite installation, and
 a 2 prompts for each prerequisite.
+
+The setting of 3 indicates that the prerequisite will be tested
+but not installed.  Their build directory will be added to the
+PERL5LIB environment variable so they will be in the path.  This
+option is useful for building distributions.
 
 =item * C<storable>
 
@@ -517,6 +558,10 @@ This is a boolean value.  A true setting enables verbose mode.
 =item * C<md5>
 
 This is a boolean value.  A true setting enables md5 checks.
+
+=item * C<signature>
+
+This is a boolean value.  A true setting enables PGP signature checks.
 
 =item * C<makemakerflags>
 

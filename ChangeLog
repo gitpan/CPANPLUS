@@ -1,11 +1,76 @@
-# $File: //member/autrijus/cpanplus/dist/ChangeLog $
-# $Revision: #19 $ $Change: 4066 $ $DateTime: 2002/04/30 18:02:42 $
+# $File: //depot/cpanplus/dist/ChangeLog $
+# $Revision: #4 $ $Change: 1956 $ $DateTime: 2002/11/04 15:53:53 $
 
-[Changes for 0.036 - July 6, 2002]
+[Changes for 0.040 - November 4, 2002]
 
-This release fixed the showstopping bug in 0.034 that prevented first-time users
-from installing dependencies.
+After five months in the development branch, we finally have another
+major release, featuring massively rewritten, refactored and tested code.
 
+We are looking for translators for "lib/CPANPLUS/I18N/CPANPLUS.pot" --
+please contact <cpanplus-devel@lists.sourceforge.net> if you are interested
+in filling the "" slots with messages in your language.
+
+* New Features
+
+ - A 'Classic' shell that emulates the CPAN.pm shell.
+ 
+ - Internationalization framework for localized messages.
+  
+ - Comprehensive unit-test suites for CPANPLUS.pm and Backend.pm.
+
+ - Tab completion in the Default shell.
+
+ - Shell commands now takes options (e.g. 'install --force Module::Name').
+
+ - New 'b' (autobundle) and 'z' (open shell in module directory) commands.
+
+ - Checking for newer modules with 'o' is now significantly faster.
+
+ - New configuration option, 'skiptest', to skip the 'make test' phase.
+
+ - New 'signature' option to check PGP signatures before installation.
+
+ - All Backend's module methods now works with either names or objects.
+
+ - Return values are now CPANPLUS::Backend::RV objects.
+
+ - Support for Perl version-specific build/ and dist/ directories.
+
+ - Multiple configuration file support in Setup.pm.
+
+ - Fetching modules with 'curl' is now possible.
+
+* Bug fixes (and their first reporters):
+
+ - Auto installation was broken on Cygwin.
+ 
+ - The 'x' command (reload_indices) was leaking memory. (Jochen Stenzel)
+
+ - The 'o' command did not recognize 'old' @INC paths (Jost Krieger)
+
+ - Infinite loops when installing core modules are fixed. (chemboy)
+
+ - Fixed problems about subdirs in CPAN's author directories. (Jost Krieger)
+
+ - Contact address was missing in CPANPLUS's POD. (Mark-Jason Dominus)
+
+ - Use user-specified 'perl' executable instead of %ENV's. (Lupe Christoph)
+
+ - Without IPC::Run, open3() on Linux was flushed badly. (Jorrit Waalboer)
+
+ - Report.pm used to send duplicate UNKNOWN reports. (Alain Barbet)
+
+[Changes for 0.036 - July 30, 2002]
+
+This release fixed the showstopping bug in 0.034 that prevented first-time
+users from installing dependencies.
+
+* New Features
+
+ - The space after the '!' command in default shell is now optional.
+
+ - Some new FAQ entries applied from -devel.
+ 
 * Bug fixes (and their first reporters):
 
  - Fixed Makefile.PL so AutoInstall is no longer broken. (Jonathan Leffler)
@@ -18,15 +83,15 @@ from installing dependencies.
 
  - LWP tests in t/3-backend.t now refuses to run without HTML::HeadParser.
 
-* New Features
+ - Setting defaults based on existing configuration now actually work.
 
- - The space after the '!' command in default shell is now optional.
-
- - Some new FAQ entries applied from -devel.
- 
 [Changes for 0.035 - June 4, 2002]
 
 This version rolls in the bugfixes reported by Jost Krieger. Thanks!
+
+* New Features
+
+ - The 'o' command is now accepted by bin/cpanp.
 
 * Bug fixes (and their first reporters):
 
@@ -36,14 +101,16 @@ This version rolls in the bugfixes reported by Jost Krieger. Thanks!
 
  - The 'could not remove directory' error during uninstall is made non-fatal.
 
-* New Features
-
- - The 'o' command is now accepted by bin/cpanp.
-
 [Changes for 0.034 - June 1, 2002]
 
 This is primarily a bug-fix version to address various bugs found in testing-
 related functions.
+
+* New Features
+
+ - New 'v' command in default shell to re-display the version banner.
+
+ - The 'o' command now takes optional arguments to limit modules checked.
 
 * Bug fixes (and their first reporters):
 
@@ -64,12 +131,6 @@ related functions.
  - Report.pm was sending bogus FAILs for OS-specific modules.
 
  - Report.pm now detects missing dependencies and sends recommendations.
-
-* New Features
-
- - New 'v' command in default shell to re-display the version banner.
-
- - The 'o' command now takes optional arguments to limit modules checked.
 
 [Changes for 0.033 - May 1, 2002]
 

@@ -1,6 +1,6 @@
-#!/usr/bin/env perl
-# $File: //depot/dist/bin/cpansmoke $
-# $Revision: #3 $ $Change: 60 $ $DateTime: 2002/06/06 05:42:54 $
+#!/usr/bin/perl
+# $File: //depot/cpanplus/dist/bin/cpansmoke $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 use strict;
 use Cwd;
@@ -8,7 +8,7 @@ use Config;
 use Getopt::Std;
 use CPANPLUS::Backend;
 
-my $VERSION = '0.05';
+my $VERSION = '0.06';
 
 =head1 NAME
 
@@ -16,7 +16,7 @@ cpansmoke - CPAN Smoke Tester
 
 =head1 SYNOPSIS
 
-B<cpansmoke> S<[ -B<acdflpv> ]> S<[ -B<t> I<timeout> ]> I<packages>...
+B<cpansmoke> S<[ -B<acdfilpuv> ]> S<[ -B<t> I<timeout> ]> I<packages>...
 
 =head1 DESCRIPTION
 
@@ -32,18 +32,20 @@ the module is tested.
  -c    Always Cc: to the module author (only on FAIL by default)
  -d    Display each package's existing result before testing it
  -f    Force re-fetching cached packages and checksum data
+ -i    Don't cc FAIL reports to author if two or more FAILs were reported
  -l    Use user-configured hosts; www.cpan.org is preferred by default
  -p    Fetch, make and test (but not install) prerequisite modules
  -s    Skip modules that have testing results from the same settings
+ -u    Skip modules that have more than one testing results as UNKNOWN
  -v    Print verbose proceeding informations
- -t    Sets timeout for each package's install; default to 300
+ -t    Sets timeout for each package's install; defaults to 300
 
 =head1 NOTES
 
 If the B<-a> option is set, only failures during C<make test> are reported,
 to prevent bogus reports caused by insufficient non-perl requisites.
 
-For automatic testing, C<cpansmoke -aps> is preferred. Subscriber of the
+For automatic testing, C<cpansmoke -aipsu> is preferred. Subscriber of the
 C<cpan-testers@perl.org> list may use this B<Mail::Audit> recipe to enable
 unattended smoke testing:
 
@@ -66,9 +68,10 @@ Please consult L<CPANPLUS::TesterGuide> for additional information.
 
 show_usage() unless @ARGV;
 
-my %args; getopts('acdfhlpsvt:', \%args);
-my ($auto, $cc, $display, $force, $help, $local, $prereq, $skip, $verbose, $timeout)
-    = @args{qw|a c d f h l p s v t|};
+my %args; getopts('acdfihlpsuvt:', \%args);
+my ($auto, $cc, $display, $force, $help, $local, $prereq, $skip, 
+    $skip_unknown, $skip_fail, $verbose, $timeout)
+    = @args{qw|a c d f h l p s u i v t|};
 
 show_usage() if $help;
 
@@ -87,6 +90,7 @@ $ENV{VISUAL} = 'echo' if $auto;                 # let cpantest skip editing
 my $cpantest_conf = '';
 $cpantest_conf .= 'always_cc,'     if $cc;
 $cpantest_conf .= 'maketest_only,' if $auto;
+$cpantest_conf .= 'dont_cc,'       if $skip_fail;
 
 $conf->set_conf( prereqs  => $prereq  );
 $conf->set_conf( force    => $force   );
@@ -193,24 +197,28 @@ Usage:
   -c    Always Cc: to the module author (only on FAIL by default)
   -d    Display each package's existing result before testing it
   -f    Force re-fetching cached packages and checksum data
+  -i    Don't cc FAIL reports to author if two or more FAILs were reported
   -l    Use user-configured hosts; www.cpan.org is preferred by default
   -p    Fetch, make and test (but not install) prerequisite modules
   -s    Skip modules that have testing results from the same settings
+  -u    Skip modules that have more than one testing results as UNKNOWN
   -v    Print verbose proceeding informations
-  -t    Sets timeout for each package's install; default to 300
+  -t    Sets timeout for each package's install; defaults to 300
 
 .
     exit;
 }
 
-### Wrapper to display / check for existing reports; return 1 if skip ###
+### Wrapper to display / check for existing reports on this OS or
+### with UNKNOWN status; return 1 if skip ###
 sub _check_existing {
     my $dist = shift;
 
-    return unless $display or $skip;
+    return unless $display or $skip or $skip_unknown;
 
     my $report = $cp->reports( modules => [ $dist ] ) || {};
     my $is_there;
+    my $is_unknown= 0;
 
     while ( my ($name, $href) = each (%$report) ) {
         next unless ref($href);
@@ -218,6 +226,10 @@ sub _check_existing {
 
         for my $rv (@{$href}) {
             next unless UNIVERSAL::isa($rv, 'HASH');
+
+            if ($rv->{grade} eq 'UNKNOWN') { $is_unknown++; }
+            next if (!$skip and !$display);
+
             printf "%8s %s%s\n", @{$rv}{'grade', 'platform'},
                                  ($rv->{detail} ? ' (*)' : '') if $display;
 
@@ -230,6 +242,11 @@ sub _check_existing {
 
     if ($skip and $is_there) {
         print "$dist already tested on this configuration; skipping.\n";
+        return 1;
+    }
+    elsif ($skip_unknown and $is_unknown > 1) {
+        print "$dist already tested and declared as UNKNOWN two times ;".
+          " skipping.\n";
         return 1;
     }
 

@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Author.pm $
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Author.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 #######################################################
 ###            CPANPLUS/Internals/Author.pm         ###
@@ -12,16 +12,13 @@
 package CPANPLUS::Internals::Author;
 
 use strict;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals;
 use Data::Dumper;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter CPANPLUS::Backend);
+    use vars        qw(@ISA $VERSION);
+    @ISA        =   qw(CPANPLUS::Backend);
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -117,7 +114,7 @@ sub distributions {
 
     my $href = $obj->distributions( @_, authors => ['^'.$self->{cpanid}.'$'] );
 
-    return $href->{$self->{cpanid}};
+    return $href->rv->{$self->{cpanid}};
 }
 
 
@@ -179,7 +176,7 @@ CPAN authors.
 =head1 METHODS
 
 Due to the fact that this module is only used in conjunction with
-CPANPLUS::Backend, all methods have been documented in that module. 
+CPANPLUS::Backend, all methods have been documented in that module.
 
 =head1 AUTHORS
 
@@ -195,10 +192,10 @@ copyright (c) 2001, 2002 Jos Boumans E<lt>kane@cpan.orgE<gt>.
 All rights reserved.
 
 This library is free software;
-you may redistribute and/or modify it under the same 
+you may redistribute and/or modify it under the same
 terms as Perl itself.
 
-=head1 SEE ALSO 
+=head1 SEE ALSO
 
 L<CPANPLUS::Backend>
 

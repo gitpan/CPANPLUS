@@ -18,7 +18,7 @@ sub _carp {
 
 require Exporter;
 use vars qw($VERSION @ISA @EXPORT %EXPORT_TAGS $TODO);
-$VERSION = '0.41';
+$VERSION = '0.47';
 @ISA    = qw(Exporter);
 @EXPORT = qw(ok use_ok require_ok
              is isnt like unlike is_deeply
@@ -176,15 +176,17 @@ sub plan {
     my $caller = caller;
 
     $Test->exported_to($caller);
-    $Test->plan(@plan);
 
     my @imports = ();
     foreach my $idx (0..$#plan) {
         if( $plan[$idx] eq 'import' ) {
-            @imports = @{$plan[$idx+1]};
+            my($tag, $imports) = splice @plan, $idx, 2;
+            @imports = @$imports;
             last;
         }
     }
+
+    $Test->plan(@plan);
 
     __PACKAGE__->_export_to_level(1, __PACKAGE__, @imports);
 }
@@ -302,7 +304,7 @@ test:
 Will produce something like this:
 
     not ok 17 - Is foo the same as bar?
-    #     Failed test 1 (foo.t at line 139)
+    #     Failed test (foo.t at line 139)
     #          got: 'waffle'
     #     expected: 'yarblokos'
 
@@ -351,7 +353,7 @@ is similar to:
 
     ok( $this =~ /that/, 'this is like that');
 
-(Mnemonic "This is like that"..)
+(Mnemonic "This is like that".)
 
 The second argument is a regular expression.  It may be given as a
 regex reference (i.e. C<qr//>) or (for better compatibility with older
@@ -455,7 +457,7 @@ as one test.  If you desire otherwise, use:
 
 sub can_ok ($@) {
     my($proto, @methods) = @_;
-    my $class= ref $proto || $proto;
+    my $class = ref $proto || $proto;
 
     unless( @methods ) {
         my $ok = $Test->ok( 0, "$class->can(...)" );
@@ -465,14 +467,13 @@ sub can_ok ($@) {
 
     my @nok = ();
     foreach my $method (@methods) {
-        my $test = "'$class'->can('$method')";
         local($!, $@);  # don't interfere with caller's $@
                         # eval sometimes resets $!
-        eval $test || push @nok, $method;
+        eval { $proto->can($method) } || push @nok, $method;
     }
 
     my $name;
-    $name = @methods == 1 ? "$class->can($methods[0])" 
+    $name = @methods == 1 ? "$class->can('$methods[0]')" 
                           : "$class->can(...)";
     
     my $ok = $Test->ok( !@nok, $name );
@@ -645,7 +646,7 @@ C<use_ok> and C<require_ok>.
    BEGIN { use_ok($module, @imports); }
 
 These simply use the given $module and test to make sure the load
-happened ok.  Its recommended that you run use_ok() inside a BEGIN
+happened ok.  It's recommended that you run use_ok() inside a BEGIN
 block so its functions are exported at compile-time and prototypes are
 properly honored.
 
@@ -656,6 +657,20 @@ If @imports are given, they are passed through to the use.  So this:
 is like doing this:
 
    use Some::Module qw(foo bar);
+
+don't try to do this:
+
+   BEGIN {
+       use_ok('Some::Module');
+
+       ...some code that depends on the use...
+       ...happening at compile time...
+   }
+
+instead, you want:
+
+  BEGIN { use_ok('Some::Module') }
+  BEGIN { ...some code that depends on the use... }
 
 
 =cut
@@ -670,7 +685,7 @@ sub use_ok ($;@) {
     eval <<USE;
 package $pack;
 require $module;
-$module->import(\@imports);
+'$module'->import(\@imports);
 USE
 
     my $ok = $Test->ok( !$@, "use $module;" );
@@ -748,40 +763,34 @@ just show you...
       ...normal testing code goes here...
   }
 
-This declares a block of tests to skip, $how_many tests there are,
-$why and under what $condition to skip them.  An example is the
-easiest way to illustrate:
+This declares a block of tests that might be skipped, $how_many tests
+there are, $why and under what $condition to skip them.  An example is
+the easiest way to illustrate:
 
     SKIP: {
-        skip "Pigs don't fly here", 2 unless Pigs->can('fly');
+        eval { require HTML::Lint };
 
-        my $pig = Pigs->new;
-        $pig->takeoff;
+        skip "HTML::Lint not installed", 2 if $@;
 
-        ok( $pig->altitude > 0,         'Pig is airborne' );
-        ok( $pig->airspeed > 0,         '  and moving'    );
+        my $lint = new HTML::Lint;
+        isa_ok( $lint, "HTML::Lint" );
+
+        $lint->parse( $html );
+        is( $lint->errors, 0, "No errors found in HTML" );
     }
 
-If pigs cannot fly, the whole block of tests will be skipped
-completely.  Test::More will output special ok's which Test::Harness
-interprets as skipped tests.  Its important to include $how_many tests
-are in the block so the total number of tests comes out right (unless
-you're using C<no_plan>, in which case you can leave $how_many off if
-you like).
+If the user does not have HTML::Lint installed, the whole block of
+code I<won't be run at all>.  Test::More will output special ok's
+which Test::Harness interprets as skipped, but passing, tests.
+It's important that $how_many accurately reflects the number of tests
+in the SKIP block so the # of tests run will match up with your plan.
 
-Its perfectly safe to nest SKIP blocks.
-
-Tests are skipped when you B<never> expect them to B<ever> pass.  Like
-an optional module is not installed or the operating system doesn't
-have some feature (like fork() or symlinks) or maybe you need an
-Internet connection and one isn't available.
+It's perfectly safe to nest SKIP blocks.  Each SKIP block must have
+the label C<SKIP>, or Test::More can't work its magic.
 
 You don't skip tests which are failing because there's a bug in your
-program.  For that you use TODO.  Read on.
-
-
-=for _Future
-See L</Why are skip and todo so weird?>
+program, or for which you don't yet have code written.  For that you
+use TODO.  Read on.
 
 =cut
 
@@ -831,6 +840,8 @@ With a todo block, the tests inside are expected to fail.  Test::More
 will run the tests normally, but print out special flags indicating
 they are "todo".  Test::Harness will interpret failures as being ok.
 Should anything succeed, it will report it as an unexpected success.
+You then know the thing you had todo is done and can remove the
+TODO flag.
 
 The nice part about todo tests, as opposed to simply commenting out a
 block of tests, is it's like having a programmatic todo list.  You know
@@ -849,7 +860,7 @@ When the block is empty, delete it.
         ...normal testing code...
     }
 
-With todo tests, its best to have the tests actually run.  That way
+With todo tests, it's best to have the tests actually run.  That way
 you'll know when they start passing.  Sometimes this isn't possible.
 Often a failing test will cause the whole program to die or hang, even
 inside an C<eval BLOCK> with and using C<alarm>.  In these extreme
@@ -878,6 +889,17 @@ sub todo_skip {
     local $^W = 0;
     last TODO;
 }
+
+=item When do I use SKIP vs. TODO?
+
+B<If it's something the user might not be able to do>, use SKIP.
+This includes optional modules that aren't installed, running under
+an OS that doesn't have some feature (like fork() or symlinks), or maybe
+you need an Internet connection and one isn't available.
+
+B<If it's something the programmer hasn't done yet>, use TODO.  This
+is for any code you haven't written yet, or bugs you have yet to fix,
+but want to put tests in your testing script (always a good idea).
 
 
 =back
@@ -978,7 +1000,7 @@ sub _format_stack {
 
   eq_array(\@this, \@that);
 
-Checks if two arrays are equivalent..  This is a deep check, so
+Checks if two arrays are equivalent.  This is a deep check, so
 multi-level structures are handled correctly.
 
 =cut
@@ -1087,6 +1109,9 @@ Similar to eq_array(), except the order of the elements is B<not>
 important.  This is a deep check, but the irrelevancy of order only
 applies to the top level.
 
+B<NOTE> By historical accident, this is not a true set comparision.
+While the order of elements does not matter, duplicate elements do.
+
 =cut
 
 # We must make sure that references are treated neutrally.  It really
@@ -1138,6 +1163,8 @@ sub builder {
 
 Test::More is B<explicitly> tested all the way back to perl 5.004.
 
+Test::More is thread-safe for perl 5.8.0 and up.
+
 =head1 BUGS and CAVEATS
 
 =over 4
@@ -1181,7 +1208,7 @@ magic side-effects are kept to a minimum.  WYSIWYG.
 =head1 SEE ALSO
 
 L<Test::Simple> if all this confuses you and you just want to write
-some tests.  You can upgrade to Test::More later (its forward
+some tests.  You can upgrade to Test::More later (it's forward
 compatible).
 
 L<Test::Differences> for more ways to test complex data structures.

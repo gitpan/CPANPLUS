@@ -1,13 +1,13 @@
 #!/usr/bin/perl -w
-# $File: //member/autrijus/cpanplus/dist/t/3-backend.t $
-# $Revision: #6 $ $Change: 3992 $ $DateTime: 2002/04/25 21:39:21 $
+# $File: //depot/cpanplus/dist/t/3-backend.t $
+# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
 
 # This is going test all of CPANPLUS::Backend except the parts which
-# actually download and install modules.  Those will be in another part.
+# actually download and install modules.
 
 use strict;
 use lib 't/lib';
-use Test::More tests => 75;
+use Test::More tests => 74;
 
 BEGIN { use File::Path; mkpath 't/dummy-cpanplus' }
 END   { rmtree 't/dummy-cpanplus' }
@@ -85,7 +85,7 @@ my $distname = 'Text-Bastardize-0.06.tar.gz';
     author      => $author,
     package     => $distname,
     dslip       => 'cdpO',
-    status      => '',
+    status      => {},
     prereqs     => {},
     module      => $modname,
     description => 'corrupts text in various ways'
@@ -106,9 +106,10 @@ my $rv;
 $rv = $cp->search( type => 'module', list => ['^Text::Bastard'] );
 is_deeply($rv, { $modname => $modobj }, 'search()');
 
-$rv = $cp->details(modules => [ $modname ]);
+$rv = $cp->details(modules => [ $modname ])->rv;
 is_deeply($rv, { $modname => {
-    'Version'           => '0.06',
+    'Version on CPAN'	=> '0.06',
+    'Version Installed'	=> $rv->{$modname}{'Version Installed'},
     'Language Used'     => 'Perl-only, no compiler needed, should be platform independent',
     'Interface Style'   => 'Object oriented using blessed references and/or inheritance',
     'Support Level'     => 'Developer',
@@ -118,16 +119,16 @@ is_deeply($rv, { $modname => {
     'Author'            => 'julian fondren (julian@imaji.net)'
 } }, 'details()');
 is_deeply($modobj->details, $rv->{$modname}, '    module method');
-is_deeply($cp->details(modules => [$modobj]), $rv, '    modobj');
+is_deeply($cp->details(modules => [$modobj])->rv, $rv, '    modobj');
 
-delete $rv->{$modname}{Version};
+delete $rv->{$modname}{'Version Installed'};
+delete $rv->{$modname}{'Version on CPAN'};
 is_deeply(
-    $cp->details(modules => [$distname])->{$cp->pathname(to => $distname)},
+    $cp->details(modules => [ $distname ])->rv->{$cp->pathname(to => $distname)},
     $rv->{$modname}, '    distname'
 );
 
-
-$rv = $cp->readme(modules => [ $modname ]);
+$rv = $cp->readme(modules => [ $modname ])->rv;
 like($rv->{$modname}, '/^\s+'.$modname.'[\d\D]+make install/', 'readme()');
 is_deeply($modobj->readme, $rv->{$modname}, '    module method');
 
@@ -158,19 +159,18 @@ SKIP: {
     skip "$modname is installed", 5 if eval "use $modname; 1";
     local $cp->error_object->{ELEVEL} = 0; # shut up
 
-    $rv = $cp->files(modules => [ $modname ]);
+    $rv = $cp->files(modules => [ $modname ])->rv;
     is_deeply($rv, {$modname => 0}, 'files()');
-    is_deeply($modobj->files, $rv->{$modname}, '    module method');
 
-    $rv = $cp->uptodate(modules => [ $modname ]);
-    is_deeply($rv, {$modname => undef}, 'uptodate()');
+    $rv = $cp->uptodate(modules => [ $modname ])->rv;
+    is_deeply($rv, {$modname => {}}, 'uptodate()');
     is_deeply($modobj->uptodate, $rv->{$modname}, '    module method');
 
-    $rv = $cp->validate(modules => [ $modname ]);
+    $rv = $cp->validate(modules => [ $modname ])->rv;
     is_deeply($rv, {$modname => 0}, 'validate()');
 }
 
-$rv = $cp->distributions(authors => [ $modobj->author ]);
+$rv = $cp->distributions(authors => [ $modobj->author ])->rv;
 
 my $modinfo = {
     shortname  => 'textb006.tgz',
@@ -184,20 +184,21 @@ is_deeply($rv->{$author}{$distname}, $modinfo, 'distributions()');
 is_deeply($authobj->distributions, $rv->{$author}, '    author method');
 is_deeply($modobj->distributions, $rv->{$author}, '    module method');
 
-$rv = $cp->modules(authors => [ $modobj->author ]);
+$rv = $cp->modules(authors => [ $modobj->author ])->rv;
 is_deeply($rv->{$author}{$modname}, $modobj, 'module()');
 is_deeply($authobj->modules->{$modname}, $modobj, '    author method');
 is_deeply($modobj->modules->{$modname}, $modobj, '    module method');
 
 SKIP: {
     skip "requires LWP", 2
-	unless eval "use LWP; 1";
+        unless eval { require LWP; 1 };
     skip "requires HTML::HeadParser", 2
-	unless eval "use HTML::HeadParser; 1";
+        unless eval { require HTML::HeadParser; 1 };
     skip "requires internet connectivity", 2
-	unless eval "use Socket; Socket::inet_aton('testers.cpan.org')";
+        unless eval { require Socket; Socket::inet_aton('testers.cpan.org') };
 
-    $rv = $cp->reports(modules => [ $modname ], all_versions => 1);
+    diag "Connecting to testers.cpan.org; this may take a while";
+    $rv = $cp->reports(modules => [ $modname ], all_versions => 1)->rv;
     is_deeply(ref($rv->{$modname}), 'ARRAY', 'reports()');
     is_deeply($modobj->reports, $rv->{$modname}, '    module method');
 }

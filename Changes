@@ -1,4 +1,972 @@
 ____________________________________________________________________________
+[  1955] By: autrijus                              on 2002/11/04  15:53:00
+        Log: * This be 0.040, for real!
+	   ! ChangeLog
+____________________________________________________________________________
+[  1954] By: autrijus                              on 2002/11/04  15:52:20
+        Log: * fix windowsism.
+	   ! MANIFEST.SKIP
+____________________________________________________________________________
+[  1950] By: kane                                  on 2002/11/04  15:28:12
+        Log: * note that skiptest is now a flag
+             * list proper return value of make()
+             * fix some typos
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1936] By: autrijus                              on 2002/11/04  14:23:41
+        Log: * This be CPANPLUS, Version 0.040.
+	   ! README
+____________________________________________________________________________
+[  1934] By: autrijus                              on 2002/11/04  14:18:34
+        Log: * brand new lexicon files.
+	   ! lib/CPANPLUS/I18N/CPANPLUS.pot
+____________________________________________________________________________
+[  1933] By: autrijus                              on 2002/11/04  14:18:18
+        Log: * revised manifest.
+	   ! MANIFEST
+____________________________________________________________________________
+[  1932] By: autrijus                              on 2002/11/04  14:10:29
+        Log: * don'e check sigs for -devel.
+	   ! t/0-signature.t
+____________________________________________________________________________
+[  1929] By: autrijus                              on 2002/11/04  13:58:11
+        Log: * add signature test.
+	   + t/0-signature.t
+	   ! MANIFEST
+____________________________________________________________________________
+[  1928] By: autrijus                              on 2002/11/04  13:57:43
+        Log: * upgrade to Test-Simple-0.47 for thread safety.
+	   ! t/lib/Test/Builder.pm t/lib/Test/More.pm
+____________________________________________________________________________
+[  1925] By: autrijus                              on 2002/11/04  13:39:32
+        Log: * proper release date.
+             * add SIGNATURE to MANIFEST to prepare for signed release.
+	   ! ChangeLog MANIFEST
+____________________________________________________________________________
+[  1924] By: kane                                  on 2002/11/04  13:33:48
+        Log: * removed superfluous extra key 'make' in the return value
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1919] By: autrijus                              on 2002/11/04  13:16:20
+        Log: * for some reason this was not checked in.
+	   ! lib/CPANPLUS/Internals/Module.pm
+____________________________________________________________________________
+[  1915] By: autrijus                              on 2002/11/04  12:58:54
+        Log: * versions.
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1914] By: autrijus                              on 2002/11/04  12:37:51
+        Log: * rcs tags.
+	   ! AUTHORS README TODO bin/cpanp bin/cpansmoke
+	   ! inc/ExtUtils/AutoInstall.pm
+	   ! lib/CPANPLUS/Error.pm
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Author.pm
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+	   ! lib/CPANPLUS/Internals/Module.pm
+	   ! lib/CPANPLUS/Internals/System.pm
+	   ! lib/CPANPLUS/Shell.pm
+	   ! lib/CPANPLUS/TesterGuide.pod t/1-basic.t
+	   ! t/2-autoinstall.t t/3-backend.t
+____________________________________________________________________________
+[  1909] By: autrijus                              on 2002/11/04  09:01:58
+        Log: * changelog and changes for 0.04-rc.
+	   ! ChangeLog Changes
+____________________________________________________________________________
+[  1908] By: autrijus                              on 2002/11/04  09:01:46
+        Log: * support for --skiptest and autobundle.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  1903] By: kane                                  on 2002/11/03  22:58:58
+        Log: * autobundle documentation
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1902] By: kane                                  on 2002/11/03  22:41:33
+        Log: * typo fixes
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1901] By: kane                                  on 2002/11/03  22:33:50
+        Log: * document autobundle
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1900] By: kane                                  on 2002/11/03  22:14:59
+        Log: * updated RV documentation
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1899] By: autrijus                              on 2002/11/03  22:09:36
+        Log: * fix _can_use problems.
+             * all tests pass!
+	   ! t/3-backend.t t/CPANPLUS-Backend.t
+	   ! t/CPANPLUS.t
+____________________________________________________________________________
+[  1898] By: autrijus                              on 2002/11/03  22:03:30
+        Log: * bleh.
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1897] By: autrijus                              on 2002/11/03  22:01:10
+        Log: * integrate last change here.
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1896] By: kane                                  on 2002/11/03  21:57:11
+        Log: * fixed faulty regex change from revision 5
+	   ! lib/CPANPLUS/Internals/Search.pm
+____________________________________________________________________________
+[  1895] By: autrijus                              on 2002/11/03  21:55:50
+        Log: * removed module_tree code to reflect CPANPLUS.pm changes.
+	   ! t/CPANPLUS.t
+____________________________________________________________________________
+[  1894] By: autrijus                              on 2002/11/03  21:46:48
+        Log: * add stub things to test.
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1893] By: kane                                  on 2002/11/03  21:39:00
+        Log: * previous patch broke foo -> bakc to revision 8
+	   ! lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  1892] By: kane                                  on 2002/11/03  21:37:12
+        Log: * Patch updates what options may be used to override
+	       settings
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1891] By: kane                                  on 2002/11/03  21:33:06
+        Log: * instructs people on where to find Classic documentation.
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1890] By: kane                                  on 2002/11/03  21:31:05
+        Log: * Notes that undef will be returned if the RV object cannot
+	       be init
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1889] By: autrijus                              on 2002/11/03  20:57:10
+        Log: * oops.
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1888] By: autrijus                              on 2002/11/03  20:54:38
+        Log: * fix tests.
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1887] By: autrijus                              on 2002/11/03  20:54:02
+        Log: * so we has one additional test passed.
+	   ! t/3-backend.t
+____________________________________________________________________________
+[  1886] By: autrijus                              on 2002/11/03  20:53:39
+        Log: * correctly support $module->modules().
+	   ! lib/CPANPLUS/Internals/Module.pm
+____________________________________________________________________________
+[  1885] By: autrijus                              on 2002/11/03  20:47:15
+        Log: * ->modules should return a RV object.
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1884] By: kane                                  on 2002/11/03  20:27:40
+        Log: * adding more documentation about module/author objects
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1882] By: autrijus                              on 2002/11/03  20:15:58
+        Log: * properly check @INC hooks, thanks to kane's instructions.
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  1881] By: autrijus                              on 2002/11/03  20:15:38
+        Log: * no point to check if we don't have modules installed.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1878] By: kane                                  on 2002/11/03  19:28:20
+        Log: * explain how to switch shells
+	   ! lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  1877] By: kane                                  on 2002/11/03  19:28:03
+        Log: * add to the docs we'll be in core
+	   ! lib/CPANPLUS.pm
+____________________________________________________________________________
+[  1875] By: autrijus                              on 2002/11/03  19:24:28
+        Log: * fix the case where no modules are installed at all.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1874] By: autrijus                              on 2002/11/03  19:24:01
+        Log: * when @INC hooks are in effect, always assume uptodate.
+             * also, don't bother check the rest of modules once we have
+	       uptodate.
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  1869] By: kane                                  on 2002/11/03  16:32:00
+        Log: * well, we are not a drop in replacement, and let's
+	       announce our core-ness
+	   ! Makefile.PL
+____________________________________________________________________________
+[  1866] By: kane                                  on 2002/11/03  14:42:44
+        Log: * forgot to put utils in internals' @ISA
+             * improper calling of _can_use in Utils, fixed
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Utils.pm
+____________________________________________________________________________
+[  1865] By: kane                                  on 2002/11/03  14:42:01
+        Log: * name in the file should be without the .pm suffix
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1864] By: kane                                  on 2002/11/03  14:32:52
+        Log: * removing excess newline
+	   ! lib/CPANPLUS/Internals/Utils.pm
+____________________________________________________________________________
+[  1863] By: kane                                  on 2002/11/03  14:28:18
+        Log: * i saw 'eval { File::Path::mkpath($dir) }; if $@, bla bla'
+	       wayyyyyy too often, so i propose a
+	       Internals::Utils module to take care of this
+	       stuff for us.. i started by adding _mkdir as
+	       a function to it, but all this kind of stuff
+	       can go in there as far as i'm concerned
+	   + lib/CPANPLUS/Internals/Utils.pm
+	   ! lib/CPANPLUS/Backend.pm
+	   ! lib/CPANPLUS/Dist/PPM.pm
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Extract.pm
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[  1862] By: kane                                  on 2002/11/03  14:25:52
+        Log: * do not use local $@, it's a perlbug
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  1861] By: kane                                  on 2002/11/03  14:04:46
+        Log: * changing a bit the way backend returns work:
+             
+             both 0 and 1 are valid return values from an $rv->rv,
+	     however undef is not.. so any failure in a
+	     backend method that makes us bail before
+	     initialising an RV object, should return undef
+             (i'm mainlly talking here about when the argument checker
+	     or _can_use fails)
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1860] By: kane                                  on 2002/11/03  14:02:03
+        Log: * woops, NO localization for classic.pm!
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1859] By: kane                                  on 2002/11/03  13:59:57
+        Log: * the big autobundle patch
+             
+             following things are important:
+             * Backend->autobundle writes out a an autobundle file under
+	       your $CPANHOME/dist/autobundle directory..
+	       currently, no custom file names are accepted
+	       (autobundle also takes no args currently)
+             
+             * Backend->install now checks if the module passed may be a
+	       full filename (at which point it's treated
+	       as a autobundle file), or a name that looks
+	       like it's a snapshot which makes install
+	       treat it as a bundle again. for all other
+	       cases the old way stays
+             
+             * teh autobundle code is now removed from Shell::_Base in
+	       favor of a cleaner API in backend
+             
+             * Config.pm-orig is changed to reflect the new location of
+	       autobundles
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Backend.pm
+	   ! lib/CPANPLUS/Config.pm-orig
+	   ! lib/CPANPLUS/Shell.pm
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1791] By: autrijus                              on 2002/10/30  19:31:20
+        Log: * fix spurious warnings.
+	   ! lib/CPANPLUS/I18N.pm
+____________________________________________________________________________
+[  1784] By: kane                                  on 2002/10/30  16:38:02
+        Log: * fixes a test failure.. with the new rv object in place,
+	       we missed doing the call in this function
+	   ! lib/CPANPLUS/Internals/Author.pm
+____________________________________________________________________________
+[  1766] By: autrijus                              on 2002/10/29  20:08:49
+        Log: * better mocking for _is_ok.
+             * coverage for search()
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1765] By: autrijus                              on 2002/10/29  19:36:35
+        Log: * revived the black-box test; all test pass except one.
+	   ! t/3-backend.t
+____________________________________________________________________________
+[  1764] By: autrijus                              on 2002/10/29  19:36:20
+        Log: * avoid one undefinedness warning.
+	   ! lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  1763] By: autrijus                              on 2002/10/29  19:05:44
+        Log: * test coverage for pathname().
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1762] By: autrijus                              on 2002/10/29  19:05:32
+        Log: * correct incorrect comment.
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1761] By: autrijus                              on 2002/10/29  18:05:51
+        Log: * low-hanging fruits.
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1759] By: autrijus                              on 2002/10/29  17:42:03
+        Log: * backend coverage skeleton.
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1758] By: autrijus                              on 2002/10/29  17:25:11
+        Log: * complete test coverage for CPANPLUS.pm.
+	   ! t/CPANPLUS.t
+____________________________________________________________________________
+[  1757] By: autrijus                              on 2002/10/29  17:24:50
+        Log: * remove redundant module tree checks.
+             * fetch() returns ->ok for the only module, mimicking
+	       install()
+	   ! lib/CPANPLUS.pm
+____________________________________________________________________________
+[  1636] By: autrijus                              on 2002/10/23  10:12:34
+        Log: * take account into win32's cmd.exe always returns exit
+	       value.
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1635] By: autrijus                              on 2002/10/23  09:46:35
+        Log: * adjusted white-box test to reflect ->configure_object
+	       call
+	   ! t/CPANPLUS-Backend.t
+____________________________________________________________________________
+[  1634] By: autrijus                              on 2002/10/23  09:36:43
+        Log: * make 'skiptest' a config option but not probed in
+	       Setup.pm.
+	   ! lib/CPANPLUS/Config.pm-orig
+____________________________________________________________________________
+[  1633] By: autrijus                              on 2002/10/23  09:30:30
+        Log: * oops.
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  1631] By: kane                                  on 2002/10/23  08:35:51
+        Log: * more elaborate option handling.. now we allow even this
+	       to work:
+             
+             d --fetchdir=/home/kane/foo --force=1 --no-verbose
+	     Acme::Bleach
+             
+             ie, we can override every option that the backend methods
+	     accept from the default shell's commandline
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1630] By: kane                                  on 2002/10/23  08:01:14
+        Log: * applied ann's error patch to correctly handle
+	       $args{quiet}
+	   ! lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  1628] By: kane                                  on 2002/10/23  07:54:08
+        Log: * call the *right* flush method.. the previous one returns
+	       and RV object, this one just the setting
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1597] By: autrijus                              on 2002/10/21  21:05:54
+        Log: * oops. L::M by no means is mandatory.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  1591] By: kane                                  on 2002/10/21  16:09:38
+        Log: * bad kane, no cookie =(
+	   ! lib/CPANPLUS/Config.pm-orig
+____________________________________________________________________________
+[  1536] By: autrijus                              on 2002/10/19  12:43:43
+        Log: * The Great I18N patch.
+	   ! Makefile.PL lib/CPANPLUS.pm
+	   ! lib/CPANPLUS/Backend.pm
+	   ! lib/CPANPLUS/Backend/InputCheck.pm
+	   ! lib/CPANPLUS/Backend/RV.pm
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Configure/Setup.pm
+	   ! lib/CPANPLUS/Dist.pm lib/CPANPLUS/Dist/PPM.pm
+	   ! lib/CPANPLUS/Dist/RPM.pm lib/CPANPLUS/Error.pm
+	   ! lib/CPANPLUS/I18N/CPANPLUS.pot
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Author.pm
+	   ! lib/CPANPLUS/Internals/Extract.pm
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+	   ! lib/CPANPLUS/Internals/Install.pm
+	   ! lib/CPANPLUS/Internals/Make.pm
+	   ! lib/CPANPLUS/Internals/Module.pm
+	   ! lib/CPANPLUS/Internals/Report.pm
+	   ! lib/CPANPLUS/Internals/Search.pm
+	   ! lib/CPANPLUS/Internals/Source.pm
+	   ! lib/CPANPLUS/Internals/System.pm
+	   ! lib/CPANPLUS/Shell.pm
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm t/CPANPLUS.t
+____________________________________________________________________________
+[  1535] By: autrijus                              on 2002/10/19  12:16:09
+        Log: * more skips.
+	   ! MANIFEST.SKIP
+____________________________________________________________________________
+[  1534] By: autrijus                              on 2002/10/19  12:15:24
+        Log: * new white-box test from chromatic; obsoletes the old test
+	   + t/CPANPLUS-Backend.t
+	   ! MANIFEST t/3-backend.t
+____________________________________________________________________________
+[  1533] By: autrijus                              on 2002/10/19  12:10:47
+        Log: * sync up EU::AI.
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  1532] By: autrijus                              on 2002/10/19  12:09:28
+        Log: * satisfy @ISA.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1397] By: autrijus                              on 2002/10/14  10:00:21
+        Log: * reflect the wording change in the last one.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  1396] By: autrijus                              on 2002/10/14  09:59:08
+        Log: * document 'z' in the associated help message.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1394] By: autrijus                              on 2002/10/14  08:35:45
+        Log: * oops. should read 'path_sep'.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  1393] By: autrijus                              on 2002/10/14  08:24:25
+        Log: * Full, working I18N framework.
+	   ! Makefile.PL lib/CPANPLUS/I18N.pm
+____________________________________________________________________________
+[  1392] By: autrijus                              on 2002/10/14  08:18:11
+        Log: * trivial fix to get the versiondisplayed correctly.
+	   ! lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  1376] By: autrijus                              on 2002/10/12  22:07:39
+        Log: * I18N infrastructure.
+	   + lib/CPANPLUS/I18N.pm
+	   + lib/CPANPLUS/I18N/CPANPLUS.pot
+____________________________________________________________________________
+[  1374] By: kane                                  on 2002/10/12  19:31:11
+        Log: * untill we figure out how we can safely serialize for
+	       multiple objects, we're only going to allow
+	       *one* object to run per program
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  1373] By: autrijus                              on 2002/10/12  19:03:04
+        Log: * chromatic's first test.
+	   + t/CPANPLUS.t
+____________________________________________________________________________
+[  1369] By: autrijus                              on 2002/10/12  18:25:50
+        Log: * updating both shells to avoid incorrect statement.
+             * also, print "nothing happens" when nothing happens. ;)
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1368] By: kane                                  on 2002/10/12  17:52:24
+        Log: * added feature in both classic and default (thru the 'b'
+	       command) to write autobundles... they get
+	       written to
+	       $cpanplus_home/perl_version/bundle/Snapshot_
+	       xxxx.pm
+             
+             * code to actually parse teh bundles again and install from
+	       them is not in place yet
+             
+             * also patched configure/config.pm-orig to allow the new
+	       config.pm keys to be accessed
+	   ! lib/CPANPLUS/Config.pm-orig
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Shell.pm
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1366] By: kane                                  on 2002/10/12  16:39:58
+        Log: * no need to warn for every little thing..
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  1364] By: kane                                  on 2002/10/12  16:26:17
+        Log: * typo fix
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1363] By: autrijus                              on 2002/10/12  16:09:14
+        Log: * weird lags.
+	   ! lib/CPANPLUS/Internals/Search.pm
+____________________________________________________________________________
+[  1362] By: autrijus                              on 2002/10/12  16:05:07
+        Log: * the accompanying backend fix.
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1361] By: autrijus                              on 2002/10/12  15:57:20
+        Log: * impossibly this triggered rcs expansion
+	   ! lib/CPANPLUS/Internals/Search.pm
+____________________________________________________________________________
+[  1360] By: kane                                  on 2002/10/12  15:50:40
+        Log: * some corrections against the last doc patch
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1359] By: kane                                  on 2002/10/12  15:50:19
+        Log: * some corrections against the last doc patch
+	   ! lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  1358] By: autrijus                              on 2002/10/12  13:00:32
+        Log: * rcs tags.
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1357] By: autrijus                              on 2002/10/12  12:55:07
+        Log: * faster checking of all installed modules.
+	   ! lib/CPANPLUS/Internals/Search.pm
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1355] By: kane                                  on 2002/10/12  11:32:40
+        Log: * have summarize default to $stack == 0 if msg was defined
+	       rather than default to 1 anyway (making it
+	       equivalent to 'all')
+             
+             * adding docpatch for 'summarize'
+	   ! lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  1354] By: kane                                  on 2002/10/12  11:31:57
+        Log: * adding docpatch for 'p --all'
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1353] By: kane                                  on 2002/10/12  11:25:13
+        Log: * make 'o conf' work and remove it from the todo
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1349] By: autrijus                              on 2002/10/12  10:08:08
+        Log: * perl5.005 compat.
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  1345] By: kane                                  on 2002/10/12  09:43:59
+        Log: * removed redundant uses of Exporter and
+	       CPANPLUS::Configure/Error
+	   ! lib/CPANPLUS/Dist.pm lib/CPANPLUS/Dist/PPM.pm
+	   ! lib/CPANPLUS/Error.pm
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Author.pm
+	   ! lib/CPANPLUS/Internals/Extract.pm
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+	   ! lib/CPANPLUS/Internals/Install.pm
+	   ! lib/CPANPLUS/Internals/Make.pm
+	   ! lib/CPANPLUS/Internals/Module.pm
+	   ! lib/CPANPLUS/Internals/Report.pm
+	   ! lib/CPANPLUS/Internals/Search.pm
+	   ! lib/CPANPLUS/Internals/Source.pm
+	   ! lib/CPANPLUS/Internals/System.pm
+____________________________________________________________________________
+[  1344] By: kane                                  on 2002/10/12  09:32:39
+        Log: * Add package CPANPLUS::Shell::_Base to CPANPLUS::Shell
+             this package will work as a common inherited class that
+	     will have common methods in it, like
+	     _pager_open and _pager_close
+             
+             * also adapted classic/default to use this new class
+	   ! lib/CPANPLUS/Shell.pm
+	   ! lib/CPANPLUS/Shell/Classic.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1343] By: kane                                  on 2002/10/12  09:30:18
+        Log: * remove redundant Exporter/carp info
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1341] By: autrijus                              on 2002/10/12  08:43:04
+        Log: * accomodate for the mad refactoring namechange.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  1336] By: kane                                  on 2002/10/11  21:28:08
+        Log: * my previous patch of adding the check of install in the
+	       mobobj broke stuff since undef in numeric
+	       context == 0 =((((
+             here's the patch to fix the previous one...
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  1335] By: kane                                  on 2002/10/11  21:11:55
+        Log: * oops, left a Dumper in there
+	   ! lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[  1334] By: kane                                  on 2002/10/11  21:07:41
+        Log: * adds the option of printing errors and messages jointly,
+	       instead of jsut the one or the other. The
+	       big benefit to this is that they are printed
+	       in the right order, ie, merged correctly.
+             
+             the new method that can do this is called summarize
+             it can take the following options:
+             all, msg, error
+             if msg is true, it will print the inform history
+             if error is true, it will print the stack
+             if all is true, it will print both
+             
+             by default, only error is true (ie, the old behaviour)
+             
+             these options can also be set from from the default shell:
+             
+             p --all /tmp/foo
+             p --msg /tmp/out
+             
+             and so on
+	   ! lib/CPANPLUS/Error.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1333] By: kane                                  on 2002/10/11  19:47:43
+        Log: *** work in progress ***
+             * refactoring Default / Classic to inherit from Shell, so
+	       we can abstract out common methods.. also
+	       make it more OO so we dont poke into objects
+	       when we dont need too
+	   ! lib/CPANPLUS/Shell.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1332] By: autrijus                              on 2002/10/11  19:33:32
+        Log: * fixed manifest; Classic.pm is now distributed.
+             * fixed the wrong banner of InputCheck.pm.
+	   ! MANIFEST MANIFEST.SKIP
+	   ! lib/CPANPLUS/Backend/InputCheck.pm
+____________________________________________________________________________
+[  1331] By: autrijus                              on 2002/10/11  19:19:12
+        Log: * chromatic's T::MObj, a base of our new testing regime.
+	   + t/lib/Test/MockObject.pm
+____________________________________________________________________________
+[  1327] By: kane                                  on 2002/10/11  17:10:43
+        Log: * changed redundant regexps for 'eq'
+             * added print statements in valid commands we dont support
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1321] By: autrijus                              on 2002/10/11  09:36:21
+        Log: * oops. forgot that require() takes filenames.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  1312] By: autrijus                              on 2002/10/10  18:30:10
+        Log: * 'signature' is now accepted by cpanp as a flag.
+	   ! bin/cpanp
+____________________________________________________________________________
+[  1311] By: autrijus                              on 2002/10/10  18:23:08
+        Log: * enable Module::Signature checking support via the
+	       'signature' option.
+	   ! Makefile.PL lib/CPANPLUS/Config.pm-orig
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Configure/Setup.pm
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  1310] By: autrijus                              on 2002/10/10  17:06:49
+        Log: * refactored autoinstall tests for readability.
+             * avoid eval STRING in favor of _can_use tests.
+             * changed -target=>'skiptest' config to -skiptest=>1.
+             * fixed _is_unix to accomodate schwern's new MakeMaker
+	       hierachy.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  1308] By: autrijus                              on 2002/10/10  17:03:37
+        Log: * integrate the 0.41-tobe AutoInstall.
+	  !> inc/ExtUtils/AutoInstall.pm
+____________________________________________________________________________
+[  1307] By: autrijus                              on 2002/10/10  17:02:42
+        Log: * fix obvious slippage: InputCheck should not override the
+	       Backend namespace.
+	   ! lib/CPANPLUS/Backend/InputCheck.pm
+____________________________________________________________________________
+[  1305] By: kane                                  on 2002/10/10  15:44:44
+        Log: * enables users to enter their desired commandline shell
+	       (like bash or cmd.exe) in setup.pm.. this is
+	       used by 'look' commands
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  1298] By: kane                                  on 2002/10/10  13:01:14
+        Log: * first working version of Classic.pm
+             
+             but there are still some items open on the TODO:
+             
+             
+             ### TODO LIST ###
+             # clean 	make clean
+             #
+             # r		this will need a decent _installed method
+	     somehwere in internals..
+             #		the current one kinda sucks
+             #
+             # u		we dont track this information
+             #
+             # o conf	just need to code it up, it needs an
+	     interface to our config.pm
+             #
+             # autobundle	this entire feature is missing from our
+	     internals::* code
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1296] By: kane                                  on 2002/10/10  08:22:20
+        Log: * adds the docpatch that documents change 1224
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1294] By: kane                                  on 2002/10/09  19:34:43
+        Log: * fixed a nasty bug that made it so that @INC and
+	       $ENV{PERL5LIB} weren't set back to their
+	       originals after a test/install of a module..
+	       this one had me hunting for quite some time,
+	       but it turned out that _store_id was only
+	       selectively saving parts of the objects,
+	       rather than all of it which it should
+	       have... fixed it by just saving the entire
+	       object, period...
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  1287] By: kane                                  on 2002/10/09  09:20:44
+        Log: * added extra check that can make _make fail
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  1263] By: kane                                  on 2002/10/08  20:54:37
+        Log: * work in progress
+             added the 'ls' functionality, as well as rudimentary
+	     'test|make|install' foo
+             also added a TODO at the top to see what's missing still
+	   ! lib/CPANPLUS/Shell/Classic.pm
+____________________________________________________________________________
+[  1244] By: kane                                  on 2002/10/07  06:35:20
+        Log: *mention the 'z' command in the docs
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1236] By: kane                                  on 2002/10/06  20:36:15
+        Log: * just a bit more elegant...
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1225] By: kane                                  on 2002/10/06  16:04:52
+        Log: * made extract.pm a bit more clear on where it extracted
+	       too
+             * cleaned up the arguments sent to _extract from backend.pm
+	   ! lib/CPANPLUS/Backend.pm
+	   ! lib/CPANPLUS/Internals/Extract.pm
+____________________________________________________________________________
+[  1224] By: kane                                  on 2002/10/06  16:04:08
+        Log: * implemented the 'look' command from CPAN.pm
+             use 'z' followed by a modulename to invoke it
+             
+             it will open a subshell in that dists extracted dir
+             
+             will require a patch to configure/setup to get the location
+	     of the users subshell tho
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+	   ! lib/CPANPLUS/Internals/Module.pm
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1222] By: kane                                  on 2002/10/06  13:04:20
+        Log: * Addresses the change in 1217, which allows starting a new
+	       shell from the commandline.
+	   ! lib/CPANPLUS.pm
+____________________________________________________________________________
+[  1221] By: kane                                  on 2002/10/06  12:50:07
+        Log: * made a quoting mistake on the previous patch
+	   ! lib/CPANPLUS.pm
+____________________________________________________________________________
+[  1219] By: kane                                  on 2002/10/06  12:19:48
+        Log: * make it possible to do 'perl -MCPANPLUS -e"shell
+	       Classic"' to fire up a shell called
+	       CPANPLUS::Shell::Classic from the
+	       commandline, without having to change your
+	       config. this will allow for simple changes
+	       in shells by users
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Shell.pm
+____________________________________________________________________________
+[  1217] By: kane                                  on 2002/10/06  12:03:32
+        Log: * changed the option parser to allow both
+             --no-option
+             and
+             --nooption
+             to set $option to '0';
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1216] By: kane                                  on 2002/10/06  11:53:31
+        Log: * Adds information about tab completion
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1215] By: kane                                  on 2002/10/06  11:53:00
+        Log: * Adds the question asked by Chip about running setup
+	       explicitly.  Change was also made to the
+	       HTML version.
+	   ! lib/CPANPLUS/FAQ.pod
+____________________________________________________________________________
+[  1180] By: kane                                  on 2002/10/04  16:59:37
+        Log: * added a modification to Roland Bauer's patch to make even
+	       win32 use $ENV{HOME} when available, as well
+	       as using the fallback host mentioned in
+	       Config.pm-orig rather than hardcoding it
+             
+             * part 2 of his patch to default to LWP i rejected due to
+	       the required netconnection to make this work
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  1177] By: kane                                  on 2002/10/04  15:42:48
+        Log: * removing duplicate line
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  1104] By: autrijus                              on 2002/09/29  15:04:44
+        Log: * Lupe Christoph: use user's perl instead of PATH's.
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  1100] By: kane                                  on 2002/09/29  14:03:49
+        Log: * doc patch describing --option and --no-option
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1099] By: kane                                  on 2002/09/29  14:03:00
+        Log: * updated the RV docs with the 'can' method
+	   ! lib/CPANPLUS/Backend/RV.pm
+____________________________________________________________________________
+[  1098] By: kane                                  on 2002/09/29  14:01:48
+        Log: * added randal's questions to the faq
+	   ! lib/CPANPLUS/FAQ.pod
+____________________________________________________________________________
+[  1097] By: kane                                  on 2002/09/29  13:11:09
+        Log: * made Setup.pm behave nicer with regard to mirror listing:
+             you can now interchangably add custom mirrors and ones
+	     selected
+             from the mirrored by list
+             it also works nicely with autosetup and no longer REQUIRES
+             mirrored_by to be fetched
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  1086] By: kane                                  on 2002/09/28  21:35:43
+        Log: * fixed 'w' to warn if no search was done yet
+             * added rudimentary options to the prompt. you can no do:
+             i --force Acme::Bleach
+             d --no-force LWP
+             
+             to have force turned on/off for just that one command.
+             The shell will accept any combination of optins and hand
+	     them
+             straight off to backend, where the input checker goes over
+	     them.
+             
+             We should probably make it possible in the future to set
+	     all options like this, also verbose, cpantest,
+	     md5 and so on...
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[  1085] By: kane                                  on 2002/09/28  20:55:49
+        Log: * fixed the method checker from RV
+             * also added a can() method, which returns an array ref of
+	       the methods that are valid to call on the
+	       object, along iwth all the standard ones
+	   ! lib/CPANPLUS/Backend/RV.pm
+____________________________________________________________________________
+[  1084] By: kane                                  on 2002/09/28  18:31:05
+        Log: * changed the environment variable to be set from
+	       "CPANPLUS_CONFIG" to "PERL5_CPANPLUS_CONFIG"
+	       to clutter less
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[   957] By: autrijus                              on 2002/09/20  15:24:56
+        Log: * a far more portable way to parse perl versions.
+	   ! lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[   956] By: autrijus                              on 2002/09/20  15:21:51
+        Log: * applied Juerd's patch to fix open3 STDIN buffering on
+	       linux
+	   ! lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[   954] By: autrijus                              on 2002/09/20  14:18:30
+        Log: * multi-line prompts screw up terminals.
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[   864] By: kane                                  on 2002/09/07  12:19:33
+        Log: * error pm's constructor wasn't checking definedness of
+	       options before assigning default
+	   ! lib/CPANPLUS/Error.pm
+____________________________________________________________________________
+[   862] By: kane                                  on 2002/09/06  21:13:32
+        Log: fixed CPANPLUS.pm to work with the new rv structure as well
+	   ! lib/CPANPLUS.pm
+____________________________________________________________________________
+[   771] By: kane                                  on 2002/08/24  17:11:25
+        Log: * oopsie in the last submit, was checking the wrong key in
+	       the hash
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[   769] By: kane                                  on 2002/08/24  12:25:56
+        Log: * fixed a but that was looking that set $fail incorrectly
+	       in _install_module after calling _make
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[   767] By: kane                                  on 2002/08/24  09:24:36
+        Log: * removed some debug info left there by error
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[   729] By: autrijus                              on 2002/08/19  11:56:48
+        Log: * need to remove these things before -changes happens.
+	   - lib/CPANPLUS/Config.pm
+____________________________________________________________________________
+[   728] By: autrijus                              on 2002/08/19  11:55:17
+        Log: * obsolete.
+	   - lib/CPANPLUS/Config.pm~
+____________________________________________________________________________
+[   727] By: autrijus                              on 2002/08/19  10:05:27
+        Log: * Antti's patch to fix duplicate completions and smooth
+	       rough corners
+	   ! AUTHORS lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   726] By: autrijus                              on 2002/08/19  09:55:07
+        Log: * oops, apparently ::Perl isn't a ReadLine. bad me.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   722] By: autrijus                              on 2002/08/19  07:49:00
+        Log: * probe batch mode readline correctly.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   718] By: autrijus                              on 2002/08/19  04:37:00
+        Log: * wording cleanups.
+	   ! bin/cpansmoke lib/CPANPLUS/Internals/Report.pm
+____________________________________________________________________________
+[   717] By: autrijus                              on 2002/08/19  04:32:31
+        Log: * Alain's patch to handle FAILs unannoyingly.
+	   ! bin/cpansmoke lib/CPANPLUS/Internals/Report.pm
+____________________________________________________________________________
+[   716] By: autrijus                              on 2002/08/19  03:57:00
+        Log: * enable completion only for Term::ReadLine::Gnu (as of
+	       now).
+             * comment style cleanup.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   715] By: autrijus                              on 2002/08/19  03:40:14
+        Log: * corrected 's' display in accordance to the new RV.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   714] By: autrijus                              on 2002/08/19  03:39:52
+        Log: * hide verbose output while we're completing.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   713] By: autrijus                              on 2002/08/19  03:38:50
+        Log: * Antti Lankila's tab completion patch.
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   703] By: kane                                  on 2002/08/18  08:34:43
+        Log: * added support for multiple configurations: you can now
+	       set
+             $ENV{CPANPLUS_CONFIG} to point to a valid config file and
+	     cpanplus will use that one instead. Setup.pm
+	     has also been patched to make it possible to
+	     save your config file somewhere else.
+             Note that Makefile.PL is NOT YET PATCHED to be able to
+	     produce this
+             behaviour
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[   695] By: autrijus                              on 2002/08/18  02:31:28
+        Log: * patch from Alain Barbet to remove duplicate UNKNOWN
+	       reports.
+             * add Alain to authors list.
+	   ! AUTHORS bin/cpansmoke
+____________________________________________________________________________
+[   650] By: kane                                  on 2002/08/15  18:44:31
+        Log: * fixed some indenting to improve readabillity
+	   ! lib/CPANPLUS/Backend/RV.pm
+____________________________________________________________________________
+[   646] By: kane                                  on 2002/08/15  14:36:39
+        Log: * removed some evil test code that would make the shell die
+	       if you hit 'b' as a command
+	   ! lib/CPANPLUS/Shell/Default.pm
+____________________________________________________________________________
+[   645] By: kane                                  on 2002/08/15  14:19:37
+        Log: * added coral's curl patch -- untested since i dont have
+	       curl
+	   ! lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Configure/Setup.pm
+	   ! lib/CPANPLUS/Internals/Fetch.pm
+____________________________________________________________________________
+[   644] By: kane                                  on 2002/08/15  13:53:56
+        Log: * added newline to the end of Backend.pm
+             * updated the faq to list all supported platforms
+	   ! lib/CPANPLUS/Backend.pm lib/CPANPLUS/FAQ.pod
+____________________________________________________________________________
 [  4066] By: autrijus                              on 2002/04/30  18:02:42
         Log: * This be CPANPLUS 0.033, maintenance release.
      Branch: dist

@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
-# $File: //member/autrijus/cpanplus/dist/t/1-basic.t $
-# $Revision: #2 $ $Change: 3540 $ $DateTime: 2002/03/26 04:28:49 $
+# $File: //depot/cpanplus/dist/t/1-basic.t $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 use strict;
 use lib 't/lib';

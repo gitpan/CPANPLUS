@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-# $File: //depot/dist/Makefile.PL $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/Makefile.PL $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 use strict;
 
@@ -13,31 +13,34 @@ use File::Basename  qw/dirname/;
 use lib File::Spec->catdir(dirname($0), 'inc'),
         File::Spec->catdir(dirname($0), 'lib');
 
+use CPANPLUS::I18N;
+
 # tests that doesn't require setup
 use constant BASIC_TESTS => join (' ', map { File::Spec->catfile('t', $_) } qw{
     1-basic.t 2-autoinstall.t
 });
 
-# set up include path to find CPANPLUS::Internals::System
-$ENV{PERL5LIB} .= $Config::Config{pathsep}
-                . File::Spec->catdir(Cwd::cwd(), 'lib');
+{
+    # set up include path to find CPANPLUS::Internals::System
+    local $ENV{PERL5LIB} .= $Config::Config{path_sep}
+                          . File::Spec->catdir(Cwd::cwd(), 'lib');
+    # not 'use' because we don't want to import it yet
+    require ExtUtils::AutoInstall;
+}
 
-# not 'use' because we don't want to import it yet
-require ExtUtils::AutoInstall;
-
-print << '__WARNING__';
+print loc("
 ### PLEASE NOTE ###################################################
 
-CPANPLUS will eventually be a full drop-in replacement for CPAN.pm.
-However, at this early stage in its life, you should *NOT* expect
-it to work just like CPAN.pm.
+CPANPLUS will replace CPAN.pm in the 5.10 core. Although you should
+*NOT* expect it to work just like CPAN.pm, there is a compatible
+shell available. See perldoc CPANPLUS::Shell after installation
 
 You are strongly urged to configure CPANPLUS now, since otherwise
 non-privileged (non-root) users may be unable to use CPANPLUS until
 you configure it properly.
 
 ###################################################################
-__WARNING__
+");
 
 my $AutoInstall; # the flag to really perform autoinstallation
 my $ConfigObj;   # the config object
@@ -52,7 +55,7 @@ my $has_old = is_configured($config);
 
 # we can't do anything without nmake.
 if (nmake_needed()) {
-    get_nmake() or die "Please follow the instruction in README to install nmake first.\n";
+    get_nmake() or die loc("Please follow the instruction in README to install nmake first."), "\n";
 }
 
 # next, determine if we should run setup
@@ -61,7 +64,7 @@ if (setup_needed()) {
 
     if ($has_old) {
         unlink $config # remove the old one so we don't end up with Config.pm~
-            or warn "Cannot unlink old config file '$config', continuing anyway.\n"
+            or warn loc("Cannot unlink old config file '%1', continuing anyway.", $config), "\n"
                 unless $has_prev;
         CPANPLUS::Configure::Setup->init(conf => $ConfigObj);
     }
@@ -75,7 +78,7 @@ elsif ($has_old) {
     write_makefile();
 }
 else {
-    print "Skipping setup; advanced tests will be disabled.\n";
+    print loc("Skipping setup; advanced tests will be disabled."), "\n";
     write_makefile(BASIC_TESTS); # with basic tests only
 }
 
@@ -89,9 +92,8 @@ sub is_configured {
 
 sub load_config {
     unless (-e (File::Spec->catfile(qw|lib CPANPLUS Config.pm|))) {
-        copy(old_configuration(),
-             File::Spec->catfile(qw|lib CPANPLUS Config.pm|))
-            or die "Cannot write Config.pm";
+        copy(old_configuration(), File::Spec->catfile(qw|lib CPANPLUS Config.pm|))
+            or die loc("Cannot write to %1", 'Config.pm');
     }
 
     require CPANPLUS::Configure::Setup;
@@ -105,11 +107,11 @@ sub old_configuration {
     }
 
     if ($has_prev) {
-        print "A previous installation detected. Use its settings? [Y/n]: ";
+        print loc("A previous installation detected. Use its settings? [Y/n]: ");
         undef $has_prev if <STDIN> =~ /^[Nn]/;
     }
 
-    return File::Spec->catfile(qw|lib CPANPLUS Config.pm-orig|);
+    return $has_prev || File::Spec->catfile(qw|lib CPANPLUS Config.pm-orig|);
 }
 
 # returns whether setup is requested by user
@@ -129,9 +131,9 @@ sub setup_needed {
     else {
         # can't tell from @ARGV, so ask the user instead
         my $prompt = (
-            $has_prev ? "Manually configure CPANPLUS based on previous settings? [Y/n]: " :
-            $has_old  ? "Old settings detected. Do you want to modify it? [y/N]: "
-                      : "Do you want to configure CPANPLUS now? [Y/n]: "
+            $has_prev ? loc("Manually configure CPANPLUS based on previous settings?") :
+            $has_old  ? loc("Old settings detected. Do you want to modify it?")
+                      : loc("Do you want to configure CPANPLUS now?")
         );
 
         my $answer = _get_reply(
@@ -141,7 +143,7 @@ sub setup_needed {
         );
 
         unless ($run_setup = (($answer =~ /^y/i) ? 1 : 0)) {
-            print "Okay, existing settings are preserved.\n";
+            print loc("Okay, existing settings are preserved."), "\n";
         }
 
         if ($has_prev) {
@@ -162,13 +164,13 @@ sub nmake_needed {
     );
 
     my $answer = _get_reply(
-        prompt  => "Required executable 'nmake' not found. Install it? [Y/n]: ",
+        prompt  => loc("Required executable 'nmake' not found. Install it?"),
         default => 'y',
         choices => [ qw/y n/ ],
     );
 
     my $needed = (($answer =~ /^y/i) ? 1 : 0)
-        or die "Please follow the instruction in README to install nmake manually.\n";
+        or die loc("Please follow the instruction in README to install nmake manually."), "\n";
 
     return $needed;
 }
@@ -198,30 +200,29 @@ sub write_makefile {
 
     ExtUtils::AutoInstall::Write(%args);
 
-    print "Now, please type '$Config{make} test' to test, and '$Config{make} install' to install.\n";
+    print loc("Now, please type '%1' to test, and %2 to install.", "$Config{make} test", "$Config{make} install"), "\n";
 
     # make an educated guess of whether we'll need root permission.
     if (eval '$>' and $AutoInstall) {
-        print "You may need to do that as the 'root' user to install dependencies.\n";
+        print loc("You may need to do that as the 'root' user to install dependencies."), "\n";
     }
 }
 
 sub try_autoinstall {
-print << '__WARNING__';
-
+    print loc("
 ### PLEASE NOTE ###################################################
 
 Although the core features of CPANPLUS does not require external
 modules, it may depend on other modules to work according to your
-configuration. If you skip the probing, or answer 'n' to questions
+configuration.  If you skip the probing, or answer 'n' to questions
 that defaults to 'Y', there might be _unpredictable failures_!
 
 ###################################################################
-__WARNING__
+");
 
     if (!defined($AutoInstall)) {
         $AutoInstall = _get_reply(
-            prompt  => "Let the installer probe for module dependencies? [Y/n]: ",
+            prompt  => loc("Let the installer probe for module dependencies?"),
             default => 'y',
             choices => [ qw/y n/ ],
         ) =~ /^y/i;
@@ -232,8 +233,11 @@ __WARNING__
     $ConfigObj ||= CPANPLUS::Configure->new;
 
     my $have_cc  = _can_run($Config::Config{cc});
+    my $have_pgp = (_can_run('gpg') or _can_use('Crypt::OpenPGP'));
+    my $ipc_ok   = (!_is_win9x()   and ($^O ne 'cygwin'));
     my $term_mod = _is_unix()         ? 'Term::Size'     :
                    ($^O eq 'MSWin32') ? 'Win32::Console' : undef;
+
 
     ExtUtils::AutoInstall->import(
         -version                => 0.27,
@@ -245,35 +249,41 @@ __WARNING__
             ### - LWP takes lots of time to finish.
             ### - Mail::Send will send out external emails.
             ### - Term::ReadLine::Perl's test is interactive.
-            -target             => 'skiptest',
+            -skiptest           => 1,
         ],
-        'Uncompress .tar files' => [
+        loc('Uncompress .tar files')      => [
             -default            => (!_can_run('tar')),
             'Archive::Tar'      => 0.01,
         ],
-        'Uncompress .zip files' => [
+        loc('PPM and .zip files support') => [
             -default            => 0,
             'Archive::Zip'      => 0.01,
         ],
     $have_cc ? (
-        'Uncompress .gz files'  => [
+        loc('Uncompress .gz files')       => [
             -default            => !_can_run('gzip'),
             'Compress::Zlib'    => 1.00,
         ],
-        'Cached metadata'       => [
+        loc('Cached metadata')            => [
             -default            => $ConfigObj->get_conf('storable'),
             'Storable'          => 1.00,
         ],
-        'MD5 checksum'          => [
+        loc('MD5 checksum')               => [
             -default            => $ConfigObj->get_conf('md5'),
             'Digest::MD5'       => 2.00,
         ],
     ) : (),
-        'Net::FTP support'      => [
+    $have_pgp ? (
+        loc('PGP signatures')             => [
+            -default            => $ConfigObj->get_conf('signature'),
+            'Module::Signature' => 0.06,
+        ],
+    ) : (),
+        loc('Net::FTP support')           => [
             -default            => (!grep {_can_run($_)} qw|wget lynx ncftp ncftp3 ncftpget|),
             'Net::FTP'          => 2.00,
         ],
-        'LWP & CPAN test query' => [
+        loc('LWP & CPAN test query')      => [
             -default            => 0,
             'URI'               => 1.00,
             'HTML::HeadParser'  => 0,
@@ -282,42 +292,57 @@ __WARNING__
             'Digest::MD5'       => 2.00,
             'LWP'               => 5.60,
         ],
-    (eval 'use LWP; 1') ? () : (
-        'Local file support'    => [
+    _can_use('LWP') ? () : (
+        loc('Local file support')         => [
             -default            => 0,
             'File::Spec'        => 0.82,
         ]
     ),
-    (_is_win9x() or $^O eq 'cygwin') ? () : (
-        'IPC::Run support'      => [
+    $ipc_ok ? (
+        loc('IPC::Run support')           => [
             -default            => (!_is_unix() or ($^O eq 'solaris')),
             'IPC::Run'          => 0.55,
         ],
-    ),
-        'CPAN Test reporting'   => [
+    ) : (),
+        loc('CPAN Test reporting')        => [
             -default            => $ConfigObj->get_conf('cpantest'),
             'Mail::Send'        => 0.01,
             'File::Temp'        => 0.01,
-    (_is_win9x() or $^O eq 'cygwin') ? () : (
+    $ipc_ok ? (
             'IPC::Run'          => 0.55,
-    ),
+    ) : (),
     ($^O eq 'MacOS' || $^O eq 'VMS' || $^O eq 'MSWin32' || $^O eq 'os2') ? (
             'Net::SMTP'         => 0.01,
     ) : (),
         ],
     _supports_readline() ? (
-        'ReadLine support'      => [
+        loc('ReadLine support')           => [
             -default            => 0,
             'Term::ReadLine'    => 0,
             'Term::ReadLine::Perl' => 0.90,
         ],
     ) : (),
     $term_mod ? (
-        "Terminal size support" => [
+        loc('Terminal size support')      => [
             -default            => 0,
             $term_mod           => 0.01,
-        ]) : (),
+        ]
+    ) : (),
+        loc('Localized messages')         => [
+            -default            => 0,
+            'Locale::Maketext'  => 0.20,
+            'Locale::Maketext::Lexicon' => 0.09,
+        ],
     );
+}
+
+# check if we can run some module
+sub _can_use {
+    my $module = shift;
+    $module =~ s|::|/|g;
+    $module .= '.pm';
+
+    return eval { require $module; 1 };
 }
 
 # check if we can run some command - lifted from Internals.pm
@@ -335,7 +360,8 @@ sub _can_run {
 # returns whether a platform is unix enough for Term::Size's use
 sub _is_unix {
     # if it's good enough for MakeMaker, it's good enough for us
-    return $MM::ISA[0] eq 'ExtUtils::MM_Unix';
+    return ($MM::ISA[0]           eq 'ExtUtils::MM_Unix'
+         || $ExtUtils::MM::ISA[0] eq 'ExtUtils::MM_Unix');
 }
 
 # returns whether this is a win9x platform
@@ -352,19 +378,19 @@ sub _get_reply {
 sub _supports_readline {
     # determine whether readline support is potentially available.
     # uses the same heuristic as the default shell's ReadLine prompt.
-    eval q{
-        use Term::ReadLine;
 
-        return (
-            ($^O ne 'MSWin32') and
-            Term::ReadLine->ReadLine ne 'Term::ReadLine::Stub'
-        );
-    };
+    return (
+        ($^O ne 'MSWin32')              and
+        _can_use('Term::ReadLine')      and
+        Term::ReadLine->ReadLine ne 'Term::ReadLine::Stub'
+    );
 }
 
 sub get_nmake {
-    unless (eval "use Socket; Socket::inet_aton('ftp.microsoft.com')") {
-        print "Cannot fetch nmake; 'ftp.microsoft.com' resolve failed!\n";
+    my $host = 'ftp.microsoft.com';
+
+    unless (_can_use('Socket') and Socket::inet_aton($host)) {
+        print loc("Cannot fetch %1; '%2' resolve failed!", 'nmake', $host), "\n";
         return;
     }
 
@@ -372,9 +398,9 @@ sub get_nmake {
     my $dir = getcwd;
     chdir dirname($^X) or return;
 
-    print "Fetching 'nmake' from ftp.microsoft.com. It may take a few minutes... ";
+    print loc("Fetching '%1' from %2. It may take a few minutes... ", 'nmake', $host);
 
-    if (eval "use Net::FTP; 1") {
+    if (_can_use('Net::FTP')) {
         # use Net::FTP to get pass firewall
         my $ftp = Net::FTP->new("ftp.microsoft.com", Passive => 1, Timeout => 600);
         $ftp->login("anonymous", 'cpanplus@example.com');
@@ -407,14 +433,14 @@ quit
         $fh->close;
     }
     else {
-        print "Cannot fetch nmake without a working 'ftp' executable!\n";
+        print loc("Cannot fetch %1 without a working '%2' executable!", 'nmake', 'ftp'), "\n";
         chdir $dir; return;
     }
 
     system('nmake15.exe /o > nul') if -s 'nmake15.exe' == 51928;
     unlink('nmake15.exe') if -e 'nmake15.exe';
 
-    print ((-e 'nmake.exe') ? "done!\n" : "failed! ($!)\n");
+    print (((-e 'nmake.exe') ? loc("done!") : loc("failed! (%1)", $!)), "\n");
     chdir $dir; return !$?;
 }
 

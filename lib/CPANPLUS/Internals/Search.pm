@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Search.pm $
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Search.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 #######################################################
 ###            CPANPLUS/Internals/Search.pm         ###
@@ -12,14 +12,11 @@
 package CPANPLUS::Internals::Search;
 
 use strict;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
+use CPANPLUS::I18N;
 use Data::Dumper;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -104,7 +101,7 @@ sub _query_author_tree {
         for my $auth (@list) { $rv->{$auth} = $self->author_tree->{$auth} }
         return $rv;
     }
-    
+
     ### if we are going to query again, we'll need to reconstruct the
     ### the regexp, else we'll get more matches than we bargained for;
     my @reglist = map { '^'.$_.'$' } @list;
@@ -174,7 +171,7 @@ sub _extutils_installed {
 
         my $inst;
         unless ($inst = ExtUtils::Installed->new() ) {
-            $err->trap( error => qq[Could not create an ExtUtils::Installed object] );
+            $err->trap( error => loc("Could not create an ExtUtils::Installed object") );
             return 0;
         }
 
@@ -192,7 +189,7 @@ sub _extutils_installed {
 
             if ($@) {
                 chomp $@;
-                $err->trap( error => "Could no get $method for $mod: $@" );
+                $err->trap( error => loc("Could no get %1 for %2: %3", $method, $mod, $@) );
                 return 0;
             }
 
@@ -201,7 +198,7 @@ sub _extutils_installed {
 
     } else {
 
-        $err->trap( error => qq[You don't have ExtUtils::Installed available - can not find files for $args{'module'} ] );
+        $err->trap( error => loc("You don't have ExtUtils::Installed available - can not find files for %1", $args{'module'}) );
         return 0;
     }
 }
@@ -234,16 +231,16 @@ sub _readme {
     my $package = $mod->{package};
 
     my $flag;
-    if ( $package =~ s!(.+?)\.(?:(?:tar\.)?gz|tgz)$!$1\.readme!i ) {
+    if ( $package =~ s/(.+?)\.(?:(?:tar\.)?gz|tgz)$/$1\.readme/i ) {
         $flag = 1;
 
     ### else, it might be a .zip file
-    } elsif ( $package =~ s|(.+?)\.zip$|$1\.readme|i ) {
+    } elsif ( $package =~ s/(.+?)\.zip$/$1\.readme/i ) {
         $flag = 1;
     }
 
     unless ($flag) {
-        $err->trap( error => qq[unknown package $mod->{package}] );
+        $err->trap( error => loc("unknown package %1", $mod->{package}) );
         return 0;
     }
 
@@ -255,7 +252,7 @@ sub _readme {
 
     my $fh = new FileHandle;
     unless ($fh->open($file)) {
-        $err->trap( error => "Could not open $file: $!" );
+        $err->trap( error => loc("Could not open %1: %2", $file, $!) );
         return 0;
     }
 
@@ -266,67 +263,96 @@ sub _readme {
     return $in;
 }
 
+##-> sub CPAN::Module::inst_file ;
+#sub inst_file {
+#    my($self) = @_;
+#    my($dir,@packpath);
+#    @packpath = split /::/, $self->{ID};
+#    $packpath[-1] .= ".pm";
+#    foreach $dir (@INC) {
+#        my $pmfile = File::Spec->catfile($dir,@packpath);
+#        if (-f $pmfile){
+#            return $pmfile;
+#        }
+#    }
+#    return;
+#}
+#'
 sub _installed {
+    my $self = shift;
+    my %args = @_;
+
+    my $err = $self->error_object;
+
+    my $modobj = $args{module} or return $self->_all_installed(%args);
+
+    ### check prerequisites
+    my $use_list = { 'File::Spec' => '0.0' };
+
+    if ($self->_can_use(modules => $use_list)) {
+        my $name = $modobj->module();
+
+        my @path = split /::/, $name;
+
+        my $module = (pop @path) . '.pm';
+
+        for my $dir( @INC ) {
+            my $file = File::Spec->catfile( $dir, @path, $module );
+
+            if( -f $file ) {
+                return $file;
+            }
+        }
+
+        ### if we got here, we didn't find the file =/
+        ### silence it for now, if you're doing a generic 'what files do
+        ### i have installed' it will flood your screen
+        #$err->trap( error => qq[Could not find any files for $name] );
+        return 0;
+
+    } else {
+        $err->trap( error => loc("You do not have File::Spec installed!") );
+        return 0;
+    }
+}
+
+### according to a bug report by allen smith,
+### _installed wasn't doing the right thing, nor was it fast enough
+### we try with a more CPAN.pm-like way and rename this one to _old_installed
+### so we can switch back if required --kane
+sub _all_installed {
     my $self = shift;
     my %args = @_;
 
     my $err = $self->{_error};
     my $conf = $self->{_conf};
 
-    my $uselist = { 'ExtUtils::Installed' => '0.0' };
+    my $uselist = { 'File::Find' => '0.0' };
 
     if ( $self->_can_use(modules => $uselist) ) {
-
-        my $inst = new ExtUtils::Installed;
-
-        ### get a list of all installed modules
-        ### some of them are named 'weird' tho, like 'libwww' for LWP
-        ### eval needed.. this silly module just DIES on an error.. GREAT! -kane
-        my @modules = eval { $inst->modules() };
-
-        if ($@){ $err->trap( error => qq[Error while looking up installed modules: $@] ); }
-
         ### grab the module tree ###
         my $modtree = $self->_module_tree();
 
-        my $rv;
-        for my $mod (@modules) {
-            ### common transformations on ExtUtils::Installed misnomers
-            $mod =~ s/-/::/g;
-            $mod =~ s/.pm$//;
+        my ($rv, %seen);
 
-            ### either we find it directly in the module tree ###
-            my $obj = $modtree->{$mod};
+        foreach my $dir (@INC) {
+            next if $dir eq '.';
+            File::Find::find(sub {
+                return unless /\.pm$/;
+                return if $seen{$File::Find::name}++;
 
-            ### or we find it in the package...
-            unless ($obj) {
-                my $href = $self->search( type => 'package', list => [ '(?i:^'.$mod.')' ] );
-
-                ### there can be only one! (search result that is)
-                my $count = scalar keys %$href;
-                if ( $count != 1 ) {
-                    $err->inform(   msg     => qq[Could not clearly determine what package '$mod' belongs to! ] .
-                                                qq[Found a total of $count possible matches. Skipping...],
-                                    quiet   => !$conf->get_conf('verbose')
-                                );
-
-                    $rv->{$mod} = 0;
-                    next;
-                }
-
-                ### wow, this is clunky! -kane
-                while( undef, $obj = each %$href ) { keys %{$href}; last; }
-
-            }
-
-            ### store the module object for this name ###
-            $rv->{$mod} = $obj;
+                my $mod = $File::Find::name;
+                $mod = substr($mod, length($dir) + 1, -3);
+                $mod =~ s|/|::|g;
+                $rv->{$mod} = $File::Find::name
+                    if exists $modtree->{$mod};
+            }, $dir);
         }
 
         return $rv;
 
     } else {
-        $err->trap(error => qq[You do not have ExtUtils::Installed available!] );
+        $err->trap(error => loc("You do not have ExtUtils::Installed available!") );
         return 0;
     }
 }
@@ -347,7 +373,7 @@ sub _validate_module {
     my $rv = $self->_check_install(module => $mod);
 
     unless($rv){
-        $err->trap( error => qq[Module $mod not installed! Can not validate!] );
+        $err->trap( error => loc("Module %1 not installed! Can not validate!", $mod) );
         return 0;
     }
 
@@ -360,12 +386,12 @@ sub _validate_module {
         ### eval needed.. this silly module just DIES on an error.. GREAT! -kane
         my @list = eval { $inst->validate($mod) };
 
-        if ($@){ $err->trap( error => qq[Error while validating $mod: $@] ); }
+        if ($@){ $err->trap( error => loc("Error while validating %1: %2", $mod, $@) ); }
 
         return \@list;
 
     } else {
-        $err->trap(error => qq[You do not have ExtUtils::Installed available!] );
+        $err->trap(error => loc("You do not have ExtUtils::Installed available!") );
         return 0;
     }
 }

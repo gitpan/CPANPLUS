@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Source.pm $
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Source.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###
@@ -12,17 +12,14 @@
 package CPANPLUS::Internals::Source;
 
 use strict;
-use CPANPLUS::Configure;
 use CPANPLUS::Internals::Module;
 use CPANPLUS::Internals::Author;
-use CPANPLUS::Error;
+use CPANPLUS::I18N;
 use Data::Dumper;
 use FileHandle;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -87,7 +84,7 @@ sub _create_mod_tree {
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
-            msg     => "Retrieving $stored ",
+            msg     => loc("Retrieving %1", $stored),
             quiet   => !$conf->get_conf('verbose')
         );
         my $href = Storable::retrieve($stored);
@@ -119,7 +116,7 @@ sub _create_mod_tree {
             my @data = split /\s+/;
 
             ### filter out the author and filename as well ###
-            my ($author, $package) = $data[2] =~ m|([^/]+)/([^/]+)$|sg;
+            my ($author, $package) = $data[2] =~ m|[A-Z-]/[A-Z-]{2}/([A-Z-]+)(?:/[/\w-]+)?/([^/]+)$|sg;
 
             ### remove file name from the path
             $data[2] =~ s|/[^/]+$||;
@@ -170,7 +167,7 @@ sub _create_mod_tree {
         } #for
 
         if ($storable) {
-            Storable::store($tree, $stored) or $err->trap( error => 'could not store $stored!' );
+            Storable::nstore($tree, $stored) or $err->trap( error => loc("could not store %1!", $stored) );
         }
 
         return $tree;
@@ -199,7 +196,7 @@ sub _create_author_tree {
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
-            msg => "Retrieving $stored ",
+            msg => loc("Retrieving %1", $stored),
             quiet => !$conf->get_conf('verbose')
         );
         my $href = Storable::retrieve($stored);
@@ -229,7 +226,7 @@ sub _create_author_tree {
         }
 
         if ($storable) {
-            Storable::store($tree, $stored) or $err->trap( error => 'could not store $stored!' );
+            Storable::nstore($tree, $stored) or $err->trap( error => loc("could not store %1!", $stored) );
         }
 
         return $tree;
@@ -261,7 +258,7 @@ sub _create_dslip_tree {
 
     if ($storable && -e $stored && $args{'uptodate'}) {
         $err->inform(
-            msg     => "Retrieving $stored ",
+            msg     => loc("Retrieving %1", $stored),
             quiet   => !$conf->get_conf('verbose')
         );
         my $href = Storable::retrieve($stored);
@@ -288,10 +285,10 @@ sub _create_dslip_tree {
         {   #local $@; can't use this, it's buggy -kane
 
             $cols = eval $ds_one;
-            if ($@){ $err->trap( error => qq[Error in eval of dslip source files: $@] )}
+            if ($@){ $err->trap( error => loc("Error in eval of dslip source files: %1", $@) )}
 
             $data = eval $ds_two;
-            if ($@){ $err->trap( error => qq[Error in eval of dslip source files: $@] )}
+            if ($@){ $err->trap( error => loc("Error in eval of dslip source files: %1", $@) )}
         }
 
         my $tree = {};
@@ -306,7 +303,7 @@ sub _create_dslip_tree {
         }
 
         if ($storable) {
-            Storable::store($tree, $stored) or $err->trap( error => 'could not store $stored!' );
+            Storable::nstore($tree, $stored) or $err->trap( error => loc("could not store %1!", $stored) );
         }
 
         return $tree;
@@ -326,49 +323,49 @@ sub _dslip_defs {
 
         # D
         [ q|Development Stage|, {
-            i   => q(Idea, listed to gain consensus or as a placeholder),
-            c   => q(under construction but pre-alpha (not yet released)),
-            a   => q(Alpha testing),
-            b   => q(Beta testing),
-            R   => q(Released),
-            M   => q(Mature (no rigorous definition)),
-            S   => q(Standard, supplied with Perl 5),
+            i   => loc('Idea, listed to gain consensus or as a placeholder'),
+            c   => loc('under construction but pre-alpha (not yet released)'),
+            a   => loc('Alpha testing'),
+            b   => loc('Beta testing'),
+            R   => loc('Released'),
+            M   => loc('Mature (no rigorous definition)'),
+            S   => loc('Standard, supplied with Perl 5'),
         }],
 
         # S
         [ q|Support Level|, {
-            m   => q(Mailing-list),
-            d   => q(Developer),
-            u   => q(Usenet newsgroup comp.lang.perl.modules),
-            n   => q(None known, try comp.lang.perl.modules),
+            m   => loc('Mailing-list'),
+            d   => loc('Developer'),
+            u   => loc('Usenet newsgroup comp.lang.perl.modules'),
+            n   => loc('None known, try comp.lang.perl.modules'),
         }],
 
         # L
         [ q|Language Used|, {
-            p   => q(Perl-only, no compiler needed, should be platform independent),
-            c   => q(C and perl, a C compiler will be needed),
-            h   => q(Hybrid, written in perl with optional C code, no compiler needed),
-            '+' => q(C++ and perl, a C++ compiler will be needed),
-            o   => q(perl and another language other than C or C++),
+            p   => loc('Perl-only, no compiler needed, should be platform independent'),
+            c   => loc('C and perl, a C compiler will be needed'),
+            h   => loc('Hybrid, written in perl with optional C code, no compiler needed'),
+            '+' => loc('C++ and perl, a C++ compiler will be needed'),
+            o   => loc('perl and another language other than C or C++'),
         }],
 
         # I
         [ q|Interface Style|, {
-            f   => q(plain Functions, no references used),
-            h   => q(hybrid, object and function interfaces available),
-            n   => q(no interface at all (huh?)),
-            r   => q(some use of unblessed References or ties),
-            O   => q(Object oriented using blessed references and/or inheritance),
+            f   => loc('plain Functions, no references used'),
+            h   => loc('hybrid, object and function interfaces available'),
+            n   => loc('no interface at all (huh?)'),
+            r   => loc('some use of unblessed References or ties'),
+            O   => loc('Object oriented using blessed references and/or inheritance'),
         }],
 
         # P
         [ q|Public License|, {
-            p   => q(Standard-Perl: user may choose between GPL and Artistic),
-            g   => q(GPL: GNU General Public License),
-            l   => q(LGPL: "GNU Lesser General Public License" (previously known as "GNU Library General Public License")),
-            b   => q(BSD: The BSD License),
-            a   => q(Artistic license alone),
-            o   => q(other (but distribution allowed without restrictions)),
+            p   => loc('Standard-Perl: user may choose between GPL and Artistic'),
+            g   => loc('GPL: GNU General Public License'),
+            l   => loc('LGPL: "GNU Lesser General Public License" (previously known as "GNU Library General Public License")'),
+            b   => loc('BSD: The BSD License'),
+            a   => loc('Artistic license alone'),
+            o   => loc('other (but distribution allowed without restrictions)'),
         }],
     ];
 
@@ -401,7 +398,7 @@ sub _check_uptodate {
                               # of previously stored hashrefs!
          } else {
               $err->inform(
-                  msg => qq[Unable to update source, attempting to get away with using old source file!],
+                  msg => loc("Unable to update source, attempting to get away with using old source file!"),
                   quiet => !$conf->get_conf('verbose')
               );
               return 1;
@@ -430,7 +427,7 @@ sub _update_source {
         my ($dir, $file) = $conf->_get_ftp( $args{'name'} ) =~ m|(.+/)(.+)$|sg;
 
         $err->inform(
-            msg     => qq[Updating source file "$file"],
+            msg     => loc("Updating source file '%1'", $file),
             quiet   => !$conf->get_conf('verbose')
         );
 
@@ -445,14 +442,14 @@ sub _update_source {
         ### this will throw warnings if we have no host (ie, when using local files)
         ### fix? -kane
         unless ($rv) {
-            $err->trap( error => "Couldn't fetch $file from " . $conf->_get_ftp('host') );
+            $err->trap( error => loc("Couldn't fetch %1 from %2", $file, $conf->_get_ftp('host') ) );
             return 0;
         }
 
         ### `touch` the file, so windoze knows it's new -jmb
         ### works on *nix too, good fix -Kane
         utime ( $now, $now, File::Spec->catfile($base, $file) ) or
-            $err->trap( error => "Couldn't touch $file" );
+            $err->trap( error => loc("Couldn't touch %1", $file) );
 
     }
     return 1;
@@ -468,7 +465,7 @@ sub _check_trees {
 
     ### a check to see if our source files are still up to date ###
     $err->inform(
-        msg     => qq[Checking if source files are up to date],
+        msg     => loc("Checking if source files are up to date"),
         quiet   => !$conf->get_conf('verbose')
     ) unless $update_source;
 
@@ -490,7 +487,7 @@ sub _check_trees {
                 name => $name,
                 update_source => $update_source
             ) or $uptodate = 0;
-        } 
+        }
     }
 
     return $uptodate;
@@ -504,23 +501,24 @@ sub _build_trees {
     my $uptodate = $args{uptodate};
     my $err      = $self->{_error};
 
-    $self->{_id} = $self->_inc_id();
-
     ### build the trees ###
     $self->{_authortree}    = $self->_create_author_tree    (uptodate => $uptodate);
     $self->{_modtree}       = $self->_create_mod_tree       (uptodate => $uptodate);
 
-    my $id = $self->_store_id(
-                _id         => $self->{_id},
-                _authortree => $self->{_authortree},
-                _modtree    => $self->{_modtree},
-                _error      => $self->{_error},
-                _conf       => $self->{_conf},
-    );
+    ### the old way, but ended up missing new keys that were added later =/ ###
+    #    my $id = $self->_store_id(
+    #                _id         => $self->{_id},
+    #                _authortree => $self->{_authortree},
+    #                _modtree    => $self->{_modtree},
+    #                _error      => $self->{_error},
+    #                _conf       => $self->{_conf},
+    #    );
+
+    my $id = $self->_store_id( $self );
 
     unless ( $id == $self->{_id} ) {
         $err->trap(
-            error => "IDs do not match: $id != $self->{_id}. Storage failed!",
+            error => loc("IDs do not match: %1 != %2. Storage failed!", $id, $self->{_id}),
             quiet => 0
         );
     }
@@ -556,7 +554,7 @@ sub _get_checksums {
 
     my $fh = new FileHandle;
     unless ($fh->open($file)) {
-        $err->trap( error => "Could not open $file: $!" );
+        $err->trap( error => loc("Could not open %1: %2", $file, $!) );
         return 0;
     }
 
@@ -577,7 +575,7 @@ sub _get_checksums {
             undef $dist;
         }
         else {
-            $err->trap( error => "Malformed CHECKSUM line: $_" );
+            $err->trap( error => loc("Malformed CHECKSUM line: %1", $_) );
         }
     }
 

@@ -1,0 +1,157 @@
+=pod
+
+=head1 NAME
+
+CPANPLUS::Styleguide - Style guide for CPANPLUS contributions
+
+=head1 DESCRIPTION
+
+This is a list of guidelines for code to be integrated in the
+CPANPLUS namespace. 
+
+=head1 GUIDELINES
+
+It is highly recommended that CPANPLUS submissions follow these
+guidelines.  Code which does not should deviate for a good reason.
+For example, a Tk shell wouldn't be expected to follow the 
+I<no non-core modules> rule, because using that shell is not 
+a requirement for using CPANPLUS.  Apply common sense, and, if
+in doubt, send a mail to the development list at 
+I<cpanplus-devel@lists.sourceforge.net>.
+
+=head2 I<The CPANPLUS Way>
+
+=over 4
+
+=item *
+All code should run under warnings and strict, although strict refs
+may be disabled for sections if required.
+
+=item *
+Do not use global variables.  Try to solve problems by storing values
+in objects, or, preferably, use closures to access private data.
+
+=item *
+The return values of function calls should be checked.  This applies
+to functions like C<open>, printing to filehandles and so on.
+
+=item *
+In general, avoid using eval or system calls.  However, eval should
+be used to wrap modules which can die.
+
+=item *
+CPANPLUS should not die, croak or confess.   With the exception of those
+in I<Shell> modules, functions should not print either, but use I<Error>
+to pass messages to the stack.
+
+=item *
+Follow the established division of functions in the project.
+I<Internals> contains the grunt work.  I<Backend> provides a
+coding interface.  I<Shell> contains look and feel code.
+Errors and warnings are handled by I<Error>.  Configuration
+will always be read by I<Configure>.
+
+=item *
+Do not hardcode locations, script names and so on.  Always use
+I<Configure> for this.
+
+=item *
+Code reuse is recommended.  Reuse existing functions where possible.
+If needed, refactor them, but ensure backwards compatibility!
+
+=item *
+The API provided by I<Backend> should be backwards compatible with
+earlier releases.
+
+=item *
+Try the perl solution first.  Use command-line tools as a last resort.
+
+=item *
+Do not rely on modules which are not part of the core as of 5.5.3
+with the exception of those bundled with CPANPLUS.  If you must
+use modules which are not core, provide a less featured alternative
+function as well.  CPANPLUS basic operation should not require
+the installation of any modules.  
+
+=item * 
+All solutions must be designed to work on all supported platforms.
+
+=item *
+All solutions must work for the target perl versions, which are 5.5.3
+up to and including the latest bleadperl.
+
+=item *
+Functions should, in most cases, return a hash reference.  Look at
+related functions to see what is appropriate.
+
+=item *
+Functions should take a hash of arguments, even if they currently
+only have one argument.
+
+=item *
+Follow any additional guidelines set forth in L<perlstyle>
+and L<perlmodstyle>
+
+=back
+
+=head2 Code Appearance
+
+=over 4
+
+=item *
+Use four spaces (and not a literal tab) for indentation.
+
+=item *
+Module names should begin with a capital.  Function names and variable
+names should begin with a lower case character.  Mark private functions
+with a leading underscore (_).
+
+=item *
+Use comments as needed to explain code.  Be elaborate and explain
+why you did or didn't use a particular solution when other
+possibilities suggest themselves.  Use three hashes
+(###) to mark comments for the developers and a single hash (#) to
+comment out test code or other non-essential parts.
+
+=back
+
+=head2 Submissions
+
+=over 4
+
+=item *
+Any new module added to the CPANPLUS name space should have an
+appropriate name.  Check with the developers to see if the name
+you have in mind is suitable.
+
+=item *
+Accompany code with tests where appropriate.
+
+=item *
+Patches should be provided in diff format and be accompanied by 
+text explaining the purpose of the code.  Any changes which will
+necessitate changes in the POD documentation should B<not> include
+the POD changes in the patch.  Instead, these should be explicitly
+described in the mail.
+
+=back
+
+=head1 AUTHORS
+
+This pod text by Ann Barcomb E<lt>kudra@cpan.orgE<gt>.
+
+=head1 COPYRIGHT
+
+The CPAN++ interface (of which this module is a part of) is
+copyright (c) 2001, 2002 Jos Boumans E<lt>kane@cpan.orgE<gt>.
+All rights reserved.
+
+This library is free software;
+you may redistribute and/or modify it under the same 
+terms as Perl itself.
+
+=head1 SEE ALSO
+
+L<perlstyle>, L<perlmodstyle>
+
+=cut

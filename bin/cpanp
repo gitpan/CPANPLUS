@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-# $File: //depot/dist/bin/cpanp $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/bin/cpanp $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 use strict;
 use vars '$VERSION';
@@ -18,9 +18,9 @@ cpanp - The CPANPLUS launcher
 
 B<cpanp>
 
-B<cpanp> S<[ --[B<no>]I<option>... ]> S<[-]B<a>> S<[ I<author>... ]>
+B<cpanp> S<[ --[B<no>]I<option>... ]> S<[-]B<af>> S<[ I<author>... ]>
 
-B<cpanp> S<[ --[B<no>]I<option>... ]> S<[-]B<dhilmp>> S<[ I<module>... ]>
+B<cpanp> S<[ --[B<no>]I<option>... ]> S<[-]B<moitudlrczb>> S<[ I<module>... ]>
 
 =head1 DESCRIPTION
 
@@ -34,7 +34,6 @@ to perform the associated action on each arguments. The commands are:
     a AUTHOR...     # search by author(s)
     m MODULE...     # search by module(s)
     f AUTHOR...     # list all distributions by an author(s)
-    o [ MODULE... ] # list installed module(s) that aren't up to date
     i MODULE...     # install module(s)
     t MODULE...     # test module(s)
     u MODULE...     # uninstall module(s)
@@ -42,18 +41,21 @@ to perform the associated action on each arguments. The commands are:
     l MODULE...     # display detailed information about module(s)
     r MODULE...     # display README files of module(s)
     c MODULE...     # check for module report(s) from cpan-testers
+    z MODULE...     # extract module(s) and open command prompt in it
+    o [ MODULE... ] # list installed module(s) that aren't up to date
+    b               # make autobundle of currently installed modules
 
 Each command may be prefixed with one or more I<options>.  If preceded by
 C<no>, the corresponding option will be set to C<0>, otherwise it's set to
 C<1>. The valid options includes C<cpantest>, C<debug>, C<flush>, C<force>,
-C<prereqs>, C<storable>, C<verbose> and C<md5>; please consult
+C<prereqs>, C<storable>, C<verbose>, C<md5> and C<signature>; please consult
 C<CPANPLUS::Configure> for an explanation to their meanings.
 
 =cut
 
 my $opt;
 
-my @bool = qw(cpantest debug flush force storable verbose md5 prereqs);
+my @bool = qw(cpantest debug flush force storable verbose md5 prereqs skiptest signature);
 
 my $cmd = {
     a => "search",
@@ -67,6 +69,8 @@ my $cmd = {
     l => "details",
     r => "readme",
     c => "reports",
+    z => "shell",
+    b => "autobundle",
 };
 
 my @cmd_stack;
@@ -81,8 +85,8 @@ while ($opt = shift(@ARGV)) {
 
 push @cmd_stack, map { "$opt $_" } @ARGV if ($opt and exists $cmd->{$opt});
 
-# special case: 'o' may take zero arguments.
-@cmd_stack = $opt if !@cmd_stack and $opt eq 'o';
+# special case: 'o' and 'b' may take zero arguments
+@cmd_stack = $opt if !@cmd_stack and $opt =~ /^[ob]$/;
 
 if (@cmd_stack) {
     # initializes configure setup if we've not been through it yet
@@ -99,13 +103,13 @@ if (@cmd_stack) {
     *{"$TR\::new"} = sub {
         # shell only
         goto &{$newref} unless caller(0)->isa('CPANPLUS::Shell')
-                            or caller(0) =~ /^CPANPLUS::Shell::/;
+                            or caller(0) =~ /^CPANPLUS::Shell::[^_]/;
 
-        return bless([@_], 'CPANPLUS::_Faked');
+        return bless([@_], 'CPANPLUS::Shell::_Faked');
     };
 
-    *{'CPANPLUS::_Faked::addhistory'} = sub { };
-    *{'CPANPLUS::_Faked::readline'}   = sub {
+    *{'CPANPLUS::Shell::_Faked::addhistory'} = sub { };
+    *{'CPANPLUS::Shell::_Faked::readline'}   = sub {
         unless ($opt or @cmd_stack) {
             # there's no immediate actions anyway, and we've run out of 's',
             # so we restore the handlers and regen a genuine object
@@ -120,7 +124,7 @@ if (@cmd_stack) {
         return shift @cmd_stack;
     };
 
-    *{'CPANPLUS::_Faked::ReadLine'} = sub { $TR };
+    *{'CPANPLUS::Shell::_Faked::ReadLine'} = sub { $TR };
 }
 
 shell();

@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals.pm $
+# $Revision: #4 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -14,10 +14,10 @@ package CPANPLUS::Internals;
 use strict;
 ### required files. I think we can now get rid of Carp, since we use Error.pm
 ### Data::Dumper is here just for debugging - both are core, so no worries -Kane
-use Carp;
 use CPANPLUS::Configure;
 use CPANPLUS::Error;
 use CPANPLUS::Backend;
+use CPANPLUS::I18N;
 
 use CPANPLUS::Internals::Extract;
 use CPANPLUS::Internals::Fetch;
@@ -27,6 +27,7 @@ use CPANPLUS::Internals::Make;
 use CPANPLUS::Internals::Search;
 use CPANPLUS::Internals::Source;
 use CPANPLUS::Internals::Report;
+use CPANPLUS::Internals::Utils;
 
 use Cwd;
 use Config;
@@ -40,9 +41,9 @@ use File::Path ();
 
 
 BEGIN {
-    use Exporter    ();
     use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter
+    @ISA        =   qw(
+                        CPANPLUS::Internals::Utils
                         CPANPLUS::Internals::Extract
                         CPANPLUS::Internals::Fetch
                         CPANPLUS::Internals::Install
@@ -52,7 +53,7 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.036';
+    $VERSION    =   '0.040';
 }
 
 ### ROUGH FLOW OF THE MODULE ###
@@ -186,7 +187,28 @@ BEGIN {
 
     sub _inc_id { return ++$count; }
 
+    sub _last_id { $count }
+
     sub _store_id {
+        my $self    = shift;
+        my $err     = $self->error_object;
+        my $obj     = shift;
+
+        my $ref = ref $obj;
+
+        unless( $ref eq 'CPANPLUS::Backend' ) {
+
+            $err->trap( error => loc("The object you passed has the wrong ref type: '%1'", $ref) );
+            return 0;
+        }
+
+        $idref->{ $obj->{_id} } = $obj;
+
+        return $obj->{_id};
+    }
+
+    ### this missed a bunch of keys when we needed them... ###
+    sub _old_store_id {
         my $self = shift;
         my %hash = @_;
 
@@ -257,6 +279,13 @@ sub _init {
     my $class = shift;
     my %args = @_;
 
+    ### temporary warning until we fix the storing of multiple id's
+    ### and their serialization:
+    if( _last_id() ) {
+        warn qq[CPANPLUS currently only supports one Backend object per running program\n];
+        return undef;
+    }
+
     ### constructor options to Configure need to be added -> Josh ###
     ### not pretty, but works for now -jmb
     ### no, we want stuff to override SEPERATE config options,
@@ -285,8 +314,9 @@ sub _init {
         error_track     => 1);
 
     my $data = {
-        _conf     => $conf,
-        _error    => $err,
+        _conf   => $conf,
+        _error  => $err,
+        _id     => _inc_id()
     };
 
     ### bless the hashref into the package ###
@@ -309,7 +339,7 @@ sub _init {
     ### but if you use File::Spec functions everywhere it won't matter -jmb
     #$conf->_set_build(startdir => File::Spec->catfile( cwd, '') ),
     $conf->_set_build( startdir => cwd ),
-        or $err->trap( error => "couldn't locate current dir!" );
+        or $err->trap( error => loc("couldn't locate current dir!") );
 
     ### check if we need to use Passive FTP.. required by some dumb servers
     ### and annoying firewalls
@@ -368,7 +398,7 @@ sub _can_use {
                 ) {
 
             $err->trap(
-                error => "Already attempted to use $m, which was unsuccessful",
+                error => loc("Already attempted to use %1, which was unsuccessful", $m),
                 quiet => 1
             );
             return;
@@ -401,8 +431,7 @@ sub _can_use {
                         $self->{_inc}->{$m}->{usable} = 0;
 
                         $err->trap(
-                            error => "Using $m was unsuccessful for $list[3] "
-                                        ."[THIS MAY BE A PROBLEM!]: $@",
+                            error => loc("Using %1 was unsuccessful for %2 [THIS MAY BE A PROBLEM!]: %3", $m, $list[3], $@),
                             quiet => !$yell
                         );
 
@@ -420,8 +449,7 @@ sub _can_use {
                 $self->{_inc}->{$m}->{usable} = 0;
 
                 $err->trap(
-                    error => "Using $m was unsuccessful for $list[3] "
-                                ."[THIS MAY BE A PROBLEM!]: Module not found",
+                    error => loc("Using %1 was unsuccessful for %2 [THIS MAY BE A PROBLEM!]: %3", $m, $list[3], loc("Module not found")),
                     quiet => !$yell
                 );
 
@@ -482,9 +510,9 @@ sub _auto_upgrade {
 
         if ($rv) {
             ### being explicitly verbose ###
-            $err->inform( msg => "$mod installed successfully" )
+            $err->inform( msg => loc("%1 installed successfully", $mod) )
         } else {
-            $err->trap( error => "Install of $mod failed in $subname" );
+            $err->trap( error => loc("Install of %1 failed in %2", $mod, $subname) );
             $flag = 1;
         }
     }
@@ -511,7 +539,7 @@ sub _flush {
         } else {
             ### reset @INC to it's original state ###
             @INC            = @{$self->{_lib}};
-            $ENV{PERL5LIB}  = $self->{_perl5lib};
+            $ENV{PERL5LIB}  = $self->{_perl5lib} || '';
         }
     }
 
@@ -539,7 +567,7 @@ sub _cache_control {
 
         my $cache;
         unless( $cache = $conf->get_conf('cache') ) {
-            $err->inform( msg => "No cache limit entered, ignoring dir size" );
+            $err->inform( msg => loc("No cache limit entered, ignoring dir size") );
             return 1;
         }
 
@@ -587,7 +615,7 @@ sub _cache_control {
                     $gs += $aref->[1];
                     unlink $aref->[0] or
                         $err->trap(
-                            error => qq[could not unlink $aref->[0]: $!]
+                            error => loc("could not unlink %1: %2", $aref->[0], $!)
                         );
                 }
 
@@ -621,7 +649,7 @@ sub _parse_module {
     ### a distribution name - walk _modtree to find any module in it
     if ( $mod =~ m|/| ) {
         unless ($mod =~ m|.*/(.+)$|) {
-            $err->trap( error => "$mod is not a proper distribution name!" );
+            $err->trap( error => loc("%1 is not a proper distribution name!", $mod) );
             return ();
         }
 
@@ -679,7 +707,7 @@ sub _parse_module {
             $file .= '.tar.gz' unless $file =~ /\.[A-Za-z]+$/;
 
             unless (length $author) {
-                $err->trap( error => "$mod does not contain an author directory!" );
+                $err->trap( error => loc("%1 does not contain an author directory!", $mod) );
                 return ();
             }
 
@@ -723,7 +751,7 @@ sub _parse_module {
         }
 
         unless ($modobj) {
-            $err->trap( error => "Cannot find $mod in the module tree!" );
+            $err->trap( error => loc("Cannot find %1 in the module tree!", $mod) );
             return ();
         }
 
@@ -764,11 +792,13 @@ sub _run {
     my $is_win98 = ($^O eq 'MSWin32' and !Win32::IsWinNT());
 
     ### Kludge! This enables autoflushing for each perl process we launched.
-    local $ENV{PERL5OPT} = $ENV{PERL5OPT}.' -MCPANPLUS::Internals::System=autoflush=1';
+    ### this stops warnings if $ENV{PERL5OPT} is not yet defined.
+    ### patch proposed by: Jonathan Leffler - jleffler@us.ibm.com
+    local $ENV{PERL5OPT} .= ' -MCPANPLUS::Internals::System=autoflush=1';#
 
     ### inform the user. note that we don't want to used mangled $verbose.
     $err->inform(
-        msg   => "Running [@cmd]...",
+        msg   => loc("Running [%1]...", "@cmd"),
         quiet => !$self->{_conf}->get_conf('verbose'),
     );
 
@@ -802,21 +832,21 @@ sub _run {
         local *SAVEOUT; local *SAVEERR;
 
         open(SAVEOUT, ">&STDOUT")
-            or ($err->trap( error => "couldn't dup STDOUT: $!" ), return);
+            or ($err->trap( error => loc("couldn't dup STDOUT: %1", $!) ), return);
         open(STDOUT, ">".File::Spec->devnull)
-            or ($err->trap( error => "couldn't reopen STDOUT: $!" ), return);
+            or ($err->trap( error => loc("couldn't reopen STDOUT: %1", $!) ), return);
 
         open(SAVEERR, ">&STDERR")
-            or ($err->trap( error => "couldn't dup STDERR: $!" ), return);
+            or ($err->trap( error => loc("couldn't dup STDERR: %1", $!) ), return);
         open(STDERR, ">".File::Spec->devnull)
-            or ($err->trap( error => "couldn't reopen STDERR: $!" ), return);
+            or ($err->trap( error => loc("couldn't reopen STDERR: %1", $!) ), return);
 
         system(@cmd);
 
         open(STDOUT, ">&SAVEOUT")
-            or ($err->trap( error => "couldn't restore STDOUT: $!" ), return);
+            or ($err->trap( error => loc("couldn't restore STDOUT: %1", $!) ), return);
         open(STDERR, ">&SAVEERR")
-            or ($err->trap( error => "couldn't restore STDERR: $!" ), return);
+            or ($err->trap( error => loc("couldn't restore STDERR: %1", $!) ), return);
     }
 
     $_out_handler->("\n") if defined $bufout and length $bufout;
@@ -835,19 +865,11 @@ sub _open3_run {
     ### Following code are adapted from Friar 'abstracts' in the
     ### Perl Monastery (http://www.perlmonks.org/index.pl?node_id=151886).
 
-    local *SAVEIN;
-
-    ### saving away STDIN first, because it will be closed by open3
-    unless (open(SAVEIN, ">&STDIN")) {
-        $err->trap( error => "couldn't dup STDIN: $!" );
-        return 0;
-    }
-
-    my ($outfh, $errfh); # open3 handles
+    my ($infh, $outfh, $errfh); # open3 handles
 
     my $pid = eval {
         IPC::Open3::open3(
-            '<&STDIN', # may also be \*STDIN according to Barrie
+            $infh = Symbol::gensym(),
             $outfh = Symbol::gensym(),
             $errfh = Symbol::gensym(),
             @cmd,
@@ -855,7 +877,7 @@ sub _open3_run {
     };
 
     if ($@) {
-        $err->trap( error => "couldn't spawn process: $@" );
+        $err->trap( error => loc("couldn't spawn process: %1", $@) );
         return;
     }
 
@@ -873,7 +895,7 @@ sub _open3_run {
 
             if (not defined $len){
                 # There was an error reading
-                $err->trap( error => "Error from child: $!" );
+                $err->trap( error => loc("Error from child: %1", $!) );
                 return;
             }
             elsif ($len == 0){
@@ -885,21 +907,13 @@ sub _open3_run {
             } elsif ($fh == $errfh) {
                 $_err_handler->($buf);
             } else {
-                $err->trap( error => "IO::Select error" );
+                $err->trap( error => loc("IO::Select error") );
                 return;
             }
         }
     }
 
     waitpid $pid, 0; # wait for it to die
-
-    ### restore STDIN
-    local $^W; # quell 'Filehandle STDIN opened only for output' warnings
-    unless (open(STDIN, ">&SAVEIN")) {
-        $err->trap( error => "couldn't restore STDIN: $!" );
-        return 0;
-    }
-
     return 1;
 }
 
@@ -918,8 +932,8 @@ sub _perl_version {
     return 0 unless $args{perl};
 
     ### there might be a more elegant way to do this... ###
-    my $cmd = $args{perl} . q[ -MConfig -e"print $Config{version}"];
-    my ($perl_version) = `$cmd`;
+    my $cmd = $args{perl} . ' -MConfig -eprint+Config::config_vars+version';
+    my ($perl_version) = (`$cmd` =~ /version='(.*)'/);
 
     return $perl_version;
 }

@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Module.pm $
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Module.pm $
+# $Revision: #4 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
 
 #######################################################
 ###            CPANPLUS/Internals/Module.pm         ###
@@ -12,16 +12,12 @@
 package CPANPLUS::Internals::Module;
 
 use strict;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
 use CPANPLUS::Backend;
+use CPANPLUS::I18N;
 use Data::Dumper;
 
 BEGIN {
-    use Exporter    ();
-    use Data::Dumper;
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -56,7 +52,7 @@ sub new {
         description => { default => '' },                   # description of the module
         dslip       => { default => '    ' },               # dslip information
         prereqs     => { default => {} },                   # any prerequisites known for this module
-        status      => { default => '' },                   # some status we can assign to a module
+        status      => { default => {} },                   # some status we can assign to a module
         _id         => { required => 1 },                   # id of the Internals object that spawned us
     };
 
@@ -78,7 +74,7 @@ sub new {
     for my $key ( keys %$_data ) {
 
         if ( $_data->{$key}->{required} && !exists($hash{$key}) ) {
-            warn "Missing key $key\n";
+            warn loc("Missing key %1", $key), "\n";
             return 0;
         }
 
@@ -142,6 +138,25 @@ sub details { shift->_call_object( type => 'module', args => [ @_ ] ) };
 #                                      }
 #        };.
 sub distributions { shift->_call_object( type => 'author', args => [ @_ ] ) };
+
+### will extact the file listed in the 'status' hash of the module.
+### the return value would look something like this:
+### 0 on failure, or the path to the dir on success;
+### $VAR1 = 'D:\\cpanplus\\5.6.0\\build\\Acme-Bleach-1.12';
+
+sub extract {
+    my $self    = shift;
+    my $obj     = $self->_make_object();
+
+    my $file   = $self->status->{'fetch'};
+
+    my $rv = $obj->extract( @_, files => [$file] )->rv;
+
+    my $return = ref($rv) eq 'HASH' ? $rv->{ $file } : $rv;
+
+    ### store it back in the object ###
+    return $self->{status}->{'extract'} = $return;
+}
 
 ### will fetch the module.
 ### the return value would look something like this:
@@ -225,7 +240,10 @@ sub _call_object {
     my $method = ((caller(1))[3]);
     $method =~ s/.*:://;
 
-    my $rv = $obj->$method( @{$args}, $option => [ $self->{$key} ] );
+    my $rv = $obj->$method( @{$args}, $option => [ $self->{$key} ] )->rv;
+
+    ### special case; ->modules uses author name instead of module name as index
+    $key = 'author' if $method eq 'modules';
 
     return ref($rv) eq 'HASH' ? $rv->{ $self->{$key} } : $rv;
 }
@@ -255,7 +273,7 @@ CPAN modules.
 =head1 METHODS
 
 Because the only Module objects that should be used are returned
-by Backend methods, Module methods are documented in 
+by Backend methods, Module methods are documented in
 L<CPANPLUS::Backend/"MODULE OBJECTS">.
 
 =head1 AUTHORS

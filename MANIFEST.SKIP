@@ -1,6 +1,14 @@
 ^blib/
+^t/dummy-cpanplus/
+^pmfiles.dat$
 ^Makefile$
 ^Makefile.old$
-^lib/CPANPLUS/Shell/Classic\.pm$
+^MANIFEST.bak$
+^TODO$
+^lib/CPANPLUS/Tee.pm$
 ^lib/CPANPLUS/Config\.pm$
+^lib/CPANPLUS/Config\.pm~$
+^lib/CPANPLUS/Dist/
+^lib/CPANPLUS/Dist.pm$
 ^pm_to_blib$
+^prereqs$

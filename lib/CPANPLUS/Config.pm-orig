@@ -24,7 +24,10 @@ sub new {
                              'makemakerflags' => {},
                              'debug' => 0,
                              'md5' => 1,
-                             'shell' => 'CPANPLUS::Shell::Default', 
+                             'shell' => 'CPANPLUS::Shell::Default',
+                             'dist_type' => 'MakeMaker',
+                             'signature' => 0,
+                             'skiptest' => 0,
                            },
                  '_source' => {
                                 'auth' => '01mailrc.txt.gz',
@@ -52,7 +55,10 @@ sub new {
                                'moddir' => 'build/',
                                'lynx' => '',
                                'make' => '',
-                               'startdir' => ''
+                               'startdir' => '',
+                               'autobundle' => 'autobundle/',
+                               'autobundle_prefix' => 'Snapshot',
+                               'distdir' => 'dist/'
                              },
                  '_ftp' => {
                              'auth' => 'authors/01mailrc.txt.gz',

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-# $File: //depot/dist/bin/cpantest $
-# $Revision: #3 $ $Change: 60 $ $DateTime: 2002/06/06 05:42:54 $
+# $File: //depot/cpanplus/dist/bin/cpantest $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 =head1 NAME
 

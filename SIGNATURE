@@ -1,0 +1,83 @@
+This file contains message digests of all files listed in MANIFEST,
+signed via the Module::Signature module, version 0.19.
+
+To verify the content in this distribution, first make sure you have
+Module::Signature installed, then type:
+
+    % cpansign -v
+
+It would check each file's integrity, as well as the signature's
+validity.  If "==> Signature verified OK! <==" is not displayed,
+the distribution may already have been compromised, and you should
+not run its Makefile.PL or Build.PL.
+
+-----BEGIN PGP SIGNED MESSAGE-----
+Hash: SHA1
+
+SHA1 a55b64d96683bb8fe7000a26a0dea7fe2887a5d0 AUTHORS
+SHA1 ed5d8e7f3f14923954fe29f4bdb3ec91f16b7b33 ChangeLog
+SHA1 920de1a07ff90186d463bc7d46bbba5d38d8c8d0 Changes
+SHA1 5fb18d7159da621e175985694cc0c7e42830aa88 MANIFEST
+SHA1 8e1bf631376fedfc3b5321a4c0c9c72654fe9bbe MANIFEST.SKIP
+SHA1 fb0402e082be5911d36f3dea921c2660cf6f7332 Makefile.PL
+SHA1 6424c0ac723650b9294da28c0a5898ff45a088d7 README
+SHA1 4cfed68da44f4528173825f4d4af87d2cbd4e851 bin/cpanp
+SHA1 a8722dcbb96a5996e2df2b562b1d9a02fe8e7771 bin/cpansmoke
+SHA1 5c80832b4486d2e4312eee74e2eaa809476c6ee1 bin/cpantest
+SHA1 3e98222cd6ae53dc249e37357946893a853df8d6 inc/ExtUtils/AutoInstall.pm
+SHA1 37122e66f85e5380b7213ec6ea9f46e57a62b983 lib/CPANPLUS.pm
+SHA1 de5ef182ac148c0ef982839516fdfb80b60c3d28 lib/CPANPLUS/Backend.pm
+SHA1 24ec58c146fa696633a36e772a02c1d13fc27db0 lib/CPANPLUS/Backend/InputCheck.pm
+SHA1 e1646a40d3957b946b651c7aca12bbfca4a05a57 lib/CPANPLUS/Backend/RV.pm
+SHA1 198654b37afb6bd3872a5f0bf8a73b1954e3bf20 lib/CPANPLUS/Config.pm-orig
+SHA1 f948c4b4c2ab4dc8e0173b80ba31af1d1b31633d lib/CPANPLUS/Configure.pm
+SHA1 990db1c415e55573896d586032b64ddc5f46a5e0 lib/CPANPLUS/Configure/Setup.pm
+SHA1 2bbaf53007b35bd58c86bae6c5b6ed4c5293287e lib/CPANPLUS/Error.pm
+SHA1 bc67bac42c8501d6e6612024d42bf31e544b2038 lib/CPANPLUS/FAQ.pod
+SHA1 268072e9993a7d876115c19dff9e89fc2077a724 lib/CPANPLUS/I18N.pm
+SHA1 179751d623d6550e557ecdbd685ca7400917a4e0 lib/CPANPLUS/I18N/CPANPLUS.pot
+SHA1 a0b79ab43f6b7466e58bb3cc03b73a46cb4da546 lib/CPANPLUS/Internals.pm
+SHA1 d0deab077f4e8d69aa5c8fc1fc0944a268212cb9 lib/CPANPLUS/Internals/Author.pm
+SHA1 5d25b1b856b39b77821873ff82a510894b6a7aa0 lib/CPANPLUS/Internals/Extract.pm
+SHA1 b240ae0e33c854c2aa365258623baeb0a88dd77a lib/CPANPLUS/Internals/Fetch.pm
+SHA1 2259ed3cf0a66c81348d4c555e5877468090b21b lib/CPANPLUS/Internals/Install.pm
+SHA1 d9b474bfd5da202065c72c5d06850b8e89abe8fa lib/CPANPLUS/Internals/Make.pm
+SHA1 f3cb2826bd19e9ec264ad45634f953fc4b3d75ec lib/CPANPLUS/Internals/Module.pm
+SHA1 6726d3cc5f08af04729f4f83524d9960b4adf5f0 lib/CPANPLUS/Internals/Report.pm
+SHA1 d01c20383f93767f87d4ae6d1580c98220aac07a lib/CPANPLUS/Internals/Search.pm
+SHA1 fffe11685a78f83193100cb3ca87d55d58afafc4 lib/CPANPLUS/Internals/Source.pm
+SHA1 1d154121805409f75cf81c05cb6f717238ff722a lib/CPANPLUS/Internals/System.pm
+SHA1 1fd183a01a07c38c01d80f29bde331609c7800b0 lib/CPANPLUS/Internals/Utils.pm
+SHA1 81d29a5db9e8cc4a678a924d865f5330b8f15a42 lib/CPANPLUS/Shell.pm
+SHA1 117db83f0445859abfeae7c4041c9a3deb7a5b9e lib/CPANPLUS/Shell/Classic.pm
+SHA1 1a1622fb20125c137524068345f74fc2f61f3251 lib/CPANPLUS/Shell/Default.pm
+SHA1 9abf06726582281d29a012121ca01a1a194aa205 lib/CPANPLUS/Styleguide.pod
+SHA1 d737f0d4b3cbd562778a1b7dbdbfef4a9ff37414 lib/CPANPLUS/TesterGuide.pod
+SHA1 f51c1d7f09c6d706fdd4cdaa6afefb790bb5db0a t/0-signature.t
+SHA1 c6c264c68d69d0c2d34b6bfcc7da24afc5e5a81d t/1-basic.t
+SHA1 98ad28873275de4fc929d2c589c2dfb46bf0ac2e t/2-autoinstall.t
+SHA1 79adece399aaf115371e006b5164f4a071afff5d t/3-backend.t
+SHA1 a7c81591cc7ebf767e7b581be033e5f17d474d24 t/CPANPLUS-Backend.t
+SHA1 e009e3bffca6115c77d8066eab1183510ba1e0bf t/CPANPLUS.t
+SHA1 58c7997f90c111e484d9940f41790c6a7b5cd1d8 t/dummy-CPAN/authors/01mailrc.txt.gz
+SHA1 d99e4b369cad9eedae7b5a211e658dec6f25dd58 t/dummy-CPAN/authors/id/A/AY/AYRNIEU/CHECKSUMS
+SHA1 54267f4a78bd8b3e484d7e3c0ccfbd652d60bcba t/dummy-CPAN/authors/id/A/AY/AYRNIEU/Text-Bastardize-0.06.readme
+SHA1 c15fbc73a2701421cbc5ff687c5959227d40247d t/dummy-CPAN/modules/02packages.details.txt.gz
+SHA1 5410ea0402c0f0fd59adf6f919970101f33d71cd t/dummy-CPAN/modules/03modlist.data.gz
+SHA1 6f4afefb3d5ba0fc1ee69b146e3e764a44163398 t/lib/File/Spec.pm
+SHA1 9090f68763410edb9b92497f1951b57276f11804 t/lib/File/Spec/Functions.pm
+SHA1 15b59899be975595116264df5e1f22b1261db5fc t/lib/File/Spec/Mac.pm
+SHA1 8a5baea5a89a5f0ef66b144297e459082910600f t/lib/File/Spec/OS2.pm
+SHA1 190e8195e8a4e3beafeb0fdee68314c8c3bb8db5 t/lib/File/Spec/Unix.pm
+SHA1 818ecf87cf49135913379583798a03b7507ba216 t/lib/File/Spec/VMS.pm
+SHA1 29f9ba2f863f02348683a13e87f8d4cd3fc0ddbe t/lib/File/Spec/Win32.pm
+SHA1 1febe2e170ead4f8f5865f31fd72746c03dd3cce t/lib/Test/Builder.pm
+SHA1 9237a6c0bba625aefe020f79c8b9625da1e3b364 t/lib/Test/MockObject.pm
+SHA1 51c49a3df7cc24f3507c97c16f11c0f87e6f51e7 t/lib/Test/More.pm
+-----BEGIN PGP SIGNATURE-----
+Version: GnuPG v1.0.7 (Cygwin32)
+
+iD8DBQE9xqWD+Uv116YmbAwRAveUAJ0cK1skDycaaiuaiGohS/RlTuegBwCeL7U5
+9a4DxV0N9wyDL+1PV9e5UZo=
+=z2CI
+-----END PGP SIGNATURE-----

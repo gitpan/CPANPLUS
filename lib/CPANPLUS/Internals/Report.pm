@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #5 $ $Change: 77 $ $DateTime: 2002/07/02 10:33:55 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -13,15 +13,12 @@ package CPANPLUS::Internals::Report;
 
 use strict;
 use File::Spec;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
 use Data::Dumper;
 use File::Basename;
+use CPANPLUS::I18N;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -99,8 +96,21 @@ sub _send_report {
               and $self->{_shell}->_ask_report(dist => $dist, grade => $grade);
 
     my ($fh, $filename, @inform);
+    my ($already_sent,$nb_send,$max_send) = (0,0,2);
 
     if ($grade eq 'fail') {
+        # Check if somebody have already sent FAIL status about this release
+        if ($self->{_conf}->get_conf('cpantest') =~ /\bdont_cc\b/i) {
+            $already_sent = $self->_query_report('package' => $dist);
+            if ($already_sent) {
+                foreach my $k (@$already_sent) {
+                    $nb_send++ if ($k->{grade} eq 'FAIL');
+                }
+                print loc("FAIL status already reported. I won't cc the author."), "\n"
+                    if ($nb_send >= $max_send);
+            }
+        }
+
         return unless $self->_can_use( modules => { 'File::Temp' => '0.0' } );
         ($fh, $filename) = File::Temp::tempfile( UNLINK => 1 );
 
@@ -111,7 +121,9 @@ sub _send_report {
                   and ($stage !~ /\btest\b/);
 
         print $fh '' . << ".";
-This is an error report generated automatically by CPANPLUS.
+This is an error report generated automatically by CPANPLUS,
+version $VERSION.
+
 Below is the error stack during '$stage':
 
 $buffer
@@ -119,14 +131,17 @@ $buffer
 Additional comments:
 .
 
-        if (my @missing = $buffer =~ m/\bCan't locate (\S+) in \@INC/g) {
-            my $missing = join("\n", map {
+        my %missing;
+        $missing{$_} = 1 foreach ($buffer =~ m/\bCan't locate (\S+) in \@INC/g);
+
+        if (%missing) {
+            my $modules = join("\n", map {
                 s/.pm$//; s|/|::|g; $_
-            } @missing);
+            } sort keys %missing);
 
             my $prereq  = join("\n", map {
                 s/.pm$//; s|/|::|g; "\t'$_'\t=> '0', # or a minimum workable version"
-            } @missing);
+            } sort keys %missing);
 
             print $fh '' . << ".";
 
@@ -134,7 +149,7 @@ Hello, $author! Thanks for uploading your works to CPAN.
 
 I noticed that the test suite seem to fail without these modules:
 
-$missing
+$modules
 
 As such, adding the prerequisite module(s) to 'PREREQ_PM' in your
 Makefile.PL should solve this problem.  For example:
@@ -153,14 +168,27 @@ at <http://search.cpan.org/search?dist=ExtUtils-AutoInstall> may be
 worth a look.
 
 Thanks! :-)
+
+******************************** NOTE ********************************
+The comments above are created mechanically, possibly without manual
+checking by the sender.  Also, because many people performs automatic
+tests on CPAN, chances are that you will receive identical messages
+about the same problem.
+
+If you believe that the message is mistaken, please reply to the first
+one with correction and/or additional informations, and do not take
+it personally.  We appreciate your patience. :)
+**********************************************************************
+
 .
         }
 
-        push @inform, "$module->{author}\@cpan.org";
+        push @inform, "$module->{author}\@cpan.org"
+          if (!$already_sent or $nb_send < $max_send);
     }
     elsif ($grade eq 'unknown') {
         if ($name =~ /\bBundle\b/) {
-            print "UNKNOWN grades for Bundles are normal; skipped.\n";
+            print loc("UNKNOWN grades for Bundles are normal; skipped."), "\n";
             return;
         }
 
@@ -171,7 +199,9 @@ Thanks! :-)
         my $stage = 'make test';
 
         print $fh '' . << ".";
-This is an error report generated automatically by CPANPLUS.
+This is an error report generated automatically by CPANPLUS,
+version $VERSION.
+
 Below is the error stack during '$stage':
 
 $buffer
@@ -200,12 +230,26 @@ test suite, please see the Test::Simple, Test::More and Test::Tutorial
 manpages at <http://search.cpan.org/search?dist=Test-Simple>.
 
 Thanks! :-)
+
+******************************** NOTE ********************************
+The comments above are created mechanically, possibly without manual
+checking by the sender.  Also, because many people performs automatic
+tests on CPAN, chances are that you will receive identical messages
+about the same problem.
+
+If you believe that the message is mistaken, please reply to the first
+one with correction and/or additional informations, and do not take
+it personally.  We appreciate your patience. :)
+**********************************************************************
+
 .
 
-        push @inform, "$module->{author}\@cpan.org";
+        push @inform, "$module->{author}\@cpan.org"
+            if (!$already_sent or $nb_send < $max_send);
     }
     elsif ($self->{_conf}->get_conf('cpantest') =~ /\balways_cc\b/i) {
-        push @inform, "$module->{author}\@cpan.org";
+        push @inform, "$module->{author}\@cpan.org"
+          if (!$already_sent or $nb_send < $max_send);
     }
 
     close $fh if $fh;
@@ -218,7 +262,8 @@ Thanks! :-)
         inform   => \@inform,
     );
 
-    print $self->_run(command => \@cmd, verbose => 1) ? "done.\n" : "failed ($!)!\n";
+    print $self->_run(command => \@cmd, verbose => 1) ? loc("done.") : loc("failed (%1)!", $!);
+    print "\n";
 }
 
 
@@ -276,7 +321,7 @@ sub _query_report {
     my $request = HTTP::Request->new( GET => $url );
 
     $err->inform(
-        msg   => "Fetching: $url",
+        msg   => loc("Fetching: %1", $url),
         quiet => !$conf->get_conf('verbose'),
     );
 
@@ -284,7 +329,7 @@ sub _query_report {
     my $response = $ua->request( $request );
 
     unless ($response->is_success) {
-        $err->trap( error => "Fetch report failed: ". $response->message);
+        $err->trap( error => loc("Fetch report failed: %1", $response->message) );
         return 0;
     }
 
@@ -292,7 +337,7 @@ sub _query_report {
     my ($result) = ($response->content =~ /\n<dl>(.*?)\n<\/dl>\n/s);
 
     unless (defined $result) {
-        $err->trap( error => "Error parsing testers.cpan.org results" );
+        $err->trap( error => loc("Error parsing testers.cpan.org results") );
         return 0;
     }
 

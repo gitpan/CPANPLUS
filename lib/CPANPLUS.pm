@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS.pm $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS.pm $
+# $Revision: #3 $ $Change: 1916 $ $DateTime: 2002/11/04 13:01:10 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -13,22 +13,22 @@ package CPANPLUS;
 
 use strict;
 use Carp;
+use CPANPLUS::I18N;
 use CPANPLUS::Backend;
-use CPANPLUS::Shell;
-use Data::Dumper;
 
 BEGIN {
     use Exporter    ();
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   '0.036';    #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   '0.040';    #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
 ### perl -MCPANPLUS -e 'install Net::SMTP'
 sub install {
     my $cpan = new CPANPLUS::Backend;
+    my $err  = $cpan->error_object;
 
     my $mod = shift or (
                         $cpan->{_error}->trap( error => "No module specified!" ),
@@ -36,26 +36,30 @@ sub install {
                     );
 
     if ( ref $mod ) {
-        $cpan->{_error}->trap(
-                    error => "You passed an object. Use CPANPLUS::Backend for OO style interaction"
-                );
+        $err->trap( error => loc("You passed an object. Use CPANPLUS::Backend for OO style interaction") );
         return 0;
 
     } else {
-        unless( $cpan->module_tree->{$mod} ) {
-            $cpan->{_error}->trap( error => qq[Unknown module "$mod"] );
-            return 0;
-        }
+
+        ### input checker disabled and moved to backend instead
+        ### with having autobundle's enabled it's easier to have the
+        ### validity checker in one central place, namely backend's
+        ### install method
+        #unless( $cpan->module_tree->{$mod} ) {
+        #    $err->trap( error => loc("Unknown module '%1'", $mod) );
+        #    return 0;
+        #}
 
         my $rv = $cpan->install( modules => [ $mod ] );
 
-        my $msg = $rv->{$mod}
-                    ? qq[Installing of $mod successfull]
-                    : qq[Installing of $mod failed];
 
-        $cpan->{_error}->inform( msg => $msg, quiet => 0 );
+        my $msg = $rv->ok
+                    ? loc("Installing of %1 successful", $mod)
+                    : loc("Installing of %1 failed", $mod);
 
-        return $rv->{$mod};
+        $err->inform( msg => $msg, quiet => 0 );
+
+        return $rv->ok;
     }
 }
 
@@ -64,24 +68,18 @@ sub fetch {
     my $cpan = new CPANPLUS::Backend;
 
     my $mod = shift or (
-                        $cpan->{_error}->trap( error => "No module specified!" ),
+                        $cpan->{_error}->trap( error => loc("No module specified!") ),
                         return 0
                     );
 
     if ( ref $mod ) {
         $cpan->{_error}->trap(
-                    error => "You passed an object. Use CPANPLUS::Backend for OO style interaction"
+                    error => loc("You passed an object. Use CPANPLUS::Backend for OO style interaction")
                 );
         return 0;
-    } elsif ( !$cpan->module_tree->{$mod} ) {
-        $cpan->{_error}->trap(
-                    error => "No such module: $mod"
-                );
-        return 0;
-
     } else {
         unless( $cpan->module_tree->{$mod} ) {
-            $cpan->{_error}->trap( error => qq[Unknown module "$mod"] );
+            $cpan->{_error}->trap( error => loc("Unknown module '%1'", $mod) );
             return 0;
         }
 
@@ -90,13 +88,13 @@ sub fetch {
             fetchdir   => $cpan->{_conf}->_get_build('startdir')
         );
 
-        my $msg = $rv->{$mod}
-                    ? qq[Fetching of $mod successfull]
-                    : qq[Fetching of $mod failed];
+        my $msg = $rv->ok
+                    ? loc("Fetching of %1 successful", $mod)
+                    : loc("Fetching of %1 failed", $mod);
 
         $cpan->{_error}->inform( msg => $msg, quiet => 0 );
 
-        return $rv->{$mod};
+        return $rv->ok;
     }
 }
 
@@ -107,7 +105,15 @@ sub get { fetch(@_) }
 ### purely for backwards compatibility, so we can call it from the commandline:
 ### perl -MCPANPLUS -e 'shell'
 sub shell {
-    my $cpan = new CPANPLUS::Shell;
+    my $option  = shift;
+
+    ### since the user can specify the type of shell they wish to start
+    ### when they call the shell() function, we have to eval the usage
+    ### of CPANPLUS::Shell so we an set up all the checks properly
+    eval { require CPANPLUS::Shell; CPANPLUS::Shell->import($option) };
+    die $@ if $@;
+
+    my $cpan = CPANPLUS::Shell->new();
 
     $cpan->shell();
 }
@@ -124,21 +130,30 @@ CPANPLUS - Command-line access to the CPAN interface
 
 =head1 NOTICE
 
-Please note that CPANPLUS is intended to eventually be a full drop-in
-replacement for CPAN.pm.  However, in early releases you should
-B<NOT> expect complete compatibility.
+CPANPLUS will appear in Perl core in version 5.10, under an
+as-yet undetermined name.  CPAN.pm will be deprecated.  CPANPLUS
+is B<not> a drop-in replacement for CPAN.pm.
+
+A shell interface which resembles the shell aspects (and not
+the programming interface) of CPAN.pm is available.  Refer
+to L<CPANPLUS::Shell> for information on switching to the
+Classic shell.
 
 =head1 SYNOPSIS
 
 Command line:
 
-    perl -MCPANPLUS -e 'install Net::SMTP'
+    /perl/bin/cpanp
+    perl -MCPANPLUS -e 'shell'
+
+    perl5.6.1 -MCPANPLUS -e 'install Net::SMTP'
 
     perl -MCPANPLUS -e 'fetch /K/KA/KANE/Acme-POE-Knee-1.10.zip'
-    perl -MCPANPLUS -e 'get /K/KA/KANE/Acme-POE-Knee-1.10.zip'
+    perl5.00503 -MCPANPLUS -e 'get /K/KA/KANE/Acme-POE-Knee-1.10.zip'
 
-    perl -MCPANPLUS -e 'shell'
-    /perl/bin/cpanp
+Note that one CPANPLUS installation can be used for multiple versions
+of Perl.  If no version is specified, the Perl version used to install
+CPANPLUS will be used.
 
 Scripts:
 
@@ -171,7 +186,7 @@ of errors, and so on.
 
 =head1 FUNCTIONS
 
-=head2 install(NAME);
+=head2 install(NAME)
 
 This function requires the full name of the module, which is case
 sensitive.  The module name can also be provided as a fully
@@ -180,14 +195,14 @@ the /authors/id directory on a CPAN mirror.
 
 It will download, extract and install the module.
 
-=head2 fetch(NAME);
+=head2 fetch(NAME)
 
 Like install, fetch needs the full name of a module or the fully
 qualified file name, and is case sensitive.
 
 It will download the specified module to the current directory.
 
-=head2 get(NAME);
+=head2 get(NAME)
 
 Get is provided as an alias for fetch for compatibility with
 CPAN.pm.
@@ -201,9 +216,15 @@ perl bin.
 See L<CPANPLUS::Shell::Default> for
 instructions on using the default shell.  Note that if you have changed
 your default shell in your configuration, that shell will be used instead.
+If for some reason there was an error with your specified shell, you
+will be given the default shell.
 
-The default shell is only designed to be used on the command-line; its use
-in a script is completely unsupported.
+You may also optionally specify another shell to use for this invocation
+(which is a good way to test other shells):
+    perl -MCPANPLUS -e 'shell Classic'
+
+Shells are only designed to be used on the command-line; use
+of shells for scripting is discouraged and completely unsupported.
 
 =head1 AUTHORS
 
@@ -230,6 +251,22 @@ for a list of Credits and Contributors.
 =head1 SEE ALSO
 
 L<CPANPLUS::Backend>, L<CPANPLUS::Shell::Default>
+
+=head1 CONTACT INFORMATION
+
+=over 4
+
+=item * General suggestions:
+I<cpanplus-info@lists.sourceforge.net>
+
+=item * Bug reporting:
+I<cpanplus-bugs@lists.sourceforge.net>
+
+=item * Development list:
+I<cpanplus-devel@lists.sourceforge.net>
+
+=back
+
 
 =cut
 

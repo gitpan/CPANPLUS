@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Install.pm $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Install.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 #######################################################
 ###           CPANPLUS/Internals/Install.pm         ###
@@ -12,16 +12,13 @@
 package CPANPLUS::Internals::Install;
 
 use strict;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
 use DirHandle;
 use FileHandle;
 use Data::Dumper;
+use CPANPLUS::I18N;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -33,106 +30,175 @@ sub _install_module {
     my $conf = $self->{_conf};
     my $err  = $self->{_error};
 
-    my $flag;
+    ### list of modules we've installed in this session ###
+    my $mods;
 
     for my $href ( @{$args{'modules'}} ) {
-        ### assuming no one is stupid enough to overload the deref of a variable, this
-        ### should work well enough; -kane
-        ### let's allow subclassing here -autrijus
 
-        unless ( UNIVERSAL::isa( $href, 'CPANPLUS::Internals::Module' ) ) {
-            $err->trap(
-                error => "You did not pass a proper module object! @_ ($href)".
-                         ref($href),
-            );
-            $flag = 1;
-            next;
-        }
+        ### flag to see if an install failed somewhere ###
+        my $fail = 0;
 
-        ### we use the name way too often, time to shortcut... ###
-            my $m = $href->{module};
+        ### container for the module name ###
+        my $m;
 
-        ### check if any of the prereqs we're about to install wants us to get
-        ### a newer version of perl... if so, skip, we dont want to upgrade perl
-        if ($m =~ /^base$/i or $href->{package} =~ /^perl-\d/i ) {
-            $err->inform(
-                msg => "Cannot fetch $m (part of core perl distribution); skipping",
-            );
+        LOOP: {
 
-            next;
-        }
+            ### assuming no one is stupid enough to overload the deref of a variable, this
+            ### should work well enough; -kane
+            ### let's allow subclassing here -autrijus
 
-        my $is_bundle = 1 if $m =~ /^bundle::/i;
+            unless ( UNIVERSAL::isa( $href, 'CPANPLUS::Internals::Module' ) ) {
+                $err->trap(
+                    error => loc("You did not pass a proper module object! %1 (%2)", "@_", $href).
+                             ref($href),
+                );
 
-        ### get a hashref with all module information ###
-        #my $href;
-        #unless( $href = $self->_module_tree->{$m} ) {
-        #    $err->trap( error => "could not find information for module $m" );
-        #    $flag = 1;
-        #    next;
-        #}
-
-        ### pass it to fetch, it knows how to get the right dir
-        ### get the name of the file it fetched back
-        my $file;
-        unless ( $file = $self->_fetch(data => $href) ) {
-            $err->trap( error => qq[Could not fetch module $m] );
-            $flag = 1;
-            next;
-        }
-
-        ### in case of MD5 checks, we need the checksums and do the MD5
-        ### check on them.
-        ### this is hardcoded now, but should go into config:
-        #my $check_md5 = 1;
-        my $check_md5 = $conf->get_conf( 'md5' );
-
-
-        if ($check_md5) {
-            unless ( $self->_check_md5(
-                        data        => $href,
-                    )
-             ) {
-                $err->trap( error => qq[Checksums did not match for $file] );
-                $flag = 1;
-                next;
+                ### mark we did nothing for this module ###
+                $fail = 1;
+                last LOOP;
             }
-        }
 
-        ### extract the file, get the location it extracted to
-        my $dir;
-        unless ( $dir = $self->_extract( data => $href, %args ) ) {
-            $err->trap( error => qq[Could not obtain extraction directory for module $m] );
-            $flag = 1;
-            next;
-        }
+            ### we use the name way too often, time to shortcut... ###
+            $m = $href->module();
+
+            ### store we actually did something here ###
+            $mods->{$m} = $href;
+
+            ### check if any of the prereqs we're about to install wants us to get
+            ### a newer version of perl... if so, skip, we dont want to upgrade perl
+            if ($m =~ /^base$/i or $href->{package} =~ /^perl-\d/i ) {
+                $err->inform(
+                    msg => loc("Cannot fetch %1 (part of core perl distribution); skipping", $m),
+                );
+
+                ### mark we did nothing for this module ###
+                $fail = 1;
+                last LOOP;
+            }
+
+            my $is_bundle = 1 if $m =~ /^bundle::/i;
+
+            ### get a hashref with all module information ###
+            #my $href;
+            #unless( $href = $self->_module_tree->{$m} ) {
+            #    $err->trap( error => "could not find information for module $m" );
+            #    $flag = 1;
+            #    next;
+            #}
+
+            ### pass it to fetch, it knows how to get the right dir
+            ### get the name of the file it fetched back
+            my $file;
+            unless ( $file = $self->_fetch(data => $href) ) {
+                $err->trap( error => qq[Could not fetch module $m] );
+
+                $fail = 1;
+                last LOOP;
+            }
+
+            ### store where we fetched the file ###
+            $href->{status}->{fetch} = $file;
+
+            ### in case of MD5 checks, we need the checksums and do the MD5
+            ### check on them.
+            ### this is hardcoded now, but should go into config:
+            #my $check_md5 = 1;
+            my $check_md5 = $conf->get_conf( 'md5' );
 
 
-        ### make'ing the target. we get a return value
-        ### of 0 (failure), 1 (success) or an arrayref of prereqs
-        ### in case we're not allowed to install them
-        ### need to handle that case
-        my $rv;
-        unless ( $rv = $self->_make(dir => $dir, module => $href, %args) ) {
-            $err->trap( error => qq[Error installing module $m] );
-            $flag = 1;
-            next;
-        };
+            if ($check_md5) {
+                unless ( $self->_check_md5(
+                            data        => $href,
+                        )
+                 ) {
+                    $err->trap( error => loc("Checksums did not match for %1", $file) );
 
-        if ( $is_bundle ) {
-            my $res;
-            unless ( $res = $self->_install_bundle( dir => [ $dir ], %args) ) {
-                $err->trap( error => qq[Error installing bundle $m] );
-                $flag = 1;
-                next;
+                    $fail = 1;
+                    last LOOP;
+                }
+            }
+
+            $href->{status}->{md5} = 1;
+
+            ### extract the file, get the location it extracted to
+            my $dir;
+            unless ( $dir = $self->_extract( data => $href, %args ) ) {
+                $err->trap( error => loc("Could not obtain extraction directory for module %1", $m) );
+
+                $fail = 1;
+                last LOOP;
+            }
+
+            $href->{status}->{extract} = $dir;
+
+            my $check_signature = $conf->get_conf( 'signature' );
+            if ($check_signature) {
+                unless ( $self->_check_signature(
+                            dir        => $dir,
+                        )
+                 ) {
+                    $err->trap( error => loc("Signature checking failed for %1", $file) );
+
+                    $fail = 1;
+                    last LOOP;
+                }
+            }
+
+            $href->{status}->{signature} = 1;
+
+            ### make'ing the target. we get a return value
+            ### that is a hash ref of module names and their objects
+            ### we'll have to examine the rv to see if the overall
+            ### make for *this* module went ok
+            my $rv = $self->_make(dir => $dir, module => $href, %args);
+
+            unless ( $rv->{ $href->module() }->{make}->{overall} ) {
+                $err->trap( error => loc("Error installing module %1", $m) );
+
+                $fail = 1;
+                last LOOP;
             };
-        }
 
+            ### store the status explicitly for the module of this session ###
+            $href->{status}->{make} = $rv->{$m}->{make};
+
+            ### make's rv is special, since it can contain full module install's
+            ### data, and also for modules then we tried to install here (prereqs)
+            ### we'll have to loop over the keys and store that we fiddled with them
+            for my $modname ( keys %$rv ) {
+                ### obsolete, we'll overwrite anyway at the end of the loop
+                #unless( $m eq $modname ) {
+                    $mods->{$modname} = $self->module_tree->{$modname}
+                #}
+            }
+
+            if ( $is_bundle ) {
+                my $res;
+                unless ( $res = $self->_install_bundle( dir => [ $dir ], %args) ) {
+                    $err->trap( error => loc("Error installing bundle %1", $m) );
+
+                    $fail = 1;
+                    last LOOP;
+                };
+                $href->{status}->{bundle} = $res;
+            }
+
+        } # LOOP
+
+        $href->{status}->{install} = !$fail;
+
+        ### refresh the data in $mods ###
+        $mods->{$m} = $href;
     }
+
 
     ### perhaps we need to set a flag on how many/if modules succeeded/failed,
     ### and base our return value on that
-    return $flag ? 0 : 1;
+    ### return $flag ? 0 : 1;
+
+    my %return = map { my $m = $_->module(); $m => {%{$_->{status}}} } values %$mods;
+
+    return \%return;
 
 } #_install_module
 
@@ -153,7 +219,7 @@ sub _install_bundle {
 
         ### open the dir of the newly extracted bundle
         unless ($dh->open($dir)) {
-            $err->trap( error => "error opening dir $dir: $!" );
+            $err->trap( error => loc("error opening dir %1: %2", $dir, $!) );
             $flag = 1; next;
         }
 
@@ -176,26 +242,26 @@ sub _install_bundle {
                 ### if it was a .pm with a list of files in it, they'll be in the array ref $list
                 my $list;
                 unless ( $list = $self->_bundle_files( file => $file ) ) {
-                    $err->trap( error => "could not obtain required modules from $file" );
+                    $err->trap( error => loc("could not obtain required modules from %1", $file) );
                     $flag=1; next;
                 }
 
                 ### tell the user there were no modules mentioned in $file,
                 ### meaning it was probably a 'normal' .pm file
                 unless ( scalar @$list ) {
-                    $err->inform( msg => "No modules mentioned in $file" );
+                    $err->inform( msg => loc("No modules mentioned in %1", $file) );
                     next;
                 }
 
                 ### install all the modules that were stored in $list
                 my $rv;
                 unless( $rv = $self->install( modules => $list ) ) {
-                    $err->trap( error => "An error occurred while installing bundles from $file" );
+                    $err->trap( error => loc("An error occurred while installing bundles from %1", $file) );
                     $flag=1; next;
                 }
             }
         } else {
-            $err->trap( error => "no .pm files found in $dir!" );
+            $err->trap( error => loc("no .pm files found in %1!", $dir) );
             next;
         }
     }
@@ -233,12 +299,12 @@ sub _bundle_files {
             my ($name, $modobj) = $self->_parse_module( mod => $1 );
 
             unless ($modobj) {
-                $err->trap( error => "Cannot install bundled module: $name does not exist!" );
+                $err->trap( error => loc("Cannot install bundled module: %1 does not exist!", $name) );
                 next;
             }
 
             $err->inform(
-                msg   => "Installing bundled module: $name",
+                msg   => loc("Installing bundled module: %1", $name),
                 quiet => !$conf->get_conf('verbose'),
             );
 
@@ -274,63 +340,86 @@ sub _check_install {
 
     my $module = File::Spec->catfile( split(/::/, $args{module}) );
 
-    my $href;
+    my $href = {};
 
-    ### allow for extra dirs to be scanned, that might not be in @INC ###
     DIR: for my $dir ( @INC ) {
-        my $filename = File::Spec->catfile($dir, "$module.pm");
+        my ($fh, $filename);
+        if ( ref $dir ) {
+            # @INC hook -- we invoke it and get the filehandle back
+            $filename = join('/', split(/::/, $args{module})) . '.pm';
 
-        if (-e $filename ) {
-
-            ### defaults ###
-            $href = {
-                file        => $filename,
-                uptodate    => 0,
-                version     => 0,
-            };
-
-            my $fh = new FileHandle;
-            if ($fh->open($filename)) {
-
-                local $_; # the 'while (<IN>)' has issues -jmb
-                while (<$fh>) {
-
-                    # the following regexp comes from the ExtUtils::MakeMaker
-                    # documentation.
-                    if (/([\$*])(([\w\:\']*)\bVERSION)\b.*\=/) {
-
-                        ### this will eval the version in to $VERSION if it
-                        ### was declared as $VERSION in the module.
-                        ### else the result will be in $res.
-                        ### this is a fix on skud's Module::InstalledVersion
-                        {   local $VERSION;
-                            #local $@; - can't use this, it's buggy -kane
-                            my $res = eval $_;
-
-                            ### default to '0.0' if there REALLY is no version
-                            ### all to satisfy warnings
-                            #$href->{version} = $VERSION || $res;
-                            $href->{version} = $VERSION || $res || '0.0';
-
-                            $href->{uptodate} = 1 if ($version <= $href->{version});
-                            close $fh;
-                            return $href;
-                        }
-                    }
-                }
-
-                ### if we got here, we didn't find the version
-                $err->inform(
-                    msg     => "Can't check version on $args{module}... assuming it's up to date",
-                    quiet   => !$conf->get_conf('verbose')
-                );
-                $href->{uptodate} = 1;
-
-            } else {
-                $err->trap( error => "Can't open $filename: $!" );
+            if (UNIVERSAL::isa($dir, 'CODE')) {
+                ($fh) = $dir->($dir, $filename);
             }
-            close $fh;
+            elsif (UNIVERSAL::isa($dir, 'ARRAY')) {
+                ($fh) = $dir->[0]->($dir, $filename, @{$dir}{1..$#{$dir}})
+            }
+            elsif (UNIVERSAL::can($dir, 'INC')) {
+                ($fh) = $dir->INC->($dir, $filename);
+            }
+
+            if (!UNIVERSAL::isa($fh, 'GLOB')) {
+                $err->trap( error => loc("Can't open %1: %2", $filename, $!) );
+                next;
+            }
         }
+        else {
+            $filename = File::Spec->catfile($dir, "$module.pm");
+            next unless -e $filename;
+
+            $fh = new FileHandle;
+            if (!$fh->open($filename)) {
+                $err->trap( error => loc("Can't open %1: %2", $filename, $!) );
+                next;
+            }
+        }
+
+        ### defaults ###
+        $href = {
+            file        => $filename,
+            uptodate    => 0,
+            version     => 0,
+        };
+
+
+        local $_; # the 'while (<IN>)' has issues -jmb
+        while (<$fh>) {
+
+            # the following regexp comes from the ExtUtils::MakeMaker
+            # documentation.
+            if (/([\$*])(([\w\:\']*)\bVERSION)\b.*\=/) {
+
+                ### this will eval the version in to $VERSION if it
+                ### was declared as $VERSION in the module.
+                ### else the result will be in $res.
+                ### this is a fix on skud's Module::InstalledVersion
+                {   local $VERSION;
+                    #local $@; - can't use this, it's buggy -kane
+                    my $res = eval $_;
+
+                    ### default to '0.0' if there REALLY is no version
+                    ### all to satisfy warnings
+                    #$href->{version} = $VERSION || $res;
+                    $href->{version} = $VERSION || $res || '0.0';
+
+                    $href->{uptodate} = 1 if ($version <= $href->{version});
+                    close $fh;
+                    return $href;
+                }
+            }
+        }
+
+        ### only complain if we expected fo find a version higher than 0.0 anyway ###
+        if( $version > 0 ) {
+            ### if we got here, we didn't find the version
+            $err->inform(
+                msg     => loc("Can't check version on %1... assuming it's up to date", $args{module}),
+                quiet   => !$conf->get_conf('verbose')
+            );
+        }
+
+        $href->{uptodate} = 1;
+        return $href;
     }
 
     return $href;
@@ -350,14 +439,14 @@ sub _uninstall {
     ### we can pass the arguments straight on to _files()
     my $files;
     unless ( $files = $self->_files(%args) ) {
-        $err->trap( error => qq[No files found for $mod!] );
+        $err->trap( error => loc("No files found for %1!", $mod) );
         return;
     }
 
     ### ditto for _directories()
     my $dirtree;
     unless ( $dirtree = $self->_directories(%args) ) {
-        $err->trap( error => qq[No directory tree found for $mod!] );
+        $err->trap( error => loc("No directory tree found for %1!", $mod) );
         return;
     }
 
@@ -365,18 +454,22 @@ sub _uninstall {
     my $flag;
     for my $file ( @$files, $self->_packlist_file(%args)) {
         $err->inform(
-                    msg     => qq[unlinking $file],
+                    msg     => loc("unlinking %1", $file),
                     quiet   => !$conf->get_conf('verbose')
                 );
 
         unless (unlink $file) {
-            $err->trap( error => qq[could not unlink $file: $!] );
+            $err->trap( error => loc("could not unlink %1: %2", $file, $!) );
             $flag = 1;
         }
     }
 
     for my $dir ( sort @$dirtree ) {
         ### Check if the $dir is empty
+        use Cwd;
+
+        #print "I am now in: ", cwd, "\n";
+
         local *DIR;
         opendir DIR, $dir;
         my @count = readdir(DIR);
@@ -385,13 +478,13 @@ sub _uninstall {
         next unless @count == 2; # . and ..
 
         $err->inform(
-                    msg     => qq[removing $dir],
+                    msg     => loc("removing %1", $dir),
                     quiet   => !$conf->get_conf('verbose')
                 );
 
         unless (rmdir $dir) {
-            $err->trap( error => qq[could not remove $dir: $!] );
-            
+            $err->trap( error => loc("could not remove %1: %2", $dir, $!) );
+
             ### this fails on my win2k machines.. it indeed leaves the
             ### dir, but it's not a critical error, since the files have
             ### been removed. --kane
@@ -430,7 +523,7 @@ sub _check_md5 {
 
         ### open the archive file ###
         unless ( $fh->open($archive) ) {
-            $err->trap( error => "Could not open $archive: $!" );
+            $err->trap( error => loc("Could not open %1: %2", $archive, $!) );
             return 0;
         }
 
@@ -452,7 +545,7 @@ sub _check_md5 {
         CHECK: {
             if ( $checksums->{ $href->{'package'} }->{'md5'} eq $digest ) {
                 $err->inform(
-                        msg     => qq[Checksum for $archive OK],
+                        msg     => loc("Checksum for %1 OK", $archive),
                         quiet   => !$conf->get_conf('verbose')
                 );
                 return 1;
@@ -463,8 +556,8 @@ sub _check_md5 {
                     ### an outdated one... in that case we'll refetch it and try again to see
                     ### if we get a matching MD5 -kane
                     unless( $checksums = $self->_get_checksums( mod => $href, force => 1 ) ) {
-                        $err->trap( 
-                            error => qq[Unable to fetch checksums file! Can not verify this distribution is safe!] );
+                        $err->trap(
+                            error => loc("Unable to fetch checksums file! Can not verify this distribution is safe!") );
                         return 0;
                     }
 
@@ -473,7 +566,7 @@ sub _check_md5 {
 
                 } else {
 
-                    $err->trap( error => "MD5 sums did not add up for $href->{package}" );
+                    $err->trap( error => loc("MD5 sums did not add up for %1", $href->{package}) );
                     return 0;
                 }
             }
@@ -482,14 +575,45 @@ sub _check_md5 {
     } else {
 
         $err->trap(
-            error => "You don't have Digest::MD5! " .
-                     "Please install it as soon as possible! " .
-                     "Assuming $href->{package} is trustworthy"
+            error => loc("You don't have %1! Please install it as soon as possible! Assuming %1 is trustworthy", "Digest::MD5", $href->{package})
             );
         return 1;
     }
 }
 
+sub _check_signature {
+    my $self = shift;
+    my %args = @_;
+
+    my $conf = $self->{_conf};
+    my $err  = $self->{_error};
+
+    my $dir = $args{'dir'};
+
+    ### check prerequisites
+    my $use_list = { 'Module::Signature' => '0.06' };
+
+    if ($self->_can_use(modules => $use_list)) {
+        use Cwd;
+        my $old_cwd = Cwd::cwd();
+
+        chdir $dir;
+        my $rv = Module::Signature::verify();
+
+        if ($rv eq Module::Signature::SIGNATURE_OK() or
+            $rv eq Module::Signature::SIGNATURE_MISSING()) {
+            return 1;
+        }
+
+        return 0;
+    }
+    else {
+        $err->trap(
+            error => loc("You don't have %1! Please install it as soon as possible! Assuming %1 is trustworthy", "Module::Signature", $dir)
+        );
+        return 1;
+    }
+}
 1;
 
 # Local variables:

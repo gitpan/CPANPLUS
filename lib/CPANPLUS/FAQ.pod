@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/FAQ.pod $
-# $Revision: #4 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/FAQ.pod $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 =head1 NAME
 
@@ -11,11 +11,74 @@ This is the Frequently Asked Questions list for the CPANPLUS kit.
 More accurately, it's a very thin placeholder for where the FAQ will
 soon be.
 
-The most up-to-date version of the FAQ can be found at the 
+The most up-to-date version of the FAQ can be found at the
 website I<http://cpanplus.sourceforge.net>.  This version of
 the FAQ may contain updates between code releases.
 
 =head1 QUESTIONS
+
+=over 4
+
+=item * How can I explicitly run the configuration?
+
+=item * How often are index files reloaded?
+
+=item * I think I've found a bug in CPANPLUS.  How can I see
+if it has been reported?
+
+=item * How can I use CPANPLUS with multiple versions of Perl?
+
+=item * How can I get CPANPLUS to use my proxy?
+
+=item * I want to execute certain commands whenever I start
+the shell (for example, set my proxy for a laptop that moves
+between networks).  How can I do that?
+
+=item * CPANPLUS reports that it is going to fetch during an
+initial install, but it hangs for a long time then reports a failure.
+
+=item * I upgraded my version of CPANPLUS and something no
+longer works the same way.
+
+=item * Can CPANPLUS do E<lt>random somethingE<gt>?
+
+=item * Why not make E<lt>some changeE<gt> to the default shell?
+
+=item * What is the lowest version of Perl CPANPLUS works under?
+
+=item * On what platforms has CPANPLUS been tested?
+
+=item * How much CPANPLUS.pm code comes from CPAN.pm?
+
+=item * How can I install modules if I'm not root?
+
+=item * Can I let different users on my system use CPANPLUS?
+
+=item * Can I use a local mirror (such as a CD), but fall back
+to a public mirror if my files are out of date?
+
+=back
+
+=head1 ANSWERS
+
+=head2 How can I explicitly run the configuration?
+
+You can use the I<Setup.pm> module, which will replace your
+existing configuration:
+
+	perl -MCPANPLUS::Configure::Setup -e 'CPANPLUS::Configure::Setup->init()' 
+
+For more information, refer to L<CPANPLUS::Configure::Setup>.
+
+=head2 How often are index files reloaded?
+
+CPANPLUS uses lazy loading, so index files are only fetched when you
+start to use them (this means that if you leave the shell running for
+5 days, they will only be fetched for your first search, not for one
+you run several days later).  If they are older than one day at that 
+time, they will be fetched.  You can force a reload  with the Backend method
+C<$cp-E<gt>reload_indices(update_source =E<gt> 1);>, or the command C<x> in
+the default shell.
 
 =head2 I think I've found a bug in CPANPLUS.  How can I see if it has been reported?
 
@@ -24,6 +87,42 @@ I<http://www.geocrawler.com/lists/3/SourceForge/18022/>.
 
 Work-arounds to known bugs will probably be available in the most
 recent FAQ.
+
+=head2 How can I use CPANPLUS with multiple versions of Perl?
+
+You only need one installation of CPANPLUS for all versions of Perl.
+As of version 0.04, CPANPLUS keeps different directories under its
+home directory for each version of Perl:
+
+    .cpanplus/
+        authors/
+            id/     # tarballs live here
+        5.6.0/
+            build/
+        5.7.3/
+            build/
+
+This prevents conflicts.  You can install CPANPLUS for both versions
+of Perl and then point them at the same home directory for CPANPLUS.
+You can then invoke the CPANPLUS for a particular version with the -M
+command-line syntax:
+
+    perl5.6.0 -MCPANPLUS -e 'shell'
+
+There is a caveat: 5.6.x and 5.7.x and higher are not binary compatible,
+which means that if you have the I<same> version of storable for
+both Perl installs, storable will be confused and most likely read the
+stored source files incorrectly.   This is not a problem if you have
+different versions of storable, because different source files are kept
+for each version of storable used.
+
+You can also install just one version of CPANPLUS for one version of
+Perl, and, where appropriate, in the Backend methods, send another
+Perl binary as an argument:
+
+    perl => /home/kane/myperl/perl
+
+to override the Perl you invoked the script with.
 
 =head2 How can I get CPANPLUS to use my proxy?
 
@@ -35,23 +134,37 @@ use an ftp proxy:
 
 Refer to L<LWP::UserAgent> for more details.
 
+=head2 I want to execute certain commands whenever I start the shell (for example, set my proxy for a laptop that moves between networks).  How can I do that?
+
+The easiest way is to create a wrapper for shell which includes the
+modifications you desire.   For instance:
+
+    #!/usr/bin/perl
+
+    BEGIN {
+        $ENV{ftp_proxy} = 'current.domain.org';
+    }
+
+    use CPANPLUS;
+    shell();
+
 =head2 CPANPLUS reports that it is going to fetch during an initial install, but it hangs for a long time then reports a failure.
 
-In versions before 0.04, CPANPLUS was designed to fetch initial files 
-exclusively from ftp.cpan.org on the assumption this site would always 
-be available. If CPANPLUS hangs during the initial fetch, it could 
-mean that ftp.cpan.org is unavailable. This is only a problem for 
-installation, as your own host list will be used once CPANPLUS is 
-installed. A work-around is to edit I<Config.pm-orig> in I<lib/CPANPLUS> 
+In versions before 0.04, CPANPLUS was designed to fetch initial files
+exclusively from ftp.cpan.org on the assumption this site would always
+be available. If CPANPLUS hangs during the initial fetch, it could
+mean that ftp.cpan.org is unavailable. This is only a problem for
+installation, as your own host list will be used once CPANPLUS is
+installed. A work-around is to edit I<Config.pm-orig> in I<lib/CPANPLUS>
 in the CPANPLUS directory. Under the hash key I<_ftp>
-there's a key I<urilist>. Near that should be the line 
-C<'host' => 'ftp.cpan.org'>. Simply replace this host with another one. 
+there's a key I<urilist>. Near that should be the line
+C<'host' => 'ftp.cpan.org'>. Simply replace this host with another one.
 
-=head2 I upgraded my version of CPANPLUS and something no longer works the same way
+=head2 I upgraded my version of CPANPLUS and something no longer works the same way.
 
-The CPANPLUS interface will only be backwards-compatible with 
+The CPANPLUS interface will only be backwards-compatible with
 itself after version 1.0. This gives us a chance to
-correct and expand without being locked to an interface in early 
+correct and expand without being locked to an interface in early
 versions. Two things that have notably changed since
 the first version are the configuration and some Backend return values.
 
@@ -60,7 +173,7 @@ the first version are the configuration and some Backend return values.
 If it has to do with installing modules, most likely! Keep in mind that
 while the default shell may not be able to do something like "install all
 modules in the POE namespace", you can easily make something of the sort,
-using L<CPANPLUS::Backend>. 
+using L<CPANPLUS::Backend>.
 
 =head2 Why not make I<some change> to the default shell?
 
@@ -69,7 +182,7 @@ The default shell is designed to be what the developers wanted in a shell.
 If it doesn't do what you want, consider writing your own with
 L<CPANPLUS::Backend>, and possibly releasing it in the B<CPANPLUS::Shell::*>
 namespace. You can also change your default shell to be any other CPANPLUS
-shell you have installed. 
+shell you have installed.
 
 =head2 What is the lowest version of Perl CPANPLUS works under?
 
@@ -77,7 +190,7 @@ Reliably under 5.005_03.
 
 =head2 On what platforms has CPANPLUS been tested?
 
-FreeBSD, Linux, Win32 and Cygwin. 
+FreeBSD, Linux, Win32 Solaris, VMS, Darwin (Mac OS X) and Cygwin.
 
 =head2 How much CPANPLUS.pm code comes from CPAN.pm?
 
@@ -87,7 +200,7 @@ None.
 
 Set C<makemakerflags> to something like this:
 
-    LIB=~/perl/lib INSTALLMAN1DIR=~/perl/man/man1 INSTALLMAN3DIR=~/perl/man/man3 
+    LIB=~/perl/lib INSTALLMAN1DIR=~/perl/man/man1 INSTALLMAN3DIR=~/perl/man/man3
 
 Of course you should replace 'perl' with the appropriate directory.
 
@@ -142,7 +255,9 @@ terms as Perl itself.
 =head1 SEE ALSO
 
 L<CPANPLUS::Backend>, L<CPANPLUS::Shell::Default>, L<CPANPLUS>,
-L<CPANPLUS::Configure>, http://cpanplus.sourceforge.net
+L<CPANPLUS::Config>, 
+L<CPANPLUS::Configure::Setup>,
+http://cpanplus.sourceforge.net
 
 =cut
 

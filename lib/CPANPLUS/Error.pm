@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Error.pm $
-# $Revision: #2 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Error.pm $
+# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
 
 ###############################################
 ###              CPANPLUS/Error.pm          ###
@@ -12,11 +12,10 @@ package CPANPLUS::Error;
 
 use strict;
 use Carp;
+use CPANPLUS::I18N;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw( $VERSION );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -43,9 +42,11 @@ sub new {
         STACK   => [],                          # Error stack
         MSG     => '',                          # Info message
         INFORM  => [],                          # Information stack
-        ELEVEL  => $args{error_level}   || '1', # Error handling level
         ILEVEL  => $args{message_level} || '0', # Inform verbosity level
-
+        ELEVEL  => defined $args{error_level}   # Error handling level
+                        ? $args{error_level}
+                        : 1,
+        COUNTER => 0,
     };
     return bless $self, $class;
 }
@@ -56,7 +57,7 @@ sub trap {
     my %args = @_;
 
     my $error = $args{'error'};
-    $error .= (" in " . $self->_who_was_it() . " at " . scalar localtime) if $self->{ETRACK};
+    $error .= loc(" in %1 at %2", $self->_who_was_it(), scalar localtime) if $self->{ETRACK};
 
     if ( length $args{error} ) {
 
@@ -64,7 +65,8 @@ sub trap {
         $self->{ERROR} = $error;
 
         ### adds the error to the stack ###
-        unshift @{$self->{STACK}}, $self->{ERROR};
+        unshift @{$self->{STACK}}, [ $self->{ERROR}, ++$self->{COUNTER} ];
+
     } else {
         ### must be a confused call ###
         return 0;
@@ -90,7 +92,13 @@ sub trap {
 ### returns the entire stack in list context,
 ### or just the current error in scalar context.
 ### it does NOT change the STACK nor the ERROR
-sub stack { return wantarray ? @{$_[0]->{STACK}} : $_[0]->{ERROR} }
+sub stack {
+    my $self = shift;
+
+    return wantarray
+        ? @{[ map { $_->[0] } @{$self->{STACK}} ]}
+        : $self->{ERROR}
+}
 
 ### flushes the current ERROR and returns it in scalar context
 ### flushes the entire stack in list context
@@ -101,17 +109,17 @@ sub flush {
     if (my $level = shift) {
 
         ### splice off the number of errors that are asked for ###
-        my @list = splice @{$self->{STACK}}, 0, $level;
+        my @list = map { $_->[0] } splice @{$self->{STACK}}, 0, $level;
 
         ### reset the error
-        $self->{ERROR} = $self->{STACK}->[0];
+        $self->{ERROR} = $self->{STACK}->[0]->[0];
 
         ### return a list of the errors spliced off
         return \@list;
 
     } else {
         ### save the current stack to return it
-        my $list = $self->{STACK};
+        my $list = [ map { $_->[0] } @{$self->{STACK}} ];
 
         ### delete everything from the stack
         $self->{ERROR} = '';
@@ -130,11 +138,11 @@ sub inform {
     return 0 unless length $args{msg};
 
     my $msg = $args{'msg'};
-    $msg .= (" in " . $self->_who_was_it() . " at " . scalar localtime ) if $self->{ITRACK};
+    $msg .= loc(" in %1 at %2", $self->_who_was_it(), scalar localtime) if $self->{ITRACK};
 
     if ( !$args{quiet} || $self->{ILEVEL} ) { print $msg,"\n" }
 
-    unshift @{$self->{INFORM}}, $msg;
+    unshift @{$self->{INFORM}}, [ $msg, ++$self->{COUNTER} ];
 
     $self->{MSG} = $msg;
 
@@ -142,7 +150,13 @@ sub inform {
     return 1;
 }
 
-sub list { return wantarray ? @{$_[0]->{INFORM}} : $_[0]->{MSG} }
+sub list {
+    my $self = shift;
+
+    return wantarray
+        ? @{[ map { $_->[0] } @{$self->{INFORM}} ]}
+        : $self->{MSG}
+}
 
 sub forget {
     my $self = shift;
@@ -150,17 +164,17 @@ sub forget {
     if (my $level = shift) {
 
         ### splice off the number of errors that are asked for ###
-        my @list = splice @{$self->{INFORM}}, 0, $level;
+        my @list = map { $_->[0] } splice @{$self->{INFORM}}, 0, $level;
 
         ### reset the error
-        $self->{MSG} = $self->{INFORM}->[0];
+        $self->{MSG} = $self->{INFORM}->[0]->[0];
 
         ### return a list of the errors spliced off
         return \@list;
 
     } else {
         ### save the current stack to return it
-        my $list = $self->{INFORM};
+        my $list = [ map { $_->[0] } @{$self->{INFORM}} ] ;
 
         ### delete everything from the stack
         $self->{MSG} = '';
@@ -170,6 +184,31 @@ sub forget {
     }
 }
 
+sub summarize {
+    my $self = shift;
+    my %args = @_;
+
+    my $stack = my $list = $args{all} if defined $args{all};
+
+    $list   ||= defined $args{msg}
+                    ?   $args{msg}
+                    :   0;
+
+    $stack  ||= defined $args{error}
+                    ?   $args{error}
+                    :   $list ? 0 : 1;
+
+    my @list    = @{$self->{INFORM}}    if $list;
+    my @stack   = @{$self->{STACK}}     if $stack;
+
+
+    my @sorted =
+        map     { $_->[0] }
+        sort    { $a->[1] <=> $b->[1] }
+        map     { $_ } ( @list, @stack );
+
+    return \@sorted;
+}
 
 ### set object variables, like DEBUG ###
 sub set {
@@ -216,6 +255,8 @@ CPANPLUS::Error - Error handling for the CPAN++ interface
     my $last_two_errors = $obj->flush(2);
     my $all_messages = $obj->forget();
 
+    my $msg_and_err = summarize(all => 1);
+
 
 =head1 DESCRIPTION
 
@@ -224,9 +265,7 @@ components of the CPAN++ interface.
 
 =head1 METHODS
 
-=head2 new(error_track => bool, error_level => number,
-message_track => bool,
-message_level => bool);
+=head2 new(error_track => bool, error_level => number, message_track => bool, message_level => bool)
 
 The constructor expects a hash of arguments for the following
 fields:
@@ -266,40 +305,64 @@ occurred.  By default it is false.
 
 =back
 
-=head2 trap(error => ERROR, quiet => bool );
+=head2 trap(error => ERROR, quiet => bool )
 
 This method puts the error message on the error stack.  The optional
 'quiet' argument will override the error_level setting and prevent
 error actions from being taken.  1 is returned for success in
 handling the error; 0 is returned otherwise.
 
-=head2 inform(msg => WARNING, quiet => bool);
+=head2 inform(msg => WARNING, quiet => bool)
 
 This function behaves like trap() except that it manipulates
 messages instead of errors.  It returns 1 if the message was
 handled, and 0 if it was not.
 
-=head2 stack();
+=head2 stack()
 
 If called in list context, stack() returns the contents of the
 error stack.  If called in scalar context, it returns the most
 recent error.
 
-=head2 list();
+=head2 list()
 
 In list context, this method returns the message stack.  In
 scalar context it returns the most recent message.
 
-=head2 flush([NUMBER]);
+=head2 flush([NUMBER])
 
 Flush removes the specified number of errors from the error stack
 and returns an array reference containing the removed errors.  If
 no argument is specified, the entire stack is emptied.
 
-=head2 forget([NUMBER]);
+=head2 forget([NUMBER])
 
 This method is like flush() except that it operates on the
 message stack.
+
+=head2 summarize(ARG => BOOL)
+
+This method allows errors and messages to be combined in the order in
+which they were logged.  If no argument is specified, I<error> is
+assumed.  It accepts the following keys:
+
+=over 4
+
+=item * I<all>
+
+A true value returns both messages and errors.
+
+=item * I<msg>
+
+A true value returns just the message history.
+
+=item * I<error>
+
+A true value returns the error stack.  This is the default setting.
+
+=back
+
+An array reference containing the results is returned.
 
 =head1 AUTHORS
 

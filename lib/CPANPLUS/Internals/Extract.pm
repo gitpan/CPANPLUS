@@ -1,5 +1,5 @@
-# $File: //depot/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #3 $ $Change: 59 $ $DateTime: 2002/06/06 05:24:49 $
+# $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
+# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -12,14 +12,11 @@
 package CPANPLUS::Internals::Extract;
 
 use strict;
-use CPANPLUS::Configure;
-use CPANPLUS::Error;
 use File::Path ();
+use CPANPLUS::I18N;
 
 BEGIN {
-    use Exporter    ();
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( Exporter );
+    use vars        qw($VERSION);
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
@@ -51,14 +48,21 @@ sub _extract {
                    $args{data}->{package},
                );
 
+    unless( -s $file ) {
+        $err->trap( error => loc("%1 has zero size! Can not extract!", $file) );
+        return 0;
+    }
+
     my $force = $args{force};
     $force = $conf->get_conf('force') unless defined $force;
 
+    my $perl = $args{perl} || $conf->_get_build('perl') || $^X;
+
     ### we already extracted this file once this run.
     ### so return the dir, unless force is in effect -kane
-    if ( $self->{_extracted}->{$file} and !$force ) {
+    if ( my $loc = $self->{_extracted}->{$file} and !$force ) {
         $err->inform(
-                msg     => qq[already extracted $file. Won't extract again without force],
+                msg     =>  loc("Already extracted '%1' to '%2'. Won't extract again without force", $file, $loc),
                 quiet   => !$conf->get_conf('verbose'),
         );
         return $self->{_extracted}->{$file};
@@ -68,12 +72,30 @@ sub _extract {
     ### gave it path+file - perhaps we could 'cheat' and use File::Spec->catdir? -jmb
     #$file = File::Spec->canonpath($file);
 
+    my $perl_version = $self->_perl_version( perl => $perl );
+
     ### chdir to the cpanplus build base directory
-    my $base = $args{'fetchdir'}
-            || File::Spec->catdir($conf->_get_build(qw/base moddir/));
+    my $base = $args{'extractdir'}
+            || File::Spec->catdir(
+                            $conf->_get_build('base'),
+                            $perl_version,
+                            $conf->_get_build('moddir')
+                );
+
+    ### if the dir doesn't exist yet, create it ###
+    unless( -d $base ) {
+
+        unless( $self->_mkdir( dir => $base ) ) {
+            $err->inform(
+                msg   => loc("Could not create %1", $base),
+                quiet => !$conf->get_conf('verbose'),
+            );
+            return 0;
+        }
+    }
 
     unless ( chdir $base ) {
-        $err->trap( error => "could not cd into $base" );
+        $err->trap( error => loc("could not cd into %1", $base) );
         return 0;
     }
 
@@ -89,14 +111,14 @@ sub _extract {
 
     ### ok, unknown format, abort!
     } else {
-        $err->trap( error => "Unknown file format for $file" );
+        $err->trap( error => loc("Unknown file format for %1", $file) );
         return 0;
     }
 
     ### done extracting the files, cd back to the dir we were started in
     my $orig = $conf->_get_build('startdir');
 
-    chdir $orig or $err->inform( msg => "Could not chdir into $orig" );
+    chdir $orig or $err->inform( msg => loc("Could not chdir into %1", $orig) );
 
     ### the dir we extracted everything into
     my $extract_dir = File::Spec->catdir($base, $dir);
@@ -152,16 +174,16 @@ sub _untar {
 
         my @list = $tar->list_files;
         ($dir) = $list[0] =~ m[(?:./)*(\S+?)(?:/|$)]
-            or $err->trap( error => "Could not read dir name from $file" );
+            or $err->trap( error => loc("Could not read dir name from %1", $file) );
 
         if ($dir) {
             eval { File::Path::rmtree($dir) }; # non-fatal
 
-            if($@) { $err->trap( error => qq[Error removing $dir: $@] ); }
+            if($@) { $err->trap( error => loc("Error removing %1: %2", $dir, $@) ); }
 
             for (@list) {
                 $err->inform(
-                    msg   => "Extracting $_",
+                    msg   => loc("Extracting %1", $_),
                     quiet => !$verbose
                 );
                 ### I just noticed that we don't bail if this fails.
@@ -192,7 +214,7 @@ sub _untar {
     if ( !$dir and my ($tar, $gzip) = $conf->_get_build( qw|tar gzip| ) ) {
         ### either Archive::Tar failed, or the user doesn't have it installed
 
-        $err->inform( msg => "Untarring $file", quiet => !$verbose );
+        $err->inform( msg => loc("Untarring %1", $file), quiet => !$verbose );
 
         my $captured;
 
@@ -201,7 +223,7 @@ sub _untar {
             buffer  => \$captured,
             verbose => 0,
         ) ) {
-            $err->trap( error => "could not call tar/gzip: $!");
+            $err->trap( error => loc("could not call tar/gzip: %1", $!));
             return 0;
         }
 
@@ -209,7 +231,7 @@ sub _untar {
         foreach (split(/\n/, $captured)) {
             ($dir) = m{(?:.[/\\])*(\S+?)(?:[/\\]|$)} unless defined($dir);
             $err->inform(
-                msg   => "Extracting $_",
+                msg   => loc("Extracting %1", $_),
                 quiet => !$verbose
             );
         }
@@ -220,12 +242,12 @@ sub _untar {
                 $err->trap( error => "tar/gzip error: $!" );
         }
         else {
-            $err->trap( error => "Could not read dir name from $file" );
+            $err->trap( error => loc("Could not read dir name from %1", $file) );
         }
     }
     elsif (!$have_module) {
         $err->trap(
-            error => "You don't have Archive::Tar! Please install it as soon as possible!"
+            error => loc("You don't have %1! Please install it as soon as possible!", "Archive::Tar")
         );
         return 0;
     }
@@ -254,7 +276,7 @@ sub _unzip {
     if ($self->_can_use(modules => $use_list)) {
 
         $err->inform(
-            msg   => "Unzipping $file",
+            msg   => loc("Unzipping %1", $file),
             quiet => !$verbose
         );
 
@@ -265,7 +287,7 @@ sub _unzip {
         my $zip = Archive::Zip->new();
 
         unless ( $zip->read($file) == &Archive::Zip::AZ_OK ){
-            $err->trap( error => "Unable to read $file" );
+            $err->trap( error => loc("Unable to read %1", $file) );
             return 0;
         }
 
@@ -274,7 +296,7 @@ sub _unzip {
         ### extract all the files ###
         my @list = $zip->members;
         ($dir) = $list[0]->{fileName} =~ m[(\S+?)(?:/|$)] or
-            $err->trap( error => "Could not read dir name from $file" );
+            $err->trap( error => loc("Could not read dir name from %1", $file) );
 
         for (@list) {
             $err->inform(
@@ -283,14 +305,14 @@ sub _unzip {
             );
 
             unless ($zip->extractMember($_) == &Archive::Zip::AZ_OK) {
-                $err->trap( error => "Extraction of $_ from $file failed" );
+                $err->trap( error => loc("Extraction of %1 from %2 failed", $_, $file) );
                 return 0;
             } #unless
 
         } #for
     } elsif ( my $unzip = $conf->_get_build( 'unzip' ) ) {
 
-        $err->inform( msg => "Unzipping $file", quiet => !$verbose );
+        $err->inform( msg => loc("Unzipping %1", $file), quiet => !$verbose );
 
         my $captured;
 
@@ -299,7 +321,7 @@ sub _unzip {
             buffer  => \$captured,
             verbose => 0,
         ) ) {
-            $err->trap( error => "could not call unzip: $!");
+            $err->trap( error => loc("could not call unzip: %1", $!));
             return 0;
         }
 
@@ -307,7 +329,7 @@ sub _unzip {
         foreach (split(/\n/, $captured)) {
             ($dir) = m{(?:.[/\\])*(\S+?)(?:[/\\]|$)} unless defined($dir);
             $err->inform(
-                msg     => "Extracting $_",
+                msg     => loc("Extracting %1", $_),
                 quiet   => !$verbose,
             );
         }
@@ -315,15 +337,15 @@ sub _unzip {
         if ($dir) {
             File::Path::rmtree($dir);
             $self->_run( command => [ $unzip, '-qq', $file ] ) or
-                $err->trap( error => "unzip error: $!" );
+                $err->trap( error => loc("unzip error: %1", $!) );
         }
         else {
-            $err->trap( error => "Could not read dir name from $file" );
+            $err->trap( error => loc("Could not read dir name from %1", $file) );
         }
 
     } else {
         $err->trap(
-            error => "You don't have Archive::Zip! Please install it as soon as possible!"
+            error => loc("You don't have %1! Please install it as soon as possible!", "Archive::Zip")
         );
         return 0;
     }
@@ -346,22 +368,21 @@ sub _gunzip {
     if ($self->_can_use(modules => $use_list)) {
 
         $err->inform(
-            msg   => "Gunzipping $args{'file'}",
+            msg   => loc("Gunzipping %1", $args{'file'}),
             quiet => !$conf->get_conf('verbose')
         );
 
         ### gzip isn't catching the error properly if the file
         ### is non-existent apparently... -Kane
         unless ( -e $args{'file'} ) {
-            $err->trap( error => "Can't find file $args{'file'}" );
+            $err->trap( error => loc("Can't find file %1", $args{'file'}) );
             return 0;
         }
 
         my $gz = Compress::Zlib::gzopen($args{'file'}, 'rb');
 
         unless( $gz ) {
-            $err->trap( error => "unable to open " . $args{'file'} . ": " .
-                                 $Compress::Zlib::gzerrno );
+            $err->trap( error => loc("unable to open %1: %2", $args{'file'}, $Compress::Zlib::gzerrno) );
             return 0;
         }
 
@@ -371,7 +392,7 @@ sub _gunzip {
         if ($args{'name'}) {
             my $fh;
             unless( $fh = FileHandle->new(">$args{name}") ) {
-                $err->trap( error => "File creation failed: $!" );
+                $err->trap( error => loc("File creation failed: %1", $!) );
                 return 0;
             }
 
@@ -395,7 +416,7 @@ sub _gunzip {
             buffer  => \$str,
             verbose => 0,
         ) ) {
-            $err->trap( error => "could not call gzip: $!");
+            $err->trap( error => loc("could not call gzip: %1", $!));
             return 0;
         }
 
@@ -403,7 +424,7 @@ sub _gunzip {
         if ($args{'name'}) {
             my $fh;
             unless( $fh = FileHandle->new(">$args{name}") ) {
-                $err->trap( error => "File creation failed: $!" );
+                $err->trap( error => loc("File creation failed: %1", $!) );
                 return 0;
             }
 
@@ -416,7 +437,7 @@ sub _gunzip {
 
     } else {
         $err->trap(
-            error => "You don't have Compress::Zlib! Please install it as soon as possible!"
+            error => loc("You don't have %1! Please install it as soon as possible!", "Compress::Zlib")
         );
         return 0;
     }
