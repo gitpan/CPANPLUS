@@ -1,5 +1,24 @@
 # $File: //member/autrijus/cpanplus/dist/ChangeLog $
-# $Revision: #17 $ $Change: 4050 $ $DateTime: 2002/04/30 12:49:41 $
+# $Revision: #19 $ $Change: 4066 $ $DateTime: 2002/04/30 18:02:42 $
+
+[Changes for 0.033 - May 1, 2002]
+
+Following the 'next-day followup' tradition, this is _yet another_ bugfix
+release, due to a rather lousy bug: $CPANPLUS::VERSION was not incremented.
+
+* Bug fixes (and their first reporters):
+
+ - SMTP host in 'cpantest' script should be onion.perl.org. (Lee Goddard)
+
+ - Timeout controls in 'cpansmoke' segfaults on some version of ActivePerl.
+
+ - Interactive 'make test' processes are now handled correctly.
+
+ - Bundle modules that stores in lib/Bundle/ is recognized.
+
+ - Bundles are now always installed regardless of the 'force' setting.
+
+ - Make.pm was runing 'make test' verbosely on all Unix platforms.
 
 [Changes for 0.032 - April 30, 2002]
 

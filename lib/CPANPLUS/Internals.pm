@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #15 $ $Change: 4021 $ $DateTime: 2002/04/29 10:23:50 $
+# $Revision: #16 $ $Change: 4063 $ $DateTime: 2002/04/30 17:11:18 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -52,7 +52,7 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.032';
+    $VERSION    =   '0.033';
 }
 
 ### ROUGH FLOW OF THE MODULE ###

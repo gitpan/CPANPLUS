@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # $File: //member/autrijus/cpanplus/dist/t/3-backend.t $
-# $Revision: #6 $ $Change: 3992 $ $DateTime: 2002/04/25 14:39:21 $
+# $Revision: #6 $ $Change: 3992 $ $DateTime: 2002/04/25 21:39:21 $
 
 # This is going test all of CPANPLUS::Backend except the parts which
 # actually download and install modules.  Those will be in another part.

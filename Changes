@@ -1,4 +1,165 @@
 ____________________________________________________________________________
+[  4066] By: autrijus                              on 2002/04/30  18:02:42
+        Log: * This be CPANPLUS 0.033, maintenance release.
+     Branch: dist
+	  !> ChangeLog lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  4065] By: autrijus                              on 2002/04/30  18:01:03
+        Log: * changelog.
+     Branch: devel
+	   ! ChangeLog
+____________________________________________________________________________
+[  4064] By: autrijus                              on 2002/04/30  17:53:14
+        Log: * 'make test' was being overly verbose on unices.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  4063] By: autrijus                              on 2002/04/30  17:11:18
+        Log: * mfc.
+     Branch: dist
+	  !> AUTHORS ChangeLog bin/cpantest lib/CPANPLUS.pm
+	  !> lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  4062] By: autrijus                              on 2002/04/30  17:05:12
+        Log: * siliness documented.
+     Branch: devel
+	   ! AUTHORS ChangeLog
+____________________________________________________________________________
+[  4061] By: autrijus                              on 2002/04/30  16:57:40
+        Log: * Version string mismatch.
+     Branch: devel
+	   ! lib/CPANPLUS.pm lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  4060] By: autrijus                              on 2002/04/30  16:56:09
+        Log: * SMTP host in 'cpantest' script should be onion.perl.org.
+     Branch: devel
+	   ! bin/cpantest
+____________________________________________________________________________
+[  4057] By: autrijus                              on 2002/04/30  15:37:33
+        Log: * mfc.
+     Branch: dist
+	   ! lib/CPANPLUS/Internals/Extract.pm
+	  !> Makefile.PL bin/cpansmoke lib/CPANPLUS/Internals/Make.pm
+	  !> lib/CPANPLUS/Internals/Report.pm
+____________________________________________________________________________
+[  4056] By: autrijus                              on 2002/04/30  15:03:10
+        Log: * temporarily pull the timeout for win32.
+     Branch: devel
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  4055] By: kane                                  on 2002/04/30  14:55:44
+        Log: * added warning to Makefile.PL to configure it straight away,
+	     since otherwise non priviliged users might be unable to use it
+     Branch: devel
+	   ! Makefile.PL
+____________________________________________________________________________
+[  4054] By: autrijus                              on 2002/04/30  14:42:16
+        Log: * another try at runes.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  4053] By: autrijus                              on 2002/04/30  14:37:41
+        Log: * more bad magic.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  4052] By: autrijus                              on 2002/04/30  14:31:30
+        Log: * do {} was broking win32.
+     Branch: devel
+	   ! bin/cpansmoke
+____________________________________________________________________________
+[  4051] By: autrijus                              on 2002/04/30  14:13:39
+        Log: * display fetching url on verbose queries.
+             * disable rmtree() fatality.
+             * enable non-buffered tests.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Extract.pm
+	   ! lib/CPANPLUS/Internals/Make.pm
+	   ! lib/CPANPLUS/Internals/Report.pm
+____________________________________________________________________________
+[  4050] By: autrijus                              on 2002/04/30  12:49:41
+        Log: * mfc.
+     Branch: dist
+	  !> ChangeLog lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  4049] By: autrijus                              on 2002/04/30  12:49:13
+        Log: * force buffering on Makefile.PL.
+     Branch: devel
+	   ! ChangeLog lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  4048] By: autrijus                              on 2002/04/30  12:25:05
+        Log: * mfc.
+     Branch: dist
+	  !> ChangeLog lib/CPANPLUS/Configure/Setup.pm
+	  !> lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  4047] By: autrijus                              on 2002/04/30  12:03:31
+        Log: * fix timezone guessing for people at the greenwitch zone.
+             * fix warnings when storable is not used.
+     Branch: devel
+	   ! ChangeLog lib/CPANPLUS/Configure/Setup.pm
+	   ! lib/CPANPLUS/Internals/Source.pm
+____________________________________________________________________________
+[  4046] By: autrijus                              on 2002/04/30  11:33:29
+        Log: * mfc.
+     Branch: dist
+	  !> lib/CPANPLUS/Internals/Extract.pm
+	  !> lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  4045] By: autrijus                              on 2002/04/30  11:32:59
+        Log: * oops.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  4044] By: autrijus                              on 2002/04/30  11:23:37
+        Log: * recognize bundles in lib/Bundle/...
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  4043] By: autrijus                              on 2002/04/30  11:16:42
+        Log: * it's inform(msg=>...), not the other way around.
+     Branch: devel
+	   ! lib/CPANPLUS/Internals/Extract.pm
+	   ! lib/CPANPLUS/Internals/Install.pm
+____________________________________________________________________________
+[  4042] By: autrijus                              on 2002/04/30  10:59:09
+        Log: * mfc.
+     Branch: dist
+	  !> AUTHORS ChangeLog lib/CPANPLUS/Backend.pm
+	  !> lib/CPANPLUS/Configure.pm lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  4041] By: autrijus                              on 2002/04/30  10:57:45
+        Log: * kudra's doc patch.
+     Branch: devel
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  4040] By: autrijus                              on 2002/04/30  10:40:42
+        Log: * Setup.pm should check for non-writable Config.pm first.
+             * Configure->save() now reloads the Config.pm.
+             * that brings TONYC to the authors list.
+     Branch: devel
+	   ! AUTHORS ChangeLog lib/CPANPLUS/Configure.pm
+	   ! lib/CPANPLUS/Configure/Setup.pm
+____________________________________________________________________________
+[  4038] By: autrijus                              on 2002/04/30  00:01:01
+        Log: * changes.
+             * last-minute mfcs.
+     Branch: devel
+	   ! Changes
+     Branch: dist
+	   ! Changes Makefile.PL lib/CPANPLUS/Internals/Make.pm
+	  !> ChangeLog lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
+[  4037] By: autrijus                              on 2002/04/29  23:58:55
+        Log: * documenting the last change.
+     Branch: devel
+	   ! ChangeLog
+____________________________________________________________________________
+[  4036] By: autrijus                              on 2002/04/29  23:56:49
+        Log: * always install bundles regardless of forcedness.
+     Branch: devel
+	   ! lib/CPANPLUS/Backend.pm
+____________________________________________________________________________
 [  4035] By: autrijus                              on 2002/04/29  23:48:15
         Log: * This be CPANPLUS 0.032.
      Branch: dist

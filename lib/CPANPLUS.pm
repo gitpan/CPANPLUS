@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS.pm $
-# $Revision: #9 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
+# $Revision: #10 $ $Change: 4063 $ $DateTime: 2002/04/30 17:11:18 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -22,7 +22,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   '0.031';    #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   '0.033';    #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:

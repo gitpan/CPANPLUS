@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #19 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
+# $Revision: #21 $ $Change: 4069 $ $DateTime: 2002/04/30 18:07:25 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -296,7 +296,7 @@ sub _make {
 
             if ($target ne 'skiptest') {
                 unless ( $self->_run(
-                    command => [$make, @args, 'test', "TEST_VERBOSE=(eval(chr(36).'|=1'),0)"],
+                    command => [$make, @args, 'test', "TEST_VERBOSE=(eval(chr(36).q(|=1))-1)"],
                     buffer  => \$captured,
                     verbose => 1
                 ) ) {
