@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #5 $ $Change: 3190 $ $DateTime: 2003/01/04 20:52:07 $
+# $Revision: #7 $ $Change: 3421 $ $DateTime: 2003/01/11 12:14:25 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###
@@ -196,7 +196,7 @@ sub _fetch {
 
                     } else {
                         ### store this info in the object if we got an object ###
-                        if ($args{data} ) { $args{data}->{status}->{fetch} = $file }
+                        if ($args{data} ) { ($args{data}->{status} ||= {})->{fetch} = $file }
 
                         return $file;
                     }

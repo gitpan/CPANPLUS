@@ -1,5 +1,37 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #7 $ $Change: 3185 $ $DateTime: 2003/01/04 20:38:05 $
+# $Revision: #8 $ $Change: 3446 $ $DateTime: 2003/01/12 11:33:46 $
+
+[Changes for 0.042 - January 12, 2002]
+
+This version fixed a significant number of bugs uncovered by 0.041,
+as well as integrating the Test::Reporter support from the -devel
+branch.
+
+* New Features
+
+ - cpantest is now obsoleted by Test::Reporter.
+
+* Bug fixes
+
+ - The 'c' command was broken.
+
+ - Default Config's prereq now default to 'ask' instead of 'follow'.
+
+ - Makefile.PL should be preferred  over Build.PL.  (Jedi Lin)
+
+ - Module::Build prereq parsing was suboptimal.  (Dave Rolsky)
+
+ - Duplicated sent report checking was broken.  (Alain Barbet)
+
+ - cpansmoke was broken due to an obvious typo. (Jeroen Latour)
+
+ - cpansmoke should only skips existing report when -s. (Jeroen Latour)
+
+ - Up-to-date checking was just checking existence.  (Richard Soderberg)
+
+ - $ENV{PERL5_CPANPLUS_CONFIG} didn't work with win32 path.  (Roland Bauer)
+
+ - 'make install' was skipping reports even if requested. (Richard Soderberg)
 
 [Changes for 0.041 - January 5, 2002]
 

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Install.pm $
-# $Revision: #2 $ $Change: 1913 $ $DateTime: 2002/11/04 12:35:28 $
+# $Revision: #3 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
 
 #######################################################
 ###           CPANPLUS/Internals/Install.pm         ###
@@ -153,7 +153,7 @@ sub _install_module {
             my $rv = $self->_make(dir => $dir, module => $href, %args);
 
             unless ( $rv->{ $href->module() }->{make}->{overall} ) {
-                $err->trap( error => loc("Error installing module %1", $m) );
+                $err->trap( error => loc("An error occurred handling module %1", $m) );
 
                 $fail = 1;
                 last LOOP;
@@ -175,7 +175,7 @@ sub _install_module {
             if ( $is_bundle ) {
                 my $res;
                 unless ( $res = $self->_install_bundle( dir => [ $dir ], %args) ) {
-                    $err->trap( error => loc("Error installing bundle %1", $m) );
+                    $err->trap( error => loc("An error occurred handling bundle %1", $m) );
 
                     $fail = 1;
                     last LOOP;

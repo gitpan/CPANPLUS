@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # $File: //depot/cpanplus/dist/t/3-backend.t $
-# $Revision: #3 $ $Change: 1963 $ $DateTime: 2002/11/04 16:32:10 $
+# $Revision: #5 $ $Change: 3381 $ $DateTime: 2003/01/10 02:26:24 $
 
 # This is going test all of CPANPLUS::Backend except the parts which
 # actually download and install modules.

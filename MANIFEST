@@ -8,7 +8,6 @@ README				The Instructions
 SIGNATURE			Module Signature
 bin/cpanp			The CPANPLUS launcher
 bin/cpansmoke			CPAN Smoke Tester
-bin/cpantest			Report test results of a package
 inc/ExtUtils/AutoInstall.pm	Support file - Not installed
 lib/CPANPLUS.pm			Command-line access to CPANPLUS
 lib/CPANPLUS/Backend.pm		Object-oriented interface for CPAN++

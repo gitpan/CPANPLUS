@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #5 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #9 $ $Change: 3443 $ $DateTime: 2003/01/12 11:20:41 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -55,8 +55,9 @@ my $cmd = {
     v   => "_show_banner",
     # w => redisplay of the cache
     # z => open a command prompt in these dists
+    # b => write a bundle
 };
-### free letters: b g j k n y ###
+### free letters: g j k n y ###
 
 
 ### input check ###
@@ -265,7 +266,7 @@ sub _input_loop {
             }
 
             ### this option is just for the o command, not for the backend methods ###
-            my $short = delete $options->{short} if defined $options->{short};
+            my $long = delete $options->{long} if defined $options->{long};
 
             my $inst = $cpan->installed( %$options, modules => @list ? \@list : undef );
 
@@ -278,7 +279,7 @@ sub _input_loop {
             my $res = $href->rv;
             $cache = [ undef ]; # most carbon-based life forms count from 1
 
-            ### keep a cache if --short was in effect ###
+            ### keep a cache by default ###
             my $seen = {};
 
             for my $name ( sort keys %$res ) {
@@ -287,9 +288,8 @@ sub _input_loop {
 		### dont list more than one module belonging to a package
 		### blame H. Merijn Brand... -kane
                 my $pkg = $modtree->{$name}->package;
-                unless( $short && $seen->{$pkg} ) {
-                    $seen->{$pkg} = 1 if $short;
 
+                if ( $long or !$seen->{$pkg}++ ) {
                     push @{$cache}, $modtree->{$name};
                 }
             }
@@ -475,7 +475,7 @@ sub _input_loop {
 
             ### get the result of our listing...
             my $method = $cmd->{$key};
-            my $res = $cpan->$method( %$options, modules => [ @list ] );
+            my $res = $cpan->$method( %$options, modules => [ @list ] )->rv;
 
             foreach my $name (@list) {
                 my $dist = $cpan->pathname(to => $name);
@@ -796,7 +796,7 @@ sub _complete {
         my @options = sort $conf->subtypes('conf');
         my $argname = qr<^(?i:$1)>;
 
-        @options = ('short') if $key eq 'o';
+        @options = ('long') if $key eq 'o';
 
         return map "--$_", grep { $_ =~ $argname } @options;
     }
@@ -1062,6 +1062,7 @@ loc('    c MODULE | NUMBER ...  # check for module report(s) from cpan-testers' 
 loc('    z MODULE | NUMBER ...  # extract module(s) and open command prompt in it'  ),
 loc('[Local Administration]'                                                        ),
 loc('    e DIR ...              # add directories to your @INC'                     ),
+loc('    b                      # write a bundle file for your configuration'       ),
 loc('    s [OPTION VALUE]       # set configuration options for this session'       ),
 loc('    s conf | save          # reconfigure settings / save current settings'     ),
 loc('    ! EXPR                 # evaluate a perl statement'                        ),
@@ -1479,7 +1480,7 @@ the I<--msg> flag prints just messages.
 
 It is useful to include I<--all> output when reporting a bug.
 
-=head2 o
+=head2 o [--long] [MODULE]
 
 This command lists installed modules which are out-of-date.
 
@@ -1491,10 +1492,16 @@ Example output:
     4   2.04     2.1011 DBD::mysql             JWIED
     5   1.13     1.15   File::MMagic           KNOK
 
-The first column is the search result number, which can be used for subsequent
-commands.  Next is the version you have installed, followed by the latest
-version of the module on CPAN.  Finally the name of the module and the
-author's CPAN identification are given.
+The first column is the search result number, which can be used for
+subsequent commands.  Next is the version you have installed, followed
+by the latest version of the module on CPAN.  Finally the name of the
+module and the author's CPAN identification are given.
+
+You can provide a module name to only check if that module is still up
+to date.
+By default, only one module per package is printed as being out of
+date. If you provide the C<--long> option however, all modules will be
+printed.
 
 =head2 w
 

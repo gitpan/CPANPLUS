@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/AUTHORS $
-# $Revision: #5 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #8 $ $Change: 3446 $ $DateTime: 2003/01/12 11:33:46 $
 
 [Credits]
 
@@ -44,9 +44,11 @@ Chia-Liang Kao		(CLKAO)
 Dave Rolsky		(DROLSKY)
 David Landgren
 Graham Barr		(GBARR)
+Jedi Lin
+Jeroen Latour
 Jochen Stenzel		(JSTENZEL)
 Jonathan Leffler	(JOHNL)
-Jorrit Waalboer
+Jorrit Waalboer         (JUERD)
 Jost Krieger
 Kay Roepke
 Lee Goddard		(LGODDARD)
@@ -62,6 +64,7 @@ Randy Kobes		(RKOBES)
 Richard Clamp		(RCLAMP)
 Richard Soderberg
 Robert S Creager	(RCREAGER)
+Roland Bauer
 Ton Hospel
 Tony Cook		(TONYC)
 Walt Mankowski

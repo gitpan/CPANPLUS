@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #6 $ $Change: 3443 $ $DateTime: 2003/01/12 11:20:41 $
 
 use strict;
 
@@ -214,6 +214,9 @@ sub write_makefile {
     if (eval '$>' and $AutoInstall) {
         print loc("You may need to do that as the 'root' user to install dependencies."), "\n";
     }
+
+    # warn again, CLEARLY that you MUST set your $ENV var to point to the config
+    CPANPLUS::Configure::Setup::_issue_non_default_config_warning();
 }
 
 sub try_autoinstall {
@@ -255,7 +258,6 @@ that defaults to 'Y', there might be _unpredictable failures_!
             ### Also, following modules are particularly bad:
             ### - Archive::Tar is known to fail without zlib.
             ### - LWP takes lots of time to finish.
-            ### - Mail::Send will send out external emails.
             ### - Term::ReadLine::Perl's test is interactive.
             ### - Compress::Zlib works but fails tests on Darwin.
             -skiptest           => 1,
@@ -322,14 +324,11 @@ that defaults to 'Y', there might be _unpredictable failures_!
     ) : (),
         loc('CPAN Test reporting')        => [
             -default            => $ConfigObj->get_conf('cpantest'),
-            'Mail::Send'        => 0.01,
-            'File::Temp'        => 0.01,
+            'Net::SMTP'         => 0.01,
     $ipc_ok ? (
             'IPC::Run'          => 0.55,
     ) : (),
-    ($^O eq 'MacOS' || $^O eq 'VMS' || $^O eq 'MSWin32' || $^O eq 'os2') ? (
-            'Net::SMTP'         => 0.01,
-    ) : (),
+            'Test::Reporter'    => 1.13,
         ],
     _supports_readline() ? (
         loc('ReadLine support')           => [

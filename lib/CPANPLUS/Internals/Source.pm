@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Source.pm $
-# $Revision: #3 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
+# $Revision: #5 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###
@@ -143,7 +143,7 @@ sub _create_mod_tree {
                     description => $dslip_tree->{ $data[0] }->{'description'},
                     dslip       => $dslip,
                     prereqs     => {},
-                    status      => undef,
+                    status      => {},
                     _id         => $self->{_id},    #id of this internals object
             );
 
@@ -573,6 +573,9 @@ sub _get_checksums {
         }
         elsif (/^\s*}[,;]?$/) {
             undef $dist;
+        }
+        elsif (/^__END__$/) {
+            last;
         }
         else {
             $err->trap( error => loc("Malformed CHECKSUM line: %1", $_) );

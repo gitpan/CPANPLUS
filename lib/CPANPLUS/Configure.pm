@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #5 $ $Change: 3340 $ $DateTime: 2003/01/08 21:46:24 $
 
 ##################################################
 ###           CPANPLUS/Configure.pm            ###
@@ -57,7 +57,8 @@ BEGIN {
         my $tried;
 
         if ( defined $ENV{PERL5_CPANPLUS_CONFIG} ) {
-            eval qq[require "$ENV{PERL5_CPANPLUS_CONFIG}"];
+
+            eval qq[require q|$ENV{PERL5_CPANPLUS_CONFIG}|];
             $tried++;
             $INC{'CPANPLUS/Config.pm'} = 1 unless $@;
         }

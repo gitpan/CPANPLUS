@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Configure/Setup.pm $
-# $Revision: #6 $ $Change: 3181 $ $DateTime: 2003/01/04 20:24:44 $
+# $Revision: #11 $ $Change: 3441 $ $DateTime: 2003/01/12 11:00:46 $
 
 ##################################################
 ###        CPANPLUS/Configure/Setup.pm         ###
@@ -9,7 +9,7 @@
 package CPANPLUS::Configure::Setup;
 
 use strict;
-use vars qw($AutoSetup $SkipMirrors);
+use vars qw($AutoSetup $SkipMirrors $CustomConfig $ConfigLocation);
 
 require CPANPLUS::Backend;
 use CPANPLUS::I18N;
@@ -64,7 +64,7 @@ sub init {
         my $default = File::Spec->catfile( split '/', $INC{$pm} );
         $default =~ s/ure.Setup(\.pm)/$1/ig;
 
-        my $home_conf = File::Spec->catdir($ENV{HOME}, '.cpanplus_config');
+        my $home_conf = File::Spec->catdir($ENV{HOME}, '.cpanplus', 'config');
 
         print loc( q[
 Where would you like to save the CPANPLUS Configuration file?
@@ -102,9 +102,9 @@ put your Configuration file in the default location.
         unless( $where ) {
             $loc = $default;
         } else {
-            $loc = $default     if $where == 1;
-            $loc = $home_conf   if $where == 2;
-            $loc = ''           if $where == 3;
+            $loc = $default                         if $where == 1;
+            ($loc = $home_conf, ++$CustomConfig)    if $where == 2;
+            ($loc = '',         ++$CustomConfig)    if $where == 3;
         }
 
         unless( $loc ) {
@@ -121,7 +121,19 @@ put your Configuration file in the default location.
                     );
                     last BLOCK if $yn =~ /y/i;
                 } else {
-                    last BLOCK if -w File::Basename::dirname($loc);
+                    my $dir = File::Basename::dirname($loc);
+
+                    last BLOCK if -w $dir;
+
+                    unless( -d $dir ) {
+                        eval { File::Path::mkpath($dir) };
+                        if ($@) {
+                            warn qq[Could not create dir '$dir'];
+                        } else {
+                            chmod( 0644, $dir );
+                            last BLOCK;
+                        }
+                    }
                     print loc("I can not write to %1, I don't have permission.", $loc), "\n";
                     redo BLOCK;
                 }
@@ -131,13 +143,15 @@ put your Configuration file in the default location.
     }
     print "\n", loc("OK, I will save your Configure file to:"), "\n\t$loc\n\n";
 
-    my $what = $loc || q[$INC{'CPANPLUS/Config.pm'}];
+    my $what = $ConfigLocation = $loc || q[$INC{'CPANPLUS/Config.pm'}];
 
     unless ($conf->can_save($loc) ) {
         print loc("*** Error: CPANPLUS %1 was not configured properly, and we cannot write to\n    %2", $CPANPLUS::Internals::VERSION, $what), "\n",
               loc("*** Please check its permission, or contact your administrator."), "\n";
         exit 1;
     }
+
+    _issue_non_default_config_warning($loc) if $CustomConfig;
 
 
     local $SIG{INT};
@@ -190,7 +204,26 @@ also enter 'n' here to use default values for all questions.
     no strict 'refs';
     undef ${ref($term)."::term"} unless $[ < 5.006; # 5.005 chokes on this
 
+
 } #init
+
+
+
+sub _issue_non_default_config_warning {
+    if( $CustomConfig ) {
+        print loc( qq[
+### IMPORTANT #####################################################
+
+Since you chose a custom config file location, do not forget to set
+the environment variable "%1" to
+"%2"
+before running '%3' or your config will not be detected!
+
+###################################################################
+
+        ], 'PERL5_CPANPLUS_CONFIG', $ConfigLocation, 'make');
+    }
+}
 
 
 ## gather all info needed for the 'conf' hash
@@ -1101,7 +1134,17 @@ sub _ask_flags {
         print "\n\n";
     } #if
 
-    my $answer = _get_reply( prompt  => loc("Parameters for %1: ", $name) );
+
+    my $current_flags = join(' ', map {
+        defined($flags->{$_})
+            ? "$_=$flags->{$_}"
+            : "$_"
+    } sort keys %{$flags});
+
+    my $answer = _get_reply(
+                    prompt  => loc("Parameters for %1 [%2]: ", $name, $current_flags),
+                    default => $current_flags,
+             );
 
     $flags = CPANPLUS::Backend->_flags_hashref($answer);
 
@@ -1166,7 +1209,7 @@ sub _setup_hosts {
 
         last if $SkipMirrors;
 
-        print Dumper \@selected_hosts;
+        #print Dumper \@selected_hosts;
 
         if ( $next eq 'main' ) {
             print loc("

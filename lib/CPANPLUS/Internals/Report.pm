@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #7 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -60,6 +60,9 @@ my %OS = (
 sub _send_report {
     my ($self, %args) = @_;
     my ($module, $buffer, $failed) = @args{qw|module buffer failed|};
+
+    my $err    = $self->{_error};
+    my $conf   = $self->{_conf};
     my $name   = $module->{module};
     my $dist   = $module->{package};
     my $author = $self->_author_tree->{$module->{author}}{name}
@@ -90,15 +93,15 @@ sub _send_report {
 
     $dist =~ s/(?:\.tar\.(?:gz|Z|bz2)|\.t[gb]z|\.zip)$//i;
 
-    my $cpantest = (File::Spec->catfile(File::Basename::dirname($^X), 'cpantest'));
     return unless length $dist
-              and (-e $cpantest or $self->_can_run('cpantest'))
+              and $self->_can_use( modules => { 'Test::Reporter' => '1.13' } )
               and $self->{_shell}
               and $self->{_shell}->_ask_report(dist => $dist, grade => $grade)
               and $self->_not_already_sent($dist);
 
-    my ($fh, $filename, @inform);
-    my ($already_sent,$nb_send,$max_send) = (0,0,2);
+    my ($already_sent, $nb_send, $max_send) = (0, 0, 2);
+    my @inform;
+    my $text = ''; 
 
     if ($grade eq 'fail') {
         # Check if somebody have already sent FAIL status about this release
@@ -108,13 +111,11 @@ sub _send_report {
                 foreach my $k (@$already_sent) {
                     $nb_send++ if ($k->{grade} eq 'FAIL');
                 }
-                print loc("FAIL status already reported. I won't cc the author."), "\n"
+
+                $err->inform( msg => loc("FAIL status already reported. I won't cc the author.") )
                     if ($nb_send >= $max_send);
             }
         }
-
-        return unless $self->_can_use( modules => { 'File::Temp' => '0.0' } );
-        ($fh, $filename) = File::Temp::tempfile( UNLINK => 1 );
 
         my $stage = lc($self->{_error}->stack);
         $stage =~ s/ failed.*//;
@@ -122,7 +123,7 @@ sub _send_report {
         return if $self->{_conf}->get_conf('cpantest') =~ /\bmaketest_only\b/i
                   and ($stage !~ /\btest\b/);
 
-        print $fh '' . << ".";
+        $text = << ".";
 This is an error report generated automatically by CPANPLUS,
 version $VERSION.
 
@@ -145,7 +146,7 @@ Additional comments:
                 s/.pm$//; s|/|::|g; "\t'$_'\t=> '0', # or a minimum workable version"
             } sort keys %missing);
 
-            print $fh '' . << ".";
+            $text .= << ".";
 
 Hello, $author! Thanks for uploading your works to CPAN.
 
@@ -186,21 +187,17 @@ it personally.  We appreciate your patience. :)
         }
 
         push @inform, "$module->{author}\@cpan.org"
-          if (!$already_sent or $nb_send < $max_send);
+            if (!$already_sent or $nb_send < $max_send);
     }
     elsif ($grade eq 'unknown') {
         if ($name =~ /\bBundle\b/) {
-            print loc("UNKNOWN grades for Bundles are normal; skipped."), "\n";
+            $err->inform( msg => loc("UNKNOWN grades for Bundles are normal; skipped.") );
             return;
         }
 
-        return unless $self->_can_use( modules => { 'File::Temp' => '0.0' } );
-
-        ($fh, $filename) = File::Temp::tempfile( UNLINK => 1 );
-
         my $stage = 'make test';
 
-        print $fh '' . << ".";
+        $text = << ".";
 This is an error report generated automatically by CPANPLUS,
 version $VERSION.
 
@@ -251,39 +248,27 @@ it personally.  We appreciate your patience. :)
     }
     elsif ($self->{_conf}->get_conf('cpantest') =~ /\balways_cc\b/i) {
         push @inform, "$module->{author}\@cpan.org"
-          if (!$already_sent or $nb_send < $max_send);
+            if (!$already_sent or $nb_send < $max_send);
     }
 
-    close $fh if $fh;
+    my $reporter = Test::Reporter->new;
+    $reporter->grade($grade);
+    $reporter->distribution($dist);
+    $reporter->comments($text) if length $text;
 
-    my @cmd = $self->_report_command(
-        dist     => $dist,
-        module   => $module,
-        grade    => $grade,
-        filename => $filename,
-        inform   => \@inform,
+    $err->inform(
+        msg   => loc("Sending report for %1", $dist),
+        quiet => !$conf->get_conf('verbose'),
     );
 
-    print $self->_run(command => \@cmd, verbose => 1) ? loc("done.") : loc("failed (%1)!", $!);
-    print "\n";
+    if ($reporter->send(@inform)) {
+        $err->inform( msg => loc("Successfully sent report for %1.", $dist) );
+    }
+    else {
+        $err->trap( error => loc("Can't send report: %1", $reporter->errstr) );
+    }
 }
 
-
-### Determine additional parameters to pass to 'cpantest'
-sub _report_command {
-    my ($self, %args) = @_;
-    my $conf = $self->{_conf};
-    my ($dist, $module, $grade, $filename, $inform) =
-        @args{qw|dist module grade filename inform|};
-
-    my $cpantest = (File::Spec->catfile(File::Basename::dirname($^X), 'cpantest'));
-    my @cmd = (-e $cpantest ? ($^X, $cpantest) : 'cpantest');
-    push @cmd, ('-g', $grade, qw|-auto -p|, $dist);
-    push @cmd, ('-f', $filename) if defined $filename;
-    push @cmd, @{$inform};
-
-    return @cmd;
-}
 
 ### Query a report. Currently cpan-testers only, but could be extend to RT
 ### Expects an array reference containing distribution names
@@ -359,30 +344,36 @@ sub _query_report {
 
     return @ret ? \@ret : 0;
 }
+
 ## Add to DBM database $dist if not exist and return 1, else return 0;
 sub _not_already_sent {
-  my ($self, $dist)=@_;
-  return 1 if ($self->{_conf}->get_conf('force'));
-  my $sdbm = $self->{_conf}->_get_build("base")."/reports_send.dbm";
-  my ($perlversion,$osversion) = (
-                                  $self->_perl_version(perl => $^X),
-                                  $self->_os_version(perl => $^X)
-                                 );
-  my $return = 0;
-  my %myreports;
-  # Initialize DBM hash with report send by user
-  # Open dbm file
-  tie (%myreports, 'AnyDBM_File', $sdbm, O_RDWR|O_CREAT, 0640) 
-    or die $sdbm.":".$!;
-  if (!$myreports{"$dist|$perlversion|$osversion"}) {
-    $myreports{"$dist|$perlversion|$osversion"} = localtime;
-    $return = 1;
-  }
-  untie %myreports;
-  if (!$return) {
-    print loc("You have already sent a report for %1, skipping.\n", $dist);
-  }
-  return $return;
+    my ($self, $dist, $set) = @_;
+
+    ### if --force is set to true, send duplicated reports anyway.
+    return 1 if ($self->{_conf}->get_conf('force'));
+
+    my $sdbm = $self->{_conf}->_get_build("base")."/reports_send.dbm";
+    my $perlversion = $self->_perl_version(perl => $^X);
+    my $osversion   = $self->_os_version(perl => $^X);
+
+    my $rv = 0;
+    my %myreports;
+
+    # Initialize DBM hash with report send by user
+    tie (%myreports, 'AnyDBM_File', $sdbm, O_RDWR|O_CREAT, 0640)
+        or die loc("Can't open %1: %2", $sdbm, $!);
+
+    unless ($myreports{"$dist|$perlversion|$osversion"}) {
+        $myreports{"$dist|$perlversion|$osversion"} = localtime unless $set;
+        $rv = 1;
+    }
+
+    untie %myreports;
+
+    print loc("You have already sent a report for %1, skipping.\n", $dist)
+        unless $rv;
+
+    return $rv;
 }
 
 1;

@@ -685,7 +685,7 @@ msgstr "    z MODULE | NUMBER ...  # extrait le(s) module(s) et ouvre un prompt 
 #: lib/CPANPLUS/Error.pm:141 lib/CPANPLUS/Error.pm:60
 #. ($self->_who_was_it()
 msgid " in %1 at %2"
-msgstr "dans %1 à l'endroit %2"
+msgstr " dans %1 le %2"
 
 #: lib/CPANPLUS/Backend.pm:849
 #. ($author->{name}, $author->{email})
@@ -2073,7 +2073,7 @@ msgstr "Option nécessaire pour '%1' non fournie pour %2"
 #: lib/CPANPLUS/Internals/Source.pm:199 lib/CPANPLUS/Internals/Source.pm:261 lib/CPANPLUS/Internals/Source.pm:87
 #. ($stored)
 msgid "Retrieving %1"
-msgstr "Récupération de %1"
+msgstr "Lecture de %1"
 
 #: lib/CPANPLUS/Internals.pm:801
 #. ("@cmd")
@@ -2155,7 +2155,7 @@ msgstr "Cela peut prendre du temps..."
 #: lib/CPANPLUS/Internals/Fetch.pm:162
 #. ($args{'path'}->{'remote'},($uri->{host} || loc('local disk')
 msgid "Trying to get %1 from %2"
-msgstr "Impossible de récupérer %1 depuis %2"
+msgstr "Essai de téléchargement de %1 depuis %2"
 
 #: lib/CPANPLUS/Internals/Report.pm:191
 msgid "UNKNOWN grades for Bundles are normal; skipped."

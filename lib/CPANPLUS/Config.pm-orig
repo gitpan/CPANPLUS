@@ -19,7 +19,7 @@ sub new {
                              'cpantest' => 0,
                              'verbose' => 0,
                              'storable' => 1,
-                             'prereqs' => 1,
+                             'prereqs' => 2,
                              'lib' => [],
                              'force' => 0,
                              'makeflags' => {},

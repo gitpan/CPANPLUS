@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/bin/cpansmoke $
-# $Revision: #3 $ $Change: 2926 $ $DateTime: 2002/12/25 15:39:55 $
+# $Revision: #5 $ $Change: 3340 $ $DateTime: 2003/01/08 21:46:24 $
 
 use strict;
 use Cwd;
@@ -122,7 +122,12 @@ foreach my $pkg (@ARGV) {
     # Check local database
     my $mod =  $dist;
     $mod=~s!^.*/([^/]*)\.tar\.gz$!$1!;
-    next if (!$cp->not_already_sent($mod) or _check_existing($dist));
+
+    if ($skip and !$cp->_not_already_sent($mod, 1)) {
+        print loc("%1 already tested on this machine; skipping.\n", $dist);
+        next;
+    }
+    next if (_check_existing($dist));
 
     print loc("Testing: %1\n",($pkg =~ /[^\w:]/ ? $dist : "$pkg ($dist)"));
 

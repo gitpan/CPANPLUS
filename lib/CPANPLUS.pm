@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS.pm $
-# $Revision: #4 $ $Change: 2930 $ $DateTime: 2002/12/25 16:03:28 $
+# $Revision: #5 $ $Change: 3419 $ $DateTime: 2003/01/11 12:10:11 $
 
 ###################################################################
 ###                         CPANPLUS.pm                         ###
@@ -21,7 +21,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   '0.041';    #have to hardcode or cpan.org gets unhappy
+    $VERSION    =   '0.042';    #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:

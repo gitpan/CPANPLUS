@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Backend.pm $
-# $Revision: #7 $ $Change: 2927 $ $DateTime: 2002/12/25 15:58:36 $
+# $Revision: #10 $ $Change: 3456 $ $DateTime: 2003/01/12 12:16:32 $
 
 #######################################################
 ###                 CPANPLUS/Backend.pm             ###
@@ -187,7 +187,7 @@ sub install {
                     or $force               # or force was enabled
                 ) {
 
-                my $res =  $self->_check_install( module => $name );
+                my $res =  $self->_check_install( module => $name, version => $modobj->{version}, verbose => 0 );
 
                 if ($res->{uptodate}) {
                     my $do_install = ($args->{target} =~ /^install$/);
@@ -221,7 +221,12 @@ sub install {
 
         for my $mod ( keys %$rv ) {
             unless ( $rv->{$mod}->{install} ) {
-                $err->trap( error => loc("Installing %1 failed!", $name) );
+                if ($args->{target} eq 'test') {
+                    $err->trap( error => loc("Testing %2 failed!", $name) );
+                }
+                else {
+                    $err->trap( error => loc("Installing %2 failed!", $name) );
+                }
                 $flag = 1;
             }
 
@@ -488,7 +493,7 @@ sub files {
     my $href;
     my $flag = 0;
 
-    for my $mod ( @{$args->{'modules'}} ) {
+    for my $mod ( @{delete  $args->{'modules'}} ) {
         my $answer = $self->parse_module(modules => [$mod]);
 
         $answer->ok or ($flag=1,next);

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #4 $ $Change: 3175 $ $DateTime: 2003/01/04 18:29:57 $
+# $Revision: #9 $ $Change: 3379 $ $DateTime: 2003/01/10 02:20:01 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -121,6 +121,7 @@ sub _make {
     
     my $Makefile_PL = 'Makefile.PL';
     my $Makefile = 'Makefile';
+    my $Make = $make;
 
     my $fail;
     SCOPE: {
@@ -138,7 +139,7 @@ sub _make {
         my $make_prereq;
 
         ### Here we take care of Module::Build installation ###
-        if ( -e 'Build.PL' ) {
+        if ( -e 'Build.PL' and not -e 'Makefile.PL' ) {
             my $req = { 'Module::Build' => '0.11' };
 
             $make_prereq = $req unless -e File::Spec->catfile(
@@ -151,7 +152,7 @@ sub _make {
 
             $Makefile_PL = 'Build.PL';
             $Makefile = 'Build';
-            $make = $perl;
+            $Make = $perl;
             unshift @makeargs, $Makefile;
         }
 
@@ -197,7 +198,7 @@ sub _make {
             ### if still missing essential make pieces, bail out here
             last PERL_MAKEFILE if $make_prereq;
 
-            if ( -e $Makefile && !$force ) {
+            if ( -e $Makefile && (-M $Makefile < -M '.') && !$force ) {
                 $err->inform( msg => loc("%1 already exists, not running 'perl %2' again, unless you force!", $Makefile, $Makefile_PL), quiet => !$verbose );
                 last PERL_MAKEFILE;
             }
@@ -409,13 +410,13 @@ sub _make {
                     ### we must fix _extract first so it won't have to delete the dir
                     ### every time =/ -kane
 
-                    if ( -d 'blib' && !$force ) {
+                    if ( -d 'blib' && (-M 'blib' < -M '.') && !$force ) {
                         $err->inform( msg => loc("Already ran 'make' for this module. Not running again unless you force!"), quiet => !$verbose );
                         last MAKE;
                     }
 
                     unless ( $self->_run(
-                        command => [$make, @args],
+                        command => [$Make, @args],
                         buffer  => \$captured,
                     ) ) {
                         ### store it if a module failed to install for some reason ###
@@ -440,7 +441,7 @@ sub _make {
                 unless ($skiptest) {
 
                     unless ( $self->_run(
-                        command => [$make, @args, 'test'],
+                        command => [$Make, @args, 'test'],
                         buffer  => \$captured,
                         verbose => 1
                     ) ) {
@@ -466,7 +467,7 @@ sub _make {
                 }
 
                 unless ( $self->_run(
-                    command => [$make, @args, 'install'],
+                    command => [$Make, @args, 'install'],
                 ) ) {
 
                     $err->trap( error => loc("MAKE INSTALL failed! - %1", $!) );
@@ -493,10 +494,21 @@ sub _make {
     } ### end of SCOPE:
 
     ### send an error report if the user wants that ###
-    $self->_send_report(
-        module => $data, buffer => $captured, failed => $fail
-    ) if $report and !$self->{_todo}->{failed};
-
+    if ($report) {
+        if (grep $_, values %{$self->{_todo}->{failed}}) {
+            ### some prereq failed... don't send bogus report
+            ### if 'flush' is set in your conf, it's reliable, otherwise it's not 
+            $err->inform(
+                msg     => loc("Some prerequisites failed - skip sending test reports."),
+                quiet   => !$verbose
+            );
+        }
+        else {
+            $self->_send_report(
+                module => $data, buffer => $captured, failed => $fail
+            );
+        }
+    }
 
     if($fail) {
 
@@ -648,24 +660,25 @@ sub _find_prereq_module_build {
     my $err  = $self->{_error};
     my $fh = new FileHandle;
 
-    ### open the prereq
-    unless ( $fh->open(File::Spec->catfile($args{'dir'}, "_build", "prereqs") ) ) {
-        $err->trap( error => loc("Can't find %1: %2", '_build/prereqs', $!) );
-        return 0;
-    }
+    require Module::Build;
+    my $build = Module::Build->resume(
+        properties => {
+            config_dir      => File::Spec->catdir($args{'dir'}, "_build"),
+            build_script    => 'Build',
+        }
+    );
 
     my %p;
-    my $section;
-    while (<$fh>) {
-        if (/^\s*'([^']+)' => \{(?:\}\,)?\s*$/) {
-            $section = $1;
-        }
-        elsif (/^\s*'([^']+)' => '?([^']+?)'?,?\s*$/) {
-            my ($mod, $ver) = ($1, $2);
-            next unless $section =~ /^(?:build_)requires$/;
-            next if $mod eq 'perl';
+    my $failures = $build->prereq_failures;
 
-            $p{$mod} = $self->_version_to_number($ver);
+    my @keys = qw(build_requires requires);
+    push @keys, 'recommends' if $conf->get_conf('prereqs');
+
+    foreach my $key (@keys) {
+        my $fail = $failures->{$key} or next;
+        foreach my $mod (keys %$fail) {
+            next if $mod eq 'perl';
+            $p{$mod} = $self->_version_to_number($fail->{$mod}{need});
         }
     }
 
