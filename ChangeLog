@@ -1,6 +1,22 @@
 # $File: //member/autrijus/cpanplus/dist/ChangeLog $
 # $Revision: #19 $ $Change: 4066 $ $DateTime: 2002/04/30 18:02:42 $
 
+[Changes for 0.035 - June 4, 2002]
+
+This version rolls in the bugfixes reported by Jost Krieger. Thanks!
+
+* Bug fixes (and their first reporters):
+
+ - Fixed infinite recursive fetching CHECKSUM on bad MD5s. (Jost Krieger)
+
+ - Retracted the painfully slow algorithm used in 'o'. (Jost Krieger)
+
+ - The 'could not remove directory' error during uninstall is made non-fatal.
+
+* New Features
+
+ - The 'o' command is now accepted by bin/cpanp.
+
 [Changes for 0.034 - June 1, 2002]
 
 This is primarily a bug-fix version to address various bugs found in testing-

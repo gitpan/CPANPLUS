@@ -196,7 +196,7 @@ sub _input_loop {
                             cache   => $cache,
                             key     => 'module',
                         )
-                    : keys %{ $modtree };
+                    : keys %{ $cpan->installed() };
 
             unless( length @list ) {
                 print "No modules to check\n";
@@ -926,7 +926,7 @@ sub _help {
     a AUTHOR ...           # search by author(s)
     m MODULE ...           # search by module(s)
     f AUTHOR ...           # list all distributions by author(s)
-    o                      # list installed module(s) that aren't up to date
+    o [ MODULE ... ]       # list installed module(s) that aren't up to date
 [Operations]
     i MODULE | NUMBER ...  # install module(s), by name or by search number
     t MODULE | NUMBER ...  # test module(s), by name or by search number

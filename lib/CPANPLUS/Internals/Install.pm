@@ -391,7 +391,11 @@ sub _uninstall {
 
         unless (rmdir $dir) {
             $err->trap( error => qq[could not remove $dir: $!] );
-            $flag = 1;
+            
+            ### this fails on my win2k machines.. it indeed leaves the
+            ### dir, but it's not a critical error, since the files have
+            ### been removed. --kane
+            #$flag = 1;
         }
     }
 
@@ -458,7 +462,11 @@ sub _check_md5 {
                     ### if we didnt already have a checksums file on our disk, we might have
                     ### an outdated one... in that case we'll refetch it and try again to see
                     ### if we get a matching MD5 -kane
-                    $checksums = $self->_get_checksums( mod => $href, force => 1 );
+                    unless( $checksums = $self->_get_checksums( mod => $href, force => 1 ) ) {
+                        $err->trap( 
+                            error => qq[Unable to fetch checksums file! Can not verify this distribution is safe!] );
+                        return 0;
+                    }
 
                     $flag = 1;
                     redo CHECK;

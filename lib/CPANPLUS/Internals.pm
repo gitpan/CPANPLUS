@@ -52,7 +52,7 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.034';
+    $VERSION    =   '0.035';
 }
 
 ### ROUGH FLOW OF THE MODULE ###

@@ -31,16 +31,17 @@ shell is executed by default.
 Optionally, it can take a single-letter switch and one or more argument,
 to perform the associated action on each arguments. The commands are:
 
-    a AUTHOR... # search by author(s)
-    m MODULE... # search by module(s)
-    f AUTHOR... # list all distributions by an author(s)
-    i MODULE... # install module(s)
-    t MODULE... # test module(s)
-    u MODULE... # uninstall module(s)
-    d MODULE... # download module(s) into current directory
-    l MODULE... # display detailed information about module(s)
-    r MODULE... # display README files of module(s)
-    c MODULE... # check for module report(s) from cpan-testers
+    a AUTHOR...     # search by author(s)
+    m MODULE...     # search by module(s)
+    f AUTHOR...     # list all distributions by an author(s)
+    o [ MODULE... ] # list installed module(s) that aren't up to date
+    i MODULE...     # install module(s)
+    t MODULE...     # test module(s)
+    u MODULE...     # uninstall module(s)
+    d MODULE...     # download module(s) into current directory
+    l MODULE...     # display detailed information about module(s)
+    r MODULE...     # display README files of module(s)
+    c MODULE...     # check for module report(s) from cpan-testers
 
 Each command may be prefixed with one or more I<options>.  If preceded by
 C<no>, the corresponding option will be set to C<0>, otherwise it's set to
@@ -58,6 +59,7 @@ my $cmd = {
     a => "search",
     m => "search",
     f => "distributions",
+    o => "uptodate",
     i => "install",
     t => "install",
     u => "uninstall",
@@ -78,6 +80,9 @@ while ($opt = shift(@ARGV)) {
 };
 
 push @cmd_stack, map { "$opt $_" } @ARGV if ($opt and exists $cmd->{$opt});
+
+# special case: 'o' may take zero arguments.
+@cmd_stack = $opt if !@cmd_stack and $opt eq 'o';
 
 if (@cmd_stack) {
     # initializes configure setup if we've not been through it yet
