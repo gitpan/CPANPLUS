@@ -1,5 +1,8 @@
 ^blib/
-^t/dummy-cpanplus/
+^t/dummy-cpanplus/(?!\.hidden)
+^t/dummy-localmirror/authors/id
+^t/dummy-localmirror/.*gz
+^t/\..*
 ^\.#autoinstall
 ^pmfiles.dat$
 ^Makefile$
@@ -7,5 +10,12 @@
 ^MANIFEST.bak$
 ^lib/CPANPLUS/Config\.pm$
 ^lib/CPANPLUS/Config\.pm~$
+^lib/CPANPLUS/Config\.pm\..*$
 ^pm_to_blib$
 ^blibdirs$
+^TODO$
+^cover_db/
+^tmp/
+^samples/
+^bin/cpanpd\.pl
+^CPANPLUS.*gz$

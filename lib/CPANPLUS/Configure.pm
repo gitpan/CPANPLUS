@@ -1,378 +1,232 @@
-# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Configure.pm
-# $Revision: #10 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
-
-##################################################
-###           CPANPLUS/Configure.pm            ###
-###     Configuration structure for CPAN++     ###
-##################################################
-
-### Configure.pm ###
-
-### CHANGE LOG ###
-#
-# 2001-09-28 jmb
-# Changed AUTOLOAD'd get methods to accept list input.
-# get_conf(qw[storable verbose]) will return both values as an array.
-#
-# 2001-10-02 jmb
-# When returning @list in scalar context value was number of elements.
-# Changed AUTOLOAD() to return only the first element in scalar context.
-#
-# 2001-10-02 jmb
-# new() now also calls $self->load.
-#
-# 2001-10-02 jmb
-# Added 'startdir' to _build subtype.
-#
-# 2001-10-09 jmb
-# Added some missing subtypes.
-# Fixed AUTOLOAD of DESTROY (added DESTROY sub).
-# Got rid of warnings from AUTOLOAD (predefined $private).
-# Moved Data::Dumper and FileHandle to main package (were only in _save_pm).
-# Added 'hosts' to @types and started on get/set methods for it.
-#
-# 2001-10-12 jmb
-# For now just put hosts in _ftp (as 'urilist').
-# Added 'hosts' subtype to _source - location of 'MIRRORED.BY'.
-# Had to add all the programs from Setup so that _set_ftp() would work!
-#
-# 2001-10-31 jmb
-# Added dslip and sdslip to _source
-#
-# 2001-11-07 jmb
-# Added ncftp and wget to _build
-#
-
 package CPANPLUS::Configure;
-
 use strict;
-use CPANPLUS::I18N;
 
+use CPANPLUS::inc;
+use CPANPLUS::Internals::Constants;
+use CPANPLUS::Error                 qw[error msg];
 
-BEGIN {
-    ### this will make cpanplus use an alternative config ###
-    #$ENV{PERL5_CPANPLUS_CONFIG} = 'C:/Documents and Settings/Administrator/.cpanplus_config';
+use Log::Message;
+use Module::Load                    qw[load];
+use Params::Check                   qw[check];
+use Locale::Maketext::Simple        Class => 'CPANPLUS', Style => 'gettext';
 
-    sub _load_cpanplus_config {
-        my $tried;
+use vars                            qw[$AUTOLOAD $VERSION];
 
-        if ( defined $ENV{PERL5_CPANPLUS_CONFIG} ) {
+local $Params::Check::VERBOSE = 1;
 
-            eval qq[require q|$ENV{PERL5_CPANPLUS_CONFIG}|];
-            $tried++;
-            $INC{'CPANPLUS/Config.pm'} = $ENV{PERL5_CPANPLUS_CONFIG} unless $@;
-        }
+### require, avoid circular use ###
+require CPANPLUS::Internals;
+$VERSION = $CPANPLUS::Internals::VERSION = $CPANPLUS::Internals::VERSION;
 
-        my $ok;
-        $@
-            ? warn  loc("Could not load your personal config: %1: %2",
-                        $ENV{PERL5_CPANPLUS_CONFIG}, $@), "\n",
-                    loc("Falling back to system-wide config."), "\n"
-            : ($ok = 1) if $tried;
+=pod
 
-        unless($ok) {
-            eval "use CPANPLUS::Config";
-            die $@ if $@;
-        }
-    }
+=head1 NAME
 
-    _load_cpanplus_config();
-}
+CPANPLUS::Configure
 
-use CPANPLUS::Configure::Setup;
-#use CPANPLUS::Backend;          # setup loads it anyway...
-use CPANPLUS::Error;
+=head1 SYNOPSIS
 
-use Data::Dumper;
-use Exporter;
-use FileHandle ();
+    $conf   = CPANPLUS::Configure->new( options => { ... } );
+    
+    $bool   = $conf->can_save;
+    $bool   = $conf->save( $where );
+    
+    @opts   = $conf->options( $type );
+    
+    $make       = $conf->get_program('make');
+    $verbose    = $conf->set_conf( verbose => 1 );
 
-use vars qw/$AUTOLOAD $VERSION/;
+=head1 DESCRIPTION
 
-### because of a wonky bug in EU::MM, see RT ticket:
-### https://rt.cpan.org/Ticket/Display.html?id=3037
-$VERSION = $CPANPLUS::Internals::VERSION;
+This module deals with all the configuration issues for CPANPLUS.
+Users can use objects created by this module to alter the behaviour
+of CPANPLUS.
 
-my $conf = {};
+Please refer to the C<CPANPLUS::Backend> documentation on how to
+obtain a C<CPANPLUS::Configure> object.
 
-## list of valid major types
-my @types = qw(
-    conf
-    _build
-    _ftp
-    _source
-);
+=head1 METHODS
 
-## valid subtypes - must add anything new for Config.pm here
-my %subtypes = (
-    conf    => [qw( cpantest debug flush force lib makeflags
-                    makemakerflags md5 prereqs shell storable
-                    verbose format signature skiptest
-                )],
-    _build  => [qw( curl ftp gzip lynx make ncftp ncftpget pager shell
-                    tar unzip wget autdir base moddir startdir targetdir
-                    shell autobundle autobundle_prefix sudo rsync
-                )],
-    _ftp    => [qw( auth base dslip email mod passive proto source
-                    urilist
-                )],
-    _source => [ qw(auth dslip hosts mod sauth sdslip smod update) ],
-);
+=head2 new( [options => HASHREF] )
 
+This method returns a new object. Normal users will never need to
+invoke the C<new> method, but instead retrieve the desired object via
+a method call on a C<CPANPLUS::Backend> object.
 
-################################################################################
-##
-##  under construction :o)
-##
+=cut
 
-## create a Configure object
-## if passed a hash then we assume they are override options
-##
-## (takes optional hash argument, returns Configure object)
-##
 sub new {
     my $class = shift;
-    my %args;
+    my %hash  = @_;
 
-    %args = @_ unless scalar(@_) % 2;
+    ### ok, we need to find your config now ###
+    $class->_load_cpanplus_config() or return;
 
-    my $self = bless {}, $class;
-
-    $self->load(options => { %args });
-    #$self->{conf} = $conf;
-
-    $self->{_error} ||= CPANPLUS::Error->new(
-        message_level   => (
-            defined $self->{options}{'debug'}
-                ? $self->{options}{'debug'}
-                : 1
-        ),
-        error_level     => 2,
-        error_track     => 1,
-    );
-
-    return $self;
-
-} #new
-
-
-################################################################################
-##
-##  AUTOLOAD'ed get/set methods
-##
-
-#sub AUTOLOAD {
-#    my ($self, $value) = @_;
-#    my ($field) = $AUTOLOAD =~ /.*::(.*)$/;
-#    return if $field eq 'DESTROY';
-#    return @_==1 ? $self->{$field} : $self->{$field} = $value;
-#}
-
-## AUTOLOAD, what can I say?
-##
-## This expects to see a method call of get_ or set_ (with or without a
-## preceding '_', depending on the type you are after) followed by an
-## appropriate type.  Ie. '_get_build'.
-##
-## On a get_ call, with no args the entire type hash is returned, otherwise
-## valid args result in only returning the subtype(s) asked for.
-##
-## A set_ call expects one or more valid subtypes and the values to set them to.
-## The set_ is aborted if even one subtype is invalid, and NO values are
-## changed.  (Returns 1 on success.)
-##
-## Both get_ and set_ return 0 on failure, as will any invalid calls.
-##
-## (takes scalar, array, or hash arguments, returns scalar or array)
-##
-sub AUTOLOAD {
-    my $self = shift;
-
-    #print "AUTOLOAD: $AUTOLOAD\n";
-
-    ## fancy AUTOLOAD magic
-    my $name = $AUTOLOAD;
-    $name =~ s/.*://; # strip fully-qualified portion
-
-    ## split out action (get/set) and field (in @types) we are after
-    my ($private, $action, $field) = $name =~ m/^(_)?([gs]et)_([a-z]+)$/;
-
-    ### we have to have my $type first to make sure the grep doesn't fail! -kane
-    my $type = '';
-    $type  = $private, if $private;
-    $type .= $field,   if $field;
-    #print "$type, $action\n";
-
-    ## we don't work with invalid types
-    (warn loc("Invalid method type: '%1'", $type), return 0)
-                unless grep { $type eq $_ } @types;
-
-    #return $self->hosts([@_]), if $type eq 'hosts';
-
-    if ($action eq 'get') {
-        #my $key = shift;
-        my $keys = [@_];
-
-        #if (defined $key) {
-        if (defined $keys) {
-            my @list;
-            map { push @list, $conf->{$type}->{$_} } @{$keys};
-            #return $conf->{$type}->{$key};
-            #return @list;
-            # in scalar context the above gives number of elements
-            # not what I wanted -jmb
-            return (wantarray) ? @list : $list[0];
-        } else {
-            return %{$conf->{$type}};
-        } #if
-
-    } elsif ($action eq 'set') {
-        my $args  = {@_};
-        my $types = join ':', @{$subtypes{$type}};
-
-        ## if even one arg type is invalid, we abort
-        map { (warn loc("Invalid method type: '%1'", $type), return 0)
-                unless $types =~ m/^$_:|:$_:|:$_$/ } keys %{$args};
-
-        ## load up the passed settings
-        map { $conf->{$type}->{$_} = $args->{$_} } keys %{$args};
-
-        return 1; # if we got this far we succeeded
-
-    } #if
-
-    warn loc("Unknown error...");
-    return 0; # must have failed - but I hate defaults
-
-} #AUTOLOAD
-
-
-## just here to keep AUTOLOAD from being called incorrectly
-##
-## (takes no arguments, returns no values)
-##
-sub DESTROY { 1; }
-
-
-################################################################################
-##
-##  file methods - load and save config data
-##
-
-## load up Config.pm
-## If passed valid args they will override Config.pm settings.
-## Args are passed in a hash called 'options':
-##     options => {
-##                    conf => {
-##                                debug   => 0,
-##                                verbose => 1
-##                            },
-##                    _build => {
-##                                  make => 'nmake'
-##                              }
-##                }
-##
-## Additionally, if _build => make is undefined or blank, the Setup routine
-## will be invoked.
-##
-## (takes optional hash argument, returns no values)
-##
-sub load {
-    my $self = shift;
-    my %args = @_;
-
-    ### initialize
-    $conf = new CPANPLUS::Config;
-
-    ### load user invocation options
-    $self->_load_args($args{options}) if $args{options};
-
-    CPANPLUS::Configure::Setup->init(conf => $self), unless $self->_get_build('make');
-
-    #$self->get_user_config;
-
-} #load
-
-
-## load passed in args overtop of Config.pm defaults
-## $options is a hashref of the values you want to replace
-## (see comments for load)
-##
-## (takes hashref argument, returns no values)
-##
-sub _load_args {
-    my $self    = shift;
-    my $options = shift;
-
-    for my $option (keys %{$options}) {
-        (my $method = $option) =~ s/^(_?)/$1set_/; # translate to calling syntax
-        $self->$method(%{$options->{$option}});
+    ### minimum version requirement.
+    ### this code may change between releases, depending on
+    ### compatibillity with previous versions.
+    unless( $class->_config_version_sufficient ) {
+        error(loc(  "You require a config of version '%1' or higher.\n".
+                    "Your current config is only of version '%2'\n",
+                    $VERSION, $CPANPLUS::Config::VERSION ));
+        return;
     }
 
-} #_load_args
+    my $self = bless { 
+                    _conf   => CPANPLUS::Config->new(), 
+                    _error  => Log::Message->new(),
+                }, $class;
+                
+    unless( $self->_load_args( options => \%hash ) ) {
+        error(loc(qq[Unable to initialize configuration!]));
+        return;
+    }
+    
+    return $self;
+}
 
 
-## ultimately this will allow multiple methods of saving,
-## but for now it just calls _save_pm
-##
-## (takes no arguments, returns no values)
-##
-sub save {
-    shift->_save_pm(@_);
-    #my $self   = shift;
-    #my ($conf) = @_;
+### allow loading of an alternate configuration file ###
+sub _load_cpanplus_config {
+    my $class = shift;
+    
+    ### apparently we loaded it already ###
+    return 1 if $INC{'CPANPLUS/Config.pm'};
+    
+    my $tried;
+    my $env = ENV_CPANPLUS_CONFIG;
+    
+    ### check it has length, and is an actual file ###
+    if ( defined $ENV{$env} and length $ENV{$env} and 
+        -f $ENV{$env} and -s _ 
+    ) {
+        eval{ load $ENV{$env} };
+        $tried++;
+        $INC{'CPANPLUS/Config.pm'} = $ENV{$env} unless $@;
+    }
 
-} #save
+    my $ok;
+    $@
+        ? error( loc("Could not load your personal config: %1: %2",
+                    $ENV{$env}, $@), "\n",
+                loc("Falling back to system-wide config."), "\n" )
+        : ($ok = 1) if $tried;
 
+    unless($ok) {
+        eval { load CPANPLUS::Config };
+        error($@), return if $@;
+    }
+    
+    return 1;
+}
+
+### this code may change between releases, depending on backwards
+### compatibility between configs.
+### if this is returning false, you can also not just use your
+### old config as base for your new config -- sorry :(
+sub _config_version_sufficient {
+    ### If they're the same, we're done already.
+    return 1 if $CPANPLUS::Config::VERSION eq $VERSION;
+
+    ### Split the version numbers into a major part and a devel part.
+    my $config_version = $CPANPLUS::Config::VERSION;
+    $config_version =~ s/_(\d+)$//;
+    my $config_devel = $1 || 0;
+
+    my $version = $VERSION;
+    $version =~ s/_(\d+)$//;
+    my $devel = $1 || 0;
+
+    ### If the configuration has a newer major version than us, it's sufficient.
+    return 1 if $config_version > $version;
+
+    ### If the configuration has the same major version and a newer devel
+    ### version than us, it's sufficient.
+    return 1 if $config_version == $version && $config_devel >= $devel;
+
+    ### Otherwise, the configuration does not have a newer version than us;
+    ### it's insufficient.
+    return 0;
+}
+
+=pod
+
+=head2 can_save( [$config_location] )
+
+Check if we can save the configuration to the specified file.
+If no file is provided, defaults to your personal config, or
+failing that, C<$INC{'CPANPLUS/Config.pm'}>.
+
+Returns true if the file can be saved, false otherwise.
+
+=cut
 
 sub can_save {
-    my $file = shift || $INC{'CPANPLUS/Config.pm'};
+    my $self = shift;
+    my $env  = ENV_CPANPLUS_CONFIG;
+    my $file = shift || $ENV{$env} || $INC{'CPANPLUS/Config.pm'};
     return 1 unless -e $file;
 
     chmod 0644, $file;
     return (-w $file);
 }
 
-## generate a new Config.pm file and save it (after backing up the old)
-##
-## (takes no arguments, returns no values)
-##
-sub _save_pm {
+=pod
+
+=head2 save( [$config_location] )
+
+Saves the configuration to the location you provided.
+If no file is provided, defaults to your personal config, or
+failing that, C<$INC{'CPANPLUS/Config.pm'}>.
+
+Returns true if the file was saved, false otherwise.
+
+=cut
+
+sub save {
     my $self = shift;
-    my $err  = $self->{_error} ||= CPANPLUS::Error->new(
-        error_level => 1,
-    );
-
-    ## ultimately $file should be passed in or divined from Config.pm
-    my $file = shift || $INC{'CPANPLUS/Config.pm'};
-    chmod 0644, $file;
-
-    my $mode;
-    if (-f $file) {
-        $mode = (stat _)[2]; ## do we really need all this?
-        if ($mode && ! -w _) {
-            $err->trap(error => loc("%1 is not writable", $file));
-        } #if
-    } #if
-
+    my $env  = ENV_CPANPLUS_CONFIG;
+    my $file = shift || $ENV{$env} || $INC{'CPANPLUS/Config.pm'};
+    
+    return unless $self->can_save($file);
+    
     my $time = gmtime;
-    my $data = Data::Dumper->Dump([$conf], ['conf']);
+    
+    load Data::Dumper;
+    my $data = Data::Dumper->Dump([$self->conf], ['conf']);
 
     ## get rid of the bless'ing
     $data =~ s/=\s*bless\s*\(\s*\{/= {/;
     $data =~ s/\s*},\s*'[A-Za-z0-9:]+'\s*\);/\n    };/;
+    
+    ### use a variable to make sure the pod parser doesn't snag it
+    my $is = '=';
 
     my $msg = <<_END_OF_CONFIG_;
-############################################
-###         CPANPLUS::Config.pm          ###
-###  Configuration structure for CPAN++  ###
-############################################
+###############################################
+###           CPANPLUS::Config              ###
+###  Configuration structure for CPANPLUS   ###
+###############################################
 
 #last changed: $time GMT
 
+### minimal pod, so you can find it with perldoc -l, etc
+${is}pod
+
+${is}head1 NAME
+
+CPANPLUS::Config
+
+${is}head1 DESCRIPTION
+
+This is your CPANPLUS configuration file. Editing this
+config changes the way CPANPLUS will behave
+
+${is}cut
+
 package CPANPLUS::Config;
 
-\$VERSION = $CPANPLUS::Internals::VERSION;
+\$VERSION = "$CPANPLUS::Internals::VERSION";
 
 use strict;
 
@@ -388,218 +242,260 @@ sub new {
 
 1;
 
-__END__
 _END_OF_CONFIG_
-
-    rename $file, "$file~", if -f _;
-
-    my $fh = FileHandle->new;
+    
+    ### make a backup ###
+    rename $file, "$file~", if -f $file;
+    
+    my $fh = new FileHandle;
     $fh->open(">$file")
-        or $err->trap(error => loc("Couldn't write to %1: %2", $file, $!));
+        or (error(loc("Could not open '%1' for writing: %2", $file, $!)),
+            return );
+            
     $fh->print($msg);
-    $fh->close;
+    $fh->close;  
 
-    delete $INC{$file};
-    require $file;
-} #_save_pm
-
-
-## get a dump of the $conf object, for debugging
-##
-## (takes no arguments, returns scalar)
-##
-sub _dump {
-    #my $self = shift;
-    return Data::Dumper->Dump([$conf], ['conf']);
-    #return $data;
-    #return Dumper(shift);
-
-} #_dump;
-
-
-## allow external programs read access to @types
-## use this if you need to know what 'types' are valid
-##
-## (takes no arguments, returns array)
-##
-sub types {
-    my $self = shift;
-    return @types;
-} #types
-
-
-## allow external programs read access to @subtypes of given $type
-## use this if you need to know what 'subtypes' are valid for 'type'
-##
-## (takes scalar argument, returns array)
-##
-sub subtypes {
-    my $self = shift;
-    my $type = shift;
-
-    return @{ $subtypes{$type} } if grep { m/^$type$/ } @types;
-
-} #types
-
-1;
-__END__
+    return 1;
+}
 
 =pod
 
-=head1 NAME
+=head2 conf()
 
-CPANPLUS::Configure - Configuration interface for CPAN++
+Return the C<CPANPLUS::Config> object.  For internal use only.
 
-=head1 SYNOPSIS
+=cut
 
-    use CPANPLUS::Configure;
+sub conf { 
+    my $self = shift;
+    $self->{_conf} = shift if $_[0];
+    return $self->{_conf};
+}
 
-    my $conf = new CPANPLUS::Configure;
+=pod
 
-    my @conf_options = $conf->subtypes('conf');
+=head2 _load_args( [options => HASHREF] );
 
-    $conf->load('options' => {'conf' => {'md5' => 1, 'flush' => 0}});
+Called by C<new> to do the actual altering of options.
 
-    my $_md5_setting = $conf->get_md5();
-    $conf->set_debug(0);
+Returns true on success, false on failure.
 
-    print $conf->dump();
+=cut
 
-    $conf->save();
+sub _load_args {    
+    my $self = shift;
+    my %hash = @_;
+    
+    my $opts;
+    my $tmpl = {
+        options => { default => {}, strict_type => 1, store => \$opts },
+    };
+    
+    my $args = check( $tmpl, \%hash ) or return;       
+  
+    for my $option ( keys %$opts ) {
+    
+        # translate to calling syntax
+        my $method;
+        if( $option =~ /^_/) {
+            ($method = $option) =~ s/^(_)?/$1set_/; 
+        } else {
+            $method = 'set_' . $option;
+        }
+        
+        $self->$method( %{$opts->{$option}} );
+    }        
+     
+    ### XXX return values?? where does this GO? ###   
+    #CPANPLUS::Configure->Setup->init( conf => $self )
+    #    unless $self->_get_build('make');
 
-=head1 DESCRIPTION
+    return 1;
+}
 
-CPANPLUS::Configure can be used to view and manipulate configuration
-settings for CPANPLUS.
+=pod
 
-=head1 METHODS
+=head2 options( type => TYPE ) 
 
-=head2 new(conf => {CONFIGURATION})
+Returns a list of all valid config options given a specific type
+(like for example C<conf> of C<program>) or false if the type does
+not exist
 
-The constructor will make a Config object.  It will attempt to use a
-saved Config.pm if it exists.  Arguments for 'conf' can be specified
-to replace those in the default Config for this object.  The possible
-options are specified in set_conf().
+=cut
 
-If no Config.pm is found, or it is corrupt, you will be bumped to
-CPANPLUS::Configure::Setup to create one.
+sub options {
+    my $self = shift;
+    my $conf = $self->conf;
+    my %hash = @_;
+    
+    my $type;
+    my $tmpl = {
+        type    => { required       => 1, default   => '', 
+                     strict_type    => 1, store     => \$type },
+    };                  
+    
+    check($tmpl, \%hash) or return;
+    
+    return sort keys %{$conf->{$type}} if $conf->{$type};
+    return;
+}     
 
-=head2 load(options => {OPTIONS})
+=pod
 
-Load is almost like the constructor, except that it takes a hash
-called 'options' which can contain keys such as 'conf'.  Valid
-arguments which are passed will override Config settings.
+=head1 ACCESSORS
 
-=head2 save()
+Accessors that start with a C<_> are marked private -- regular users
+should never need to use these.
 
-The save() function saves the Configure object to Config.pm,
-which is the default configuration for all CPANPLUS operations.
+=head2 get_SOMETHING( ITEM, [ITEM, ITEM, ... ] );
 
-=head2 @subtypes = subtypes('conf')
+The C<get_*> style accessors merely retrieves one or more desired
+config options. 
 
-This method will return a list of the subtypes of 'conf', which is
-the only public type.  Every subtype in the array can be used as
-an argument in get_conf() and set_conf().
+=head2 set_SOMETHING( ITEM => VAL, [ITEM => VAL, ITEM => VAL, ... ] );
 
-=head2 get_conf(SUBTYPE)
+The C<set_*> style accessors set the current value for one
+or more config options and will return true upon success, false on 
+failure.
 
-This function can be used to see the configuration setting of
-the named subtype.
+=head2 add_SOMETHING( ITEM => VAL, [ITEM => VAL, ITEM => VAL, ... ] );
 
-Available subtypes are listed in set_conf().
+The C<add_*> style accessor adds a new key to a config key.
 
-=head2 set_conf(SUBTYPE => SETTING)
-
-This method can be used to set any of the subtypes to new settings.
+Currently, the following accessors exist:
 
 =over 4
 
-=item * C<cpantest>
+=item set|get_conf
 
-This is a boolean value; a true value enables prompting user to
-send test report to cpan-testers after each 'make test'.
+Simple configuration directives like verbosity and favourite shell.
 
-=item * C<debug>
+=item set|get_program
 
-This is a boolean value; a true value enables debugging mode and overrides
-verbosity settings.
+Location of helper programs.
 
-=item * C<flush>
+=item _set|_get_build
 
-This is a boolean value; a true value means that the cache will be
-automatically flushed.
+Locations of where to put what files for CPANPLUS.
 
-=item * C<force>
+=item _set|_get_source
 
-This is a boolean value.  A true setting means that CPANPLUS will
-attempt to install modules even if they fail 'make test.'  It will
-also force re-fetching of modules which have already been downloaded.
-Furthermore, force will install a module even if it is already
-up-to-date.
+Locations and names of source files locally.
 
-=item * C<lib>
+=item _set|_get_mirror
 
-This is an array reference.  It is analogous to 'use lib' for the
-paths specified.  In scalar context, get_conf('lib') will return
-the first element in the array; in list context it will return the
-entire array.
+Locations and names of source files remotely.
 
-=item * C<makeflags>
+=item _set|_get_dist
 
-This is a scalar value.  The flags named in the string are added to the
-make command.
+Mapping of distribution format names to modules. 
 
-=item * C<prereqs>
+=item _set|_get_fetch
 
-This argument relates to the treatment of prerequisite modules and
-has a value of 0, 1, 2 or 3.  A 0 indicates that prerequisites are
-disallowed, a 1 enables automatic prerequisite installation, and
-a 2 prompts for each prerequisite.
+Special settings pertaining to the fetching of files.
 
-The setting of 3 indicates that the prerequisite will be tested
-but not installed.  Their build directory will be added to the
-PERL5LIB environment variable so they will be in the path.  This
-option is useful for building distributions.
+=item _set|_get_daemon
 
-=item * C<storable>
-
-This is a boolean value.  A true setting allows the use of Storable.
-
-=item * C<verbose>
-
-This is a boolean value.  A true setting enables verbose mode.
-
-=item * C<md5>
-
-This is a boolean value.  A true setting enables md5 checks.
-
-=item * C<signature>
-
-This is a boolean value.  A true setting enables PGP signature checks.
-
-=item * C<makemakerflags>
-
-This is a hash reference.  Keys are flags to be added to the
-'perl Makefile.PL' command and values are the settings the
-flags should be set to.
-
-=item * C<shell>
-
-This is a scalar.  It is the name of the default CPANPLUS shell.
+Settings for C<cpanpd>, the CPANPLUS daemon.
 
 =back
 
-=head1 AUTHORS
+=cut
+
+sub AUTOLOAD {
+    my $self = shift;
+    my $conf = $self->conf;
+
+    unless( scalar @_ ) {
+        error loc("No arguments provided!");
+        return;
+    }            
+    
+    my $name = $AUTOLOAD;
+    $name =~ s/.+:://;
+
+    my ($private, $action, $field) = 
+                $name =~ m/^(_)?((?:[gs]et|add))_([a-z]+)$/;
+    
+    my $type = '';
+    $type .= '_'    if $private;
+    $type .= $field if $field;
+        
+    unless ( exists $conf->{$type} ) {
+        error loc("Invalid method type: '%1'", $name);
+        return;
+    }
+
+    ### retrieve a current value for an existing key ###
+    if( $action eq 'get' ) {
+        for my $key (@_) {
+            my @list = ();
+            
+            if( exists $conf->{$type}->{$key} ) {
+                push @list, $conf->{$type}->{$key};
+            
+            } else {       
+                error loc(q[No such key '%1' in field '%2'], $key, $type);
+                return;
+            }     
+
+            return wantarray ? @list : $list[0];   
+        }           
+    
+    ### set an existing key to a new value ###
+    } elsif ( $action eq 'set' ) {
+        my %args = @_;
+    
+        while( my($key,$val) = each %args ) {
+            
+            if( exists $conf->{$type}->{$key} ) {
+                $conf->{$type}->{$key} = $val;
+            
+            } else {       
+                error loc(q[No such key '%1' in field '%2'], $key, $type);
+                return;
+            }     
+        }                
+        
+        return 1;    
+    
+    ### add a new key to the config ###
+    } elsif ( $action eq 'add' ) {
+        my %args = @_;
+        
+        while( my($key,$val) = each %args ) {
+            
+            if( exists $conf->{$type}->{$key} ) {
+                error( loc( q[Key '%1' already exists for field '%2'], 
+                            $key, $type));
+                return;
+            } else {
+                $conf->{$type}->{$key} = $val;       
+            }
+        }
+        return 1;                
+    } else {  
+        
+        error loc(q[Unknown action '%1'], $action);
+        return;
+    }
+}    
+    
+sub DESTROY { 1 };
+
+1;
+
+=pod
+
+=head1 AUTHOR
 
 This module by
-Joshua Boschert E<lt>jambe@cpan.orgE<gt>.
-
-This pod text by Ann Barcomb E<lt>kudra@cpan.orgE<gt>.
+Jos Boumans E<lt>kane@cpan.orgE<gt>.
 
 =head1 COPYRIGHT
 
 The CPAN++ interface (of which this module is a part of) is
-copyright (c) 2001-2002 Jos Boumans E<lt>kane@cpan.orgE<gt>.
+copyright (c) 2001, 2002, 2003, 2004, Jos Boumans E<lt>kane@cpan.orgE<gt>.
 All rights reserved.
 
 This library is free software;
@@ -608,9 +504,8 @@ terms as Perl itself.
 
 =head1 SEE ALSO
 
-L<CPANPLUS::Configure::Setup>
+L<CPANPLUS::Backend>, L<CPANPLUS::Conf>
 
-=cut
 
 # Local variables:
 # c-indentation-style: bsd
@@ -618,3 +513,4 @@ L<CPANPLUS::Configure::Setup>
 # indent-tabs-mode: nil
 # End:
 # vim: expandtab shiftwidth=4:
+

@@ -1,6 +1,3 @@
-# $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Classic.pm $
-# $Revision: #5 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
-
 ##################################################
 ###            CPANPLUS/Shell/Classic.pm       ###
 ###    Backwards compatible shell for CPAN++   ###
@@ -9,631 +6,823 @@
 
 package CPANPLUS::Shell::Classic;
 
-### TODO LIST ###
-# clean         make clean
-#
-# u             we dont track this information
-
 use strict;
+
+use CPANPLUS::inc;
+use CPANPLUS::Error;
 use CPANPLUS::Backend;
-use CPANPLUS::Tools::Check qw[check];
+use CPANPLUS::Configure::Setup;
+use CPANPLUS::Internals::Constants;
 
-use Term::ReadLine;
-use Data::Dumper;
-use File::Spec;
 use Cwd;
+use IPC::Cmd;
+use Term::UI;
+use Data::Dumper;
+use Term::ReadLine;
 
-# The 'Classic' shell was never localized, so we wouldn't, either. ;)
-# use CPANPLUS::I18N;
+use Module::Load                qw[load];
+use Params::Check               qw[check];
+use Module::Load::Conditional   qw[can_load];
+
+$Params::Check::VERBOSE       = 1;
+$Params::Check::ALLOW_UNKNOWN = 1;
 
 BEGIN {
-    use vars        qw( @ISA $VERSION );
-    @ISA        =   qw( CPANPLUS::Shell::_Base);
-    $VERSION    =   '0.01';
+    use vars        qw[ $VERSION @ISA ];
+    @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
+    $VERSION    =   '0.050_01';
 }
+
+load CPANPLUS::Shell;
+
 
 ### our command set ###
-my $cmd = {
-    h   => "_help",
-    '?' => "_help",
+my $map = {
+    a           => '_author',
+    b           => '_bundle',
+    d           => '_distribution',
+    'm'         => '_module',
+    i           => '_find_all',
+    r           => '_uptodate',
+    u           => '_not_supported',
+    ls          => '_ls',
+    get         => '_fetch',
+    make        => '_install',
+    test        => '_install',
+    install     => '_install',
+    clean       => '_not_supported',
+    look        => '_shell',
+    readme      => '_readme',
+    h           => '_help',
+    '?'         => '_help',
+    o           => '_set_conf',
+    reload      => '_reload',
+    autobundle  => '_autobundle',
+    '!'         => '_bang',
+    #'q'         => '_quit', # done it the loop itself
+};    
 
-    a   => "_author",
-    b   => "_bundle",
-    d   => "_distribution",
-    m   => "_module",
-    # i => does a b and m
+### the shell object, scoped to the file ###
+my $Shell;
+my $Brand   = 'cpan';
+my $Prompt  = $Brand . '> ';
 
-    r   => "uptodate",
-    u   => "_uninstalled",
-    o   => "set_conf",
-    q   => "_quit",
-
-    readme  => "readme",
-};
-
-### semi-global vars ###
-
-### make an object ###
-my $cpan = new CPANPLUS::Backend;
-my $conf = $cpan->configure_object();
-
-### subs ###
-### CPANPLUS::Shell::Default needs it's own constructor, seeing it will just access
-### CPANPLUS::Backend anyway
 sub new {
-    my $proto = shift;
-    my $class = ref($proto) || $proto;
-
-    ### Will call the _init constructor in Internals.pm ###
-    my $self = $class->SUPER::_init( brand => 'cpan' );
-
+    my $class   = shift;
+    
+    my $cb      = new CPANPLUS::Backend;
+    my $self    = $class->SUPER::_init(
+                            brand   => $Brand,
+                            term    => Term::ReadLine->new( $Brand ),
+                            prompt  => $Prompt,
+                            backend => $cb,
+                            format  => "%5s %-50s %8s %-10s\n",
+                        );        
+    ### make it available package wide ###
+    $Shell = $self;
+  
+    ### enable verbose, it's the cpan.pm way
+    $cb->configure_object->set_conf( verbose => 1 );
+  
+  
+    ### register install callback ###
+    $cb->_register_callback(
+            name    => 'install_prerequisite',
+            code    => \&__ask_about_install,
+    );         
+  
+    ### register test report callback ###
+    $cb->_register_callback(
+            name    => 'edit_test_report',
+            code    => \&__ask_about_test_report,
+    );         
+  
     return $self;
-}
+}  
 
-### The CPAN terminal interface ###
-sub shell {
+sub shell { 
     my $self = shift;
-
-    my $term = Term::ReadLine->new( $self->brand );
-    my $prompt = $self->brand . "> ";
-
-    $conf->set_conf( verbose => 1 );
-
-    ### store this in the object, so we can access the prompt anywhere if need be
-    $self->term(    $term);
-    $self->backend( $cpan);
-
-    $cpan->{_shell} = $self;
-
-    $self->_show_banner($cpan);
-    $self->_input_loop($cpan, $prompt) or print "\n"; # print only on abnormal quits
+    my $term = $self->term;
+   
+    $self->_show_banner;
+    $self->_input_loop && print "\n"; 
     $self->_quit;
 }
 
-### shell code, to keep stuff looping ###
-
-    ### input loop. returns true if exited normally via 'q'.
-    sub _input_loop {
-        my ($self, $cpan, $prompt) = @_;
-        my $term = $self->term;
-
-        my $normal_quit;
-        my $force_store;
-
-        ### somehow it's caching previous input ###
-        while (
-            defined (my $input = eval { $term->readline($prompt) } )
-            or $self->signals->{INT}{count} == 1
-        ) {  eval {
-
-            next unless length $input;
-
-            INNER_EVAL: {
-
-            ### re-initiate all signal handlers
-            while (my ($sig, $entry) = each %{$self->signals}) {
-                $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
-            }
-
-            ### parse the input: all commands are 1 letter, followed
-            ### by a space, followed by an arbitrary string
-            ### the first letter is the command key
-            my $key;
-            {   # why the block? -jmb
-                # to hide the $1. -autrijus
-                $input =~ s|^\s*([\w\?\!]+)\s*||;
-
-                #{ $input =~ s/^([!?])/$1 /; }
-                #input =~ s|^\s*([\w\?\!])\w*\s*||;
-
-
-                chomp $input;
-                $key = lc($1);
-            }
-
-            ### let's see if we need to force some command here ###
-            ### if so, set force to 1 and redo the loop
-            if ($key =~ /^force$/ ) {
-                $force_store = $conf->get_conf('force');
-
-                $conf->set_conf( force => 1 );
-
-                redo INNER_EVAL;
-            }
-
-            ### exit the loop altogether ###
-            ### 'last' doesn't work, must use exit for now... -kane
-            if ($key =~ /^q/) { $normal_quit = 1; exit; }
-
-            if ($key eq '!' ) {
-                eval $input;
-                warn $@ if $@;
-                next;
-            }
-
-            ### display the help ###
-            if ($key =~ /^[h?]$/) {
-                my $method = $cmd->{$key};
-                $self->$method( );
-                next;
-            }
-
-
-            ### author information ###
-            if ($key =~ /^[ambd]$/) {
-                ### load the appropriate method from our $cmd hash ###
-                my $method = $cmd->{$key};
-                my $aref = $self->$method( split /\s+/, $input );
-
-                my $class = {
-                    a   => 'Author',
-                    m   => 'Module',
-                    b   => 'Bundle',
-                    d   => 'Distribution',
-                    #u   => 'Uptodate',
-                }->{$key};
-
-                $self->_pretty_print(
-                                    input   => $input,
-                                    result  => $aref,
-                                    class   => $class,
-                                );
-
-            } elsif ( $key eq 'i' ) {
-
-                my $class = {
-                    d   => 'Distribution',
-                    b   => 'Bundle',
-                    m   => 'Module',
-                    a   => 'Author',
-                };
-
-                my $results;
-                for my $k ( sort keys %$class ) {
-
-                    my $method = $cmd->{$k};
-
-                    my $aref = $self->$method( split /\s+/, $input );
-
-                    $results += $self->_pretty_print(
-                                            input   => $input,
-                                            result  => $aref,
-                                            class   => $class->{$k},
-                                            short   => 1
-                                        );
-                }
-                print $results
-                    ? "$results items found\n"
-                    : "No objects found of any type for argument $input";
-
-            } elsif ( $key eq 'r' ) {
-                my $method = $cmd->{$key};
-
-                my $modtree = $cpan->module_tree() ;
-
-                my $class = "Uptodate";
-
-                ### is there certain modules we should check,
-                ### or should we just check them all?
-                ### -- all, this is per CPAN.pm spec:
-                ### r   NONE   reinstall recommendations
-
-                ### better print this warning out, we're not very fast here
-                ### even if CPAN.pm doesn't do this
-                my $inst = $cpan->installed();
-
-                ### check the module status, uptodate or not
-                my $res = $cpan->$method( modules => [keys %{$inst->rv}] )->rv;
-
-                $self->_pretty_print(
-                                input   => $input,
-                                result  => $res,
-                                class   => $class,
-                            );
-
-
-            } elsif ( $key eq 'u' ) {
-                print qq[Sorry, CPANPLUS doesn't keep track of this kind of information\n];
-                next;
-
-            } elsif ( $key eq 'o' ) {
-
-                $input =~ s|\s*(\w+)\s*||;
-                my $type = lc $1;
-
-                if( $type eq 'debug' ) {
-                    print   qq[Sorry you can not set debug options through ] .
-                            qq[this shell in CPANPLUS\n];
-                    next;
-                } elsif ( $type eq 'conf' ) {
-
-                    ### from CPAN.pm :o)
-                    # CPAN::Shell::o and CPAN::Config::edit are closely related. 'o conf'
-                    # should have been called set and 'o debug' maybe 'set debug'
-
-                    #    commit             Commit changes to disk
-                    #    defaults           Reload defaults from disk
-                    #    init               Interactive setting of all options
-
-                    ### set configuration options
-                    my ($name, $value) = $input =~ m/(\w+)\s*(.*?)\s*$/;
-
-                    ### redo setup configuration?
-                    if ($name eq 'init') {
-                        CPANPLUS::Configure::Setup->init(
-                            conf    => $cpan->configure_object,
-                            term    => $self->term,
-                            backend => $cpan,
-                        );
-                        return;
-
-                    } elsif ($name eq 'commit' ) {;
-                        $cpan->configure_object->save;
-                        print "Your CPAN++ configuration info has been saved!\n\n";
-                        return;
-
-                    } elsif ($name eq 'defaults' ) {
-                        print   qq[Sorry, CPANPLUS can not restore default for you.\n] .
-                                qq[Perhaps you should run the interactive setup again.\n] .
-                                qq[\ttry running 'o conf init'\n];
-                        return;
-                    }
-
-                    ### allow lazy config options... not smart but possible ###
-                    my $conf    = $cpan->configure_object;
-                    my @options = sort $conf->subtypes('conf');
-
-                    my $realname;
-                    for my $option (@options) {
-                        if (defined $name and $option =~ m/^$name/) {
-                            $realname = $option;
-                            last;
-                        }
-                    }
-
-                    my $method = $cmd->{$key};
-
-                    if ($realname) {
-                        $self->_set_config(
-                            key    => $realname,
-                            value  => $value,
-                            method => $method,
-                        );
-                    } else {
-                        local $Data::Dumper::Indent = 0;
-                        print "'$name' is not a valid configuration option!\n" if defined $name;
-
-                        print   qq[    commit             Commit changes to disk\n] .
-                                qq[    defaults           Reload defaults from disk\n] .
-                                qq[    init               Interactive setting of all options\n\n];
-
-                        my $local_format = "    %-".(sort{$b<=>$a}(map(length, @options)))[0]."s %s\n";
-
-                        foreach $key (@options) {
-                            my $val = $conf->get_conf($key);
-                            ($val) = ref($val)
-                                        ? (Data::Dumper::Dumper($val) =~ /= (.*);$/)
-                                        : "'$val'";
-                            printf $local_format, $key, $val;
-                        }
-                    }
-                } else {
-                    print   qq[Known options:\n] .
-                            qq[  conf    set or get configuration variables\n] .
-                            qq[  debug   set or get debugging options\n];
-                }
-            }
-            ### end of the one letter commands ###
-
-            elsif ( $key eq 'get' ) {
-
-                for my $mod (split /\s+/, $input) {
-
-                    my $obj;
-                    unless( $obj = $cpan->module_tree->{$mod} ) {
-                        print "Warning: Cannot $key $input, don't know what it is\n";
-                        print "Try the command\n\n";
-                        print "\ti /$mod/\n\n";
-                        print "to find objects with matching identifiers.\n";
-
-                        next;
-                    }
-
-                    #my $rv      = $cpan->fetch( modules => [$obj] );
-                    #my $href    = $cpan->extract( files => [ $rv->{$obj->module} ] );
-
-                    $obj->fetch();
-                    $obj->extract();
-
-                }
-            } elsif ( $key eq 'readme' ) {
-                my $method = $cmd->{$key};
-
-                for my $mod (split /\s+/, $input) {
-
-                    my $obj;
-                    unless( $obj = $cpan->module_tree->{$mod} ) {
-                        print "Warning: Cannot $key $input, don't know what it is\n";
-                        print "Try the command\n\n";
-                        print "\ti /$mod/\n\n";
-                        print "to find objects with matching identifiers.\n";
-
-                        next;
-                    }
-
-                    my $readme = $obj->readme;
-
-                    unless ($readme) {
-                        print qq[No README file found for $mod\n];
-                    } else {
-                        $self->_pager_open;
-                        print $readme, "\n";
-                        $self->_pager_close;
-                    }
-                }
-
-            } elsif ( $key =~ /^make|test|install|clean$/ ) {
-                my $method = $cmd->{$key};
-
-                my $program = $conf->_get_build('make');
-                my $options = $conf->get_conf('makeflags');
-
-                my $flags = $self->_stringify_makeflags($options);
-
-                for my $mod (split /\s+/, $input) {
-                    my $href = $cpan->parse_module( modules => [$mod] );
-
-                    unless ( $href ) {
-                        print loc("No such module '%1'", $mod );
-                        next;
-                    }      
-
-                    my ($name,$obj) = %{ $href->rv };
-
-                    if( $key eq 'clean' ) {
-                        #print qq[Running clean for module $name\n];
-                        #
-                        #my $cwd = cwd();
-                        #if( my $dir = $obj->status->extract ) {
-                        #    unless( chdir $dir ) {
-                        #        print qq[Could not chdir from $cwd to $dir: $!\n];
-                        #        next;
-                        #    }
-                        #    $cpan->_run( command => qq[$program clean], verbose => 1 );
-                        #
-                        #    unless( chdir $cwd ) {
-                        #        print qq[Could not chdir from $dir to $cwd: $!\n];
-                        #        next;
-                        #    }
-                        #} else {
-                        #    print qq[$name Has no own directory\n];
-                        #}
-                        print qq[Sorry, we don't know how to 'make clean' yet\n];
-                        last;
-                    } else {
-
-                        my $rv = $obj->install( target => $key );
-
-                        my $status  = $rv ? 'OK' : 'NOT OK';
-                        my $add     = $key eq 'make' ? ''   : $key;
-
-                        print qq[  "$program" $flags $add -- $status\n];
-                    }
-                }
-
-            } elsif ( $key eq 'reload' ) {
-
-                if ( $input =~ /cpan/i ) {
-                    print qq[You want to reload the CPAN code\n];
-                    print qq[Just type 'q' and then restart... Trust me, it is MUCH safer\n];
-
-                } elsif ( $input =~ /index/i ) {
-                    $cpan->reload_indices(update_source => 1);
-
-                } else {
-                    print qq[cpan     re-evals the CPANPLUS.pm file\n];
-                    print qq[index    re-reads the index files\n];
-                }
-
-            } elsif ( $key eq 'look' ) {
-
-                my @modules = split /\s+/, $input;
-
-                my $conf    = $cpan->configure_object;
-                my $shell   = $conf->_get_build('shell');
-
-                unless($shell) {
-                    print   qq[Your config does not specify a subshell!\n] .
-                            qq[Perhaps you need to re-run your setup?\n];
-
-                    next;
-                }
-                my $cwd = cwd();
-
-                for my $mod (@modules) {
-                    my $obj = $cpan->module_tree->{$mod};
-
-                    unless($obj) {
-                        print   qq[Warning: Cannot look $mod, don't know what it is.].
-                                qq[Try the command\n\n    i /$mod/   \n\n].
-                                qq[to find object with matching identifiers.\n];
-                        next;
-                    }
-
-                    my $dir = $obj->status->extract;
-
-                    unless( $dir ) {
-                        $obj->fetch();
-                        $dir = $obj->extract();
-                    }
-
-                    #$dir = $obj->status->{extract};
-
-                    unless( $dir ) {
-                        print qq[Could not determine where $mod was extracted too\n];
-                        next;
-                    }
-
-                    unless( chdir $dir ) {
-                        print qq[Could not chdir from $cwd to $dir: $!\n];
-                        next;
-                    }
-
-                    if( system($shell) and $! ) {
-                        print qq[Error executing your subshell: $!\n];
-                        next;
-                    }
-
-                    unless( chdir $cwd ) {
-                        print qq[Could not chdir back to $cwd from $dir: $!\n];
-                    }
-                }
-
-            } elsif ( $key eq 'ls' ) {
-                my @list;
-
-                for my $auth (split /\s+/, $input) {
-                    unless ( $cpan->author_tree->{uc $auth} ) {
-                        print qq[$key command rejects argument $auth: not an author\n];
-                        next;
-                    }
-
-                    push @list, uc $auth;
-                }
-
-                my $rv = $cpan->distributions( authors => [map {'^'.$_.'$'} @list] );
-
-                $self->_pp_ls( result => $rv->rv, input => [@list] );
-
-            } elsif ( $key eq 'autobundle' ) {
-
-                print qq[Writing bundle file... This may take a while\n];
-
-                my $rv = $cpan->autobundle();
-
-                print $rv->ok
-                    ? qq[\nWrote autobundle to ] . $rv->rv . qq[\n]
-                    : qq[\nCould not create autobundle\n];
-
-                next;
-
-            } else {
-
-                print qq[Unknown command '$key'. Type ? for help.\n];
-
-            }
-
-            } # INNER_EVAL:
-
-
-
-        }; #}# end of eval and OUTER_EVAL
-
-        warn $@ if $@;
-
-        ### continue the while loop in case we 'next' or 'last' it earlier
-        ### to make sure the sig handler is still working properly
-        } continue {
-
-            ### restore the previous setting of $force ###
-            $conf->set_conf( force => $force_store ) unless $force_store;
-
-            #$self->{_signals}{INT}{count}--
-            #    if $self->{_signals}{INT}{count}; # clear the sigint count
+sub _input_loop {
+    my $self    = shift;
+    my $term    = $self->term;
+    my $cb      = $self->backend;
+
+    my $normal_quit = 0;
+    while (
+        defined (my $input = eval { $term->readline($self->prompt) } )
+        or $self->_signals->{INT}{count} == 1
+    ) { 
+        ### re-initiate all signal handlers
+        while (my ($sig, $entry) = each %{$self->_signals} ) {
+            $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
         }
 
-        return $normal_quit;
-    }
+        last if $self->_dispatch_on_input( input => $input );
 
+        ### flush the lib cache ###
+        $cb->_flush( list => [qw|lib|] );
+                   
+    } continue {            
+        $self->_signals->{INT}{count}--
+            if $self->_signals->{INT}{count}; # clear the sigint count
+    }   
+    
+    return 1;
+}
 
-    ### displays quit message
-    sub _quit {
-
-        ### well, that's what CPAN.pm says...
-        print "Lockfile removed\n";
-    }
-
-
-### END SHELL STUFF ###
-
-sub _pretty_print {
+sub _dispatch_on_input {
     my $self = shift;
-    my %args = @_;
+    my $conf = $self->backend->configure_object();
+    my $term = $self->term;
+    my %hash = @_;
+    
+    my $string;
+    my $tmpl = {
+        input   => { required => 1, store => \$string }
+    };
+    
+    check( $tmpl, \%hash ) or return;
+ 
+    ### the original force setting;
+    my $force_store = $conf->get_conf( 'force' );
+    
+ 
+    my $key;
+    ### parse the input: the first part before the space
+    ### is the command, followed by arguments.
+    ### see the usage below
+    my $key;
+    PARSE_INPUT: {   
+        $string =~ s|^\s*([\w\?\!]+)\s*||;
+        chomp $string;
+        $key = lc($1);
+    }
+    
+    ### you prefixed the input with 'force' 
+    ### that means we set the force flag, and
+    ### reparse the input...
+    ### YAY goto block :)
+    if( $key eq 'force' ) {
+        $conf->set_conf( force => 1 );
+        goto PARSE_INPUT;
+    }
+    
+    ### you want to quit
+    return 1 if $key =~ /^q/;
+    
+    my $method = $map->{$key};
+    unless( $self->can( $method ) ) {
+        print "Unknown command '$key'. Type ? for help.\n";
+        return;
+    }
 
-    my $class = $args{'class'} or return 0;
+    ### dispatch the method call    
+    eval { $self->$method( 
+                    command => $key,
+                    result  => [ split /\s+/, $string ],
+                    input   => $string );
+    };
+    warn $@ if $@;
 
-    if( $class eq 'Bundle' or $class eq 'Module' ) {
-        return $self->_pp_module( %args );
+    return;
+} 
+ 
+### displays quit message
+sub _quit {
 
-    } elsif( $class eq 'Author' ) {
-        return $self->_pp_author( %args );
+    ### well, that's what CPAN.pm says...
+    print "Lockfile removed\n";
+} 
 
-    } elsif( $class eq 'Distribution' ) {
-        return $self->_pp_distribution( %args );
+sub _not_supported {
+    my $self = shift;
+    my %hash = @_;
 
-    } elsif( $class eq 'Uptodate' ) {
-        return $self->_pp_uptodate( %args );
+    my $cmd;
+    my $tmpl = {
+        command => { required => 1, store => \$cmd }
+    };
+
+    check( $tmpl, \%hash ) or return;
+
+    print "Sorry, the command '$cmd' is not supported\n";
+
+    return;
+}
+
+sub _fetch {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $input);
+    my $tmpl = {
+        result  => { store => \$aref, default => [] }, 
+        input   => { default => 'all', store => \$input },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    for my $mod (@$aref) {
+        my $obj;
+
+        unless( $obj = $cb->module_tree($mod) ) {
+            print "Warning: Cannot get $input, don't know what it is\n";
+            print "Try the command\n\n";
+            print "\ti /$mod/\n\n";
+            print "to find objects with matching identifiers.\n";
+
+            next;
+        }
+
+        $obj->fetch && $obj->extract;
+    }
+    
+    return $aref;
+}
+
+sub _install {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+
+    my $mapping = {
+        make        => { target => 'create', skiptest => 1 },
+        test        => { target => 'create' },
+        install     => { target => 'install' },
+    };    
+    
+    my($aref,$cmd);
+    my $tmpl = {
+        result  => { store => \$aref, default => [] }, 
+        command => { required => 1, store => \$cmd, allow => [keys %$mapping] },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    for my $mod (@$aref) {
+        my $obj = $cb->module_tree( $mod );
+        
+        unless( $obj ) {
+            print "No such module '$mod'\n"; 
+            next;
+        }            
+
+        my $opts = $mapping->{$cmd};
+        $obj->install( %$opts );
+    }
+    
+    return $aref;
+}
+
+sub _shell {
+    my $self    = shift;
+    my $cb      = $self->backend;
+    my $conf    = $cb->configure_object;
+    my %hash    = @_;
+
+    my($aref, $cmd);
+    my $tmpl = {
+        result  => { store => \$aref, default => [] }, 
+        command => { required => 1, store => \$cmd },
+
+    };
+    
+    check( $tmpl, \%hash ) or return;
+
+    
+    my $shell = $conf->get_program('shell');
+    unless( $shell ) {
+        print "Your configuration does not define a value for subshells.\n".
+              qq[Please define it with "o conf shell <your shell>"\n];
+        return;
+    }     
+    
+    my $cwd = Cwd::cwd();
+    
+    for my $mod (@$aref) {
+        print "Running $cmd for $mod\n"; 
+    
+        my $obj = $cb->module_tree( $mod )  or next;
+        $obj->fetch                         or next;
+        $obj->extract                       or next;
+        
+        $cb->_chdir( dir => $obj->status->extract )   or next;
+        
+        local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
+        if( system($shell) and $! ) {
+            print "Error executing your subshell '$shell': $!\n";
+            next;
+        }
+    }       
+    $cb->_chdir( dir => $cwd );
+ 
+    return $aref;
+}
+
+sub _readme {
+    my $self    = shift;
+    my $cb      = $self->backend;
+    my $conf    = $cb->configure_object;
+    my %hash    = @_;
+
+    my($aref, $cmd);
+    my $tmpl = {
+        result  => { store => \$aref, default => [] }, 
+        command => { required => 1, store => \$cmd },
+
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    for my $mod (@$aref) {
+        my $obj = $cb->module_tree( $mod ) or next;
+        
+        if( my $readme = $obj->readme ) {
+        
+            $self->_pager_open; 
+            print $readme;
+            $self->_pager_close;       
+        }
+    }
+    
+    return 1;    
+}
+
+sub _reload {
+    my $self    = shift;
+    my $cb      = $self->backend;
+    my $conf    = $cb->configure_object;
+    my %hash    = @_;
+
+    my($input, $cmd);
+    my $tmpl = {
+        input   => { default => 'all', store => \$input },
+        command => { required => 1, store => \$cmd },
+
+    };
+
+    check( $tmpl, \%hash ) or return;
+
+    if ( $input =~ /cpan/i ) {
+        print qq[You want to reload the CPAN code\n];
+        print qq[Just type 'q' and then restart... ] .
+              qq[Trust me, it is MUCH safer\n];
+
+    } elsif ( $input =~ /index/i ) {
+        $cb->reload_indices(update_source => 1);
 
     } else {
-        return 0;
+        print qq[cpan     re-evals the CPANPLUS.pm file\n];
+        print qq[index    re-reads the index files\n];
     }
+ 
+    return 1;
 }
 
+sub _autobundle {
+    my $self    = shift;
+    my $cb      = $self->backend;
+    
+    print qq[Writing bundle file... This may take a while\n];
 
+    my $where = $cb->autobundle();
 
-### get author output back ###
+    print $where
+        ? qq[\nWrote autobundle to $where\n]
+        : qq[\nCould not create autobundle\n];
+
+    return 1;
+}
+
+sub _set_conf {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my $conf = $cb->configure_object;
+    my %hash = @_;
+    
+    my($aref, $input);
+    my $tmpl = {
+        result  => { store => \$aref, default => [] }, 
+        input   => { default => 'all', store => \$input },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    my $type = shift @$aref;
+    
+    if( $type eq 'debug' ) {
+        print   qq[Sorry you can not set debug options through ] .
+                qq[this shell in CPANPLUS\n];
+        return;
+        
+    } elsif ( $type eq 'conf' ) {
+    
+        ### from CPAN.pm :o)
+        # CPAN::Shell::o and CPAN::Config::edit are closely related. 'o conf'
+        # should have been called set and 'o debug' maybe 'set debug'
+    
+        #    commit             Commit changes to disk
+        #    defaults           Reload defaults from disk
+        #    init               Interactive setting of all options
+
+        my $name    = shift @$aref;
+        my $value   = "@$aref";
+
+        if( $name eq 'init' ) {
+            my $setup = CPANPLUS::Configure::Setup->new(
+                        conf    => $cb->configure_object,
+                        term    => $self->term,   
+                        backend => $cb,
+                    );
+            return $setup->init;
+
+        } elsif ($name eq 'commit' ) {;
+            $cb->configure_object->save;
+            print "Your CPAN++ configuration info has been saved!\n\n";
+            return;
+        
+        } elsif ($name eq 'defaults' ) {
+            print   qq[Sorry, CPANPLUS can not restore default for you.\n] .
+                    qq[Perhaps you should run the interactive setup again.\n] .
+                    qq[\ttry running 'o conf init'\n];
+            return;
+        
+        ### we're just supplying things in the 'conf' section now,
+        ### not the program section.. it's a bit of a hassle to make that
+        ### work cleanly with the original CPAN.pm interface, so we'll fix
+        ### it when people start complaining, which is hopefully never.
+        } else {
+            unless( $name ) {       
+                my @list =  grep { $_ ne 'hosts' } 
+                            $conf->options( type => $type );
+                
+                my $method = 'get_' . $type;
+                
+                local $Data::Dumper::Indent = 0;
+                for my $name ( @list ) {
+                    my $val = $conf->$method($name);
+                    ($val)  = ref($val)
+                                ? (Data::Dumper::Dumper($val) =~ /= (.*);$/)
+                                : "'$val'";
+                    printf  "    %-25s %s\n", $name, $val;
+                }
+                
+            } elsif ( $name eq 'hosts' ) {
+                print   "Setting hosts is not trivial.\n" .
+                        "It is suggested you edit the " .
+                        "configuration file manually";
+            
+            } else {         
+                my $method = 'set_' . $type;
+                if( $conf->$method($name => defined $value ? $value : '') ) {
+                    my $set_to = defined $value ? $value : 'EMPTY STRING';
+                    print "Key '$name' was set to '$set_to'\n";
+                }                                  
+            }        
+        } 
+    } else {
+        print   qq[Known options:\n] .
+                qq[  conf    set or get configuration variables\n] .
+                qq[  debug   set or get debugging options\n];
+    }
+
+    return;
+}
+
+########################
+### search functions ###
+########################
+
 sub _author {
     my $self = shift;
-    my @args = scalar @_ ? @_ : ('/./'); # build a regex that matches all
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $short, $input, $class);
+    my $tmpl = {
+        result  => { store => \$aref, default => ['/./'] }, 
+        short   => { default => 0, store => \$short },
+        input   => { default => 'all', store => \$input },
+        class   => { default => 'Author', no_override => 1, 
+                    store => \$class },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    my @regexes = map { m|/(.+)/| ? qr/$1/ : $_ } @$aref;
+    
+    
+    my @rv;
+    for my $type (qw[author cpanid]) {
+        push @rv, $cb->search( type => $type, allow => \@regexes );      
+    }
 
-    my @list;
-    for my $author (@args) {
-        $author = uc $author;
+    unless( @rv ) {
+        print "No object of type $class found for argument $input\n"
+            unless $short;
+        return;            
+    }
+    
+    return $self->_pp_author( 
+                result  => \@rv,
+                class   => $class,
+                short   => $short,
+                input   => $input );
 
-        ### if it's a regex... ###
-        if ($author =~ m|/(.+)/|) {
-            my $href = $cpan->search(
-                                type            => 'author',
-                                list            => ["(?i:$1)"],
-                                authors_only    => 1,
-                        );
+}
 
-            push @list, map { $href->{$_} } sort keys %$href;
+### find all modules matching a query ###
+sub _module {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $short, $input, $class);
+    my $tmpl = {
+        result  => { store => \$aref, default => ['/./'] }, 
+        short   => { default => 0, store => \$short },
+        input   => { default => 'all', store => \$input },
+        class   => { default => 'Module', no_override => 1, 
+                    store => \$class },
+    };
+    
+    check( $tmpl, \%hash ) or return;
 
+    my @rv;
+    for my $module (@$aref) {
+        if( $module =~ m|/(.+)/| ) {
+            push @rv, $cb->search(  type    => 'module', 
+                                    allow   => [qr/$1/i] ); 
         } else {
-            my $obj = $cpan->author_tree->{$author} or next;
+            my $obj = $cb->module_tree( $module ) or next;
+            push @rv, $obj;
+        }
+    }        
 
-            push @list, $obj;
+    return $self->_pp_module(
+                result  => \@rv,
+                class   => $class,
+                short   => $short,
+                input   => $input );
+}
+
+### find all bundles matching a query ###
+sub _bundle {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $short, $input, $class);
+    my $tmpl = {
+        result  => { store => \$aref, default => ['/./'] }, 
+        short   => { default => 0, store => \$short },
+        input   => { default => 'all', store => \$input },
+        class   => { default => 'Bundle', no_override => 1, 
+                    store => \$class },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    my @rv;
+    for my $bundle (@$aref) {
+        if( $bundle =~ m|/(.+)/| ) {
+            push @rv, $cb->search(  type    => 'module', 
+                                    allow   => [qr/Bundle::.*?$1/i] ); 
+        } else {
+            my $obj = $cb->module_tree( "Bundle::${bundle}" ) or next;
+            push @rv, $obj;
+        }
+    }        
+    
+    return $self->_pp_module(
+                result  => \@rv,
+                class   => $class,
+                short   => $short,
+                input   => $input );
+}
+
+sub _distribution {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $short, $input, $class);
+    my $tmpl = {
+        result  => { store => \$aref, default => ['/./'] }, 
+        short   => { default => 0, store => \$short },
+        input   => { default => 'all', store => \$input },
+        class   => { default => 'Distribution', no_override => 1, 
+                    store => \$class },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    my @rv;
+    for my $module (@$aref) {
+        ### if it's a regex... ###
+        if ( my ($match) = $module =~ m|^/(.+)/$|) {
+
+            ### something like /FOO/Bar.tar.gz/ was entered
+            if (my ($path,$package) = $match =~ m|^/?(.+)/(.+)$|) {
+                my $seen;
+
+                my @data = $cb->search( type    => 'package', 
+                                        allow   => [qr/$package/i] );
+
+                my @list = $cb->search( type    => 'path', 
+                                        allow   => [qr/$path/i], 
+                                        data    => \@data );
+
+                ### make sure we dont list the same dist twice
+                for my $val ( @list ) {
+                    next if $seen->{$val->package}++;
+
+                    push @rv, $val;
+                }
+
+            ### something like /FOO/ or /Bar.tgz/ was entered
+            ### so we look both in the path, as well as in the package name
+            } else {
+                my $seen;
+                {   my @list = $cb->search( type    => 'package', 
+                                            allow   => [qr/$match/i] );
+
+                    ### make sure we dont list the same dist twice
+                    for my $val ( @list ) {
+                        next if $seen->{$val->package}++;
+
+                        push @rv, $val;
+                    }
+                }
+                
+                {   my @list = $cb->search( type    => 'path', 
+                                            allow   => [qr/$match/i] );
+
+                    ### make sure we dont list the same dist twice
+                    for my $val ( @list ) {
+                        next if $seen->{$val->package}++;
+    
+                        push @rv, $val;
+                    }
+
+                }
+            }
+            
+        } else {
+
+            ### user entered a full dist, like: R/RC/RCAPUTO/POE-0.19.tar.gz
+            if (my ($path,$package) = $module =~ m|^/?(.+)/(.+)$|) {
+                my @data = $cb->search( type    => 'package', 
+                                        allow   => [qr/^$package$/] );
+                my @list = $cb->search( type    => 'path',  
+                                        allow   => [qr/$path$/i], 
+                                        data    => \@data);
+
+                ### make sure we dont list the same dist twice
+                my $seen;
+                for my $val ( @list ) {
+                    next if $seen->{$val->package}++;
+
+                    push @rv, $val;
+                }
+            }
         }
     }
-    return \@list;
+
+    return $self->_pp_distribution(
+                result  => \@rv,
+                class   => $class,
+                short   => $short,
+                input   => $input );
 }
+
+sub _find_all {
+    my $self = shift;
+    
+    my @rv;
+    for my $method (qw[_author _bundle _module _distribution]) {
+        my $aref = $self->$method( @_, short => 1 );
+    
+        push @rv, @$aref if $aref;
+    }
+    
+    print scalar(@rv). " items found\n"
+}
+
+sub _uptodate {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $short, $input, $class);
+    my $tmpl = {
+        result  => { store => \$aref, default => ['/./'] }, 
+        short   => { default => 0, store => \$short },
+        input   => { default => 'all', store => \$input },
+        class   => { default => 'Uptodate', no_override => 1, 
+                    store => \$class },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+
+
+    my @rv;
+    if( @$aref) {
+        for my $module (@$aref) {
+            if( $module =~ m|/(.+)/| ) {
+                my @list = $cb->search( type    => 'module', 
+                                        allow   => [qr/$1/i] ); 
+                
+                ### only add those that are installed
+                push @rv, grep { $_->installed_file } @list;
+                
+            } else {
+                my $obj = $cb->module_tree( $module ) or next;
+                push @rv, $obj;
+            }
+        }  
+    } else {
+        @rv = @{$cb->_all_installed};
+    }
+    
+    return $self->_pp_uptodate(
+            result  => \@rv,
+            class   => $class,
+            short   => $short,
+            input   => $input );
+}
+
+sub _ls {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my($aref, $short, $input, $class);
+    my $tmpl = {
+        result  => { store => \$aref, default => [] }, 
+        short   => { default => 0, store => \$short },
+        input   => { default => 'all', store => \$input },
+        class   => { default => 'Uptodate', no_override => 1, 
+                    store => \$class },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+
+    my @rv;
+    for my $name (@$aref) {
+        my $auth = $cb->author_tree( uc $name );
+        
+        unless( $auth ) {
+            print qq[ls command rejects argument $name: not an author\n];
+            next;
+        }
+        
+        push @rv, $auth->distributions;
+    }
+    
+    return $self->_pp_ls(
+            result  => \@rv,
+            class   => $class,
+            short   => $short,
+            input   => $input );
+}
+
+############################
+### pretty printing subs ###
+############################
+
 
 sub _pp_author {
     my $self = shift;
     my %hash = @_;
-
+    
+    my( $aref, $short, $class, $input );
     my $tmpl = {
-            result  => { required => 1, default => [], strict_type => 1 },
-            class   => { required => 1 },
-            input   => { default => 'all' },
-            short   => { default => 0 },
+        result  => { required => 1, default => [], strict_type => 1,
+                        store => \$aref },
+        short   => { default => 0, store => \$short },
+        class   => { required => 1, store => \$class },
+        input   => { required => 1, store => \$input },
     };
-
-    my $args = check( $tmpl, \%hash ) or return undef;
-
-    my $aref    = $args->{'result'};
-    my $results = @$aref;
-    my $short   = $args->{short};
-    my $class   = $args->{class};
-
-    if ( $results == 0 ) {
-        print "No objects of type $class found for argument $args->{input}\n"
-                unless $short;
-        next;
-
-    } elsif ( ($results == 1) and !$short) {
-
+    
+    check( $tmpl, \%hash ) or return;
+    
+    ### no results
+    if( !@$aref ) {
+        print "No objects of type $class found for argument $input\n"
+            unless $short;
+    
+    ### one result, long output desired;
+    } elsif( @$aref == 1 and !$short ) {
+        
         ### should look like this:
         #cpan> a KANE
         #Author id = KANE
@@ -644,10 +833,10 @@ sub _pp_author {
 
         print "$class id = ",                   $obj->cpanid(), "\n";
         printf "    %-12s %s\n", 'EMAIL',       $obj->email();
-        printf "    %-12s %s%s\n", 'FULLNAME',  $obj->name();
+        printf "    %-12s %s%s\n", 'FULLNAME',  $obj->author();
 
     } else {
-
+    
         ### should look like this:
         #Author          KANE (Jos Boumans)
         #Author          LBROCARD (Leon Brocard)
@@ -655,210 +844,38 @@ sub _pp_author {
 
         for my $obj ( @$aref ) {
             printf qq[%-15s %s ("%s" (%s))\n],
-                $class, $obj->cpanid, $obj->name, $obj->email;
+                $class, $obj->cpanid, $obj->author, $obj->email;
         }
-        print "$results items found\n" unless $short;
-    }
-    return $results;
-}
-
-
-### find all bundles matching a query ###
-sub _bundle {
-    my $self = shift;
-    my @args = scalar @_ ? @_ : ('/./'); # build a regex that matches all
-
-    my @list;
-    for my $bundle (@args) {
-        ### if it's a regex... ###
-        if ($bundle =~ m|/(.+)/|) {
-            my $href = $cpan->search( type => 'module', list => ["^(?i:Bundle::.*?$1)"] );
-            push @list, values %$href;
-
-        } else {
-            my $obj = $cpan->module_tree->{"Bundle::$bundle"} or next;
-
-            push @list, $obj;
-        }
-    }
-    return \@list;
-}
-
-sub _distribution {
-    my $self = shift;
-    my @args = scalar @_ ? @_ : ('/./'); # build a regex that matches all
-
-    my @list;
-    for my $module (@args) {
-        ### if it's a regex... ###
-        if ( my ($match) = $module =~ m|^/(.+)/$|) {
-
-            ### something like /FOO/Bar.tar.gz/ was entered
-            if (my ($path,$package) = $match =~ m|^/?(.+)/(.+)$|) {
-                my $seen;
-
-                my $data = $cpan->search( type => 'package', list => ["(?i:$package)"] );
-                my $href = $cpan->search( type => 'path', list => ["(?i:$path)"], data => $data );
-
-                ### make sure we dont list the same dist twice
-                for my $val ( values %$href ) {
-                    next if $seen->{$val->package()}++;
-
-                    push @list, $val;
-                }
-
-            ### something like /FOO/ or /Bar.tgz/ was entered
-            ### so we look both in the path, as well as in the package name
-            } else {
-                my $seen;
-                {
-                    my $href = $cpan->search( type => 'package', list => ["(?i:$match)"] );
-
-                    ### make sure we dont list the same dist twice
-                    for my $val ( values %$href ) {
-                        next if $seen->{$val->package()}++;
-
-                        push @list, $val;
-                    }
-                }
-                {
-                    my $href = $cpan->search( type => 'path', list => ["(?i:$match)"] );
-
-                    ### make sure we dont list the same dist twice
-                    for my $val ( values %$href ) {
-                        next if $seen->{$val->package()}++;
-
-                        push @list, $val;
-                    }
-                }
-            }
-        } else {
-
-            ### user entered a full dist, like: R/RC/RCAPUTO/POE-0.19.tar.gz
-            if (my ($path,$package) = $module =~ m|^/?(.+)/(.+)$|) {
-                my $data = $cpan->search( type => 'package', list => ['^'.$package.'$'] );
-                my $href = $cpan->search( type => 'path', list => ['^'.$path.'$'], data => $data);
-
-                ### make sure we dont list the same dist twice
-                my $seen;
-                for my $val ( values %$href ) {
-                    next if $seen->{$val->package()}++;
-
-                    push @list, $val;
-                }
-            }
-        }
-    }
-    return \@list;
-}
-
-sub _pp_distribution {
-    my $self = shift;
-    my %hash = @_;
-
-    my $tmpl = {
-            result  => { required => 1, default => [], strict_type => 1 },
-            class   => { required => 1 },
-            input   => { default => 'all' },
-            short   => { default => 0 },
-    };
-
-    my $args = check( $tmpl, \%hash ) or return undef;
-
-    my $aref    = $args->{'result'};
-    my $results = @$aref;
-    my $short   = $args->{short};
-    my $class   = $args->{class};
-    my $input   = $args->{input};
-
-    if ( $results == 0 ) {
-        print "No objects of type $class found for argument $input\n" unless $short;
-        next;
-
-    } elsif ( ($results == 1) and !$short) {
-
-        ### should look like this:
-        #Distribution id = S/SA/SABECK/POE-Component-Client-POP3-0.02.tar.gz
-        #    CPAN_USERID  SABECK (Scott Beck <scott@gossamer-threads.com>)
-        #    CONTAINSMODS POE::Component::Client::POP3
-
-        my $obj     = shift @$aref;
-        my $href    = $cpan->search( type => 'package', list => ['^'.$obj->package.'$'] );
-        my $aut_obj = $cpan->author_tree->{ $obj->author() };
-
-        my $format = "    %-12s %s\n";
-
-        print "$class id = ", $obj->path(), '/', $obj->package(), "\n";
-        printf $format, 'CPAN_USERID',
-                    $obj->author() .' ('. $aut_obj->name .' ('. $aut_obj->email .'))';
-
-        ### yes i know it's ugly, but it's what cpan.pm does
-        printf $format, 'CONTAINSMODS', join (' ', sort keys %$href);
-
-    } else {
-
-        ### should look like this:
-        #Module          LWP             (G/GA/GAAS/libwww-perl-5.64.tar.gz)
-        #Module          POE             (R/RC/RCAPUTO/POE-0.19.tar.gz)
-        #2 items found
-
-        for my $obj ( @$aref ) {
-            printf "%-15s %s\n", $class, $obj->path() .'/'. $obj->package();
-        }
-
-        print "$results items found\n" unless $short;
+        print scalar(@$aref)." items found\n" unless $short;
     }
 
-    return $results;
-}
-
-
-
-### find all modules matching a query ###
-sub _module {
-    my $self = shift;
-    my @args = scalar @_ ? @_ : ('/./'); # build a regex that matches all
-
-    my @list;
-    for my $module (@args) {
-        ### if it's a regex... ###
-        if ($module =~ m|/(.+)/|) {
-            my $href = $cpan->search( type => 'module', list => ["(?i:$1)"] );
-            push @list, map { $href->{$_} } sort keys %$href;
-
-        } else {
-            my $obj = $cpan->module_tree->{$module} or next;
-
-            push @list, $obj;
-        }
-    }
-    return \@list;
+    return $aref;
 }
 
 sub _pp_module {
     my $self = shift;
     my %hash = @_;
-
+    
+    my( $aref, $short, $class, $input );
     my $tmpl = {
-            result  => { required => 1, default => [], strict_type => 1 },
-            class   => { required => 1 },
-            input   => { default => 'all' },
-            short   => { default => 0 },
+        result  => { required => 1, default => [], strict_type => 1,
+                        store => \$aref },
+        short   => { default => 0, store => \$short },
+        class   => { required => 1, store => \$class },
+        input   => { required => 1, store => \$input },
     };
 
-    my $args = check( $tmpl, \%hash ) or return undef;
+    check( $tmpl, \%hash ) or return;
 
-    my $aref    = $args->{'result'};
-    my $results = @$aref;
-    my $short   = $args->{short};
-    my $class   = $args->{class};
-    my $input   = $args->{input};
 
-    if ( $results == 0 ) {
-        print "No objects of type $class found for argument $input\n" unless $short;
-        next;
-
-    } elsif ( ($results == 1) and !$short) {
+    ### no results
+    if( !@$aref ) {
+        print "No objects of type $class found for argument $input\n"
+            unless $short;
+    
+    ### one result, long output desired;
+    } elsif( @$aref == 1 and !$short ) {
+        
 
         ### should look like this:
         #Module id = LWP
@@ -871,24 +888,33 @@ sub _pp_module {
         #    INST_FILE    C:\Perl\site\lib\LWP.pm
         #    INST_VERSION 5.62
 
-        my $obj = shift @$aref;
+        my $obj     = shift @$aref;
+        my $aut_obj = $obj->author;
+        my $format  = "    %-12s %s%s\n";
 
-        my $aut_obj     = $cpan->author_tree->{ $obj->author() };
-        my $uptodate    = $cpan->uptodate( modules => [$obj] )->rv;
-
-        my $format = "    %-12s %s%s\n";
-
-        print "$class id = ", $obj->module(), "\n";
-        printf $format, 'DESCRIPTION',  $obj->description() if $obj->description();
-        printf $format, 'CPAN_USERID',  $aut_obj->cpanid() . " (" . $aut_obj->name() . " <" . $aut_obj->email() . ">)";
+        print "$class id = ",           $obj->module(), "\n";
+        printf $format, 'DESCRIPTION',  $obj->description() 
+            if $obj->description();
+        
+        printf $format, 'CPAN_USERID',  $aut_obj->cpanid() . " (" .
+            $aut_obj->author() . " <" . $aut_obj->email() . ">)";
+        
         printf $format, 'CPAN_VERSION', $obj->version();
         printf $format, 'CPAN_FILE',    $obj->path() . '/' . $obj->package();
-        printf $format, 'DSLI_STATUS',  $self->_pp_dslip("status"=>$obj->dslip()) if $obj->dslip() =~ /\w/;
+
+        printf $format, 'DSLI_STATUS',  $self->_pp_dslip($obj->dslip) 
+            if $obj->dslip() =~ /\w/;
+        
         #printf $format, 'MANPAGE',      $obj->foo();
-        #printf $format, 'CONATAINS, ### this is for bundles... CPAN.pm downloads them,
+        ### this is for bundles... CPAN.pm downloads them,
+        #printf $format, 'CONATAINS, 
         # parses and goes from there...
-        printf $format, 'INST_FILE',    $uptodate->{$obj->module}->{file} || '(not installed)';
-        printf $format, 'INST_VERSION', $uptodate->{$obj->module}->{version}
+        
+        printf $format, 'INST_FILE',    $obj->installed_file || 
+            '(not installed)';
+        printf $format, 'INST_VERSION', $obj->installed_version;
+
+
 
     } else {
 
@@ -898,30 +924,35 @@ sub _pp_module {
         #2 items found
 
         for my $obj ( @$aref ) {
-            printf "%-15s %-15s (%s)\n", $class, $obj->module(), $obj->path() .'/'. $obj->package();
+            printf "%-15s %-15s (%s)\n", $class, $obj->module(), 
+                $obj->path() .'/'. $obj->package();
         }
-        print "$results items found\n" unless $short;
+        print scalar(@$aref). " items found\n" unless $short;
     }
 
-    return $results;
+    return $aref;
 }
 
 sub _pp_dslip {
-    my $self = shift;
-    my %args = @_;
-
+    my $self    = shift;
+    my $dslip   = shift or return;
+    
     my (%_statusD, %_statusS, %_statusL, %_statusI);
 
-    @_statusD{qw(? i c a b R M S)} = qw(unknown idea pre-alpha alpha beta released mature standard);
-    @_statusS{qw(? m d u n)}       = qw(unknown mailing-list developer comp.lang.perl.* none);
+    @_statusD{qw(? i c a b R M S)} = 
+        qw(unknown idea pre-alpha alpha beta released mature standard);
+    
+    @_statusS{qw(? m d u n)}       = 
+        qw(unknown mailing-list developer comp.lang.perl.* none);
+    
     @_statusL{qw(? p c + o h)}     = qw(unknown perl C C++ other hybrid);
-    @_statusI{qw(? f r O h)}       = qw(unknown functions references+ties object-oriented hybrid);
+    @_statusI{qw(? f r O h)}       = 
+        qw(unknown functions references+ties object-oriented hybrid);
 
-    my $status = $args{'status'} or return 0;
-    my @status = split("", $status);
+    my @status = split("", $dslip);
 
     my $results = sprintf( "%s (%s,%s,%s,%s)",
-        $status,
+        $dslip,
         $_statusD{$status[0]},
         $_statusS{$status[1]},
         $_statusL{$status[2]},
@@ -931,167 +962,194 @@ sub _pp_dslip {
     return $results;
 }
 
+sub _pp_distribution {
+    my $self = shift;
+    my $cb   = $self->backend;
+    my %hash = @_;
+    
+    my( $aref, $short, $class, $input );
+    my $tmpl = {
+        result  => { required => 1, default => [], strict_type => 1,
+                        store => \$aref },
+        short   => { default => 0, store => \$short },
+        class   => { required => 1, store => \$class },
+        input   => { required => 1, store => \$input },
+    };
+
+    check( $tmpl, \%hash ) or return;
+
+
+    ### no results
+    if( !@$aref ) {
+        print "No objects of type $class found for argument $input\n"
+            unless $short;
+    
+    ### one result, long output desired;
+    } elsif( @$aref == 1 and !$short ) {
+    
+    
+        ### should look like this:
+        #Distribution id = S/SA/SABECK/POE-Component-Client-POP3-0.02.tar.gz
+        #    CPAN_USERID  SABECK (Scott Beck <scott@gossamer-threads.com>)
+        #    CONTAINSMODS POE::Component::Client::POP3
+
+        my $obj     = shift @$aref;
+        my $aut_obj = $obj->author;
+        my $pkg     = $obj->package;
+        my $format  = "    %-12s %s\n";
+        
+        my @list    = $cb->search(  type    => 'package', 
+                                    allow   => [qr/^$pkg$/] );
+
+
+        print "$class id = ", $obj->path(), '/', $obj->package(), "\n";
+        printf $format, 'CPAN_USERID',
+                    $aut_obj->cpanid .' ('. $aut_obj->author .
+                    ' '. $aut_obj->email .')';
+
+        ### yes i know it's ugly, but it's what cpan.pm does
+        printf $format, 'CONTAINSMODS', join (' ', map { $_->module } @list);
+
+    } else {
+
+        ### should look like this:
+        #Distribution    LWP             (G/GA/GAAS/libwww-perl-5.64.tar.gz)
+        #Distribution    POE             (R/RC/RCAPUTO/POE-0.19.tar.gz)
+        #2 items found
+
+        for my $obj ( @$aref ) {
+            printf "%-15s %s\n", $class, $obj->path() .'/'. $obj->package();
+        }
+
+        print scalar(@$aref). " items found\n" unless $short;
+    }
+
+    return $aref;
+}
 
 sub _pp_uptodate {
     my $self = shift;
+    my $cb   = $self->backend;
     my %hash = @_;
-
+    
+    my( $aref, $short, $class, $input );
     my $tmpl = {
-            result  => { required => 1, default => {}, strict_type => 1 },
-            class   => { required => 1 },
-            input   => { default => 'all' },
+        result  => { required => 1, default => [], strict_type => 1,
+                        store => \$aref },
+        short   => { default => 0, store => \$short },
+        class   => { required => 1, store => \$class },
+        input   => { required => 1, store => \$input },
     };
 
-    my $args = check( $tmpl, \%hash ) or return undef;
-
-    my $res     = $args->{'result'};
-    my $class   = $args->{class};
-    my $input   = $args->{input};
-
-    ### store the ones that are actually NOT uptodate ###
-    ### keep a counter of how many results we got as well ###
-    my $store;
-    my $result;
-    my $none;
-
-    for my $name ( sort keys %$res ) {
-        if( $res->{$name}->{version} == 0 ){ $none++ }
-
-        next unless $res->{$name}->{uptodate} eq '0';
-
-        $store->{$name} = $res->{$name};
-        $result++;
-    }
+    check( $tmpl, \%hash ) or return;
 
     my $format  = "%-25s %9s %9s  %s\n";
 
-    unless( $result ) {
+    my @not_uptodate;
+    my $no_version;
+
+    my %seen;
+    for my $mod (@$aref) {
+        next if $mod->package_is_perl_core;
+        next if $seen{ $mod->package }++;
+    
+    
+        if( $mod->installed_file and not $mod->installed_version ) {
+            $no_version++; 
+            next;
+        }
+        
+        push @not_uptodate, $mod unless $mod->is_uptodate;
+    }
+    
+    unless( @not_uptodate ) {
         my $string = $input
                         ? "for $input"
                         : '';
         print "All modules are up to date $string\n";
-        next;
+        return;
+    
     } else {
-        printf $format, (
-                            'Package namespace',
+        printf $format, (   'Package namespace',
                             'installed',
                             'latest',
                             'in CPAN file'
                         );
     }
 
-    for my $name ( sort keys %$store ) {
-        my $uptodate = $store->{$name};
-
-        my $modobj = $cpan->module_tree->{$name};
-
-        printf $format, (
-                            $name,
-                            $uptodate->{version},
-                            $modobj->version(),
-                            $modobj->path() .'/'. $modobj->package(),
+    for my $mod ( sort { $a->module cmp $b->module } @not_uptodate ) {
+        printf $format, (   $mod->module,
+                            $mod->installed_version,
+                            $mod->version,
+                            $mod->path .'/'. $mod->package,
                         );
     }
 
-    if ($none)  { print "$none installed modules have no (parsable) version number\n"; }
+    print "$no_version installed modules have no (parsable) version number\n"
+        if $no_version;
 
-    return $result;
-}
-
-sub _uninstalled {
-    my $self = shift;
-
-    ### let's see if we got args or not ###
-    my @args; my $flag;
-    if ( scalar @_  ) {
-        @args = @_ ;
-    } else {
-        $flag = 1;
-    }
-
-    my $inst = $cpan->installed();
-
-    my $rv;
-    ### get all the modules matching the criteria ###
-    for my $module (@args) {
-        ### if it's a regex... ###
-        if ($module =~ m|/(.+)/|) {
-            my $href = $cpan->search( type => 'module', list => ["(?i:$1)"] );
-
-            while( my($k,$v) = each %$href ) {
-                next if $inst->{$k};
-                $rv->{$k} = $v;
-            }
-
-        } else {
-            my $obj = $cpan->module_tree->{$module} or next;
-            next if $inst->{ $obj->module };
-
-            $rv->{ $obj->module } = $obj;
-        }
-    }
-
-    if ($flag) {
-        $rv = $cpan->module_tree;
-        for my $k ( keys %{$rv} ) {
-            print "looking at $k\n";
-            delete $rv->{$k} if $inst->{$k};
-
-        }
-    }
-
-    return $rv;
+    return \@not_uptodate;
 }
 
 sub _pp_ls {
     my $self = shift;
+    my $cb   = $self->backend;
     my %hash = @_;
-
+    
+    my( $aref, $short, $class, $input );
     my $tmpl = {
-            result  => { required => 1, default => {}, strict_type => 1 },
-            input   => { required => 1, default => [], strict_type => 1 },
+        result  => { required => 1, default => [], strict_type => 1,
+                        store => \$aref },
+        short   => { default => 0, store => \$short },
+        class   => { required => 1, store => \$class },
+        input   => { required => 1, store => \$input },
     };
 
-    my $args = check( $tmpl, \%hash ) or return undef;
+    check( $tmpl, \%hash ) or return;
 
-    my $result  = $args->{result};
-    my $input   = $args->{input};
+    ### should look something like this:
+    #6272 2002-05-12 KANE/Acme-Comment-1.00.tar.gz
+    #8171 2002-08-13 KANE/Acme-Comment-1.01.zip
+    #7110 2002-09-04 KANE/Acme-Comment-1.02.tar.gz
+    #7571 2002-09-08 KANE/Acme-Intraweb-1.01.tar.gz
+    #6625 2001-08-23 KANE/Acme-POE-Knee-1.10.zip
+    #3058 2003-10-05 KANE/Acme-Test-0.02.tar.gz
 
-    my $format = "%8d %10s %s/%s\n";
+    ### don't know size or mtime
+    #my $format = "%8d %10s %s/%s\n";
 
-    ### ensure we are printing it out in the proper order ###
-    for my $auth (@$input) {
-        my $cksum = $result->{$auth} or next;
-
-        for my $dist ( sort keys %$cksum ) {
-            printf $format, $cksum->{$dist}->{size},
-                            $cksum->{$dist}->{mtime},
-                            $auth, $dist;
-        }
+    for my $mod ( sort { $a->package cmp $b->package } @$aref ) {
+        print "\t" . $mod->package . "\n";
     }
+
+    return $aref;
 }
 
-sub _stringify_makeflags {
+
+#############################
+### end pretty print subs ###
+#############################
+
+
+sub _bang {
     my $self = shift;
-    my $opts = shift;
+    my %hash = @_;
+    
+    my( $input );
+    my $tmpl = {
+        input   => { required => 1, store => \$input },
+    };
 
-    my $str;
-    if( ref $opts eq 'HASH' ) {
-        while(my ($k,$v) = each %$opts ) {
-            $str .= "$k=$v ";
-        }
-    } elsif ( ref $opts eq 'ARRAY' ) {
-        $str = join " ", @$opts;
-    } elsif ( ref $opts eq 'SCALAR' ) {
-        $str = $opts;
-    } else {
-        warn qq[Odd makeflags set: ] . ref $opts . qq[. Do not know how to parse\n];
-        $str = '';
-    }
-    return $str;
-}
-
-
+    check( $tmpl, \%hash ) or return;
+    
+    eval $input;
+    warn $@ if $@;
+    
+    print "\n";
+    
+    return;
+}    
+ 
 sub _help {
     print qq[
 Display Information
@@ -1119,13 +1177,18 @@ Other
  autobundle    Snapshot                force cmd     unconditionally do cmd
 ];
 
-}
-
+} 
+ 
+ 
+ 
+1;
+__END__ 
+ 
 =pod
 
 =head1 NAME
 
-CPANPLUS::Shell::Classic - CPAN.pm emulation for CPAN++
+CPANPLUS::Shell::Classic - CPAN.pm emulation for CPANPLUS
 
 =head1 DESCRIPTION
 
@@ -1139,12 +1202,10 @@ For detailed documentation, refer to L<CPAN>.
 This module by
 Jos Boumans E<lt>kane@cpan.orgE<gt>.
 
-This pod text by Ann Barcomb E<lt>kudra@cpan.orgE<gt>.
-
 =head1 COPYRIGHT
 
-The CPAN++ interface (of which this module is a part of) is
-copyright (c) 2001, 2002 Jos Boumans E<lt>kane@cpan.orgE<gt>.
+The CPANPLUS interface (of which this module is a part of) is
+copyright (c) 2001-2004 Jos Boumans E<lt>kane@cpan.orgE<gt>.
 All rights reserved.
 
 This library is free software;
@@ -1156,6 +1217,7 @@ terms as Perl itself.
 L<CPAN>
 
 =cut
+
 
 
 # Local variables:

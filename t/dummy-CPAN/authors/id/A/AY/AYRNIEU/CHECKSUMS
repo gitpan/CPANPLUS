@@ -2,44 +2,26 @@
 -----BEGIN PGP SIGNED MESSAGE-----
 Hash: SHA1
 
-# CHECKSUMS file written on Sat Feb  8 16:06:01 2003 by CPAN::Checksums (v1.016)
+# CHECKSUMS file written on Tue Jun 15 02:56:25 2004 by CPAN::Checksums (v1.016)
 $cksum = {
-  'Crypt-Rot13-0.04.tar.gz' => {
-    'md5-ungz' => '9022cbbeba95d780dfc9697edf473d6f',
-    'mtime' => '1999-06-15',
-    'md5' => 'e141ee6f891cd59b249140975a74190c',
-    'size' => '2694'
-  },
-  'Crypt-Rot13-0.02.tar.gz' => {
-    'md5-ungz' => '00cfed3a2367a60d9fdcac0f1a6bd8dd',
-    'mtime' => '1999-05-25',
-    'md5' => 'cbc4edc34415a5703d09bf9ad50875da',
-    'size' => '2451'
-  },
-  'Crypt-Rot13-0.01.tar.gz' => {
-    'md5-ungz' => 'b0ffd86784a814da219ac8fe9285972a',
-    'mtime' => '1999-05-13',
-    'md5' => '21779b5020be1ea440b6589137bcbc93',
-    'size' => '2789'
-  },
   'Text-Bastardize-0.06.tar.gz' => {
-    'md5-ungz' => '8a148408fb4f7e434b7d3ea3671960cc',
     'mtime' => '1999-05-13',
+    'md5-ungz' => '8a148408fb4f7e434b7d3ea3671960cc',
     'md5' => '0567a1beaa950b5881c706ebc3dde0d5',
-    'size' => '3467'
+    'size' => 3467
   },
   'Crypt-Rot13-0.6.tar.gz' => {
-    'md5-ungz' => '71760436f823b672cde0c3da30627b37',
     'mtime' => '2000-04-23',
+    'md5-ungz' => '71760436f823b672cde0c3da30627b37',
     'md5' => '0898cc852619875a743678083152155a',
-    'size' => '10872'
+    'size' => 10872
   }
 };
 __END__
 -----BEGIN PGP SIGNATURE-----
-Version: GnuPG v1.2.1 (GNU/Linux)
+Version: GnuPG v1.2.3 (GNU/Linux)
 
-iD8DBQE+RSrpMo2oZ0UPiewRAtJWAKCKJif85kmiy9bjoVYyMChMIC+YBgCfdO5v
-2DDgOwXDHLgh/8cmtBgya5Y=
-=1Y50
+iD8DBQFAzmVZMo2oZ0UPiewRAv5MAJ9tajbtrg14echRtn4t940v7FpMfgCffvU1
+mAcaUP8yzmIvbpdn1cGUgpw=
+=rrmL
 -----END PGP SIGNATURE-----

@@ -1,10 +1,13 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         CPANPLUS
-version:      0.0499
-version_from: lib/CPANPLUS/Internals.pm
-installdirs:  site
-requires:
-
+name: CPANPLUS
+version: 0.050_01
+abstract: Ameliorated interface to the CPAN
+author: Jos Boumans <kane@cpan.org>
+license: perl
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.21
+requires:
+  perl: 5.6.1
+no_index:
+  directory:
+    - lib/CPANPLUS/inc
+    - inc
+generated_by: Module::Install version 0.36

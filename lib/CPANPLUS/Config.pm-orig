@@ -1,13 +1,13 @@
-############################################
-###         CPANPLUS::Config.pm          ###
-###  Configuration structure for CPAN++  ###
-############################################
+###############################################
+###           CPANPLUS::Config              ###
+###  Configuration structure for CPANPLUS   ###
+###############################################
 
-#last changed: Tue Dec  4 06:38:37 2001 GMT
+#last changed: Sun Jun 20 13:16:28 2004 GMT
 
 package CPANPLUS::Config;
 
-$VERSION = 0.01;
+$VERSION = "0.050_01";
 
 use strict;
 
@@ -15,75 +15,113 @@ sub new {
     my $class = shift;
 
     my $conf = {
+                 '_fetch' => {
+                               'blacklist' => [ 'ftp' ],
+                             },
+                 '_daemon' => {
+                                'password' => '',
+                                'port' => '1337',
+                                'username' => 'cpanplus'
+                              },
                  'conf' => {
-                             'cpantest' => 0,
+                             'hosts' => [
+                                          {
+                                            'scheme' => 'ftp',
+                                            'path' => '/pub/CPAN/',
+                                            'host' => 'ftp.cpan.org'
+                                          },
+                                          {
+                                            'scheme' => 'http',
+                                            'path' => '/',
+                                            'host' => 'www.cpan.org'
+                                          },
+                                          {
+                                            'scheme' => 'ftp',
+                                            'path' => '/pub/CPAN/',
+                                            'host' => 'ftp.nl.uu.net'
+                                          },
+                                          {
+                                            'scheme' => 'ftp',
+                                            'path' => '/pub/CPAN/',
+                                            'host' => 'cpan.valueclick.com'
+                                          },
+                                          {
+                                            'scheme' => 'ftp',
+                                            'path' => '/pub/languages/perl/CPAN/',
+                                            'host' => 'ftp.funet.fi'
+                                          }
+                                        ],
                              'verbose' => 0,
                              'storable' => 1,
-                             'prereqs' => 2,
-                             'lib' => [],
-                             'force' => 0,
-                             'makeflags' => {},
-                             'makemakerflags' => {},
-                             'debug' => 0,
-                             'md5' => 1,
-                             'shell' => 'CPANPLUS::Shell::Default',
-                             'format' => 'MakeMaker',
-                             'signature' => 0,
                              'skiptest' => 0,
+                             'makeflags' => '',
+                             'email' => 'cpanplus@example.com',
+                             'dist_type' => '',
+                             'debug' => 0,
+                             'lib' => [],
+                             'makemakerflags' => '',
+                             'prefer_makefile' => 1,
+                             'prefer_bin' => 0,
+                             'shell' => 'CPANPLUS::Shell::Default',
+                             'base' => '',
+                             'no_update' => 0,
+                             'buildflags' => '',
+                             'force' => 0,
+                             'prereqs' => 2,
+                             'cpantest' => 0,
+                             'signature' => 0,
+                             'flush' => 1,
+                             'allow_build_interactivity' => 1,
+                             'passive' => 1,
+                             'md5' => 1,
+                             'fetchdir' => '',
+                             'extractdir' => '',
                            },
+                 'program' => {
+                                'make' => '',
+                                'perl' => '',
+                                'editor' => '',
+                                'sudo' => '',
+                                'shell' => '',
+                                'pager' => '',
+                              },
                  '_source' => {
-                                'auth' => '01mailrc.txt.gz',
-                                'update' => '86400',
-                                'smod' => 'packages',
-                                'sauth' => 'mailrc',
-                                'mod' => '02packages.details.txt.gz',
-                                'dslip' => '03modlist.data.gz',
                                 'hosts' => 'MIRRORED.BY',
-                                'sdslip' => 'dslip'
+                                'auth' => '01mailrc.txt.gz',
+                                'stored' => 'sourcefiles',
+                                'dslip' => '03modlist.data.gz',
+                                'update' => '86400',
+                                'mod' => '02packages.details.txt.gz'
                               },
                  '_build' => {
-                               'unzip' => '',
-                               'base' => '',
-                               'autdir' => 'authors/',
-                               'ftp' => '',
-                               'gzip' => '',
-                               'tar' => '',
-                               'ncftpget' => '',
-                               'targetdir' => '',
-                               'wget' => '',
-                               'ncftp' => '',
-                               'pager' => '',
-                               'perl' => '',
                                'moddir' => 'build/',
-                               'lynx' => '',
-                               'make' => '',
-                               'sudo' => '',
                                'startdir' => '',
+                               'distdir' => 'dist/',
                                'autobundle' => 'autobundle/',
                                'autobundle_prefix' => 'Snapshot',
-                               'distdir' => 'dist/'
+                               'autdir' => 'authors/',
+                               'sanity_check' => 1,
                              },
-                 '_ftp' => {
-                             'auth' => 'authors/01mailrc.txt.gz',
-                             'urilist' => [
-                                            {
-                                              'path' => '/pub/CPAN/',
-                                              'scheme' => 'ftp',
-                                              'host' => 'ftp.cpan.org'
-                                            },
-                                          ],
-                             'base' => 'authors/id/',
-                             'mod' => 'modules/02packages.details.txt.gz',
-                             'passive' => 1,
-                             'email' => 'cpanplus@example.com',
-                             'dslip' => 'modules/03modlist.data.gz'
-                           }
+                 '_mirror' => {
+                                'base' => 'authors/id/',
+                                'auth' => 'authors/01mailrc.txt.gz',
+                                'dslip' => 'modules/03modlist.data.gz',
+                                'mod' => 'modules/02packages.details.txt.gz'
+                              },
+                 '_dist' => {
+                              ### these are seperate installs
+                              #'debian' => 'CPANPLUS::Dist::Deb',
+                              #'ports' => 'CPANPLUS::Dist::Ports',
+                              'makemaker' => 'CPANPLUS::Dist::MM',
+                              'build' => 'CPANPLUS::Dist::Build',
+                            }
     };
 
     bless($conf, $class);
     return $conf;
 
 } #new
+
 
 1;
 
