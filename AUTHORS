@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/AUTHORS $
-# $Revision: #11 $ $Change: 7707 $ $DateTime: 2003/08/25 18:50:40 $
+# $Revision: #12 $ $Change: 9267 $ $DateTime: 2003/12/11 20:30:22 $
 
 [Credits]
 
@@ -45,6 +45,7 @@ Barrie Slaymaker	(RBS)
 Chia-Liang Kao		(CLKAO)
 Dave Rolsky		(DROLSKY)
 David Landgren
+David Wheeler		(DWHEELER)
 Graham Barr		(GBARR)
 Jedi Lin
 Jeroen Latour

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #21 $ $Change: 8896 $ $DateTime: 2003/11/16 09:27:30 $
+# $Revision: #22 $ $Change: 9267 $ $DateTime: 2003/12/11 20:30:22 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -15,7 +15,7 @@ use strict;
 
 BEGIN {
     use vars        qw( @ISA $VERSION );
-    $VERSION    =   0.047;
+    $VERSION    =   0.048;
 }
 
 ### required files. I think we can now get rid of Carp, since we use Error.pm

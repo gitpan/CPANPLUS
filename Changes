@@ -1,4 +1,28 @@
 ____________________________________________________________________________
+[  9267] By: autrijus                              on 2003/12/11  20:30:22
+        Log: * This be 0.048, "test now runs" edition.
+	   ! AUTHORS ChangeLog lib/CPANPLUS.pm
+	   ! lib/CPANPLUS/Internals.pm
+____________________________________________________________________________
+[  9266] By: autrijus                              on 2003/12/11  20:26:07
+        Log: * promote IPC::Run to mandatory on all platforms that can
+	       run it.
+	   ! Makefile.PL
+____________________________________________________________________________
+[  9265] By: autrijus                              on 2003/12/11  20:21:43
+        Log: * cpanplus never runs tests!  how stupid can this bug be?
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  8896] By: autrijus                              on 2003/11/16  09:27:30
+        Log: * This be 0.047, emergency fix release.
+	   ! ChangeLog lib/CPANPLUS.pm
+	   ! lib/CPANPLUS/Internals.pm
+	   ! lib/CPANPLUS/Internals/Make.pm
+____________________________________________________________________________
+[  8892] By: autrijus                              on 2003/11/15  17:03:03
+        Log: * accomodate for modern makemaker
+	   ! MANIFEST.SKIP
+____________________________________________________________________________
 [  8891] By: autrijus                              on 2003/11/15  16:59:11
         Log: * This be CPANPLUS, version 0.046.
 	   ! ChangeLog Makefile.PL lib/CPANPLUS.pm

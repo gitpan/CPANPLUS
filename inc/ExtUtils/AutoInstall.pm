@@ -1,8 +1,8 @@
 # $File: //depot/cpanplus/dist/inc/ExtUtils/AutoInstall.pm $ 
-# $Revision: #9 $ $Change: 8106 $ $DateTime: 2003/09/13 20:59:37 $
+# $Revision: #10 $ $Change: 9268 $ $DateTime: 2003/12/11 20:41:18 $
 
 package ExtUtils::AutoInstall;
-$ExtUtils::AutoInstall::VERSION = '0.54';
+$ExtUtils::AutoInstall::VERSION = '0.55';
 
 use strict;
 
@@ -15,8 +15,8 @@ ExtUtils::AutoInstall - Automatic install of dependencies via CPAN
 
 =head1 VERSION
 
-This document describes version 0.54 of B<ExtUtils::AutoInstall>,
-released September 14, 2003.
+This document describes version 0.55 of B<ExtUtils::AutoInstall>,
+released November 30, 2003.
 
 =head1 SYNOPSIS
 
@@ -104,7 +104,27 @@ option offered by B<ExtUtils::MakeMaker>.
 
 B<Module::Install> users should consult L<Module::Install::AutoInstall>
 for an alternative (and arguably more elegant) syntax to specify
-features, as demonstrated by this module's own F<Makefile.PL>.
+features, as demonstrated by this module's own F<Makefile.PL>:
+
+    use inc::Module::Install;
+    name	('ExtUtils-AutoInstall');
+    abstract	('Automatic install of dependencies via CPAN');
+    author	('Autrijus Tang (autrijus@autrius.org)');
+    version_from('lib/ExtUtils/AutoInstall.pm');
+    requires	('Cwd');
+    features	(
+	'CPANPLUS Support' => [
+	    -default	    => 0,
+	    'CPANPLUS'	    => '0.043',
+	],
+	'CPAN.pm support' => [
+	    -default	    => 0,
+	    'CPAN'	    => '1.0',
+	],
+    );
+    auto_install();
+    &Meta->write;
+    &Makefile->write;
 
 =head2 Prerequisites and Features
 
@@ -392,7 +412,7 @@ sub import {
 		$DisabledTests{$_} = 1 for map { glob($_) } @skiptests;
 	    }
 	    else {
-		print "failed!" . ($arg ? " (needs $arg)" : '') . "\n";
+		print "missing." . ($arg ? " (would need $arg)" : '') . "\n";
 		push @required, $mod => $arg;
 	    }
 	}

@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #26 $ $Change: 8891 $ $DateTime: 2003/11/15 16:59:11 $
+# $Revision: #27 $ $Change: 9266 $ $DateTime: 2003/12/11 20:26:07 $
 
 use strict;
 BEGIN { require 5.00503; }
@@ -344,7 +344,7 @@ that defaults to 'Y', there might be _unpredictable failures_!
     ),
     $ipc_ok ? (
         loc('IPC::Run support')           => [
-            -default            => (!_is_unix() or ($^O eq 'solaris')),
+            -default            => 1,
             'IPC::Run'          => 0.75,
         ],
     ) : (),
