@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/bin/cpansmoke $
-# $Revision: #7 $ $Change: 7667 $ $DateTime: 2003/08/23 16:31:15 $
+# $Revision: #8 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 use strict;
 use Cwd;

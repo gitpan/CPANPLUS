@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell.pm $
-# $Revision: #3 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
+# $Revision: #5 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 ###################################################
 ###               CPANPLUS/Shell.pm             ###
@@ -98,7 +98,7 @@ sub _init {
             unless ($self->{_signals}{INT}{count}++) {
                 warn loc("Caught SIGINT"), "\n";
             } else {
-                warn loc("Got another SIGINT"), "\n"; die;
+                warn loc("Got another SIGINT"), "\n"; die "\n";
             }
         };
 

@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/I18N.pm $
-# $Revision: #5 $ $Change: 7726 $ $DateTime: 2003/08/26 14:01:15 $
+# $Revision: #6 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 ##############################
 ###    CPANPLUS/I18N.pm    ###

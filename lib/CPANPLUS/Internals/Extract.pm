@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #8 $ $Change: 10305 $ $DateTime: 2004/03/03 11:54:09 $
+# $Revision: #9 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###

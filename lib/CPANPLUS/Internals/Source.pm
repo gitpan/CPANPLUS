@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Source.pm $
-# $Revision: #9 $ $Change: 8147 $ $DateTime: 2003/09/16 03:23:34 $
+# $Revision: #10 $ $Change: 11202 $ $DateTime: 2004/09/20 20:13:54 $
 
 ################################################################
 ###                CPANPLUS/Internals/Source.pm              ###
@@ -298,7 +298,25 @@ sub _create_dslip_tree {
         my $in = $self->_gunzip(file => $file);
 
         ### get rid of the comments and the code ###
-        $in =~ s|.+}\s||s;
+        ### need a smarter parser, some people have this in their dslip info:
+        # [
+        # 'Statistics::LTU',
+        # 'R',
+        # 'd',
+        # 'p',
+        # 'O',
+        # '?',
+        # 'Implements Linear Threshold Units',
+        # ...skipping...
+        # "\x{c4}dd \x{fc}ml\x{e4}\x{fc}ts t\x{f6} \x{eb}v\x{eb}r\x{ff}th\x{ef}ng!",
+        # 'BENNIE',
+        # '11'
+        # ],
+        ### also, older versions say:
+        ### $cols = [....]
+        ### and newer versions say:
+        ### $CPANPLUS::Modulelist::cols = [...]
+        $in =~ s|.+}\s+(\$(?:CPAN::Modulelist::)?cols)|$1|s;
 
         ### split '$cols' and '$data' into 2 variables ###
         my ($ds_one, $ds_two) = split ';', $in, 2;

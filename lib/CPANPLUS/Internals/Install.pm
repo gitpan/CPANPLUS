@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Install.pm $
-# $Revision: #10 $ $Change: 8344 $ $DateTime: 2003/10/05 17:25:02 $
+# $Revision: #11 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 #######################################################
 ###           CPANPLUS/Internals/Install.pm         ###

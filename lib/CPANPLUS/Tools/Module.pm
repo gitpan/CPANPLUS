@@ -9,6 +9,7 @@ use CPANPLUS::I18N;
 use Carp ();
 use File::Spec ();
 use FileHandle ();
+use ExtUtils::MakeMaker ();
 
 BEGIN {
     use vars        qw[$VERSION @ISA $VERBOSE $CACHE $ERROR @EXPORT_OK];
@@ -192,6 +193,7 @@ sub check_install {
         }
 
         $href->{file} = $filename;
+	$href->{version} = MM->parse_version($filename) and next;
 
         while (local $_ = <$fh> ) {
 

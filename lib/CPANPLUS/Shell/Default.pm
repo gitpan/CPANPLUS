@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #20 $ $Change: 9271 $ $DateTime: 2003/12/11 21:14:34 $
+# $Revision: #21 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###

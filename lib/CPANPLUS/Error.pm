@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Error.pm $
-# $Revision: #6 $ $Change: 7690 $ $DateTime: 2003/08/24 09:23:37 $
+# $Revision: #7 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 ###############################################
 ###              CPANPLUS/Error.pm          ###

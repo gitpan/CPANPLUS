@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Fetch.pm $
-# $Revision: #10 $ $Change: 8337 $ $DateTime: 2003/10/05 15:49:02 $
+# $Revision: #11 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 #######################################################
 ###            CPANPLUS/Internals/Fetch.pm          ###

@@ -1,6 +1,6 @@
 #!/usr/bin/perl -w
 # $File: //depot/cpanplus/dist/t/CPANPLUS.t $
-# $Revision: #4 $ $Change: 6982 $ $DateTime: 2003/07/15 21:51:46 $
+# $Revision: #5 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 BEGIN { chdir 't' if -d 't' };
 

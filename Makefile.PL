@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/Makefile.PL $
-# $Revision: #28 $ $Change: 9290 $ $DateTime: 2003/12/12 21:08:16 $
+# $Revision: #29 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 use strict;
 BEGIN { require 5.00503; }

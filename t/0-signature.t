@@ -1,6 +1,6 @@
 #!/usr/bin/perl
 # $File: //depot/cpanplus/dist/t/0-signature.t $ $Author: autrijus $
-# $Revision: #6 $ $Change: 7707 $ $DateTime: 2003/08/25 18:50:40 $
+# $Revision: #7 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 use strict;
 use lib 't/lib';

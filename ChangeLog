@@ -1,5 +1,18 @@
 # $File: //depot/cpanplus/dist/ChangeLog $
-# $Revision: #16 $ $Change: 10313 $ $DateTime: 2004/03/03 14:58:11 $
+# $Revision: #17 $ $Change: 11205 $ $DateTime: 2004/09/20 20:16:07 $
+
+[Changes for 0.0499 - Septermber 21, 2004]
+
+* Bug fixes
+
+  - PAUSE has been producing module list not understood by the old
+    parser, warranting an emergency release to fix this error.
+    (Alternatively, you may upgrade to CPANPLUS 0.050_01 instead.)
+
+  - Smoke test disclaimers are now moved to the top of the message,
+    as suggested by Andy Lester.
+
+  - Pressing ^C no longer produces a stack trace in the default shell.
 
 [Changes for 0.049 - March 3, 2004]
 

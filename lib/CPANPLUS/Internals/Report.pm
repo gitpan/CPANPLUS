@@ -1,5 +1,5 @@
 # $File: //depot/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #14 $ $Change: 8342 $ $DateTime: 2003/10/05 17:16:08 $
+# $Revision: #16 $ $Change: 11204 $ $DateTime: 2004/09/20 20:15:05 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -147,6 +147,16 @@ Additional comments:
             } sort keys %missing);
 
             $text .= << ".";
+******************************** NOTE ********************************
+The comments below are created mechanically, possibly without manual
+checking by the sender.  Also, because many people perform automatic
+tests on CPAN, chances are that you will receive identical messages
+about the same problem.
+
+If you believe that the message is mistaken, please reply to the first
+one with correction and/or additional information, and do not take
+it personally.  We appreciate your patience. :)
+**********************************************************************
 
 Hello, $author! Thanks for uploading your works to CPAN.
 
@@ -171,17 +181,6 @@ at <http://search.cpan.org/dist/ExtUtils-AutoInstall/> may be
 worth a look.
 
 Thanks! :-)
-
-******************************** NOTE ********************************
-The comments above are created mechanically, possibly without manual
-checking by the sender.  Also, because many people perform automatic
-tests on CPAN, chances are that you will receive identical messages
-about the same problem.
-
-If you believe that the message is mistaken, please reply to the first
-one with correction and/or additional information, and do not take
-it personally.  We appreciate your patience. :)
-**********************************************************************
 
 .
         }
