@@ -500,8 +500,8 @@ FTP all that well you can use passive FTP.
 ];
 
     $answer = _get_reply(
-                    prompt  => "Use passive FTP? [N/y]: ",
-                    default => 'n',
+                    prompt  => "Use passive FTP? [Y/n]: ",
+                    default => 'y',
                     choices => [ qw/y n/ ],
               );
 
@@ -510,6 +510,11 @@ FTP all that well you can use passive FTP.
 
     if ($answer =~ /^y/i) {
         $passive = 1;
+
+        ### set the ENV var as well, else it won't get set till AFTER
+        ### the configuration is saved. but we fetch files BEFORE that.
+        $ENV{FTP_PASSIVE} = 1;
+
         print "I will";
     } else {
         $passive = 0;
@@ -1166,11 +1171,22 @@ with e.g. 'http://www.cpan.org/' if LWP, wget or lynx is installed.
 
 (Enter an empty string when you are done, or to simply skip this step.)
 
+Note that if you want to use a local depository, you will have to enter
+as follows:
+
+file://server/path/to/cpan
+
+if the file is on a server on your local network or as:
+
+file:///path/to/cpan
+
+if the file is on your local disk. Note the three /// after the file: bit
+
 };
 
     while ('kane is happy') {
         $answer = _get_reply(
-                        prompt  => "Additional host(s) to add". 
+                        prompt  => "Additional host(s) to add".
                                    ($fallback_host ? " [$fallback_host]: " : ": "),
                         default => $fallback_host,
                   );
@@ -1360,6 +1376,10 @@ sub _parse_mirrored_by {
     my $file = shift;
 
     my $fh = new FileHandle;
+
+    ### file should have a size, else there is a problem ###
+    -s $file or die "$file has no size!";
+
     $fh->open("<$file") or die "Couldn't open $file: $!";
     {
         local $/ = undef;

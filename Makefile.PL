@@ -1,6 +1,6 @@
 #!/usr/bin/perl
-# $File: //member/autrijus/cpanplus/dist/Makefile.PL $ $Author: autrijus $
-# $Revision: #14 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
+# $File: //member/autrijus/cpanplus/devel/Makefile.PL $ $Author: anonymous $
+# $Revision: #53 $ $Change: 4055 $ $DateTime: 2002/04/30 14:55:44 $
 
 use strict;
 
@@ -9,7 +9,8 @@ use File::Spec;
 use File::Copy      qw/copy/;
 use File::Basename  qw/dirname/;
 
-use lib (File::Spec->catdir('.', 'inc'), File::Spec->catdir('.', 'lib'));
+use lib File::Spec->catdir(dirname($0), 'inc'),
+        File::Spec->catdir(dirname($0), 'lib');
 
 # tests that doesn't require setup
 use constant BASIC_TESTS => join (' ', map { File::Spec->catfile('t', $_) } qw{
@@ -27,7 +28,7 @@ However, at this early stage in its life, you should *NOT* expect
 it to work just like CPAN.pm.
 
 You are strongly urged to configure CPANPLUS now, since otherwise
-non-priviliged (non-root) users may be unable to use CPANPLUS untill
+non-priviliged (non-root) users may be unable to use CPANPLUS until
 you configure it properly.
 
 ###################################################################
@@ -190,7 +191,7 @@ sub write_makefile {
 
     $args{test} = { TESTS => $tests } if $tests;
 
-    WriteMakefile(%args);
+    ExtUtils::AutoInstall::Write(%args);
 
     print "Now, please type '$Config{make} test' to test, and '$Config{make} install' to install.\n";
 
@@ -274,7 +275,7 @@ __WARNING__
             'Net::FTP'          => 2.00,
             'MIME::Base64'      => 2.00,
             'Digest::MD5'       => 2.00,
-            'LWP'               => 5.00,
+            'LWP'               => 5.60,
         ],
     (eval 'use LWP; 1') ? () : (
         'Local file support'    => [
@@ -284,7 +285,7 @@ __WARNING__
     ),
     (_is_win9x() or $^O eq 'cygwin') ? () : (
         'IPC::Run support'      => [
-            -default            => (!_is_unix()),
+            -default            => (!_is_unix() or ($^O eq 'solaris')),
             'IPC::Run'          => 0.55,
         ],
     ),
@@ -292,6 +293,9 @@ __WARNING__
             -default            => $ConfigObj->get_conf('cpantest'),
             'Mail::Send'        => 0.01,
             'File::Temp'        => 0.01,
+    (_is_win9x() or $^O eq 'cygwin') ? () : (
+            'IPC::Run'          => 0.55,
+    ),
     ($^O eq 'MacOS' || $^O eq 'VMS' || $^O eq 'MSWin32' || $^O eq 'os2') ? (
             'Net::SMTP'         => 0.01,
     ) : (),

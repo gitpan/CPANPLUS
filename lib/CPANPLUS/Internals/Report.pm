@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Report.pm $
-# $Revision: #9 $ $Change: 4057 $ $DateTime: 2002/04/30 15:37:33 $
+# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals/Report.pm $
+# $Revision: #24 $ $Change: 4051 $ $DateTime: 2002/04/30 14:13:39 $
 
 ####################################################
 ###          CPANPLUS/Internals/Report.pm        ###
@@ -16,6 +16,7 @@ use File::Spec;
 use CPANPLUS::Configure;
 use CPANPLUS::Error;
 use Data::Dumper;
+use File::Basename;
 
 BEGIN {
     use Exporter    ();
@@ -24,25 +25,75 @@ BEGIN {
     $VERSION    =   $CPANPLUS::Internals::VERSION;
 }
 
+my %OS = (
+    Amiga       => 'amigaos',
+    Atari       => 'mint',
+    BSD         => 'bsdos|darwin|freebsd|openbsd|netbsd',
+    Be          => 'beos',
+    BeOS        => 'beos',
+    Darwin      => 'darwin',
+    EBCDIC      => 'os390|os400|posix-bc|vmesa',
+    HPUX        => 'hpux',
+    Linux       => 'linux',
+    MSDOS       => 'dos',
+    'bin\\d*Mac'=> 'MacOS', # binMac, bin56Mac, bin58Mac...
+    Mac         => 'MacOS',
+    MacPerl     => 'MacOS',
+    MacOS       => 'MacOS',
+    MacOSX      => 'darwin',
+    MPEiX       => 'mpeix',
+    OS2         => 'os2',
+    Plan9       => 'plan9',
+    RISCOS      => 'riscos',
+    SGI         => 'irix',
+    Solaris     => 'solaris',
+    Unix        => 'aix|bsdos|darwin|dgux|dynixptx|freebsd|'.
+                   'linux|hpux|machten|netbsd|next|openbsd|dec_osf|'.
+                   'svr4|sco_sv|unicos|unicosmk|solaris|sunos',
+    VMS         => 'VMS',
+    VOS         => 'VOS',
+    Win32       => 'MSWin32',
+    Win32API    => 'MSWin32',
+);
+
 ### Send out testing reports
 sub _send_report {
     my ($self, %args) = @_;
-    my ($module, $buffer) = @args{qw|module buffer|};
+    my ($module, $buffer, $failed) = @args{qw|module buffer failed|};
     my $name   = $module->{module};
     my $dist   = $module->{package};
-    my $grade  = 'pass';
+    my $author = $self->_author_tree->{$module->{author}}{name}
+                 || $module->{author};
+    my $email  = $self->_author_tree->{$module->{author}}{email}
+                 || "$module->{author}\@cpan.org";
+    my $grade;
 
-    if ($self->{_todo}{failed}{$name}) {
-        $grade = 'fail';
+    if ($self->{_todo}{failed}{$name} or $failed) {
+        foreach my $platform (keys %OS) {
+            if ($name =~ /\b$platform\b/i) {
+                # a platform-specific module
+                $grade = 'na' unless ($^O =~ /^(?:$OS{$platform})$/);
+                last;
+            }
+        }
+        $grade ||= 'fail';
     }
-    elsif ($buffer =~ /^No tests defined for .* extension.\s*$/) {
+    elsif (
+        $buffer =~ /^No tests defined for .* extension.\s*$/m and
+        $buffer !~ /^All tests successful.\s*$/m
+    ) {
         $grade = 'unknown';
+    }
+    else {
+        $grade = 'pass';
     }
 
     $dist =~ s/(?:\.tar\.(?:gz|Z|bz2)|\.t[gb]z|\.zip)$//i;
 
+    my $cpantest = (File::Spec->catfile(File::Basename::dirname($^X), 'cpantest'));
+
     return unless length $dist
-              and $self->_can_run('cpantest')
+              and (-e $cpantest or $self->_can_run('cpantest'))
               and $self->{_shell}
               and $self->{_shell}->_ask_report(dist => $dist, grade => $grade);
 
@@ -67,14 +118,56 @@ $buffer
 Additional comments:
 .
 
-        @inform = "$module->{author}\@cpan.org";
+        if (my @missing = $buffer =~ m/\bCan't locate (\S+) in \@INC/g) {
+            my $missing = join("\n", map {
+                s/.pm$//; s|/|::|g; $_
+            } @missing);
+
+            my $prereq  = join("\n", map {
+                s/.pm$//; s|/|::|g; "\t'$_'\t=> '0', # or a minimum workable version"
+            } @missing);
+
+            print $fh '' . << ".";
+
+Hello, $author! Thanks for uploading your works to CPAN.
+
+I noticed that the test suite seem to fail without these modules:
+
+$missing
+
+As such, adding the prerequisite module(s) to 'PREREQ_PM' in your
+Makefile.PL should solve this problem.  For example:
+
+WriteMakefile(
+    AUTHOR      => '$author ($email)',
+    ... # other information
+    PREREQ_PM   => {
+$prereq
+    }
+);
+
+If you are interested in making a more flexible Makefile.PL that can
+probe for missing dependencies and install them, ExtUtils::AutoInstall
+at <http://search.cpan.org/search?dist=ExtUtils-AutoInstall> may be
+worth a look.
+
+Thanks! :-)
+.
+        }
+
+        push @inform, "$module->{author}\@cpan.org";
     }
     elsif ($grade eq 'unknown') {
+        if ($name =~ /\bBundle\b/) {
+            print "UNKNOWN grades for Bundles are normal; skipped.\n";
+            return;
+        }
+
         return unless $self->_can_use( modules => { 'File::Temp' => '0.0' } );
+
         ($fh, $filename) = File::Temp::tempfile( UNLINK => 1 );
 
-        my $stage = lc($self->{_error}->stack);
-        $stage =~ s/ failed.*//;
+        my $stage = 'make test';
 
         print $fh '' . << ".";
 This is an error report generated automatically by CPANPLUS.
@@ -84,12 +177,11 @@ $buffer
 
 Additional comments:
 
-Hello there! Thanks for uploading your $dist on CPAN.
+Hello, $author! Thanks for uploading your works to CPAN.
 
-Would it be too much to ask for a simple test script in
-the next release of $module->{module}'s distribution, so
-people can verify which platforms can successfully install
-them, as well as avoid regression bugs?
+Would it be too much to ask for a simple test script in the next
+release, so people can verify which platforms can successfully
+install them, as well as avoid regression bugs?
 
 A simple 't/use.t' that says:
 
@@ -98,7 +190,7 @@ use strict;
 use Test;
 BEGIN { plan tests => 1 }
 
-use $module->{module}; ok(1);
+use Your::Module::Here; ok(1);
 exit;
 __END__
 
@@ -108,18 +200,24 @@ manpages at <http://search.cpan.org/search?dist=Test-Simple>.
 
 Thanks! :-)
 .
+
+        push @inform, "$module->{author}\@cpan.org";
     }
+    elsif ($self->{_conf}->get_conf('cpantest') =~ /\balways_cc\b/i) {
+        push @inform, "$module->{author}\@cpan.org";
+    }
+
+    close $fh if $fh;
 
     my @cmd = $self->_report_command(
         dist     => $dist,
         module   => $module,
         grade    => $grade,
         filename => $filename,
+        inform   => \@inform,
     );
 
-    print "Running [@cmd]... ";
-    system @cmd;
-    print "done.\n";
+    print $self->_run(command => \@cmd, verbose => 1) ? "done.\n" : "failed ($!)!\n";
 }
 
 
@@ -127,13 +225,14 @@ Thanks! :-)
 sub _report_command {
     my ($self, %args) = @_;
     my $conf = $self->{_conf};
-    my ($dist, $module, $grade, $filename) =
-        @args{qw|dist module grade filename|};
+    my ($dist, $module, $grade, $filename, $inform) =
+        @args{qw|dist module grade filename inform|};
 
-    my @cmd = (qw|cpantest -g|, $grade, qw|-auto -p|, $dist);
+    my $cpantest = (File::Spec->catfile(File::Basename::dirname($^X), 'cpantest'));
+    my @cmd = (-e $cpantest ? ($^X, $cpantest) : 'cpantest');
+    push @cmd, ('-g', $grade, qw|-auto -p|, $dist);
     push @cmd, ('-f', $filename) if defined $filename;
-    push @cmd, "$module->{author}\@cpan.org"
-        if $grade eq 'fail' or $conf->get_conf('cpantest') =~ /\balways_cc\b/i;
+    push @cmd, @{$inform};
 
     return @cmd;
 }

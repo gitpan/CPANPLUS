@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Make.pm $
-# $Revision: #21 $ $Change: 4069 $ $DateTime: 2002/04/30 18:07:25 $
+# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals/Make.pm $
+# $Revision: #55 $ $Change: 4106 $ $DateTime: 2002/05/04 23:04:36 $
 
 #######################################################
 ###             CPANPLUS/Internals/Make.pm          ###
@@ -111,7 +111,7 @@ sub _make {
         ### BIG CAVEAT: We're forced to use the $|=1 trick to ensure proper
         ###             ordering of STDIN, STDOUT and STDERR in captured buffer
         unless( $self->_run(
-            command => [$perl, '-e', '$|=1;do"Makefile.PL"', @args],
+            command => [$perl, 'Makefile.PL', @args],
             buffer  => \$captured,
             verbose => 1
         ) ) {
@@ -296,7 +296,7 @@ sub _make {
 
             if ($target ne 'skiptest') {
                 unless ( $self->_run(
-                    command => [$make, @args, 'test', "TEST_VERBOSE=(eval(chr(36).q(|=1))-1)"],
+                    command => [$make, @args, 'test' ],
                     buffer  => \$captured,
                     verbose => 1
                 ) ) {
@@ -460,7 +460,7 @@ sub _find_prereq {
         next unless $p;
 
         ### parse out the single prereqs
-        while ( $p =~ m/(?:\s)([\w\:]+)=>q\[(.*?)\],?/g ){
+        while ( $p =~ m/(?:\s)([\w\:]+)=>(?:q\[(.*?)\],?|undef)/g ){
 
             ### In case a prereq is mentioned twice, complain.
             if ( defined $p{$1} ) {

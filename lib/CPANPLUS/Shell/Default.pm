@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
-# $Revision: #21 $ $Change: 4027 $ $DateTime: 2002/04/29 14:25:47 $
+# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Shell/Default.pm $
+# $Revision: #83 $ $Change: 4122 $ $DateTime: 2002/05/06 13:31:47 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -49,6 +49,7 @@ my $cmd = {
     r   => "readme",
     o   => "uptodate",
     u   => "uninstall",
+    v   => "_show_banner",
 };
 
 ### input check ###
@@ -147,14 +148,15 @@ sub _input_loop {
         if ( $cmd->{$key} && ( $key =~ /^[?h]/ )) {
             my $method = $cmd->{$key};
             $self->$method();
-            next;
+            return;
         }
 
-        ### dump stack, takes no argument
+        ### dump stack, takes an optional 'file' argument for the stack to
+        ### be printed to
         if ( $key =~ /^p/ ) {
             my $method = $cmd->{$key};
             $self->$method( stack => $cpan->{_error}->flush(), file => $input );
-            next;
+            return;
         }
 
         ### clean out the error stack and the message stack ###
@@ -167,22 +169,53 @@ sub _input_loop {
             eval $input;
             $cpan->{_error}->trap( error => $@ ) if $@;
             print "\n";
-            next;
+            return;
+
+        } elsif ( $key =~ /^x/ ) {
+            my $method = $cmd->{$key};
+
+            print "Fetching new indices and rebuilding the module tree\n";
+            print "This may take a while...\n";
+
+            $cpan->$method(update_source => 1);
+
+            return;
+        } elsif ( $key =~ /^v/ ) {
+            my $method = $cmd->{$key};
+            $self->$method($cpan);
+            return;
 
         } elsif ( $key =~ /^o/ ) {
             my $method = $cmd->{$key};
 
-            my $modtree = $cpan->module_tree() ;
-            my $inst = $cpan->installed();
+            my $modtree = $cpan->module_tree();
+            my @list = $input
+                    ? $self->_select_modules(
+                            input   => $input,
+                            prompt  => "Checking",
+                            cache   => $cache,
+                            key     => 'module',
+                        )
+                    : keys %{ $modtree };
 
-            my $res = $cpan->$method( modules => [keys %$inst] );
+            unless( length @list ) {
+                print "No modules to check\n";
+                next;
+            }
+
+            if(!$input) {
+                print "Checking against all files on the CPAN\n";
+                print "\tThis may take a while...\n";
+            }
+
+
+            my $res = $cpan->$method( modules => \@list );
 
             $cache = [ undef ]; # most carbon-based life forms count from 1
             for my $name ( sort keys %$res ) {
                 next unless $res->{$name}->{uptodate} eq '0';
                 push @{$cache}, $modtree->{$name};
             }
-
             $self->_pager_open if ($#{$cache} >= $self->_term_rowcount);
 
             ### pretty print some information about the search
@@ -200,18 +233,11 @@ sub _input_loop {
 
             $self->_pager_close;
 
-            next;
-
-        } elsif ( $key =~ /^x/ ) {
-            my $method = $cmd->{$key};
-
-            print "Fetching new indices and rebuilding the module tree\n";
-            print "This may take a while...\n";
-
-            $cpan->$method(update_source => 1);
-
-            next;
+            return;
         }
+
+
+
 
         ### if input has no length, we either got a signal, or a command without a
         ### required string;
@@ -225,7 +251,7 @@ sub _input_loop {
                 $self->_help();
             }
 
-            next;
+            return;
         }
 
         ### s for set options ###
@@ -246,12 +272,12 @@ sub _input_loop {
                     conf => $cpan->configure_object,
                     term => $self->{_term},
                 );
-                next;
+                return;
             }
             elsif ($name =~ m/^save/i) {;
                 $cpan->configure_object->save;
                 print "Your CPAN++ configuration info has been saved!\n\n";
-                next;
+                return;
             }
 
             ### allow lazy config options... not smart but possible ###
@@ -416,7 +442,7 @@ sub _input_loop {
 
             unless ( $res and keys %$res ) {
                 print "No authors found for your query\n";
-                next;
+                return;
             }
 
             $cache = [ undef ]; # most carbon-based life forms count from 1
@@ -543,7 +569,7 @@ sub _input_loop {
                 $self->_pager_close;
             } else {
                 print "Your search generated no results\n";
-                next;
+                return;
             }
         } else {
             print "Unknown command '$key'. Usage:\n";
@@ -622,6 +648,7 @@ sub _select_modules {
                {join(' ', ($1 < 1 ? 1 : $1) .. ($2 > $#{$cache} ? $#{$cache} : $2))}eg;
 
     $input = join(' ', 1 .. $#{$cache}) if $input eq '*';
+    $input =~ s/'/::/g; # perl 4 convention
 
     foreach my $mod (split /\s+/, $input) {
         if ( $mod =~ /[^\w:]/ ) {
@@ -868,7 +895,7 @@ sub _print_stack {
         print join "\n", @$stack;
     }
 
-    print "\nStack printed succesfully\n";
+    print "\nStack printed successfully\n";
     return 1;
 }
 
@@ -891,9 +918,10 @@ sub _expand_inc {
 sub _help {
     my $self = shift;
     my @Help = split("\n", << 'EOL', -1);
-[General]    
+[General]
     h | ?                  # display help
     q                      # exit
+    v                      # version information
 [Search]
     a AUTHOR ...           # search by author(s)
     m MODULE ...           # search by module(s)
@@ -1035,7 +1063,7 @@ example:
 These columns correspond to the assigned number, module name,
 version number and CPAN author identification.  Assigned numbers
 can be used for a subsequent commands, either singly (I<2>) or
-inclusively (I<1..2>).  Numbers are reassigned for each search.  
+inclusively (I<1..2>).  Numbers are reassigned for each search.
 
 If no module version is listed, the third field will be I<undef>.
 
@@ -1070,7 +1098,7 @@ author's full name.
 This command installs a module by its case-sensitive name, by the
 path and filename on CPAN, or by the number returned from a previous
 search.  Distribution names need only to be complete enough for
-distinction.  That is to say, I<DBI-1.20> is sufficient; the 
+distinction.  That is to say, I<DBI-1.20> is sufficient; the
 author can be deduced from the named portion.
 
 Examples:
@@ -1197,12 +1225,12 @@ expression.
 
 Output from the previous command would look like this:
 
-    1 Acme-POE-Knee-1.00.zip    12230 KANE      
-    2 Acme-POE-Knee-1.01.zip    14246 KANE      
-    3 Acme-POE-Knee-1.02.zip    12324 KANE      
-    4 Acme-POE-Knee-1.10.zip     6625 KANE      
-    5 CPANPLUS-0.01.tar.gz     120689 KANE      
-    6 CPANPLUS-0.02.tar.gz     121967 KANE      
+    1 Acme-POE-Knee-1.00.zip    12230 KANE
+    2 Acme-POE-Knee-1.01.zip    14246 KANE
+    3 Acme-POE-Knee-1.02.zip    12324 KANE
+    4 Acme-POE-Knee-1.10.zip     6625 KANE
+    5 CPANPLUS-0.01.tar.gz     120689 KANE
+    6 CPANPLUS-0.02.tar.gz     121967 KANE
 
 The first column is the search result number, which can be used for subsequent
 commands.  Next is name of the distribution, the third column is the file's

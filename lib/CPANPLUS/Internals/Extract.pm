@@ -157,6 +157,8 @@ sub _untar {
         if ($dir) {
             eval { File::Path::rmtree($dir) }; # non-fatal
 
+            if($@) { $err->trap( error => qq[Error removing $dir: $@] ); }
+
             for (@list) {
                 $err->inform(
                     msg   => "Extracting $_",

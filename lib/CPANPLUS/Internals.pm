@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals.pm $
-# $Revision: #16 $ $Change: 4063 $ $DateTime: 2002/04/30 17:11:18 $
+# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/Internals.pm $
+# $Revision: #40 $ $Change: 4106 $ $DateTime: 2002/05/04 23:04:36 $
 
 #######################################################
 ###               CPANPLUS/Internals.pm             ###
@@ -52,7 +52,7 @@ BEGIN {
                         CPANPLUS::Internals::Report
                     );
 
-    $VERSION    =   '0.033';
+    $VERSION    =   '0.034';
 }
 
 ### ROUGH FLOW OF THE MODULE ###
@@ -239,7 +239,9 @@ BEGIN {
         my $self    = shift;
         my $id      = shift;
 
-        return $idref->{$id};
+        my $obj = $idref->{$id};
+
+        return $obj;
     }
 
     sub _remove_id {
@@ -292,6 +294,12 @@ sub _init {
 
     ### allow for dirs to be added to @INC at runtime, rather then compile time
     push @INC, @{$conf->get_conf('lib')};
+
+    ### in case we're not allowed to actually install modules, we add their build dirs
+    ### to @INC and $ENV{PERL5LIB}. we store the originals here, so we can restore them
+    ### when we flush
+    $data->{_lib} = [ @INC ];
+    $data->{_perl5lib} = $ENV{PERL5LIB};
 
     ### store the current dir, so we may return to it, use it, etc.
     ### is this portable? -jmb
@@ -397,6 +405,7 @@ sub _can_use {
                                         ."[THIS MAY BE A PROBLEM!]: $@",
                             quiet => !$yell
                         );
+
                         return 0;
 
                     ### no error, great. log in _inc and check the next one
@@ -497,7 +506,13 @@ sub _flush {
     my $err  = $self->{_error};
 
     for my $cache( @{$args{'list'}} ) {
-        delete $self->{$cache};
+        unless ($cache eq '_lib') {
+            delete $self->{$cache};
+        } else {
+            ### reset @INC to it's original state ###
+            @INC            = @{$self->{_lib}};
+            $ENV{PERL5LIB}  = $self->{_perl5lib};
+        }
     }
 
     return 1;
@@ -590,7 +605,7 @@ sub _cache_control {
 sub _parse_module {
     my $self = shift;
     my %args = @_;
-    
+
     my $err = $self->{_error};
 
     my $mod = $args{mod} or return 0;
@@ -683,7 +698,7 @@ sub _parse_module {
                 fetchdir    => $fetchdir,       # the path on the local disk
                 author      => $author,         # module author
                 package     => $file,           # package name, like 'foo-bar-baz-1.03.tar.gz'
-                
+
                 ### it doesn't use these -kane
                 #_error      => $self->{_error}, # error object
                 #_conf       => $self->{_conf},  # configure object
@@ -700,7 +715,7 @@ sub _parse_module {
         ### we have to accept objects to work properly with
         ### CPANPLUS::Internals::Module, cuz IT doesn't store a
         ### _modtree for $self.
-        if ( UNIVERSAL::isa($mod, 'CPANPLUS::Internals::Module') ) {
+        if ( ref($mod) and UNIVERSAL::isa($mod, 'CPANPLUS::Internals::Module') ) {
             ### ok, it's an object
             $modobj = $mod;
         } else {
@@ -748,6 +763,9 @@ sub _run {
     my @cmd = ref($cmd) ? grep(length, @{$cmd}) : $cmd;
     my $is_win98 = ($^O eq 'MSWin32' and !Win32::IsWinNT());
 
+    ### Kludge! This enables autoflushing for each perl process we launched.
+    local $ENV{PERL5OPT} = $ENV{PERL5OPT}.' -MCPANPLUS::Internals::System=autoflush=1';
+
     ### inform the user. note that we don't want to used mangled $verbose.
     $err->inform(
         msg   => "Running [@cmd]...",
@@ -759,7 +777,7 @@ sub _run {
         modules  => { 'IPC::Run' => '0.55' },
         complain => ($^O eq 'MSWin32'),
     ) ) {
-        STDOUT->autoflush(1); STDERR->autoflush(1); 
+        STDOUT->autoflush(1); STDERR->autoflush(1);
 
         @cmd = ref($cmd) ? ( [ @cmd ], \*STDIN )
                          : map { /[<>|&]/ ? $_ : [ split / +/ ] } split(/\s*([<>|&])\s*/, $cmd);
@@ -885,8 +903,26 @@ sub _open3_run {
     return 1;
 }
 
-sub DESTROY { my $self = shift; $self->_remove_id( $self->{_id} ) }
+### can't use this.. then if ONE of the objects would go out of scope,
+### it would remove the reference to the internals ID, and no more sub
+### sequent ones could be generated. this, of course, is bad --kane
+sub DESTROY { 1 } #my $self = shift; $self->_remove_id( $self->{_id} ) }
 
+### sub to find the version of a certain perlbinary we've been passed ###
+sub _perl_version {
+    my $self = shift;
+    my %args = @_;
+    my $conf = $self->{_conf};
+    my $err  = $self->{_error};
+
+    return 0 unless $args{perl};
+
+    ### there might be a more elegant way to do this... ###
+    my $cmd = $args{perl} . q[ -MConfig -e"print $Config{version}"];
+    my ($perl_version) = `$cmd`;
+
+    return $perl_version;
+}
 1;
 
 # Local variables:

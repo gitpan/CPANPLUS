@@ -1,5 +1,5 @@
-# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/TesterGuide.pod $ $Author: autrijus $
-# $Revision: #2 $ $Change: 4020 $ $DateTime: 2002/04/29 05:02:50 $
+# $File: //member/autrijus/cpanplus/devel/lib/CPANPLUS/TesterGuide.pod $ $Author: autrijus $
+# $Revision: #6 $ $Change: 4072 $ $DateTime: 2002/04/30 19:50:43 $
 
 =head1 NAME
 
@@ -481,7 +481,7 @@ filtering mechanism; just join the CPAN Testers list by sending an
 empty email to F<cpan-testers-subscribe@perl.org>, and add the lines
 below to your B<Mail::Audit> filter [4]:
 
- fork || exec("sleep 3600 && cpansmoke -aps $1 >/dev/null 2>&1")
+ fork || exec("sleep 40000 && cpansmoke -aps $1 >/dev/null 2>&1")
      if $mail->subject =~ /^CPAN Upload: (.*)$/;
 
 This rule will fork out a new F<cpansmoke> process for each incoming
@@ -489,8 +489,8 @@ mail about a CPAN upload.  Note that it works only if incoming mail
 arrives no less than once every hour; otherwise it might fork-bomb your
 system to a grinding halt.
 
-In case you're wondering, the C<sleep 3600> line is due to the fact
-that a PAUSE upload needs several minutes to appear on I<www.cpan.org>.
+In case you're wondering, the C<sleep 40000> line is due to the fact
+that a PAUSE upload needs several hours to appear on I<www.cpan.org>.
 Michael Schwern suggested that using a I<smoke queue> would be a better
 solution, since it allows error-checking and logging; implementations
 are welcome.
@@ -500,7 +500,7 @@ If you are stuck with B<procmail>, here's the recipe that does the same
 
  :0hc
  * ^Subject: CPAN Upload:
- |sh -c "sleep 3600 && grep Subject|cut -f4 -d' '|xargs cpansmoke -aps >/dev/null 2>&1"
+ |sh -c "sleep 40000 && grep Subject|cut -f4 -d' '|xargs cpansmoke -aps >/dev/null 2>&1"
 
 If you have suggestions on how to make this work on non-unix systems,
 please do let me know.
