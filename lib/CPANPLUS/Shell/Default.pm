@@ -1,5 +1,5 @@
-# $File$
-# $Revision$ $Change$ $DateTime$
+# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Shell/Default.pm $
+# $Revision: #10 $ $Change: 3569 $ $DateTime: 2002/03/27 05:56:09 $
 
 ##################################################
 ###            CPANPLUS/Shell/Default.pm       ###
@@ -108,11 +108,14 @@ sub shell {
 	    : "suppressed"                                   # a       => "Dumb" terminal
 	: "suppressed in batch mode";                        # none    => "Faked" terminal
 
-    printf (<< ".", ref($self), $VERSION, $rl_avail);
+    $rl_avail = "ReadLine support $rl_avail.";
+    $rl_avail = "\n*** $rl_avail" if (length($rl_avail) > 45);
+
+    printf (<< ".", $self->which, $self->which->VERSION, $cpan->VERSION, $rl_avail);
 
 %s -- CPAN exploration and modules installation (v%s)
 *** Please report bugs to <cpanplus-bugs\@lists.sourceforge.net>.
-*** ReadLine support %s.
+*** Using CPANPLUS::Backend v%s.  %s
 
 .
 
@@ -214,7 +217,7 @@ sub shell {
 
             if ($realname) {
                 # determine the reference type of the original value
-                my $type = ref($cpan->get_conf($realname));
+                my $type = ref($cpan->get_conf($realname)->{$realname});
 
 		if ($type eq 'HASH') {
 		    $value = {

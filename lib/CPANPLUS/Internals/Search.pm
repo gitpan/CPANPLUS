@@ -1,5 +1,5 @@
-# $File$
-# $Revision$ $Change$ $DateTime$
+# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Search.pm $
+# $Revision: #5 $ $Change: 3565 $ $DateTime: 2002/03/27 05:07:12 $
 
 #######################################################
 ###            CPANPLUS/Internals/Search.pm         ###
@@ -7,7 +7,7 @@
 ###         Written 12-03-2002 by Jos Boumans       ###
 #######################################################
 
-### Query.pm ###
+### Search.pm ###
 
 package CPANPLUS::Internals::Search;
 

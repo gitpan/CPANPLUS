@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Extract.pm $
-# $Revision: #3 $ $Change: 3544 $ $DateTime: 2002/03/26 07:48:03 $
+# $Revision: #4 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 #######################################################
 ###            CPANPLUS/Internals/Extract.pm        ###
@@ -20,6 +20,13 @@ BEGIN {
     use vars        qw( @ISA $VERSION );
     @ISA        =   qw( Exporter );
     $VERSION    =   $CPANPLUS::Internals::VERSION;
+}
+
+### workaround to prevent Archive::Tar from setting uid, which
+### is a potential security hole. -autrijus
+BEGIN {
+    no strict 'refs';
+    *Archive::Tar::chown = sub {};
 }
 
 sub _extract {
@@ -145,7 +152,6 @@ sub _untar {
                 msg => "Extracting $_",
                 quiet => !$verbose
             );
-            $tar->extract($_);
             ### I just noticed that we don't bail if this fails.
             ### Probably because Archive::Tar sucks a bit?
             ### (at least the earlier version) -jmb
@@ -153,6 +159,8 @@ sub _untar {
             ### from what i get from the docs, it doesn't return anything...
             ### so yeah, that does suck - kane
         }
+
+        $tar->extract(@list);
 
         ### the current (0.22) version of Archive::Tar has a new
         ### extract_archive() method that is probably more efficient

@@ -1,11 +1,12 @@
 # $File: //member/autrijus/cpanplus/dist/README $
-# $Revision: #4 $ $Change: 3550 $ $DateTime: 2002/03/26 09:28:17 $
+# $Revision: #5 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 This is the README file for CPANPLUS, Ameliorated interface to
 the Comprehensive Perl Archive Network, by Jos Boumans.
 
 Please type "perldoc CPANPLUS" after installation to see the
-module usage information.
+module usage information. For shell usage, please consult
+"perldoc cpanp"; the FAQ is available as "perldoc CPANPLUS::FAQ".
 
 ### PLEASE NOTE ###################################################
 
@@ -46,7 +47,7 @@ News and project updates are available at http://cpanplus.sf.net/.
 
 * Copyright
 
-Copyright 2001 by Jos Boumans <kane@cpan.org>.
+Copyright 2001, 2002 by Jos Boumans <kane@cpan.org>.
 
 All rights reserved.  You can redistribute and/or modify
 this bundle under the same terms as Perl itself.

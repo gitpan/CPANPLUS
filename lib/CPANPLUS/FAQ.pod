@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/FAQ.pod $
-# $Revision: #2 $ $Change: 3548 $ $DateTime: 2002/03/26 09:09:27 $
+# $Revision: #3 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 =head1 NAME
 
@@ -72,13 +72,14 @@ first choice.
 In this example a CD from another server on the network is added
 (leave off the host argument if it is on the local machine):
 
-   my $conf = new CPANPLUS::Configure;
-   $conf->_set_ftp(urilist => [ {
-       path   => '/mnt/cdrom',
-       scheme => 'ftp',
-       host   => '//server',
-   }, @{ $conf->_get_ftp('urilist') } ]);
+   my $cb = new CPANPLUS::Backend;
+   my $conf = $cb->configure_object;
 
+   $conf->_set_ftp(urilist => [ {
+      path   => '/mnt/cdrom',
+      scheme => 'file',
+      host   => '//server',
+   }, @{ $conf->_get_ftp('urilist') } ]);
 
 Thanks to Nick Clark for asking this at the 2002 German Perl Workshop.
 

@@ -1,5 +1,5 @@
-# $File$
-# $Revision$ $Change$ $DateTime$
+# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Module.pm $
+# $Revision: #8 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 #######################################################
 ###            CPANPLUS/Internals/Module.pm         ###
@@ -269,7 +269,7 @@ sub _make_object {
 
 =head1 NAME
 
-Module.pm - Module tree for CPAN++
+CPANPLUS::Internals::Module - Module tree for CPAN++
 
 =head1 DESCRIPTION
 

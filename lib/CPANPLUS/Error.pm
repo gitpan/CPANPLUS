@@ -1,5 +1,5 @@
 # $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Error.pm $
-# $Revision: #2 $ $Change: 3540 $ $DateTime: 2002/03/26 04:28:49 $
+# $Revision: #3 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 ###############################################
 ###              CPANPLUS/Error.pm          ###
@@ -301,7 +301,7 @@ no argument is specified, the entire stack is emptied.
 This method is like flush() except that it operates on the
 message stack.
 
-=head1 AUTHOR INFORMATION
+=head1 AUTHORS
 
 Copyright (c) 2001, 2002 Jos Boumans E<lt>kane@cpan.orgE<gt>
 and Ann Barcomb E<lt>kudra@cpan.orgE<gt>.

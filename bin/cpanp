@@ -1,12 +1,14 @@
 #!/usr/bin/perl
-# $File: //depot/OurNet-BBS/BBS.pm $ $Author: autrijus $
-# $Revision: #41 $ $Change: 2088 $ $DateTime: 2001/10/15 14:33:05 $
-
-$VERSION = '0.01';
+# $File: //member/autrijus/cpanplus/dist/bin/cpanp $ $Author: autrijus $
+# $Revision: #3 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 use strict;
+use vars '$VERSION';
+
 use CPANPLUS;
 use Term::ReadLine;
+
+$VERSION = CPANPLUS->VERSION;
 
 =head1 NAME
 
@@ -37,15 +39,17 @@ to perform the associated action on each arguments. The commands are:
     l MODULE...	# display detailed information about module(s)
     h 		# show help message
 
-Each command may be prefixed with the B<f> and/or B<v> flags, both taking
-an optional boolean value (defaults to 1) as argument. They control the
-force/verboseness for this single session, respectively.
+Each command may be prefixed with one or more I<options>.  If preceded by
+C<no>, the corresponding option will be set to C<0>, otherwise it's set to
+C<1>. The valid options includes C<debug>, C<flush>, C<force>, C<prereqs>,
+C<storable>, C<verbose> and C<md5>; please consult C<CPANPLUS::Configure>
+for an explanation to their meanings.
 
 =cut
 
 my $opt;
 
-my @bool = qw(verbose storable flush force md5 prereqs);
+my @bool = qw(debug flush force storable verbose md5 prereqs);
 
 my $cmd = {
     a => "search",
@@ -81,7 +85,7 @@ if (@cmd_stack) {
     *{"Term::ReadLine::new"} = sub {
 	# shell only
 	goto &{$newref} unless caller(0)->isa('CPANPLUS::Shell')
-	                    or caller(0)->isa('CPANPLUS::Shell::Default');
+	                    or caller(0) =~ /^CPANPLUS::Shell::/;
 
 	return bless([@_], 'CPANPLUS::_Faked');
     };
@@ -111,7 +115,7 @@ __END__
 
 =head1 SEE ALSO
 
-L<CPANPLUS>.
+L<CPANPLUS>
 
 =head1 AUTHORS
 

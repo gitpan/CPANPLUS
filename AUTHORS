@@ -1,0 +1,20 @@
+# $File: //member/autrijus/cpanplus/dist/AUTHORS $
+# $Revision: #1 $ $Change: 3566 $ $DateTime: 2002/03/27 05:17:57 $
+
+[CREDITS]
+
+Jos Boumans (KANE) is the leader of this project and the primary contributor.
+
+Joshua Boschert (JAMBE) works on setup and configuration.
+
+Autrijus Tang (AUTRIJUS) is another developer and the release technician.
+
+Michael G Schwern (MSCHWERN) wrote the test suite.
+
+Ann Barcomb (KUDRA) is responsible for CPANPLUS documentation.
+
+Joshua Keroes (JOSHUA) recently joined the project, hacking at internals.
+
+Mattia Barbon (MBARBON) was responsible for some of the early testing.
+
+Andreas Koenig (ANDK) wrote the original CPAN.pm.

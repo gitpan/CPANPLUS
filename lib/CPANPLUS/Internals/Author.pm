@@ -1,5 +1,5 @@
-# $File$
-# $Revision$ $Change$ $DateTime$
+# $File: //member/autrijus/cpanplus/dist/lib/CPANPLUS/Internals/Author.pm $
+# $Revision: #8 $ $Change: 3564 $ $DateTime: 2002/03/27 05:03:47 $
 
 #######################################################
 ###            CPANPLUS/Internals/Author.pm         ###
@@ -157,7 +157,7 @@ sub _make_object {
 
 =head1 NAME
 
-Author.pm - Author tree for CPAN++
+CPANPLUS::Internals::Author - Author tree for CPAN++
 
 =head1 DESCRIPTION
 
