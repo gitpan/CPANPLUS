@@ -13,6 +13,7 @@ use Cwd;
 
 use IPC::Cmd                    qw[run];
 use Params::Check               qw[check];
+use File::Basename              qw[dirname];
 use Module::Load::Conditional   qw[can_load check_install];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
@@ -164,7 +165,8 @@ sub init {
     my $status  = $dist->status;
    
     $status->mk_accessors(qw[makefile make test created installed uninstalled
-                            _prepare_args _create_args _install_args] );
+                             bin_make _prepare_args _create_args _install_args]
+                        );
     
     return 1;
 }    
@@ -288,6 +290,9 @@ sub prepare {
                 $dist->status->makefile(0);
                 $fail++; last RUN;
             }
+
+            ### put the output on the stack, don't print it
+            msg( $captured, 0 );
         }
         
         ### if we got here, we managed to make a 'makefile' ###
@@ -310,7 +315,7 @@ sub prepare {
         }
     }
    
-    unless( $cb->_chdir( dir => $orig ) ) {
+	unless( $cb->_chdir( dir => $orig ) ) {
         error( loc( "Could not chdir back to start dir '%1'", $orig ) );
     }   
    
@@ -422,7 +427,7 @@ sub create {
     
     my $args;
     my( $force, $verbose, $make, $makeflags, $skiptest, $prereq_target, $perl, 
-        $mmflags, $prereq_format);
+        $mmflags, $prereq_format, $prereq_build);
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
             perl            => {    default => 
@@ -442,7 +447,8 @@ sub create {
             ### don't set the default prereq format to 'makemaker' -- wrong!
             prereq_format   => {    #default => $self->status->installer_type,
                                     default => '',
-                                    store   => \$prereq_format },                    
+                                    store   => \$prereq_format },   
+            prereq_build    => {    default => 0, store => \$prereq_build },                                    
         };                                            
 
         $args = check( $tmpl, \%hash ) or return;
@@ -468,16 +474,17 @@ sub create {
         return;
     }
     
-    my $fail; my $prereq_fail;
+    my $fail; my $prereq_fail; 
     RUN: {
         ### this will set the directory back to the start
         ### dir, so we must chdir /again/           
         my $ok = $dist->_resolve_prereqs(
-                            format   => $prereq_format,
-                            verbose  => $verbose,
-                            prereqs  => $self->status->prereqs,
-                            target   => $prereq_target
-                    
+                            format          => $prereq_format,
+                            verbose         => $verbose,
+                            prereqs         => $self->status->prereqs,
+                            target          => $prereq_target,
+                            force           => $force,
+                            prereq_build    => $prereq_build,
                     );
         
         unless( $cb->_chdir( dir => $dir ) ) {
@@ -513,6 +520,9 @@ sub create {
                 $fail++; last RUN;
             }
             
+            ### put the output on the stack, don't print it
+            msg( $captured, 0 );
+
             $dist->status->make(1);
 
             ### add this directory to your lib ###
@@ -520,7 +530,8 @@ sub create {
                 directories => [ BLIB_LIBDIR->( $self->status->extract ) ]
             );
             
-            last RUN if $skiptest;
+            ### dont bail out here, there's a conditional later on
+            #last RUN if $skiptest;
         }
         
         ### 'make test' section ###                                           
@@ -542,10 +553,21 @@ sub create {
 
             ### XXX need to add makeflags here too? 
             ### yes, but they should really be split out -- see bug #4143
-            unless(run( command => [$make, 'test', $makeflags],
+            if(run( command => [$make, 'test', $makeflags],
                         buffer  => \$captured,
                         verbose => $run_verbose,
             ) ) {
+                ### tests might pass because it doesn't have any tests defined
+                ### log this occasion non-verbosely, so our test reporter can
+                ### pick up on this
+                if ( NO_TESTS_DEFINED->( $captured ) ) {
+                    msg( NO_TESTS_DEFINED->( $captured ), 0 )
+                } else {
+                    msg( loc( "MAKE TEST passed: %2", $captured ) );
+                }
+            
+                $dist->status->test(1);
+            } else {
                 error( loc( "MAKE TEST failed: %1 %2", $!, $captured ) );
             
                 ### send out error report here? or do so at a higher level?
@@ -555,15 +577,6 @@ sub create {
                 unless( $force ) {
                     $fail++; last RUN;     
                 }
-            
-            } else {
-                ### tests might pass because it doesn't have any tests defined
-                ### log this occasion non-verbosely, so our test reporter can
-                ### pick up on this
-                msg( NO_TESTS_DEFINED->( $captured ), 0 )
-                    if NO_TESTS_DEFINED->( $captured );
-            
-                $dist->status->test(1);
             }
         }
     } #</RUN>
@@ -674,6 +687,9 @@ sub install {
         error( loc( "MAKE INSTALL failed: %1 %2", $!, $captured ) );
         $fail++; 
     }       
+
+    ### put the output on the stack, don't print it
+    msg( $captured, 0 );
     
     unless( $cb->_chdir( dir => $orig ) ) {
         error( loc( "Could not chdir back to start dir '%1'", $orig ) );
@@ -775,6 +791,78 @@ $prereqs
     return 1;
 }                         
         
+sub dist_dir {
+    ### just in case you already did a call for this module object
+    ### just via a different dist object
+    my $dist = shift;
+    my $self = $dist->parent;
+    $dist    = $self->status->dist_cpan if      $self->status->dist_cpan;     
+    $self->status->dist_cpan( $dist )   unless  $self->status->dist_cpan;    
+ 
+    my $cb   = $self->parent;
+    my $conf = $cb->configure_object;
+    my %hash = @_;
+    
+    my $make; my $verbose;
+    {   local $Params::Check::ALLOW_UNKNOWN = 1;
+        my $tmpl = {
+            make    => {    default => $conf->get_program('make'),
+                                    store => \$make },                 
+            verbose => {    default => $conf->get_conf('verbose'), 
+                                    store   => \$verbose },
+        };  
+    
+        check( $tmpl, \%hash ) or return;    
+    }
+
+
+    my $dir;
+    unless( $dir = $self->status->extract ) {
+        error( loc( "No dir found to operate on!" ) );
+        return;
+    }
+    
+    ### chdir to work directory ###
+    my $orig = cwd();
+    unless( $cb->_chdir( dir => $dir ) ) {
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        return;
+    }
+
+    my $fail; my $distdir;
+    TRY: {    
+        $dist->prepare( @_ ) or (++$fail, last TRY);
+
+
+        my $captured;             
+            unless(scalar run(  command => [$make, 'distdir'],
+                            buffer  => \$captured,
+                            verbose => $verbose ) 
+        ) {
+            error( loc( "MAKE DISTDIR failed: %1 %2", $!, $captured ) );
+            ++$fail, last TRY;
+        }
+
+        ### /path/to/Foo-Bar-1.2/Foo-Bar-1.2
+        $distdir = File::Spec->catdir( $dir, $self->package_name . '-' .
+                                                $self->package_version );
+
+        unless( -d $distdir ) {
+            error(loc("Do not know where '%1' got created", 'distdir'));
+            ++$fail, last TRY;
+        }
+    }
+
+    unless( $cb->_chdir( dir => $orig ) ) {
+        error( loc( "Could not chdir to start directory '%1'", $orig ) );
+        return;
+    }
+
+    return if $fail;
+    return $distdir;
+}    
+
+
 1;
 
 # Local variables:

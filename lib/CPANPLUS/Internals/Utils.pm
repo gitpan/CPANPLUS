@@ -5,7 +5,7 @@ use CPANPLUS::inc;
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 
-use File::Copy                  qw[move];
+use File::Copy;
 use Params::Check               qw[check];
 use Module::Load::Conditional   qw[can_load];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
@@ -264,6 +264,26 @@ sub _move {
     }
 }
 
+sub _copy {
+    my $self = shift;
+    my %hash = @_;
+    
+    my($from,$to);
+    my $tmpl = {
+        file    =>{ required => 1, allow => [IS_FILE,IS_DIR],
+                        store => \$from },
+        to      => { required => 1, store => \$to }
+    };
+
+    check( $tmpl, \%hash ) or return;
+
+    if( File::Copy::copy( $from, $to ) ) {
+        return 1;
+    } else {
+        error(loc("Failed to copy '%1' to '%2': %3", $from, $to, $!));
+        return;
+    }
+}
 
 1;
 

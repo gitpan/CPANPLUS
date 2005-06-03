@@ -23,11 +23,11 @@ use CPANPLUS::inc;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants::Report;
 
-my $send_tests  = 35;
+my $send_tests  = 48;
 my $query_tests = 7;
 my $total_tests = $send_tests + $query_tests;
 
-use Test::More                  tests => 86;
+use Test::More                  tests => 108;
 use Module::Load::Conditional   qw[can_load];
 
 use FileHandle;
@@ -47,11 +47,21 @@ $cb->configure_object->set_conf(cpantest =>1) if $ARGV[0];
 
 my $map = {
     all_ok  => {
+        buffer  => '',              # output from build process
+        failed  => 0,               # indicate failure
+        match   => [qw|/PASS/|],    # list of regexes for the output
+        check   => 0,               # check if callbacks got called?
+    },
+    skipped_test => {
         buffer  => '',
         failed  => 0,
-        match   => [qw|/PASS/|],
+        match   => ['/PASS/',
+                    '/tests for this module were skipped during this build/',
+                ],
         check   => 0,
-    },
+        skiptests
+                => 1,               # did we skip the tests?
+    },                    
     missing_prereq  => {
         buffer  => missing_prereq_buffer(),
         failed  => 1,
@@ -64,7 +74,7 @@ my $map = {
                     '/make test/',
                 ],
         check   => 1,
-   },
+    },
     missing_tests   => {
         buffer  => missing_tests_buffer(),
         failed  => 1,
@@ -77,8 +87,17 @@ my $map = {
                 ],
         check   => 0,
     },
-    perl_version_too_low => {
-        buffer  => perl_version_too_low_buffer(),
+    perl_version_too_low_mm => {
+        buffer  => perl_version_too_low_buffer_mm(),
+        failed  => 1,
+        match   => ['/This distribution has been tested/',
+                    '/http://testers.cpan.org//',
+                    '/NA/',
+                ],
+        check   => 0,
+    },    
+    perl_version_too_low_build => {
+        buffer  => perl_version_too_low_buffer_build(),
         failed  => 1,
         match   => ['/This distribution has been tested/',
                     '/http://testers.cpan.org//',
@@ -102,16 +121,30 @@ my $map = {
         ok(!RELEVANT_TEST_RESULT->($cp),"Test is irrelevant");
     }
 
-    {   ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer() ),
+    {   my $support = "it works!";
+        my @support = ( "No support for OS",
+                        "OS unsupported",
+                        "os unsupported",
+        );
+        ok(!UNSUPPORTED_OS->($support), "OS supported");
+        ok( UNSUPPORTED_OS->($_),   "OS not supported") for(@support);
+    }
+
+    {   ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer_mm() ),
+                                        "Perl version too low" );
+        ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer_build() ),
                                         "Perl version too low" );
         ok(!PERL_VERSION_TOO_LOW->('foo'),
                                         "   Perl version adequate" );
     }
 
     {   my $tests = "test.pl";
-        my $none  = "No tests defined for Foo extension.";
+        my @none  = (   "No tests defined for Foo extension.",
+                        "'No tests defined for Foo::Bar extension.'",
+                        "'No tests defined.'",
+        );
         ok(!NO_TESTS_DEFINED->($tests), "Tests defined");
-        ok( NO_TESTS_DEFINED->($none),  "No tests defined");
+        ok( NO_TESTS_DEFINED->($_),  "No tests defined")    for(@none);
     }
 
     {   my $fail = 'MAKE TEST'; my $unknown = 'foo';
@@ -121,9 +154,21 @@ my $map = {
                                         "Proper test fail stage found" );
     }
 
-    {   my @list = MISSING_PREREQS_LIST->(q[Can't locate Foo::Bar in @INC]);
-        is( scalar(@list),  1,          "List of missing prereqs found" );
-        is( $list[0], 'Foo::Bar',       "   Proper prereq found" );
+    ### test missing prereqs        
+    {   my $str = q[Can't locate Foo/Bar.pm in @INC];
+    
+        ### standard test
+        {   my @list = MISSING_PREREQS_LIST->( $str );
+            is( scalar(@list),  1,      "   List of missing prereqs found" );
+            is( $list[0], 'Foo::Bar',   "       Proper prereq found" );
+        }
+    
+        ### multiple mentions of same prereq
+        {   my @list = MISSING_PREREQS_LIST->( $str . $str );
+
+            is( scalar(@list),  1,      "   1 result for multiple mentions" );
+            is( $list[0], 'Foo::Bar',   "   Proper prereq found" );
+        }
     }
 
     {                                       # cp version, author
@@ -196,7 +241,7 @@ my $map = {
 
 ### test creating test reports ###
 SKIP: {
-    skip "You have chosen not to enable test reporting", $total_tests,
+	skip "You have chosen not to enable test reporting", $total_tests,
         unless $cb->configure_object->get_conf('cpantest');
 
     skip "No report send & query modules installed", $total_tests
@@ -241,12 +286,19 @@ SKIP: {
             code => sub { $called_send++; 1 }
         );
 
+		### reset from earlier tests
+		$cb->_register_callback(
+            name => 'munge_test_report',
+            code => sub { return $_[1] }
+        );
+
 
         my $file = $cb->_send_report(
-                        module  => $mod,
-                        buffer  => $map->{$type}->{'buffer'},
-                        failed  => $map->{$type}->{'failed'},
-                        save    => 1,
+                        module        => $mod,
+                        buffer        => $map->{$type}{'buffer'},
+                        failed        => $map->{$type}{'failed'},
+                        tests_skipped => ($map->{$type}{'skiptests'} ? 1 : 0),
+                        save          => 1,
                     );
 
         ok( $file,              "Type '$type' written to file" );
@@ -316,7 +368,7 @@ No tests defined for Acme::POE::Knee extension.
     ];
 }
 
-sub perl_version_too_low_buffer {
+sub perl_version_too_low_buffer_mm {
     return q[
 Running [/usr/bin/perl5.8.1 Makefile.PL ]...
 Perl v5.8.3 required--this is only v5.8.1, stopped at Makefile.PL line 1.
@@ -324,6 +376,15 @@ BEGIN failed--compilation aborted at Makefile.PL line 1.
 [ERROR] Could not run '/usr/bin/perl5.8.1 Makefile.PL': Perl v5.8.3 required--this is only v5.8.1, stopped at Makefile.PL line 1.
 BEGIN failed--compilation aborted at Makefile.PL line 1.
  -- cannot continue
+    ];
+}    
+
+sub perl_version_too_low_buffer_build {
+    return q[
+ERROR: perl: Version 5.006001 is installed, but we need version >= 5.008001
+ERROR: version: Prerequisite version isn't installed
+ERRORS/WARNINGS FOUND IN PREREQUISITES.  You may wish to install the versions
+ of the modules indicated above before proceeding with this installation.
     ];
 }    
 

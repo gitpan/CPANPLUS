@@ -117,7 +117,7 @@ include facility from C<CPANPLUS::inc>. It will roughly look like:
 
     sub original_perl5opt   { $org_opt || ''};
     sub original_perl5lib   { $org_lib || ''};
-    sub original_inc        { @org_inc };
+    sub original_inc        { @org_inc, __PACKAGE__->my_path };
 
     sub limited_perl5opt    {
         my $pkg = shift;

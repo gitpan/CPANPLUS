@@ -1,3 +1,47 @@
+Changes for 0.054       Fri Jun  3 17:44:40 CEST 2005
+=====================================================
+
+*   This release paves the way for the CPANPLUS::Dist::*
+    plugins, providing a framework from which to 
+    automatically create distributions from CPAN packages
+*   Redo the 'cpan2dist' commandline tool, adding many
+    new options
+*   Record all messages from the 'make' command on the
+    stack regardless.
+*   Use the word 'test' when testing modules, not 'create'
+*   Note in test reports that we skipped tests [#11587]
+*   Fix some small documentation error [#11570]
+*   Double check if a module is uptodate before asking 
+    the user -- another prereq may have installed it 
+    already [#11840]
+*   Do a 'grep unique' on missing prerequisites, so we 
+    dont list them more than once, even if the test output 
+    does -- fixes bug [#11637]    
+*   Make sure we use an empty 'dist_type' in the tests in
+    case the user set on in his config
+*   Add a _copy function to Utils.pm
+*   Make sure the 'force' flag is propagated properly to
+    the 'resolve_prereqs' function
+*   Add build_prereq flag to indicate prereqs should be 
+    built even when uptodate when run under a packagemanager
+*   When running CPANPLUS from a path not (absolutely) in 
+    your @INC, we add our own path to 'original_inc' which 
+    we restore on shell outs
+*   Pass the grade to the 'munge_report' handler    
+*   Many test report improvements as provided by Barbie 
+    in ticket #12302
+*   Not all prereqs live on CPAN -- skip noting them as a 
+    loaded prereq if we can't find it in the module tree 
+    (as reported in #12723)
+*   Bundled a version of T::H that does supports the 'no_plan' 
+    feature of Test::More (#13019):
+    We can't automatically do 'the right thing' as 'make test' 
+    invokes 'test_harness' which loads T::H before we can even 
+    interfere so we add a msg about too low version to the 
+    Makefile.PL instead and fall back to basic tests
+*   Tell users why their sudo password might be asked during
+    'make test'
+
 Changes for 0.053       Fri Feb 11 10:07:08 CET 2005
 ====================================================
 

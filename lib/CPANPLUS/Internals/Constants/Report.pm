@@ -20,7 +20,8 @@ BEGIN {
                     TEST_FAIL_STAGE REPORT_MISSING_TESTS CPAN_TESTERS_EMAIL
                     REPORT_MISSING_PREREQS MISSING_PREREQS_LIST 
                     REPORT_MESSAGE_FOOTER MISSING_EXTLIBS_LIST
-                    PERL_VERSION_TOO_LOW REPORT_LOADED_PREREQS
+                    PERL_VERSION_TOO_LOW REPORT_LOADED_PREREQS UNSUPPORTED_OS
+                    REPORT_TESTS_SKIPPED
                 ];
 }
 
@@ -100,20 +101,39 @@ use constant RELEVANT_TEST_RESULT
                                 return $specific ? 0 : 1;
                             };
 
+use constant UNSUPPORTED_OS
+                            => sub {
+                                my $buffer = shift or return;
+                                if( $buffer =~
+                                        /No support for OS|OS unsupported/im ) {
+                                    return 1;
+                                }
+                                return 0;
+                          };                                            
+
 use constant PERL_VERSION_TOO_LOW
                             => sub {
                                 my $buffer = shift or return;
-                                    return $buffer =~
-                                        /Perl .*? required--this is only .*?/m
-                            };                                            
+                                # ExtUtils::MakeMaker format
+                                if( $buffer =~
+                                        /Perl .*? required--this is only .*?/m ) {
+                                    return 1;
+                                }
+                                # Module::Build format
+                                if( $buffer =~
+                                        /ERROR: perl: Version .*? is installed, but we need version >= .*?/m ) {
+                                    return 1;
+                                }
+                                return 0;
+                          };                                            
 
 use constant NO_TESTS_DEFINED
                             => sub {
                                 my $buffer = shift or return;
                                 if( $buffer =~
-                                  /('?No tests defined(?: for .* extension)?.\s*$)/m
-                                  and ( $buffer !~ /\*\.t/m and
-                                        $buffer !~ /test\.pl/m)
+                                  /(No tests defined( for [\w:]+ extension)?\.)/
+                                  and $buffer !~ /\*\.t/m and
+                                      $buffer !~ /test\.pl/m
                                 ) { 
                                     return $1 
                                 }
@@ -136,6 +156,12 @@ use constant MISSING_PREREQS_LIST
                                 my @list = map { s/.pm$//; s|/|::|g; $_ }
                                     ($buffer =~
                                         m/\bCan\'t locate (\S+) in \@INC/g);
+                                
+                                ### make sure every missing prereq is only 
+                                ### listed ones
+                                {   my %seen;
+                                    @list = grep { !$seen{$_}++ } @list
+                                }
 
                                 return @list;
                             };
@@ -184,10 +210,15 @@ $buffer
 use constant REPORT_MISSING_PREREQS
                             => sub {
                                 my ($author,$email,@missing) = @_;
-                                $author = ($author && $email) ? "$author ($email)" : 'Your Name Here';
+                                $author = ($author && $email) 
+                                            ? "$author ($email)" 
+                                            : 'Your Name Here';
+                                
                                 my $modules = join "\n", @missing;
-                                my $prereqs = join "\n", map {"\t'$_'\t=> '0',".
-                                    " # or a minimum working version"} @missing;
+                                my $prereqs = join "\n", 
+                                    map {"\t'$_'\t=> '0',".
+                                         " # or a minimum working version"}
+                                    @missing;
 
                                 return << ".";
 
@@ -252,7 +283,14 @@ use constant REPORT_LOADED_PREREQS
                                 my $mod = shift;
                                 my $cb  = $mod->parent;
                                 my $prq = $mod->status->prereqs || {};
-                                my @prq = map { $cb->module_tree($_) }
+
+                                ### not every prereq may be coming from CPAN
+                                ### so maybe we wont find it in our module
+                                ### tree at all... 
+                                ### skip ones that cant be found in teh list
+                                ### as reported in #12723
+                                my @prq = grep { defined }
+                                          map { $cb->module_tree($_) }
                                           sort keys %$prq;
                                 
                                 ### no prereqs?
@@ -273,6 +311,19 @@ managed to load:
                                 return $str;
                             };
 
+use constant REPORT_TESTS_SKIPPED 
+                            => sub {
+                                return << ".";
+
+******************************** NOTE ********************************
+***                                                                ***
+***    The tests for this module were skipped during this build    ***
+***                                                                ***
+**********************************************************************
+
+.
+                            };
+                            
 use constant REPORT_MESSAGE_FOOTER
                             => sub {
                                 return << ".";

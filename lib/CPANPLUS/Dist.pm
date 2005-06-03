@@ -224,7 +224,7 @@ sub _resolve_prereqs {
     my $conf = $cb->configure_object;
     my %hash = @_;
 
-    my ($prereqs, $format, $verbose, $target, $force);
+    my ($prereqs, $format, $verbose, $target, $force, $prereq_build);
     my $tmpl = {
         ### XXX perhaps this should not be required, since it may not be
         ### packaged, just installed...
@@ -232,17 +232,18 @@ sub _resolve_prereqs {
         ### routine will figure it out, which is fine if we didn't have any
         ### very specific wishes (it will even detect the favourite
         ### dist_type).
-        format  => { required => 1, store => \$format,
-                        allow => ['',__PACKAGE__->dist_types], },
-        prereqs => { required => 1, default => { },
-                        strict_type => 1, store => \$prereqs },
-        verbose => { default => $conf->get_conf('verbose'),
-                        store => \$verbose },
-        force   => { default => $conf->get_conf('force'),
-                        store => \$force },
-                    ### make sure allow matches with $mod->install's list
-        target  => { default => '', allow => ['',qw[create ignore install]],
-                        store => \$target },
+        format          => { required => 1, store => \$format,
+                                allow => ['',__PACKAGE__->dist_types], },
+        prereqs         => { required => 1, default => { },
+                                strict_type => 1, store => \$prereqs },
+        verbose         => { default => $conf->get_conf('verbose'),
+                                store => \$verbose },
+        force           => { default => $conf->get_conf('force'),
+                                store => \$force },
+                        ### make sure allow matches with $mod->install's list
+        target          => { default => '', store => \$target,
+                                allow => ['',qw[create ignore install]] },
+        prereq_build    => { default => 0, store => \$prereq_build },
     };
 
     check( $tmpl, \%hash ) or return;
@@ -324,6 +325,14 @@ sub _resolve_prereqs {
     my $flag;
     for my $aref (@install_me) {
         my($modobj,$version) = @$aref;
+
+        ### another prereq may have already installed this one...
+        ### so dont ask again if the module turns out to be uptodate
+        ### see bug [#11840]
+        ### if either force or prereq_build are given, the prereq
+        ### should be built anyway
+        next if (!$force and !$prereq_build) && 
+                $modobj->is_uptodate(version => $version);
 
         ### either we're told to ignore the prereq,
         ### or the user wants us to ask him

@@ -259,7 +259,8 @@ sub _send_report {
     }
 
     ### check arguments ###
-    my ($buffer, $failed, $mod, $verbose, $force, $address, $save, $dontcc);
+    my ($buffer, $failed, $mod, $verbose, $force, $address, $save, $dontcc,
+        $tests_skipped );
     my $tmpl = {
             module  => { required => 1, store => \$mod, allow => IS_MODOBJ },
             buffer  => { required => 1, store => \$buffer },
@@ -271,6 +272,8 @@ sub _send_report {
                             store => \$verbose },
             force   => { default  => $conf->get_conf('force'),
                             store => \$force },
+            tests_skipped   
+                    => { default => 0, store => \$tests_skipped },
     };
 
     check( $tmpl, \%hash ) or return;
@@ -289,6 +292,13 @@ sub _send_report {
     my $grade;
     ### check if this is a platform specific module ###
     unless( RELEVANT_TEST_RESULT->($mod) ) {
+        msg(loc("'%1' is a platform specific module, and the test results on".
+                " your platform are not relevant --sending N/A grade.",
+                $name), $verbose);
+
+        $grade = GRADE_NA;
+
+    } elsif ( UNSUPPORTED_OS->( $buffer ) ) {
         msg(loc("'%1' is a platform specific module, and the test results on".
                 " your platform are not relevant --sending N/A grade.",
                 $name), $verbose);
@@ -337,9 +347,9 @@ sub _send_report {
         ### was it missing prereqs? ###
         if( my @missing = MISSING_PREREQS_LIST->($buffer) ) {
             if(!$self->_verify_missing_prereqs(
-								module  => $mod,
-								missing => \@missing
-						)) {
+                                module  => $mod,
+                                missing => \@missing
+                        )) {
                 msg(loc("Not sending test report - bogus missing prerequisites report"));
                 return 1;
             }
@@ -356,7 +366,12 @@ sub _send_report {
 
         ### the footer
         $message .=  REPORT_MESSAGE_FOOTER->();
-    }
+
+    ### it may be another grade than fail/unknown.. may be worth noting
+    ### that tests got skipped, since the buffer is not added in
+    } elsif ( $tests_skipped ) {
+        $message .= REPORT_TESTS_SKIPPED->();
+    }        
 
     ### if it failed, and that already got reported, we're not cc'ing the
     ### author. Also, 'dont_cc' might be in the config, so check this;
@@ -403,7 +418,7 @@ sub _send_report {
         if $conf->get_conf('email') !~ /\@example\.\w+$/i;
 
     ### give the user a chance to programattically alter the message
-    $message = $self->_callbacks->munge_test_report->( $mod, $message );
+    $message = $self->_callbacks->munge_test_report->($mod, $message, $grade);
 
     ### add the body if we have any ###
     $reporter->comments( $message ) if defined $message && length $message;
@@ -472,9 +487,10 @@ sub _verify_missing_prereqs {
 
     check( $tmpl, \%hash ) or return;
 
-	
+    
     my %missing = map {$_ => 1} @$missing;
     my $conf = $self->configure_object;
+    my $extract = $mod->status->extract;
 
     ### Read pre-requisites from Makefile.PL or Build.PL (if there is one),
     ### of the form:
@@ -484,10 +500,11 @@ sub _verify_missing_prereqs {
     ###                    },
     ###  Build.PL uses 'requires' instead of 'PREREQ_PM'.
 
+    my @search;
+    push @search, ($extract ? MAKEFILE_PL->( $extract ) : MAKEFILE_PL->());
+    push @search, ($extract ? BUILD_PL->( $extract ) : BUILD_PL->());
 
-    for my $file (  MAKEFILE_PL->( $mod->status->extract ),
-                    BUILD_PL->( $mod->status->extract ),
-    ) {
+    for my $file ( @search ) {
         if(-e $file and -r $file) {
             my $slurp = $self->_get_file_contents(file => $file);
             my ($prereq) = 

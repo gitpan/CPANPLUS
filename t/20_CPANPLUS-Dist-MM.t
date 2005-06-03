@@ -127,6 +127,10 @@ SKIP: {
     skip(q[Probably no permissions to install, skipping], 10)
         if $noperms;
 
+    
+    diag(q[Note: 'sudo' might ask for your password to do the install test])
+        if $conf->get_program('sudo');
+
     ok( $mod->install( force =>1 ),
                                 "Installing module" );
     ok( $mod->status->installed,"   Module installed according to status" );

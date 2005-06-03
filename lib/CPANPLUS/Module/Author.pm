@@ -16,7 +16,7 @@ CPANPLUS::Module::Author
 
 =head1 SYNOPSIS
 
-    my $author = CPANPLUS::Author->new(
+    my $author = CPANPLUS::Module::Author->new(
                     author  => 'Jack Ashton',
                     cpanid  => 'JACKASH',
                     _id     => INTERNALS_OBJECT_ID,
@@ -29,11 +29,11 @@ CPANPLUS::Module::Author
     @dists  = $author->distributions;
     @mods   = $author->modules;
 
-    @accessors = CPANPLUS::Author->accessors;
+    @accessors = CPANPLUS::Module::Author->accessors;
 
 =head1 DESCRIPTION
 
-C<CPANPLUS::Author> creates objects from the information in the
+C<CPANPLUS::Module::Author> creates objects from the information in the
 source files. These can then be used to query on.
 
 These objects should only be created internally. For C<fake> objects,
@@ -45,7 +45,7 @@ An objects of this class has the following accessors:
 
 =over 4
 
-=item name
+=item author
 
 Name of the author.
 
@@ -93,9 +93,9 @@ sub parent {
 
 =head1 METHODS
 
-=head2 $auth = CPANPLUS::Author->new( author => AUTHOR_NAME, cpanid => CPAN_ID, _id => INTERNALS_ID [, email => AUTHOR_EMAIL] )
+=head2 $auth = CPANPLUS::Module::Author->new( author => AUTHOR_NAME, cpanid => CPAN_ID, _id => INTERNALS_ID [, email => AUTHOR_EMAIL] )
 
-This method returns a C<CPANPLUS::Author> object, based on the given
+This method returns a C<CPANPLUS::Module::Author> object, based on the given
 parameters.
 
 Returns false on failure.

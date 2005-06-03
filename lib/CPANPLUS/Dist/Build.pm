@@ -306,6 +306,18 @@ sub prepare {
         $self->status->prereqs( $mangled_prereqs );
     }
     
+    ### send out test report? ###
+    if($fail) {
+           $cb->_send_report( 
+            module  => $self,
+            failed  => $fail,
+            buffer  => CPANPLUS::Error->stack_as_string,
+            verbose => $verbose,
+            force   => $force,
+        ) or error(loc("Failed to send test report for '%1'",
+                    $self->module ) );
+    }
+
     unless( $cb->_chdir( dir => $orig ) ) {
         error( loc( "Could not chdir back to start dir '%1'", $orig ) );
     }
@@ -375,7 +387,7 @@ sub create {
 
     my $args;
     my( $force, $verbose, $buildflags, $skiptest, $prereq_target,
-        $perl, $prereq_format);
+        $perl, $prereq_format, $prereq_build);
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
             force           => {    default => $conf->get_conf('force'),
@@ -392,6 +404,7 @@ sub create {
             prereq_format   => {    #default => $self->status->installer_type,
                                     default => '',
                                     store   => \$prereq_format },
+            prereq_build    => {    default => 0, store => \$prereq_build },                                    
         };
 
         $args = check( $tmpl, \%hash ) or return;
@@ -447,10 +460,12 @@ sub create {
         ### this will set the directory back to the start
         ### dir, so we must chdir /again/
         my $ok = $dist->_resolve_prereqs(
-                        format  => $prereq_format,
-                        verbose => $verbose,
-                        prereqs => $self->status->prereqs,
-                        target  => $prereq_target,
+                        force           => $force,
+                        format          => $prereq_format,
+                        verbose         => $verbose,
+                        prereqs         => $self->status->prereqs,
+                        target          => $prereq_target,
+                        prereq_build    => $prereq_build,
                     );
 
         unless( $cb->_chdir( dir => $dir ) ) {
@@ -496,7 +511,9 @@ sub create {
             } else {
                 $dist->status->test(1);
             }
-        }
+        } else {
+            msg(loc("Tests skipped"), $verbose);
+        }            
     }
 
     unless( $cb->_chdir( dir => $orig ) ) {
@@ -506,11 +523,12 @@ sub create {
     ### send out test report? ###
     if( $conf->get_conf('cpantest') and not $prereq_fail ) {
         $cb->_send_report(
-            module  => $self,
-            failed  => $fail,
-            buffer  => CPANPLUS::Error->stack_as_string,
-            verbose => $verbose,
-            force   => $force,
+            module          => $self,
+            failed          => $fail,
+            buffer          => CPANPLUS::Error->stack_as_string,
+            verbose         => $verbose,
+            force           => $force,
+            tests_skipped   => $skiptest,
         ) or error(loc("Failed to send test report for '%1'",
                     $self->module ) );
     }
@@ -631,6 +649,65 @@ sub _buildflags_as_hash {
     return %$argv;
 }
 
+
+sub dist_dir {
+    ### just in case you already did a create call for this module object
+    ### just via a different dist object
+    my $dist = shift;
+    my $self = $dist->parent;
+
+    ### we're also the cpan_dist, since we don't need to have anything
+    ### prepared from another installer
+    $dist    = $self->status->dist_cpan if $self->status->dist_cpan;
+    my $mb   = $dist->status->_mb_object;
+
+    my $cb   = $self->parent;
+    my $conf = $cb->configure_object;
+    my %hash = @_;
+
+    
+    my $dir;
+    unless( $dir = $self->status->extract ) {
+        error( loc( "No dir found to operate on!" ) );
+        return;
+    }
+    
+    ### chdir to work directory ###
+    my $orig = cwd();
+    unless( $cb->_chdir( dir => $dir ) ) {
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        return;
+    }
+
+    my $fail; my $distdir;
+    TRY: {    
+        $dist->prepare( @_ ) or (++$fail, last TRY);
+
+
+        eval { $mb->dispatch('distdir') };
+        if( $@ ) {
+            error(loc("Could not run '%1': %2", 'Build distdir', "$@"));
+            ++$fail, last TRY;
+        }
+
+        ### /path/to/Foo-Bar-1.2/Foo-Bar-1.2
+        $distdir = File::Spec->catdir( $dir, $self->package_name . '-' .
+                                                $self->package_version );
+
+        unless( -d $distdir ) {
+            error(loc("Do not know where '%1' got created", 'distdir'));
+            ++$fail, last TRY;
+        }
+    }
+
+    unless( $cb->_chdir( dir => $orig ) ) {
+        error( loc( "Could not chdir to start directory '%1'", $orig ) );
+        return;
+    }
+
+    return if $fail;
+    return $distdir;
+}    
 
 =head1 KNOWN ISSUES
 

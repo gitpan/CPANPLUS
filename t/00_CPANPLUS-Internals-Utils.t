@@ -18,7 +18,10 @@ BEGIN {
 }
 
 use strict;
-use Test::More 'no_plan';
+
+### make sure to keep the plan -- this is the only test
+### supported for 'older' T::H (pre 2.28) -- see Makefile.PL for details
+use Test::More tests => 31;
 
 use Cwd;
 use Data::Dumper;

@@ -2,58 +2,163 @@
 use strict;
 use CPANPLUS::Backend;
 use CPANPLUS::Dist;
-use Getopt::Std;
+use CPANPLUS::Internals::Constants;
+use Getopt::Long;
 use File::Basename;
+use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-my $opts    = {};
+use constant PREREQ_SKIP_CLASS => 'CPANPLUS::To::Dist::PREREQ_SKIP';
+
+
 my $cb      = CPANPLUS::Backend->new
-                or die "Could not create new CPANPLUS::Backend object\n";
+                or die loc("Could not create new CPANPLUS::Backend object");
+my $conf    = $cb->configure_object;
+
 my %formats = map { $_ => $_ } CPANPLUS::Dist->dist_types;
 
+my $opts = {};
+GetOptions( $opts,
+            'format=s',     'archive',
+            'verbose!',     'force!',
+            'skiptest!',    'keepsource!',
+            'makefile!',    'buildprereq!',
+            'help',         'flushcache',
+            'ignore=s@',    'ignorelist=s',
+            'defaults',     'modulelist=s',
+        );
 
-getopts('f:hvST:', $opts) or die usage();
+die usage() if exists $opts->{'help'};
 
-die usage() unless @ARGV;
-die usage() if $opts->{'h'};
+### parse options
+my $tarball     = $opts->{'archive'}    || 0;
+my $keep        = $opts->{'keepsource'} ? 1 : 0;
+my $prereqbuild = exists $opts->{'buildprereq'}
+                    ? $opts->{'buildprereq'}
+                    : 0;
 
-my $format      = $opts->{'f'};
-my $verbose     = $opts->{'v'} ? 1 : 0;
-my $skiptest    = $opts->{'S'} ? 1 : 0;
-my $tarball     = $opts->{'T'} || 0;
+### use default answers?
+$ENV{'PERL_MM_USE_DEFAULT'} = $opts->{'defaults'} ? 1 : 0;
 
-die "Invalid format: $format\n".usage() unless $formats{$format};
+my $format;
+### if provided, we go with the command line option, fall back to conf setting
+{   $format      = $opts->{'format'}         || $conf->get_conf('dist_type');
+    $conf->set_conf( dist_type  => $format );
 
-$cb->configure_object->set_conf( verbose => $verbose );
+    ### is this a valid format??
+    die loc("Invalid format: $format") . usage() unless $formats{$format};
+
+    
+    my $verbose     = exists $opts->{'verbose'}    
+                            ? $opts->{'verbose'} 
+                            : $conf->get_conf('verbose');
+    $conf->set_conf( verbose    => $verbose );
+
+                        
+    my $force       = exists $opts->{'force'}      
+                            ? $opts->{'force'}   
+                            : $conf->get_conf('force');
+    $conf->set_conf( force      => $force );                            
+
+                            
+    my $skiptest    = exists $opts->{'skiptest'}   
+                            ? $opts->{'skiptest'} 
+                            : $conf->get_conf('skiptest');
+    $conf->set_conf( skiptest   => $skiptest );                            
+
+
+    my $makefile    = exists $opts->{'makefile'}   
+                            ? $opts->{'makefile'} 
+                            : $conf->get_conf('prefer_makefile');
+    $conf->get_conf( prefer_makefile => $makefile );
+}
+
+my @modules = @ARGV;
+if( $opts->{'modulelist'} ) {
+    push @modules, parse_file( $opts->{'modulelist'} ); 
+} 
+
+die usage() unless @modules;
+
+
+### reload indices if so desired
+$cb->reload_indices() if $opts->{'flushcache'};
+
+{   my @ignore      = exists $opts->{'ignore'}  
+                            ? map { qr/$_/ } @{ $opts->{'ignore'} }
+                            : ();
+
+    push @ignore, parse_file( $opts->{'ignorelist'}, 1 ) 
+            if $opts->{'ignorelist'};
+    
+    ### use our prereq install callback 
+    $conf->set_conf( prereqs => PREREQ_ASK );
+    
+    ### register install callback ###
+    $cb->_register_callback(
+            name    => 'install_prerequisite',
+            code    => \&__ask_about_install,
+    );
+
+    
+    ### check for ignore patterns when handling prereqs
+    sub __ask_about_install {
+  
+        my $mod     = shift or return;
+        my $prereq  = shift or return;
+    
+    
+        ### die with an error object, so we can verify that
+        ### the die came from this location, and that it's an
+        ### 'acceptable' death
+        my $pat = ignore_me( $prereq );
+        die bless \(loc("Module '%1' requires '%2' to be installed " .
+                    "but found in your ignore list (%3) -- skipping",
+                    $mod->module, $prereq->module, $pat )),
+                    PREREQ_SKIP_CLASS if $pat;
+        return 1;
+    }    
+    
+    ### should we skip this module?
+    sub ignore_me {
+        my $mod = shift;
+        
+        for my $pat ( @ignore ) {
+            return $pat if $mod->module =~ /$pat/;
+        }
+        return;
+    }
+}    
 
 my %done;
-for my $name (@ARGV) {
+for my $name (@modules) {
 
     my $obj;
     
     ### is it a tarball? then we get it locally and transform it
     ### and it's dependencies into .debs
     if( $tarball ) {
-        
-        ### too many arguments?
-        if( @ARGV > 1 ) {
-            die "When creating dists from tarball, multiple module names ".
-                "does not make sense\n\n" . usage();
-        }
-    
+
         ### ENOTARBALL?
-        die "Archive '$tarball' does not exist\n" unless -e $tarball;
-    
+        unless( -e $name ) {
+            warn loc("Archive '$name' does not exist");
+            next;
+        }
+        
         $obj = CPANPLUS::Module::Fake->new(
-                        module  => $name,
-                        path    => dirname($tarball),
-                        package => basename($tarball),
+                        module  => basename($name),
+                        path    => dirname($name),
+                        package => basename($name),
                     );
+
+        ### if it's a traditional CPAN package, we can tidy
+        ### up the module name some
+        $obj->module( $obj->package_name ) if $obj->package_name;
 
         ### get the version from the package name
         $obj->version( $obj->package_version || 0 );
 
         ### set the location of the tarball
-        $obj->status->fetch($tarball);
+        $obj->status->fetch($name);
 
     ### plain old cpan module?    
     } else {
@@ -65,25 +170,68 @@ for my $name (@ARGV) {
                 next );
     }
 
+    if( my $pat = ignore_me( $obj ) ) {
+        warn loc("'%1' found in your ignore list (%2) -- skipping",
+                    $obj->module, $pat );
+        next;
+    }        
 
-    my $dist = $obj->install(   format          => $format,
+    my $dist = eval { $obj->install(   
                                 prereq_target   => 'create',
                                 target          => 'create',
-                                skiptest        => $skiptest,
-                ) or die "Unable to create '$format' dist of '".
-                            $obj->module ."'\n";
+                                keep_source     => $keep,
+                                prereq_build    => $prereqbuild )
+                }; 
+
+    ### install failed due to a 'die' in our prereq skipper?
+    if( $@ and ref $@ and $@->isa( PREREQ_SKIP_CLASS ) ) {
+        warn loc("Dist creation of '%1' skipped: '%2'", 
+                    $obj->module, ${$@} );
+        next;
+
+    ### died for some other reason? just report and skip
+    } elsif ( $@ ) {
+        warn loc("Dist creation of '%1' failed: '%2'",
+                    $obj->module, $@ );
+        next;
+    }        
+
+    ### we didn't get a dist object back?
+    $dist or (warn loc("Unable to create '%1' dist of '%2'",
+                        $format, $obj->module), next);
 
     print "Created '$format' distribution for ", $obj->module,
                 " to:\n\t", $obj->status->dist->status->dist, "\n";
 }
 
 
+sub parse_file {
+    my $file    = shift or return;
+    my $qr      = shift() ? 1 : 0;
+
+    my $fh = OPEN_FILE->( $file ) or return;
+
+    my @rv;
+    while( <$fh> ) {
+        chomp;
+        next if /^#/;                   # skip comments
+        next unless /\S/;               # skip empty lines
+        s/^(\S+).*/$1/;                 # skip extra info
+        push @rv, $qr ? qr/$_/ : $_;    # add pattern to the list
+    }
+   
+    return @rv;
+}
+
 sub usage {
+    my $me = basename($0);
+
     my $formats = join "\n", map { "\t\t$_" } sort keys %formats;
 
     qq[
-Usage:  $0 -f FORMAT Module::Name [Module::Name, ...]
-        $0 -f FORMAT -T /path/to/archive Module::Name
+Usage:  $me [--format FORMAT] [OPTS] Module::Name [Module::Name, ...]
+        $me [--format FORMAT] [OPTS] --modulelist /tmp/list/of/modules
+        $me [--format FORMAT] [OPTS] --archive /tmp/dist1 [/tmp/dist2] 
 
     Will create a distribution of type FORMAT of the modules
     specified on the command line, and all their prerequisites.
@@ -94,8 +242,55 @@ Usage:  $0 -f FORMAT Module::Name [Module::Name, ...]
     Possible formats are:
 $formats
 
+Options:
+
+    ### take no argument:
+    --help          Show this help message
+    --skiptest      Skip tests. Can be negated using --noskiptest
+    --force         Force operation. Can be negated using --noforce
+    --verbose       Be verbose. Can be negated using --noverbose
+    --keepsource    Keep sources after building distribution. Can be
+                    negated by --nokeepsource. May not be supported 
+                    by all formats
+    --makefile      Prefer Makefile.PL over Build.PL. Can be negated
+                    using --nomakefile. Defaults to your config setting
+    --buildprereq   Build packages of any prerequisites, even if they are
+                    already uptodate on the local system. Can be negated
+                    using --nobuildprereq. Defaults to false.
+    --archive       Indicate that all modules listed are actually archives
+    --flushcache    Update CPANPLUS' cache before commencing any operation
+    --defaults      Instruct ExtUtils::MakeMaker and Module::Build to use
+                    default answers during 'perl Makefile.PL' or 'perl
+                    Build.PL' calls where possible
+
+    ### take argument:
+    --format        Installer format to use (defaults to your config setting)
+    --ignore        Patterns of module names to skip during installation (also
+                    affects prerequisites). May be given multiple times
+    --ignorelist    File containing patterns that could be given to --ignore
+                    Are appended to the ignore list built up by --ignore
+    --modulelist    File containing a list of modules that should be built.
+                    Are appended to the list of command line modules
+    
+Examples:
+
+    ### build a debian package of DBI and it's prerequisites, don't bother
+    ### running tests
+    $me --format CPANPLUS::Dist::Deb --buildprereq --skiptest DBI
+    
+    ### Build a package, whose format is determined by your config of 
+    ### the local tarball, reloading cpanplus' indices first and using
+    ### the tarballs Makefile.PL if it has one.
+    $me --makefile --flushcache --archive /path/to/Cwd-1.0.tgz
+    
+    ### build a package from Net::FTP, but dont build any packages or
+    ### dependencies whose name match 'Foo', 'Bar' or any of the patterns
+    ### mentioned in /tmp/ignore
+    $me --ignore Foo --ignore Bar --igorelist /tmp/ignore Net::FTP
+    
     \n]
 }
+
 
 __END__
 
@@ -105,16 +300,23 @@ cpan2dist - The CPANPLUS distribution creator
 
 =head1 SYNOPSIS
 
-    ### create a debian package from 'Some::Module', and all
-    ### its prerequisites
-    cpan2dist -f CPANPLUS::Dist::Deb Some::Module
-
-    ### skip tests, enable verbose, create ports packages of
-    ### Some::Module and Other::Module and its prerequisites
-    cpan2dist -S -v -f CPANPLUS::Dist::Ports Some::Module Other::Module
-
-    ### show usage message, also lists available formats
-    cpan2dist -h
+    ### build a debian package of DBI and it's prerequisites, don't bother
+    ### running tests
+    cpan2dist --format CPANPLUS::Dist::Deb --buildprereq --skiptest DBI
+    
+    ### Build a package, whose format is determined by your config of 
+    ### the local tarball, reloading cpanplus' indices first and using
+    ### the tarballs Makefile.PL if it has one.
+    cpan2dist --makefile --flushcache --archive /path/to/Cwd-1.0.tgz
+    
+    ### build a package from Net::FTP, but dont build any packages or
+    ### dependencies whose name match 'Foo', 'Bar' or any of the patterns
+    ### mentioned in /tmp/ignore
+    cpan2dist --ignore Foo --ignore Bar --igorelist /tmp/ignore Net::FTP
+    
+    ### please consult the usage message for elaborate options. Also 
+    ### lists available formats.
+    cpan2dist --help
 
     ### set a certain format to be your default, using the default shell:
     CPAN Terminal> s conf dist_type CPANPLUS::Dist::SomeFormat; s save;

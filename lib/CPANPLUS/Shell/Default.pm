@@ -25,7 +25,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.053';
+    $VERSION    =   '0.054';
 }
 
 load CPANPLUS::Shell;
@@ -780,6 +780,7 @@ sub _install {
 
     my $target = $choice eq 'i' ? TARGET_INSTALL : TARGET_CREATE;
     my $prompt = $choice eq 'i' ? loc('Installing ') : loc('Testing ');
+    my $action = $choice eq 'i' ? 'install' : 'test';
 
     my $status = {};
     ### first loop over the mods to install them ###
@@ -797,20 +798,20 @@ sub _install {
     #    if( $mod->status->installed ) {
         if( $status->{$mod} ) {
             print loc("Module '%1' %tense(%2,past) successfully\n",
-                        $mod->module, $target)
+                        $mod->module, $action)
         } else {
             $flag++;
             print loc("Error %tense(%1,present) '%2'\n",
-                        $target, $mod->module);
+                        $action, $mod->module);
         }
     }
 
 
 
     if( !$flag ) {
-        print loc("No errors %tense(%1,present) all modules", $target), "\n";
+        print loc("No errors %tense(%1,present) all modules", $action), "\n";
     } else {
-        print loc("Problem %tense(%1,present) one or more modules", $target);
+        print loc("Problem %tense(%1,present) one or more modules", $action);
         print "\n";
         print loc("*** You can view the complete error buffer by pressing '%1' ***\n", 'p')
                 unless $conf->get_conf('verbose') || $self->noninteractive;

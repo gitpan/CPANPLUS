@@ -12,11 +12,12 @@ use File::Basename  qw[basename];
 
 my $conf = CPANPLUS::Configure->new( 
                 conf => {   
-                    hosts   => [ { 
-                        path    => 'dummy-CPAN',
-                        scheme  => 'file',
+                    hosts       => [ { 
+                        path        => 'dummy-CPAN',
+                        scheme      => 'file',
                     } ],      
-                    base    => 'dummy-cpanplus',   
+                    base        => 'dummy-cpanplus',   
+                    dist_type   => '',
                 } );
 
 sub gimme_conf { return $conf };

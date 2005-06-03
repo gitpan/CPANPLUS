@@ -348,6 +348,38 @@ the optional modules CPANPLUS supports, by installing:
     
     ", $string, 'Bundle::CPANPLUS::Dependencies');  
 
+    ### we use 'no_plan' in our tests -- older T::H, like the one shipped
+    ### with perl5.6.1 can't cope with that. So if the version of T::H
+    ### is too old, we print a warning and use only the basic test
+    ### which uses a proper plan
+    {   eval "use Test::Harness 2.28";
+
+        if( $@ ) {
+            print loc("
+### IMPORTANT #####################################################
+
+Your version of '%1' is too old. You need at least 
+version '%2' to run all of the CPANPLUS tests. 
+
+For your convenience a more recent version is bundled with this 
+module, in the following directory:
+
+    '%3'
+    
+Please add this to your path and reinvoke this program, or ideally
+upgrade your version of '%4' before installing CPANPLUS.
+
+For now, we will run only the basic tests that will run safely 
+under your version.
+
+###################################################################
+
+",  'Test::Harness', '2.28', 't/inc/harness', 'Test::Harness' );
+            
+            $tests = BASIC_TESTS;
+        }
+    }        
+
 
     name            ('CPANPLUS');
     author          ('Jos Boumans <kane@cpan.org>');
@@ -361,7 +393,8 @@ the optional modules CPANPLUS supports, by installing:
     makemaker_args  ( clean => { FILES => 't/.*.output' } );
 
     ### write the makefile ###
-    &WriteAll( check_nmake => 1, sign => 1 );
+    #&WriteAll( check_nmake => 1, sign => 1 );
+    &WriteAll( check_nmake => 1 );
 
     print loc("Now, please type '%1' to test, and '%2' to install.",
               "$Config{make} test", "$Config{make} install"), "\n";
