@@ -27,7 +27,7 @@ my $send_tests  = 48;
 my $query_tests = 7;
 my $total_tests = $send_tests + $query_tests;
 
-use Test::More                  tests => 108;
+use Test::More                  tests => 109;
 use Module::Load::Conditional   qw[can_load];
 
 use FileHandle;
@@ -238,6 +238,15 @@ my $map = {
         like( $str, qr/Cwd\s+\S+/,      "   Proper content found" );
     }
 }
+
+### callback tests
+{   ### as reported in bug 13086, this callback returned the wrong item 
+    ### from the list:
+    ### $self->_callbacks->munge_test_report->($mod, $message, $grade);     
+    my $rv = $cb->_callbacks->munge_test_report->( 1..4 );   
+    is( $rv, 2,                 "Default 'munge_test_report' callback OK" );
+}
+
 
 ### test creating test reports ###
 SKIP: {

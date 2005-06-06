@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = '0.054';
+$VERSION = '0.055';
 
 =pod
 
@@ -115,7 +115,7 @@ Returns the object on success, or dies on failure.
         edit_test_report        => 0,   # edit the prepared test report?
         send_test_report        => 1,   # send the test report?
                                         # munge the test report
-        munge_test_report       => sub { return pop() },
+        munge_test_report       => sub { return $_[1] },
     };
     
     my $status = Object::Accessor->new;

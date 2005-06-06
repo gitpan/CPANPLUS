@@ -1,3 +1,12 @@
+Changes for 0.055       Sat Jun  4 15:53:37 CEST 2005
+=====================================================
+
+*   This release just affects users of the Test::Reporter
+    and 'cpantest' utilities.
+*   The 'munge_test_report' callback was getting the 
+    grade passed as of 0.054, but the default callback
+    was now returning the wrong item. [#13086]
+
 Changes for 0.054       Fri Jun  3 17:44:40 CEST 2005
 =====================================================
 

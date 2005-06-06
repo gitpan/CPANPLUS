@@ -94,19 +94,16 @@ is($cb->_id, $cb->_last_id, "Comparing ID's");
         install_prerequisite    => 1,   # install prereqs when 'ask' is set?
         edit_test_report        => 0,   # edit the prepared test report?
         send_test_report        => 1,   # send the test report?
-        munge_test_report       => $0,  # munge the test report
+        munge_test_report       => $$,  # munge the test report
     };
 
     for my $callback ( keys %$callback_map ) {
         
         {   local $CPANPLUS::Error::ERROR_FH = output_handle() unless @ARGV;
 
-            my $rv = ref $callback_map->{$callback} 
-                        ? $0 
-                        : $callback_map->{$callback};
+            my $rv = $callback_map->{$callback};
 
-
-            is( $rv, $cb->_callbacks->$callback->( $0 ),
+            is( $rv, $cb->_callbacks->$callback->( $0, $$ ),
                                 "Default callback '$callback' called" );
             like( CPANPLUS::Error->stack_as_string, qr/DEFAULT '\S+' HANDLER/s,  
                                 "   Default handler warning recorded" );       
