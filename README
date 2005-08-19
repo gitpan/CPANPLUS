@@ -25,7 +25,6 @@ you configure it properly.
 
 CPANPLUS uses the standard perl module install process:
 
-cpansign -v             # optional; see SIGNATURE for details
 perl Makefile.PL
 make                    # or 'nmake' on Windows
 make test

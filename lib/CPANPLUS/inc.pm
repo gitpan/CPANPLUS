@@ -159,7 +159,6 @@ It would looks something like this:
         'Log::Message'              => 0,
         'Module::Load'              => '0.10',
         'Module::Load::Conditional' => '0.07',
-        'Module::Build'             => '0.26081',
         'Params::Check'             => '0.22',
         'Term::UI'                  => '0.05',
         'Archive::Extract'          => '0.07',
@@ -381,7 +380,7 @@ find out exactly what C<CPANPLUS::inc> is doing.
             ### or otherwise, the one not bundled
             ### or otherwise the newest
             my @sorted = sort {
-                            ($b->[0] <=> $a->[0])                   ||
+                            vcmp($b->[0], $a->[0])                  ||
                             ($Cache{$interesting}
                                 ?($b->[2] eq $Cache{$interesting}->[0][2]) <=>
                                  ($a->[2] eq $Cache{$interesting}->[0][2])
@@ -395,7 +394,9 @@ find out exactly what C<CPANPLUS::inc> is doing.
                              ."'$sorted[0][2]' with version '$sorted[0][0]'\n"
                     if $DEBUG;
 
-            if( $check_version and not ($sorted[0][0] >= $map->{$module}) ) {
+            if( $check_version and 
+                not (vcmp($sorted[0][0], $map->{$module}) >= 0) 
+            ) {
                 warn __PACKAGE__ .": Cannot find high enough version for "
                                  ."'$module' -- need '$map->{$module}' but "
                                  ."only found '$sorted[0][0]'. Returning "
@@ -428,6 +429,12 @@ find out exactly what C<CPANPLUS::inc> is doing.
             return $sorted[0][1];
         } );
     }
+}
+
+sub vcmp {
+    my ($x, $y) = @_;
+    s/_//g foreach $x, $y;
+    return $x <=> $y;
 }
 
 =pod

@@ -12,7 +12,7 @@ CPANPLUS::Error
 
 =head1 SYNOPSIS
 
-    use CPANPLUS::Error qw[msg error];
+    use CPANPLUS::Error qw[cp_msg cp_error];
 
 =head1 DESCRIPTION
 
@@ -21,14 +21,14 @@ libraries, and is mainly intended for internal use.
 
 =head1 FUNCTIONS
 
-=head2 msg("message string" [,VERBOSE])
+=head2 cp_msg("message string" [,VERBOSE])
 
 Records a message on the stack, and prints it to C<STDOUT> (or actually
 C<$MSG_FH>, see the C<GLOBAL VARIABLES> section below), if the
 C<VERBOSE> option is true.
 The C<VERBOSE> option defaults to false.
 
-=head2 error("error string" [,VERBOSE])
+=head2 cp_error("error string" [,VERBOSE])
 
 Records an error on the stack, and prints it to C<STDERR> (or actually
 C<$ERROR_FH>, see the C<GLOBAL VARIABLES> sections below), if the
@@ -65,7 +65,7 @@ BEGIN {
     use vars            qw[@EXPORT @ISA $ERROR_FH $MSG_FH];
 
     @ISA        = 'Exporter';
-    @EXPORT     = qw[error msg];
+    @EXPORT     = qw[cp_error cp_msg];
 
     my $log     = new Log::Message;
 
@@ -108,12 +108,12 @@ BEGIN {
 
 =item $ERROR_FH
 
-This is the filehandle all the messages sent to C<error()> are being
+This is the filehandle all the messages sent to C<cp_error()> are being
 printed. This defaults to C<*STDERR>.
 
 =item $MSG_FH
 
-This is the filehandle all the messages sent to C<msg()> are being
+This is the filehandle all the messages sent to C<cp_msg()> are being
 printed. This default to C<*STDOUT>.
 
 =cut
@@ -126,7 +126,7 @@ use Carp ();
 
 {
 
-    sub msg {
+    sub cp_msg {
         my $self    = shift;
         my $verbose = shift;
 
@@ -134,13 +134,15 @@ use Carp ();
         return if defined $verbose && $verbose == 0;
 
         my $old_fh = select $CPANPLUS::Error::MSG_FH;
-        print '['. $self->tag (). '] ' . $self->message . "\n";
+
+        my $tag = $self->tag(); $tag =~ s/cp_//i;
+        print '['. $tag . '] ' . $self->message . "\n";
         select $old_fh;
 
         return;
     }
 
-    sub error {
+    sub cp_error {
         my $self    = shift;
         my $verbose = shift;
 
@@ -154,7 +156,8 @@ use Carp ();
 
         ### maybe we didn't initialize an internals object (yet) ###
         my $debug   = $cb ? $cb->configure_object->get_conf('debug') : 0;
-        my $msg     = '['. $self->tag . '] ' . $self->message;
+        my $tag     = $self->tag(); $tag =~ s/cp_//i;
+        my $msg     =  '['. $tag . '] ' . $self->message . "\n";
 
         ### i'm getting this warning in the test suite:
         ### Ambiguous call resolved as CORE::warn(), qualify as such or

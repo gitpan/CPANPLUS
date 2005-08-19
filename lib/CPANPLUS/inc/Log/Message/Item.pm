@@ -15,7 +15,7 @@ BEGIN {
 
 ### create a new item.
 ### note that only an id (position on the stack), message and a reference
-### to it's parent are required. all the other things it can fill in itself
+### to its parent are required. all the other things it can fill in itself
 sub new {
     my $class   = shift;
     my %hash    = @_;
@@ -113,14 +113,14 @@ documented in the Log::Message::Handlers manpage.
 =head2 remove
 
 Calling remove will remove the object from the stack it was on, so it
-will not show up any more in subseqent fetches of messages.
+will not show up any more in subsequent fetches of messages.
 
 You can still call accessors and handlers on it however, to handle it
 as you will.
 
 =head2 id
 
-Returns the internal ID of the item. This may be usefull for comparing
+Returns the internal ID of the item. This may be useful for comparing
 since the ID is incremented each time a new item is created.
 Therefore, an item with ID 4 must have been logged before an item with
 ID 9.
@@ -156,7 +156,7 @@ See the C<Carp> manpage for details.
 =head2 parent
 
 Returns a reference to the Log::Message object that stored this item.
-This is usefull if you want to have access to the full stack in a
+This is useful if you want to have access to the full stack in a
 handler.
 
 =head1 SEE ALSO

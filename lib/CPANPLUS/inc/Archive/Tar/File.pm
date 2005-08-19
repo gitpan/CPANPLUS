@@ -13,7 +13,7 @@ $VERSION    = '0.02';
 
 ### set value to 1 to oct() it during the unpack ###
 my $tmpl = [
-        name        => 0,   # string   
+        name        => 0,   # string
         mode        => 1,   # octal
         uid         => 1,   # octal
         gid         => 1,   # octal
@@ -30,9 +30,9 @@ my $tmpl = [
         devminor    => 1,   # octal
         prefix      => 0,
 
-### end UNPACK items ###    
+### end UNPACK items ###
         raw         => 0,   # the raw data chunk
-        data        => 0,   # the data associated with the file -- 
+        data        => 0,   # the data associated with the file --
                             # This  might be very memory intensive
 ];
 
@@ -43,8 +43,8 @@ for ( my $i=0; $i<scalar @$tmpl ; $i+=2 ) {
     *{__PACKAGE__."::$key"} = sub {
         my $self = shift;
         $self->{$key} = $_[0] if @_;
-        
-        ### just in case the key is not there or undef or something ###    
+
+        ### just in case the key is not there or undef or something ###
         {   local $^W = 0;
             return $self->{$key};
         }
@@ -70,7 +70,7 @@ Archive::Tar::File - a subclass for in-memory extracted file from Archive::Tar
 
 Archive::Tar::Files provides a neat little object layer for in-memory
 extracted files. It's mostly used internally in Archive::Tar to tidy
-up the code, but there's no reason users shouldn't use this API as 
+up the code, but there's no reason users shouldn't use this API as
 well.
 
 =head2 Accessors
@@ -182,12 +182,12 @@ Returns undef on failure.
 sub new {
     my $class   = shift;
     my $what    = shift;
-    
+
     my $obj =   ($what eq 'chunk') ? __PACKAGE__->_new_from_chunk( @_ ) :
                 ($what eq 'file' ) ? __PACKAGE__->_new_from_file( @_ ) :
                 ($what eq 'data' ) ? __PACKAGE__->_new_from_data( @_ ) :
                 undef;
-    
+
     return $obj;
 }
 
@@ -195,18 +195,18 @@ sub new {
 sub clone {
     my $self = shift;
     return bless { %$self }, ref $self;
-}    
+}
 
 sub _new_from_chunk {
     my $class = shift;
     my $chunk = shift or return;
-    
+
     ### makes it start at 0 actually... :) ###
     my $i = -1;
-    my %entry = map { 
-        $tmpl->[++$i] => $tmpl->[++$i] ? oct $_ : $_    
+    my %entry = map {
+        $tmpl->[++$i] => $tmpl->[++$i] ? oct $_ : $_
     } map { /^([^\0]*)/ } unpack( UNPACK, $chunk );
-    
+
     my $obj = bless \%entry, $class;
 
 	### magic is a filetype string.. it should have something like 'ustar' or
@@ -215,13 +215,13 @@ sub _new_from_chunk {
 
     ### store the original chunk ###
     $obj->raw( $chunk );
-    
+
     $obj->type(FILE) if ( (!length $obj->type) or ($obj->type =~ /\W/) );
-    $obj->type(DIR)  if ( ($obj->is_file) && ($obj->name =~ m|/$|) );    
+    $obj->type(DIR)  if ( ($obj->is_file) && ($obj->name =~ m|/$|) );
 
 
     return $obj;
-    
+
 }
 
 sub _new_from_file {
@@ -233,7 +233,7 @@ sub _new_from_file {
     unless ($type == DIR) {
         my $fh = IO::File->new;
         $fh->open($path) or return;
-        
+
         ### binmode needed to read files properly on win32 ###
         binmode $fh;
         $data = do { local $/; <$fh> };
@@ -242,13 +242,13 @@ sub _new_from_file {
 
     my @items       = qw[mode uid gid size mtime];
     my %hash        = map { shift(@items), $_ } (lstat $path)[2,4,5,7,9];
-    
+
     ### you *must* set size == 0 on symlinks, or the next entry will be
     ### though of as the contents of the symlink, which is wrong.
     ### this fixes bug #7937
     $hash{size}     = 0 if ($type == DIR or $type == SYMLINK);
     $hash{mtime}    -= TIME_OFFSET;
-    
+
     ### strip the high bits off the mode, which we don't need to store
     $hash{mode}     = STRIP_MODE->( $hash{mode} );
 
@@ -259,9 +259,9 @@ sub _new_from_file {
         %hash,
         name        => '',
         chksum      => CHECK_SUM,
-        type        => $type,         
-        linkname    => ($type == SYMLINK and CAN_READLINK) 
-                            ? readlink $path 
+        type        => $type,
+        linkname    => ($type == SYMLINK and CAN_READLINK)
+                            ? readlink $path
                             : '',
         magic       => MAGIC,
         version     => TAR_VERSION,
@@ -271,7 +271,7 @@ sub _new_from_file {
         devminor    => 0,   # not handled
         prefix      => '',
         data        => $data,
-    };      
+    };
 
     bless $obj, $class;
 
@@ -279,7 +279,7 @@ sub _new_from_file {
     my($prefix,$file) = $obj->_prefix_and_file( $path );
     $obj->prefix( $prefix );
     $obj->name( $file );
-    
+
     return $obj;
 }
 
@@ -288,7 +288,7 @@ sub _new_from_data {
     my $path    = shift     or return;
     my $data    = shift;    return unless defined $data;
     my $opt     = shift;
-    
+
     my $obj = {
         data        => $data,
         name        => '',
@@ -307,12 +307,12 @@ sub _new_from_data {
         devminor    => 0,
         devmajor    => 0,
         prefix      => '',
-    };      
-    
+    };
+
     ### overwrite with user options, if provided ###
     if( $opt and ref $opt eq 'HASH' ) {
         for my $key ( keys %$opt ) {
-            
+
             ### don't write bogus options ###
             next unless exists $obj->{$key};
             $obj->{$key} = $opt->{$key};
@@ -325,17 +325,17 @@ sub _new_from_data {
     my($prefix,$file) = $obj->_prefix_and_file( $path );
     $obj->prefix( $prefix );
     $obj->name( $file );
-    
+
     return $obj;
 }
 
 sub _prefix_and_file {
     my $self = shift;
     my $path = shift;
-    
+
     my ($vol, $dirs, $file) = File::Spec->splitpath( $path, $self->is_dir );
     my @dirs = File::Spec->splitdir( $dirs );
-    
+
     ### so sometimes the last element is '' -- probably when trailing
     ### dir slashes are encountered... this is is of course pointless,
     ### so remove it
@@ -346,10 +346,10 @@ sub _prefix_and_file {
 
     my $prefix = File::Spec::Unix->catdir(
                         grep { length } $vol, @dirs
-                    );           
+                    );
     return( $prefix, $file );
 }
-    
+
 sub _filetype {
     my $self = shift;
     my $file = shift or return;
@@ -367,7 +367,7 @@ sub _filetype {
     return BLOCKDEV if (-b _);		# Block special
 
     return CHARDEV  if (-c _);		# Character special
-    
+
     ### shouldn't happen, this is when making archives, not reading ###
     return LONGLINK if ( $file eq LONGLINK_NAME );
 
@@ -381,26 +381,26 @@ sub _downgrade_to_plainfile {
     my $entry = shift;
     $entry->type( FILE );
     $entry->mode( MODE );
-    $entry->linkname('');   
+    $entry->linkname('');
 
     return 1;
-}    
+}
 
 =head2 full_path
 
-Returns the full path from the tar header; this is basically a 
+Returns the full path from the tar header; this is basically a
 concatenation of the C<prefix> and C<name> fields.
 
 =cut
 
 sub full_path {
     my $self = shift;
-     
+
     ### if prefix field is emtpy
     return $self->name unless defined $self->prefix and length $self->prefix;
-    
+
     ### or otherwise, catfile'd
-    return File::Spec::Unix->catfile( $self->prefix, $self->name ); 
+    return File::Spec::Unix->catfile( $self->prefix, $self->name );
 }
 
 
@@ -415,19 +415,19 @@ Returns true on success, false on failure
 
 sub validate {
     my $self = shift;
-    
-    my $raw = $self->raw;    
-    
+
+    my $raw = $self->raw;
+
     ### don't know why this one is different from the one we /write/ ###
     substr ($raw, 148, 8) = "        ";
-	return unpack ("%16C*", $raw) == $self->chksum ? 1 : 0;	
+	return unpack ("%16C*", $raw) == $self->chksum ? 1 : 0;
 }
 
 =head2 has_content
 
 Returns a boolean to indicate whether the current object has content.
 Some special files like directories and so on never will have any
-content. This method is mainly to make sure you don't get warnings 
+content. This method is mainly to make sure you don't get warnings
 for using uninitialized values when looking at an object's content.
 
 =cut
@@ -450,8 +450,8 @@ sub get_content {
 
 =head2 get_content_by_ref
 
-Returns the current content for the in-memory file as a scalar 
-reference. Normal users won't need this, but it will save memory if 
+Returns the current content for the in-memory file as a scalar
+reference. Normal users won't need this, but it will save memory if
 you are dealing with very large data files in your tar archive, since
 it will pass the contents by reference, rather than make a copy of it
 first.
@@ -460,7 +460,7 @@ first.
 
 sub get_content_by_ref {
     my $self = shift;
-    
+
     return \$self->{data};
 }
 
@@ -468,7 +468,7 @@ sub get_content_by_ref {
 
 Replace the current content of the file with the new content. This
 only affects the in-memory archive, not the on-disk version until
-you write it. 
+you write it.
 
 Returns true on success, false on failure.
 
@@ -477,7 +477,7 @@ Returns true on success, false on failure.
 sub replace_content {
     my $self = shift;
     my $data = shift || '';
-    
+
     $self->data( $data );
     $self->size( length $data );
     return 1;
@@ -497,9 +497,9 @@ Returns true on success and false on failure.
 sub rename {
     my $self = shift;
     my $path = shift or return;
-    
-    my ($prefix,$file) = $self->_prefix_and_file( $path );    
-    
+
+    my ($prefix,$file) = $self->_prefix_and_file( $path );
+
     $self->name( $file );
     $self->prefix( $prefix );
 
@@ -547,7 +547,7 @@ Returns true if the file is of type C<socket>
 
 =item is_longlink
 
-Returns true if the file is of type C<LongLink>. 
+Returns true if the file is of type C<LongLink>.
 Should not happen after a successful C<read>.
 
 =item is_label
@@ -563,8 +563,8 @@ Returns true if the file type is C<unknown>
 
 =cut
 
-#stupid perl5.5.3 needs to warn if it's not numeric 
-sub is_file     { local $^W;    FILE      == $_[0]->type }    
+#stupid perl5.5.3 needs to warn if it's not numeric
+sub is_file     { local $^W;    FILE      == $_[0]->type }
 sub is_dir      { local $^W;    DIR       == $_[0]->type }
 sub is_hardlink { local $^W;    HARDLINK  == $_[0]->type }
 sub is_symlink  { local $^W;    SYMLINK   == $_[0]->type }
@@ -572,7 +572,7 @@ sub is_chardev  { local $^W;    CHARDEV   == $_[0]->type }
 sub is_blockdev { local $^W;    BLOCKDEV  == $_[0]->type }
 sub is_fifo     { local $^W;    FIFO      == $_[0]->type }
 sub is_socket   { local $^W;    SOCKET    == $_[0]->type }
-sub is_unknown  { local $^W;    UNKNOWN   == $_[0]->type } 
+sub is_unknown  { local $^W;    UNKNOWN   == $_[0]->type }
 sub is_longlink { local $^W;    LONGLINK  eq $_[0]->type }
 sub is_label    { local $^W;    LABEL     eq $_[0]->type }
 

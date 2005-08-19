@@ -72,7 +72,7 @@ local $CPANPLUS::Error::MSG_FH   = output_handle() unless @ARGV;
 my $Module = 'CPANPLUS::Dist::_Test';
 
 ### XXX this version doesn't exist, but we don't check for it either ###
-my $Prereq = { 'Devel::Caller::Perl' => '1000' };
+my $Prereq = { 'Foo::Bar' => '1000' };
 
 ### since it's in this file, not in it's own module file,
 ### make M::L::C think it already was loaded
@@ -170,7 +170,7 @@ ok( $Mod,                       "Got module object" );
 
 ### test _resolve prereqs, in a somewhat simulated set of circumstances
 {   my $old_prereq = $conf->get_conf('prereqs');
-    my $Mod_prereq = 'Devel::Caller::Perl';
+    my $Mod_prereq = 'Foo::Bar';
 
     my $map = {
         0 => {

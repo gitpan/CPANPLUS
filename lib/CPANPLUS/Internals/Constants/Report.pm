@@ -306,7 +306,9 @@ managed to load:
 .
                                 $str .= join '', 
                                         map { sprintf "\t%-30s %8s\n", $_->name,
-                                              $_->installed_version } @prq;
+                                              $_->installed_version } 
+                                        grep { $_ } @prq;   # might be empty
+                                                            # entries in there
                                 
                                 return $str;
                             };

@@ -21,8 +21,8 @@ BEGIN {
 
     $VERSION        = '0.24';
     $VERBOSE        = 0;
-    $USE_IPC_RUN    = 1;
-    $USE_IPC_OPEN3  = 1;
+    $USE_IPC_RUN    = $^O ne 'VMS';
+    $USE_IPC_OPEN3  = $^O ne 'VMS';
 
     @ISA            = qw[Exporter];
     @EXPORT_OK      = qw[can_run run];
@@ -32,11 +32,19 @@ BEGIN {
 sub can_run {
     my $command = shift;
 
+    # a lot of VMS executables have a symbol defined
+    # check those first
+    if ( $^O eq 'VMS' ) {
+        require VMS::DCLsym;
+        my $syms = VMS::DCLsym->new;
+        return $command if scalar $syms->getsym( uc $command );
+    }
+
     if( File::Spec->file_name_is_absolute($command) ) {
         return MM->maybe_command($command);
-    
-    } else {    
-        for my $dir (split /$Config{path_sep}/, $ENV{PATH}) {
+
+    } else {
+        for my $dir (split /\Q$Config{path_sep}\E/, $ENV{PATH}) {
             my $abs = File::Spec->catfile($dir, $command);
             return $abs if $abs = MM->maybe_command($abs);
         }
@@ -56,7 +64,7 @@ sub run {
                      allow      => sub {my $cmd = pop();
                                         !(ref $cmd) or ref $cmd eq 'ARRAY' }
                    },
-        buffer  => { default => \$x },             
+        buffer  => { default => \$x },
     };
 
     my $args = check( $tmpl, \%hash, $VERBOSE )
@@ -65,15 +73,15 @@ sub run {
     ### Kludge! This enables autoflushing for each perl process we launched.
     ### XXX probably not really needed, and seems to throw quite a few
     ### 'make test' etc off to have PERL5OPT set
-    #local $ENV{PERL5OPT} = ($ENV{PERL5OPT} || '') . 
+    #local $ENV{PERL5OPT} = ($ENV{PERL5OPT} || '') .
     #                            ' -MIPC::Cmd::System=autoflush=1';
 
     my $verbose     = $args->{verbose};
     my $is_win98    = ($^O eq 'MSWin32' and !Win32::IsWinNT());
 
     my $err;                # error flag
-    my $have_buffer;        # to indicate we executed via IPC::Run 
-                            # or IPC::Open3 only then it makes sence 
+    my $have_buffer;        # to indicate we executed via IPC::Run
+                            # or IPC::Open3 only then it makes sence
                             # to return the buffers
 
     my (@buffer,@buferr,@bufout);
@@ -106,10 +114,10 @@ sub run {
     print loc(qq|Running [%1]...\n|,"@cmd") if $verbose;
 
     ### First, we prefer Barrie Slaymaker's wonderful IPC::Run module.
-    if (!$is_win98 and $USE_IPC_RUN and 
+    if (!$is_win98 and $USE_IPC_RUN and
         can_load(
             modules => { 'IPC::Run' => '0.55' },
-            verbose => $verbose && ($^O eq 'MSWin32') ) 
+            verbose => $verbose && ($^O eq 'MSWin32') )
     ) {
         STDOUT->autoflush(1); STDERR->autoflush(1);
 
@@ -138,22 +146,22 @@ sub run {
             for my $item (@cmd) {
                 if( $item =~ /[<>|&]/ ) {
                     push @command, $aref, $item;
-                    $aref = [];                  
+                    $aref = [];
                     $special_chars++;
                 } else {
                     push @$aref, $item;
                 }
-            }            
+            }
             push @command, $aref;
         } else {
             @command = map { if( /[<>|&]/ ) {
                                 $special_chars++; $_;
-                             } else {                            
+                             } else {
                                 [ split / +/ ]
                              }
                         } split( /\s*([<>|&])\s*/, $cmd );
         }
-        
+
         ### due to the double '>' construct, stdout buffers are now ending
         ### up in the stderr buffer. this is a bug in IPC::Run.
         ### Mailed barries about this early june, no solution yet :(
@@ -162,20 +170,20 @@ sub run {
         ###     perl -lewarn$$
         ### so it looks like when there are no 'special' chars in the
         ### command, like '|' and friends, best not use the '>' construct.
-        if( $special_chars ) {              
-            IPC::Run::run(@command, \*STDIN, '>', $_out_handler, 
+        if( $special_chars ) {
+            IPC::Run::run(@command, \*STDIN, '>', $_out_handler,
                                              '>', $_err_handler) or $err++;
         } else {
-            IPC::Run::run(@command, \*STDIN, $_out_handler, 
+            IPC::Run::run(@command, \*STDIN, $_out_handler,
                                          $_err_handler) or $err++;
         }
- 
- 
+
+
     ### Next, IPC::Open3 is know to fail on Win32, but works on Un*x.
     } elsif (   $^O !~ /^(?:MSWin32|cygwin)$/
                 and $USE_IPC_OPEN3
                 and can_load(
-                    modules => { map{$_ => '0.0'} 
+                    modules => { map{$_ => '0.0'}
                                 qw|IPC::Open3 IO::Select Symbol| },
                     verbose => $verbose
     ) ) {
@@ -220,7 +228,7 @@ sub run {
         my $capture = $args->{buffer};
         $$capture = join '', @buffer;
     }
-    
+
     return wantarray
                 ? $have_buffer
                     ? (!$err, $?, \@buffer, \@bufout, \@buferr)
@@ -232,7 +240,7 @@ sub run {
 ### IPC::Run::run emulator, using IPC::Open3.
 sub _open3_run {
     my ($cmdref, $_out_handler, $_err_handler, $verbose) = @_;
-    
+
     ### in case there are pipes in there;
     ### IPC::Open3 will call exec and exec will do the right thing ###
     my $cmd = join " ", @$cmdref;
@@ -313,9 +321,9 @@ IPC::Cmd - finding and running system commands made easy
 
     ### in scalar context ###
     my $buffer;
-    if( scalar run( command => $cmd, 
+    if( scalar run( command => $cmd,
                     verbose => 0,
-                    buffer  => \$buffer ) 
+                    buffer  => \$buffer )
     ) {
         print "fetched webpage successfully\n";
     }
@@ -369,10 +377,10 @@ C<run> takes 3 arguments:
 =item command
 
 This is the command to execute. It may be either a string or an array
-reference. 
+reference.
 This is a required argument.
 
-See L<CAVEATS> for remarks on how commands are parsed and their 
+See L<CAVEATS> for remarks on how commands are parsed and their
 limitations.
 
 =item verbose
@@ -485,7 +493,7 @@ commands to the screen or not. The default is 0;
 
 =head2 $IPC::Cmd::USE_IPC_RUN
 
-This variable controls whether IPC::Cmd will try to use L<IPC::Run> 
+This variable controls whether IPC::Cmd will try to use L<IPC::Run>
 when available and suitable. Defaults to true.
 
 =head2 $IPC::Cmd::USE_IPC_OPEN3
@@ -500,11 +508,11 @@ when available and suitable. Defaults to true.
 =item Whitespace
 
 When you provide a string as this argument, the string will be
-split on whitespace to determine the individual elements of your 
+split on whitespace to determine the individual elements of your
 command. Although this will usually just Do What You Mean, it may
-break if you have files or commands with whitespace in them. 
+break if you have files or commands with whitespace in them.
 
-If you do not wish this to happen, you should provide an array 
+If you do not wish this to happen, you should provide an array
 reference, where all parts of your command are already separated out.
 Note however, if there's extra or spurious whitespace in these parts,
 the parser or underlying code may not interpret it correctly, and
@@ -512,9 +520,9 @@ cause an error.
 
 Example:
 The following code
-    
+
     gzip -cdf foo.tar.gz | tar -xf -
-    
+
 should either be passed as
 
     "gzip -cdf foo.tar.gz | tar -xf -"
@@ -522,16 +530,16 @@ should either be passed as
 or as
 
     ['gzip', '-cdf', 'foo.tar.gz', '|', 'tar', '-xf', '-']
-    
+
 But take care not to pass it as, for example
-    
-    ['gzip -cdf foo.tar.gz', '|', 'tar -xf -']            
+
+    ['gzip -cdf foo.tar.gz', '|', 'tar -xf -']
 
 Since this will lead to issues as described above.
 
 =item IO Redirect
 
-Currently it is too complicated to parse your command for IO 
+Currently it is too complicated to parse your command for IO
 Redirections. For capturing STDOUT or STDERR there is a work around
 however, since you can just inspect your buffers for the contents.
 
@@ -539,14 +547,14 @@ however, since you can just inspect your buffers for the contents.
 
 Due to a bug in C<IPC::Run> versions upto and including the latest one
 at the time of writing (0.78), C<run()> calls executed via C<IPC::Run>
-will not be able to differentiate between C<STDOUT> and C<STDERR> 
-output when C<special characters> are present in the command (like 
+will not be able to differentiate between C<STDOUT> and C<STDERR>
+output when C<special characters> are present in the command (like
 <,>,| and &); All output will be caught in the C<STDERR> buffer.
 
 Note that this is only a problem if you use the long output of C<run()>
 and not if you provide the C<buffer> option to the command.
 
-If this limitation is not acceptable to you, consider setting the 
+If this limitation is not acceptable to you, consider setting the
 global variable C<$IPC::Cmd::USE_IPC_RUN> to false.
 
 

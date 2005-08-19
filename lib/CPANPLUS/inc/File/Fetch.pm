@@ -358,8 +358,9 @@ sub _netftp_fetch {
         ### set binary mode, just in case ###
         $ftp->binary;
 
-        ### create the remote path ###
-        my $remote = File::Spec->catfile( $self->path, $self->file );
+        ### create the remote path 
+        ### remember remote paths are unix paths! [#11483]
+        my $remote = File::Spec::Unix->catfile( $self->path, $self->file );
 
         ### fetch the file ###
         my $target;

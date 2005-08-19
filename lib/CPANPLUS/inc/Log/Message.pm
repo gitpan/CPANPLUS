@@ -69,7 +69,7 @@ and a stack trace, but some can be filled in by the user, like a tag
 by which to identify it or group it, and a level at which to handle
 the message (for example, log it, or die with it)
 
-Log::Message also provides a powerfull way of searching through items
+Log::Message also provides a powerful way of searching through items
 by regexes on messages, tags and level.
 
 =head1 Hierarchy
@@ -101,7 +101,7 @@ These are a collection of handlers that will be called for a level
 that is used on a L<Log::Message::Item> object.
 For example, if a message is logged with the 'carp' level, the 'carp'
 handler from L<Log::Message::Handlers> will be called.
-See the L<Log::Message::Handlers> manpage for more explenation about how
+See the L<Log::Message::Handlers> manpage for more explanation about how
 handlers work, which one are available and how to create your own.
 
 =item Log::Message::Config
@@ -134,8 +134,8 @@ private)
 As arguments when you create a new Log::Message object.
 
 You should never need to use the L<Log::Message::Config> module yourself,
-as this is transparently done by L<Log::Message>, but it's manpage does
-provide an explenation of how you can create a config file.
+as this is transparently done by L<Log::Message>, but its manpage does
+provide an explanation of how you can create a config file.
 
 =back
 
@@ -144,11 +144,11 @@ provide an explenation of how you can create a config file.
 =head1 Options
 
 When using Log::Message, or creating a new Log::Message object, you can
-supply various options to alter it's behaviour.
+supply various options to alter its behaviour.
 Of course, there are sensible defaults should you choose to omit these
 options.
 
-Below an explenation of all the options and how they work.
+Below an explanation of all the options and how they work.
 
 =over 4
 
@@ -161,15 +161,15 @@ These options will be overridden by any explicit arguments passed.
 
 =item private
 
-Wether to create, by default, private or shared objects.
+Whether to create, by default, private or shared objects.
 If you choose to create shared objects, all Log::Message objects will
 use the same stack.
 
-This means that even though every module may make it's own $log object
+This means that even though every module may make its own $log object
 they will still be sharing the same error stack on which they are
 putting errors and from which they are retrieving.
 
-This can be usefull in big projects.
+This can be useful in big projects.
 
 If you choose to create a private object, then the stack will of
 course be private to this object, but it will still fall back to the
@@ -178,7 +178,7 @@ provided.
 
 =item verbose
 
-Log::Message makes use of another module to validate it's arguments,
+Log::Message makes use of another module to validate its arguments,
 which is called L<Params::Check>, which is a lightweight, yet 
 powerful input checker and parser. (See the L<Params::Check> 
 manpage for details).
@@ -188,7 +188,7 @@ generate warnings if something improper is passed as input, or merely
 silently returns undef, at which point Log::Message will generate a
 warning.
 
-It's best to just leave this at it's default value, which is '1'
+It's best to just leave this at its default value, which is '1'
 
 =item tag
 
@@ -196,7 +196,7 @@ The tag to add to messages if none was provided. If neither your
 config, nor any specific arguments supply a tag, then Log::Message will
 set it to 'NONE'
 
-Tags are usefull for searching on or grouping by. For example, you
+Tags are useful for searching on or grouping by. For example, you
 could tag all the messages you want to go to the user as 'USER ERROR'
 and all those that are only debug information with 'DEBUG'.
 

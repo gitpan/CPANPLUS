@@ -2,23 +2,23 @@ package Params::Check;
 
 use strict;
 
-use Carp                        qw[carp];
+use Carp                        qw[carp croak];
 use Locale::Maketext::Simple    Style => 'gettext';
 
 use Data::Dumper;
 
 BEGIN {
     use Exporter    ();
-    use vars        qw[ @ISA $VERSION @EXPORT_OK $VERBOSE $ALLOW_UNKNOWN 
+    use vars        qw[ @ISA $VERSION @EXPORT_OK $VERBOSE $ALLOW_UNKNOWN
                         $STRICT_TYPE $STRIP_LEADING_DASHES $NO_DUPLICATES
-                        $PRESERVE_CASE $ONLY_ALLOW_DEFINED     
+                        $PRESERVE_CASE $ONLY_ALLOW_DEFINED $WARNINGS_FATAL
                         $SANITY_CHECK_TEMPLATE
                     ];
 
     @ISA        =   qw[ Exporter ];
     @EXPORT_OK  =   qw[check allow last_error];
-    
-    $VERSION                = '0.22';
+
+    $VERSION                = '0.23';
     $VERBOSE                = $^W ? 1 : 0;
     $NO_DUPLICATES          = 0;
     $STRIP_LEADING_DASHES   = 0;
@@ -27,18 +27,18 @@ BEGIN {
     $PRESERVE_CASE          = 0;
     $ONLY_ALLOW_DEFINED     = 0;
     $SANITY_CHECK_TEMPLATE  = 1;
+    $WARNINGS_FATAL         = 0;
 }
 
 my %known_keys = map { $_ => 1 }
-                    qw| required allow default strict_type no_override 
+                    qw| required allow default strict_type no_override
                         store defined |;
-
 
 =pod
 
 =head1 NAME
 
-Params::Check -- A generic input parsing/checking mechanism. 
+Params::Check -- A generic input parsing/checking mechanism.
 
 =head1 SYNOPSIS
 
@@ -47,7 +47,7 @@ Params::Check -- A generic input parsing/checking mechanism.
     sub fill_personal_info {
         my %hash = @_;
         my $x;
-        
+
         my $tmpl = {
             firstname   => { required   => 1, defined => 1 },
             lastname    => { required   => 1, store => \$x },
@@ -60,7 +60,7 @@ Params::Check -- A generic input parsing/checking mechanism.
                            },
 
             phone       => { allow => [ sub { return 1 if /$valid_re/ },
-                                        '1-800-PERL' ] 
+                                        '1-800-PERL' ]
                            },
             id_list     => { default        => [],
                              strict_type    => 1
@@ -73,7 +73,7 @@ Params::Check -- A generic input parsing/checking mechanism.
                             or die qw[Could not parse arguments!];
 
         ... other code here ...
-    }       
+    }
 
     my $ok = allow( $colour, [qw|blue green yellow|] );
 
@@ -119,7 +119,7 @@ Enforce type integrity if required
 
 =back
 
-Most of Params::Check's power comes from it's template, which we'll
+Most of Params::Check's power comes from its template, which we'll
 discuss below:
 
 =head1 Template
@@ -156,14 +156,14 @@ argument for example.
 =item defined
 
 If this template key is true, enforces that if this key is provided by
-user input, it's value is C<defined>. This just means that the user is
+user input, its value is C<defined>. This just means that the user is
 not allowed to pass C<undef> as a value for this key and is equivalent
 to:
     allow => sub { defined $_[0] && OTHER TESTS }
 
 =item no_override
 
-This allows you to specify C<constants> in your template. ie, they 
+This allows you to specify C<constants> in your template. ie, they
 keys that are not allowed to be altered by the user. It pretty much
 allows you to keep all your C<configurable> data in one place; the
 C<Params::Check> template.
@@ -172,17 +172,17 @@ C<Params::Check> template.
 
 This allows you to pass a reference to a scalar, in which the data
 will be stored:
-    
+
     my $x;
     my $args = check(foo => { default => 1, store => \$x }, $input);
 
 This is basically shorthand for saying:
 
     my $args = check( { foo => { default => 1 }, $input );
-    my $x    = $args->{foo};   
+    my $x    = $args->{foo};
 
 You can alter the global variable $Params::Check::NO_DUPLICATES to
-control whether the C<store>'d key will still be present in your 
+control whether the C<store>'d key will still be present in your
 result set. See the L<Global Variables> section below.
 
 =item allow
@@ -203,7 +203,7 @@ via:
 
     use Params::Check qw[check];
 
-or use it's fully qualified name instead.
+or use its fully qualified name instead.
 
 C<check> takes a list of arguments, as follows:
 
@@ -230,12 +230,12 @@ section on C<Global Variables> below.
 =back
 
 C<check> will return when it fails, or a hashref with lowercase
-keys of parsed arguments when it succeeds. 
+keys of parsed arguments when it succeeds.
 
 So a typical call to check would look like this:
 
     my $parsed = check( \%template, \%arguments, $VERBOSE )
-                    or warn q[Arguments could not be parsed!]; 
+                    or warn q[Arguments could not be parsed!];
 
 A lot of the behaviour of C<check()> can be altered by setting
 package variables. See the section on C<Global Variables> for details
@@ -245,51 +245,55 @@ on this.
 
 sub check {
     my ($utmpl, $href, $verbose) = @_;
-    
+
     ### did we get the arguments we need? ###
     return if !$utmpl or !$href;
-    
+
     ### sensible defaults ###
     $verbose ||= $VERBOSE || 0;
-    
+
     ### clear the current error string ###
     _clear_error();
-    
+
     ### XXX what type of template is it? ###
     ### { key => { } } ?
     #if (ref $args eq 'HASH') {
     #    1;
     #}
-    
+
     ### clean up the template ###
     my $args = _clean_up_args( $href ) or return;
 
     ### sanity check + defaults + required keys set? ###
-    my $defs = _sanity_check_and_defaults( $utmpl, $args, $verbose ) 
+    my $defs = _sanity_check_and_defaults( $utmpl, $args, $verbose )
                     or return;
-  
+
     ### deref only once ###
     my %utmpl   = %$utmpl;
     my %args    = %$args;
     my %defs    = %$defs;
-    
+
     ### flag to see if anything went wrong ###
     my $wrong; 
     
+    ### flag to see if we warned for anything, needed for warnings_fatal
+    my $warned;
+
     for my $key (keys %args) {
-        
+
         ### you gave us this key, but it's not in the template ###
         unless( $utmpl{$key} ) {
-            
+
             ### but we'll allow it anyway ###
             if( $ALLOW_UNKNOWN ) {
                 $defs{$key} = $args{$key};
-            
+
             ### warn about the error ###
             } else {
                 _store_error(
                     loc("Key '%1' is not a valid key for %2 provided by %3",
                         $key, _who_was_it(), _who_was_it(1)), $verbose);
+                $warned ||= 1;
             }
             next;
         }
@@ -300,76 +304,81 @@ sub check {
                 loc(q[You are not allowed to override key '%1'].
                     q[for %2 from %3], $key, _who_was_it(), _who_was_it(1)),
                 $verbose
-            );     
+            );
+            $warned ||= 1;
             next;
         }
-        
+
         ### copy of this keys template instructions, to save derefs ###
         my %tmpl = %{$utmpl{$key}};
-        
+
         ### check if you were supposed to provide defined() values ###
         if( ($tmpl{'defined'} || $ONLY_ALLOW_DEFINED) and
             not defined $args{$key}
         ) {
             _store_error(loc(q|Key '%1' must be defined when passed|, $key),
                 $verbose );
-            $wrong ||= 1; 
+            $wrong ||= 1;
             next;
         }
 
         ### check if they should be of a strict type, and if it is ###
         if( ($tmpl{'strict_type'} || $STRICT_TYPE) and
-            (ref $args{$key} ne ref $tmpl{'default'})      
+            (ref $args{$key} ne ref $tmpl{'default'})
         ) {
-            _store_error(loc(q|Key '%1' needs to be of type '%2'|, 
-                        $key, ref $tmpl{'default'} || 'SCALAR'), $verbose );    
+            _store_error(loc(q|Key '%1' needs to be of type '%2'|,
+                        $key, ref $tmpl{'default'} || 'SCALAR'), $verbose );
             $wrong ||= 1;
             next;
-        }     
+        }
 
         ### check if we have an allow handler, to validate against ###
-        ### allow() will report it's own errors ###
-        if( exists $tmpl{'allow'} and 
-            not allow($args{$key}, $tmpl{'allow'}) 
+        ### allow() will report its own errors ###
+        if( exists $tmpl{'allow'} and
+            not allow($args{$key}, $tmpl{'allow'})
         ) {
             ### stringify the value in the error report -- we don't want dumps
             ### of objects, but we do want to see *roughly* what we passed
-            _store_error(loc(q|Key '%1' (%2) is of invalid type for '%3'|.
-                             q|provided by %4|, 
+            _store_error(loc(q|Key '%1' (%2) is of invalid type for '%3' |.
+                             q|provided by %4|,
                             $key, "$args{$key}", _who_was_it(),
                             _who_was_it(1)), $verbose);
             $wrong ||= 1;
             next;
         }
-    
+
         ### we got here, then all must be OK ###
         $defs{$key} = $args{$key};
 
     }
-  
+
+    ### croak with the collected errors if there were errors and 
+    ### we have the fatal flag toggled.
+    croak(__PACKAGE__->last_error) if ($wrong || $warned) && $WARNINGS_FATAL;
+
     ### done with our loop... if $wrong is set, somethign went wrong
     ### and the user is already informed, just return...
     return if $wrong;
-  
+
     ### check if we need to store any of the keys ###
     ### can't do it before, because something may go wrong later,
     ### leaving the user with a few set variables
     for my $key (keys %defs) {
         if( my $ref = $utmpl{$key}->{'store'} ) {
             $$ref = $NO_DUPLICATES ? delete $defs{$key} : $defs{$key};
-        }        
+        }
     }
-    
+
     return \%defs;
 }
 
 =head2 allow( $test_me, \@criteria );
 
 The function that handles the C<allow> key in the template is also
-available for independent use. 
+available for independent use.
 
 The function takes as first argument a key to test against, and
-as second argument any form of criteria that are also allowed by 
+as second argument any form of criteria that are also allowed by
 the C<allow> key in the template.
 
 You can use the following types of values for allow:
@@ -395,36 +404,36 @@ to pass and the argument accepted.
 
 =item array ref
 
-The provided argument MUST equal one of the elements of the array 
+The provided argument MUST equal one of the elements of the array
 ref for the validation to pass. An array ref can hold all the above
 values.
 
 =back
 
-It returns true if the key matched the criteria, or false otherwise.    
+It returns true if the key matched the criteria, or false otherwise.
 
 =cut
 
 sub allow {
     ### use $_[0] and $_[1] since this is hot code... ###
     #my ($val, $ref) = @_;
-    
+
     ### it's a regexp ###
     if( ref $_[1] eq 'Regexp' ) {
         local $^W;  # silence warnings if $val is undef #
         return if $_[0] !~ /$_[1]/;
-    
+
     ### it's a sub ###
-    } elsif ( ref $_[1] eq 'CODE' ) {    
+    } elsif ( ref $_[1] eq 'CODE' ) {
         return unless $_[1]->( $_[0] );
 
     ### it's an array ###
     } elsif ( ref $_[1] eq 'ARRAY' ) {
-        
+
         ### loop over the elements, see if one of them says the
         ### value is OK
         return unless grep { allow( $_[0], $_ ) } @{$_[1]};
-    
+
     ### fall back to a simple, but safe 'eq' ###
     } else {
         return unless _safe_eq( $_[0], $_[1] );
@@ -440,62 +449,62 @@ sub allow {
 sub _clean_up_args {
     ### don't even bother to loop, if there's nothing to clean up ###
     return $_[0] if $PRESERVE_CASE and !$STRIP_LEADING_DASHES;
-    
+
     my %args = %{$_[0]};
-    
+
     ### keys are note aliased ###
     for my $key (keys %args) {
-        my $org = $key;    
+        my $org = $key;
         $key = lc $key unless $PRESERVE_CASE;
         $key =~ s/^-// if $STRIP_LEADING_DASHES;
         $args{$key} = delete $args{$org} if $key ne $org;
     }
 
     ### return references so we always return 'true', even on empty
-    ### arguments    
+    ### arguments
     return \%args;
 }
 
 sub _sanity_check_and_defaults {
     my %utmpl   = %{$_[0]};
     my %args    = %{$_[1]};
-    my $verbose = $_[2]; 
-    
+    my $verbose = $_[2];
+
     my %defs; my $fail;
     for my $key (keys %utmpl) {
-    
+
         ### check if required keys are provided
-        ### keys are now lower cased, unless preserve case was enabled 
+        ### keys are now lower cased, unless preserve case was enabled
         ### at which point, the utmpl keys must match, but that's the users
         ### problem.
         if( $utmpl{$key}->{'required'} and not exists $args{$key} ) {
             _store_error(
                 loc(q|Required option '%1' is not provided for %2 by %3|,
                     $key, _who_was_it(1), _who_was_it(2)), $verbose );
-            
+
             ### mark the error ###
-            $fail++; 
+            $fail++;
             next;
         }
-        
+
         ### next, set the default, make sure the key exists in %defs ###
-        $defs{$key} = $utmpl{$key}->{'default'} 
+        $defs{$key} = $utmpl{$key}->{'default'}
                         if exists $utmpl{$key}->{'default'};
 
         if( $SANITY_CHECK_TEMPLATE ) {
-            ### last, check if they provided any weird template keys 
+            ### last, check if they provided any weird template keys
             ### -- do this last so we don't always execute this code.
             ### just a small optimization.
             map {   _store_error(
-                        loc(q|Template type '%1' not supported [at key '%2']|, 
+                        loc(q|Template type '%1' not supported [at key '%2']|,
                         $_, $key), 1, 1 );
             } grep {
                 not $known_keys{$_}
             } keys %{$utmpl{$key}};
         }
     }
-        
-    ### errors found ###    
+
+    ### errors found ###
     return if $fail;
 
     ### return references so we always return 'true', even on empty
@@ -505,8 +514,8 @@ sub _sanity_check_and_defaults {
 
 sub _safe_eq {
     ### only do a straight 'eq' if they're both defined ###
-    return defined($_[0]) && defined($_[1]) 
-                ? $_[0] eq $_[1] 
+    return defined($_[0]) && defined($_[1])
+                ? $_[0] eq $_[1]
                 : defined($_[0]) eq defined($_[1]);
 }
 
@@ -521,7 +530,7 @@ sub _who_was_it {
 Returns a string containing all warnings and errors reported during
 the last time C<check> was called.
 
-This is useful if you want to report then some other way than 
+This is useful if you want to report then some other way than
 C<carp>'ing when the verbose flag is on.
 
 It is exported upon request.
@@ -535,19 +544,19 @@ It is exported upon request.
         $verbose ||= 0;
         $offset  ||= 0;
         my $level   = 1 + $offset;
-    
+
         local $Carp::CarpLevel = $level;
-        
+
         carp $err if $verbose;
-        
+
         $ErrorString .= $err . "\n";
     }
-    
+
     sub _clear_error {
         $ErrorString = '';
     }
-    
-    sub last_error { $ErrorString }    
+
+    sub last_error { $ErrorString }
 }
 
 1;
@@ -560,7 +569,7 @@ following global variables:
 =head2 $Params::Check::VERBOSE
 
 This controls whether Params::Check will issue warnings and
-explanations as to why certain things may have failed. 
+explanations as to why certain things may have failed.
 If you set it to 0, Params::Check will not output any warnings.
 
 The default is 1 when L<warnings> are enabled, 0 otherwise;
@@ -586,8 +595,8 @@ The default is 0;
 If you set this flag, all keys passed in the following manner:
 
     function( -key => 'val' );
-    
-will have their leading dashes stripped.     
+
+will have their leading dashes stripped.
 
 =head2 $Params::Check::NO_DUPLICATES
 
@@ -601,12 +610,12 @@ in the hashref it returns.
 =head2 $Params::Check::PRESERVE_CASE
 
 If set to true, L<Params::Check> will no longer convert all keys from
-the user input to lowercase, but instead expect them to be in the 
-case the template provided. This is useful when you want to use 
+the user input to lowercase, but instead expect them to be in the
+case the template provided. This is useful when you want to use
 similar keys with different casing in your templates.
 
 Understand that this removes the case-insensitivy feature of this
-module. 
+module.
 
 Default is 0;
 
@@ -628,6 +637,13 @@ To disable this check, set this variable to C<false>.
 
 Default is 1;
 
+=head2 $Params::Check::WARNINGS_FATAL
+
+If set to true, L<Params::Check> will C<croak> when an error during 
+template validation occurs, rather than return C<false>.
+
+Default is 0;
+
 =head1 AUTHOR
 
 This module by
@@ -635,8 +651,7 @@ Jos Boumans E<lt>kane@cpan.orgE<gt>.
 
 =head1 Acknowledgements
 
-Thanks to Ann Barcomb for her suggestions and Richard Soderberg for
-his performance improvements.
+Thanks to Richard Soderberg for his performance improvements.
 
 =head1 COPYRIGHT
 

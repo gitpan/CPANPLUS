@@ -27,8 +27,8 @@ BEGIN { require 'conf.pl'; }
 my $conf = gimme_conf();
 
 my $map = {
-    msg     => ["This is just a test message"],
-    error   => ["This is just a test error"],
+    cp_msg      => ["This is just a test message"],
+    cp_error    => ["This is just a test error"],
 };
 
 ### check if CPANPLUS::Error can do what we expect 
@@ -49,9 +49,12 @@ my $map = {
     ok( !-s $file,          "   Output file is empty" );
 
     ### print a msg & error ###
-    msg(    $map->{msg}[0],     1 );
-    error(  $map->{error}[0],   1 );
-    
+    for my $name ( keys %$map ) {
+        my $sub = __PACKAGE__->can( $name );
+
+        $sub->( $map->{$name}->[0], 1 );
+    }
+
     ok( -s $file,           "   Output file now has size" );
     
     my $fh = FileHandle->new( $file );
@@ -66,18 +69,20 @@ my $map = {
     
     
     for my $type ( keys %$map ) {
+        my $tag = $type; $tag =~ s/.+?_//g;
+    
         for my $str (@{ $map->{$type} } ) {
-            like( $contents, qr/\U\Q$type/,
+            like( $contents, qr/\U\Q$tag/,
                             "   Contents matches for '$type'" ); 
             like( $contents, qr/\Q$str/,
                             "   Contents matches for '$type'" ); 
                             
-            like( $string, qr/\U\Q$type/,
+            like( $string, qr/\U\Q$tag/,
                             "   String matches for '$type'" );                
             like( $string, qr/\Q$str/,
                             "   String matches for '$type'" );
 
-            like( $trace, qr/\U\Q$type/,
+            like( $trace, qr/\U\Q$tag/,
                             "   Trace matches for '$type'" );                
             like( $trace, qr/\Q$str/,
                             "   Trace matches for '$type'" );

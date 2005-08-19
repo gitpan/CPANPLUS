@@ -25,7 +25,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.055';
+    $VERSION    =   '0.056_01';
 }
 
 load CPANPLUS::Shell;
@@ -101,6 +101,7 @@ CPANPLUS::Shell::Default
 
     cpanp> i Acme::Foo      # install Acme::Foo
     cpanp> i Acme-Foo-1.3   # install version 1.3 of Acme::Foo
+    cpanp> i <URI>          # install from URI, like http://foo.com/X.tgz
     cpanp> i 1 3..5         # install search results 1, 3, 4 and 5
     cpanp> i *              # install all search results
     cpanp> a KANE; i *;     # find modules by kane, install all results
@@ -476,6 +477,7 @@ loc("    o [ MODULE ... ]       # list installed module(s) that aren't up to dat
 loc('    w                      # display the result of your last search again'     ),
 loc('[Operations]'                                                                  ),
 loc('    i MODULE | NUMBER ...  # install module(s), by name or by search number'   ),
+loc('    i URI | ...            # install module(s), by URI (ie http://foo.com/X.tgz)'   ),
 loc('    t MODULE | NUMBER ...  # test module(s), by name or by search number'      ),
 loc('    u MODULE | NUMBER ...  # uninstall module(s), by name or by search number' ),
 loc('    d MODULE | NUMBER ...  # download module(s)'                               ),
@@ -522,7 +524,7 @@ sub _bang {
     }
 
     eval $input;
-    error( $@ ) if $@;
+    cp_error( $@ ) if $@;
     print "\n";
     return;
 }
@@ -979,7 +981,7 @@ sub _set_conf {
 
     ### possible options
     ### XXX hard coded, not optimal :(
-    my @types   = qw[reconfigure save edit program conf];
+    my @types   = qw[reconfigure save edit program conf mirrors];
 
 
     my $args; my $opts; my $input;
@@ -1033,6 +1035,19 @@ sub _set_conf {
         $conf->conf( CPANPLUS::Config->new() );
 
         return 1;
+
+    } elsif ( $type eq 'mirrors' ) {
+    
+        print loc("Readonly list of mirrors (in order of preference):\n\n" );
+        
+        my $i;
+        for my $host ( @{$conf->get_conf('hosts')} ) {
+            my $uri = $cb->_host_to_uri( %$host );
+            
+            $i++;
+            print "\t[$i] $uri\n";
+        }
+        
 
     } else {
 
@@ -1320,7 +1335,7 @@ sub _meta {
                             PeerAddr    => $host,
                             PeerPort    => $port,
                         ) or (
-                            error( loc( "Cannot connect to port '%1' ".
+                            cp_error( loc( "Cannot connect to port '%1' ".
                                         "on host '%2'", $port, $host ) ),
                             return
                         );
@@ -1383,7 +1398,7 @@ sub _meta {
     } elsif ( $cmd eq 'source' ) {
         while( my $file = shift @parts ) {
             my $fh = FileHandle->new("$file")
-                        or( error(loc("Could not open file '%1': %2",
+                        or( cp_error(loc("Could not open file '%1': %2",
                             $file, $!)),
                             return
                         );
@@ -1393,7 +1408,7 @@ sub _meta {
             }
         }
     } else {
-        error( loc( "Unknown command '%1'", $cmd ) );
+        cp_error( loc( "Unknown command '%1'", $cmd ) );
         return;
     }
     return 1;

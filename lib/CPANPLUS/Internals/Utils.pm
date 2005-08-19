@@ -59,7 +59,7 @@ sub _mkdir {
     my $args = check( $tmpl, \%hash ) or return;
 
     unless( can_load( modules => { 'File::Path' => 0.0 } ) ) {
-        error( loc("Could not use File::Path! This module should be core!") );
+        cp_error( loc("Could not use File::Path! This module should be core!") );
         return;
     }
 
@@ -67,7 +67,7 @@ sub _mkdir {
 
     if($@) {
         chomp($@);
-        error(loc(qq[Could not create directory '%1': %2], $args->{dir}, $@ ));
+        cp_error(loc(qq[Could not create directory '%1': %2], $args->{dir}, $@ ));
         return;
     }
 
@@ -95,7 +95,7 @@ sub _chdir {
     my $args = check( $tmpl, \%hash ) or return;
 
     unless( chdir $args->{dir} ) {
-        error( loc(q[Could not chdir into '%1'], $args->{dir}) );
+        cp_error( loc(q[Could not chdir into '%1'], $args->{dir}) );
         return;
     }
 
@@ -123,7 +123,7 @@ sub _rmdir {
     my $args = check( $tmpl, \%hash ) or return;
 
     unless( can_load( modules => { 'File::Path' => 0.0 } ) ) {
-        error( loc("Could not use File::Path! This module should be core!") );
+        cp_error( loc("Could not use File::Path! This module should be core!") );
         return;
     }
 
@@ -131,7 +131,7 @@ sub _rmdir {
 
     if($@) {
         chomp($@);
-        error(loc(qq[Could not delete directory '%1': %2], $args->{dir}, $@ ));
+        cp_error(loc(qq[Could not delete directory '%1': %2], $args->{dir}, $@ ));
         return;
     }
 
@@ -259,7 +259,7 @@ sub _move {
     if( File::Copy::move( $from, $to ) ) {
         return 1;
     } else {
-        error(loc("Failed to move '%1' to '%2': %3", $from, $to, $!));
+        cp_error(loc("Failed to move '%1' to '%2': %3", $from, $to, $!));
         return;
     }
 }
@@ -280,10 +280,52 @@ sub _copy {
     if( File::Copy::copy( $from, $to ) ) {
         return 1;
     } else {
-        error(loc("Failed to copy '%1' to '%2': %3", $from, $to, $!));
+        cp_error(loc("Failed to copy '%1' to '%2': %3", $from, $to, $!));
         return;
     }
 }
+
+sub _mode_plus_w {
+    my $self = shift;
+    my %hash = @_;
+    
+    require File::stat;
+    
+    my $file;
+    my $tmpl = {
+        file    => { required => 1, allow => IS_FILE, store => \$file },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+    
+    my $x = File::stat::stat( $file );
+    if( $x and chmod( $x->mode|0200, $file ) ) {
+        return 1;
+
+    } else {        
+        cp_error(loc("Failed to '%1' '%2': '%3'", 'chmod +w', $file, $!));
+        return;
+    }
+}    
+
+sub _host_to_uri {
+    my $self = shift;
+    my %hash = @_;
+    
+    my($scheme, $host, $path);
+    my $tmpl = {
+        scheme  => { required => 1,     store => \$scheme },
+        host    => { default  => '',    store => \$host },
+        path    => { default  => '',    store => \$path },
+    };       
+
+    check( $tmpl, \%hash ) or return;
+
+    $host ||= 'localhost';
+
+    return "$scheme://" . File::Spec::Unix->catdir( $host, $path ); 
+}
+
 
 1;
 

@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = '0.055';
+$VERSION = '0.056_01';
 
 =pod
 
@@ -169,7 +169,7 @@ Returns the object on success, or dies on failure.
                          $callback_map->{$name} ? 'true' : 'false';
         
             $args->_callbacks->$name(
-                sub { msg(loc("DEFAULT '%1' HANDLER RETURNING '%2'",
+                sub { cp_msg(loc("DEFAULT '%1' HANDLER RETURNING '%2'",
                               $name, $rv), $args->_conf->get_conf('debug')); 
                       return ref $callback_map->{$name} 
                                 ? $callback_map->{$name}->( @_ )
@@ -189,14 +189,14 @@ Returns the object on success, or dies on failure.
         $args->_lib( [@INC] );
 
         $conf->_set_build( startdir => cwd() ),
-            or error( loc("couldn't locate current dir!") );
+            or cp_error( loc("couldn't locate current dir!") );
 
         $ENV{FTP_PASSIVE} = 1, if $conf->get_conf('passive');
 
         my $id = $args->_store_id( $args );
 
         unless ( $id == $args->_id ) {
-            error( loc("IDs do not match: %1 != %2. Storage failed!",
+            cp_error( loc("IDs do not match: %1 != %2. Storage failed!",
                         $id, $args->_id) );
         }
 
@@ -257,7 +257,7 @@ be flushed.
 
             } else {
                 unless ( exists $self->{$cache} && exists $Tmpl->{$cache} ) {
-                    error( loc( "No such cache: '%1'", $what ) );
+                    cp_error( loc( "No such cache: '%1'", $what ) );
                     $flag++;
                     next;
                 } else {
@@ -406,7 +406,7 @@ Return all stored objects.
         my $obj     = shift or return;
 
        unless( IS_INTERNALS_OBJ->($obj) ) {
-            error( loc("The object you passed has the wrong ref type: '%1'",
+            cp_error( loc("The object you passed has the wrong ref type: '%1'",
                         ref $obj) );
             return;
         }

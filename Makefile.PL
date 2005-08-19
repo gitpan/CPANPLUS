@@ -136,6 +136,7 @@ else {
 
 ### just f***ing do it
 if( $JFDI ) {
+     $ConfigObj = CPANPLUS::Configure->new;
     write_makefile(); 
     exit;
 }
@@ -342,11 +343,54 @@ CPANPLUS:
 You can also have all of them installed for you, including all of
 the optional modules CPANPLUS supports, by installing:
     
-    %2    
+        %2    
 
 ###################################################################
     
     ", $string, 'Bundle::CPANPLUS::Dependencies');  
+
+
+    ### depending on your choices, we might need to add some modules
+    ### to your PREREQ_PM
+    {   unless( $ConfigObj->get_conf('prefer_makefile')  ) {
+    
+            print loc("
+### PLEASE NOTE ###################################################
+
+You have chosen to use '%1' where possible. Therefor we 
+will have to add a dependency on '%2'. 
+Please ensure it is installed.
+
+###################################################################
+
+            ", 'Module::Build', 'CPANPLUS::Dist::Build' );
+    
+            $Prereq_pm->{ 'CPANPLUS::Dist::Build' } = '0.01';
+        }
+    
+        
+        if( $^O eq 'MSWin32') {
+            my $win_mod = 'Win32::Process';
+        
+            unless( check_install(  module  => $win_mod,                                       
+                                    version => 0 )
+            ) {
+                print loc("
+### PLEASE NOTE ###################################################
+
+On Win32, the module '%1' is required, which you do 
+not appear to have installed currently. We will add a dependency 
+to it. Please ensure it is installed.
+
+###################################################################
+
+                ",  $win_mod );
+            }
+
+            $Prereq_pm->{ $win_mod } = 0;
+        }
+    }
+
 
     ### we use 'no_plan' in our tests -- older T::H, like the one shipped
     ### with perl5.6.1 can't cope with that. So if the version of T::H
@@ -380,6 +424,8 @@ under your version.
         }
     }        
 
+    ### to make sure all warnings align nicely again
+    print "\n\n";
 
     name            ('CPANPLUS');
     author          ('Jos Boumans <kane@cpan.org>');

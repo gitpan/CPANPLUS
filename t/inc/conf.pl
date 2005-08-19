@@ -2,6 +2,8 @@ BEGIN { chdir 't' if -d 't' };
 use lib qw[../lib inc config];
 use strict;
 use CPANPLUS::Configure;
+use CPANPLUS::inc;
+
 use FileHandle;
 use File::Basename  qw[basename];
 
@@ -10,7 +12,8 @@ use File::Basename  qw[basename];
     $Locale::Maketext::Lexicon::VERSION = 0;
 }
 
-my $conf = CPANPLUS::Configure->new( 
+sub gimme_conf { 
+    CPANPLUS::Configure->new( 
                 conf => {   
                     hosts       => [ { 
                         path        => 'dummy-CPAN',
@@ -20,7 +23,7 @@ my $conf = CPANPLUS::Configure->new(
                     dist_type   => '',
                 } );
 
-sub gimme_conf { return $conf };
+};
 
 my $fh;
 my $file = ".".basename($0).".output";

@@ -126,7 +126,7 @@ sub _extract {
     my $loc = $mod->status->extract();
     
     if( $loc && !$force ) {
-        msg(loc("Already extracted '%1' to '%2'. ".
+        cp_msg(loc("Already extracted '%1' to '%2'. ".
                 "Won't extract again without force",
                 $mod->module, $loc), $verbose);
         return $loc;
@@ -135,7 +135,7 @@ sub _extract {
     ### did we already fetch the file? ###
     my $file = $mod->status->fetch();
     unless( -s $file ) {
-        error( loc( "File '%1' has zero size: cannot extract", $file ) );    
+        cp_error( loc( "File '%1' has zero size: cannot extract", $file ) );    
         return;
     }
 
@@ -156,18 +156,26 @@ sub _extract {
     my $ae = Archive::Extract->new( archive => $file );
 
     unless( $ae->extract( to => $to ) ) {
-        error( loc( "Unable to extract '%1' to '%2': %3",
+        cp_error( loc( "Unable to extract '%1' to '%2': %3",
                     $file, $to, $ae->error ) );
         return;
     }
     
     ### print out what files we extracted ###  
-    msg(loc("Extracted '%1'",$_),$verbose) for @{$ae->files};  
+    cp_msg(loc("Extracted '%1'",$_),$verbose) for @{$ae->files};  
     
     ### set them all to be +w for the owner, so we don't get permission
     ### denied for overwriting files that are just +r
-    chmod 0755, map { File::Spec->rel2abs( File::Spec->catdir($to, $_) ) }
-                @{$ae->files};
+    
+    ### this is to rigurous -- just change to +w for the owner [cpan #13358] 
+    #chmod 0755, map { File::Spec->rel2abs( File::Spec->catdir($to, $_) ) }
+    #            @{$ae->files};
+    
+    for my $file ( @{$ae->files} ) { 
+        my $path = File::Spec->rel2abs( File::Spec->catdir($to, $file) );
+    
+        $self->_mode_plus_w( file => $path );
+    }
     
     ### check the return value for the extracted path ###
     ### Make an educated guess if we didn't get an extract_path
@@ -189,11 +197,11 @@ sub _extract {
                                             
     ### test if the dir exists ###
     unless( $dir && -d $dir ) {
-        error(loc("Unable to determine extract dir for '%1'",$mod->module));
+        cp_error(loc("Unable to determine extract dir for '%1'",$mod->module));
         return;
     
     } else {    
-        msg(loc("Extracted '%1' to '%2'", $mod->module, $dir), $verbose);
+        cp_msg(loc("Extracted '%1' to '%2'", $mod->module, $dir), $verbose);
         
         ### register where we extracted the files to ###
         $mod->status->extract( $dir ); 

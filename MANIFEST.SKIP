@@ -2,7 +2,7 @@
 ^t/dummy-cpanplus/(?!\.hidden)
 ^t/dummy-localmirror/authors/id
 ^t/dummy-localmirror/.*gz
-t/dummy-perl/.*(pm|3)$
+t/dummy-perl/.*(pm|3|packlist)$
 ^t/\..*
 ^\.#autoinstall
 ^pmfiles.dat$
@@ -12,8 +12,8 @@ t/dummy-perl/.*(pm|3)$
 ^lib/CPANPLUS/Config\.pm$
 ^lib/CPANPLUS/Config\.pm~$
 ^lib/CPANPLUS/Config\.pm\..*$
-^pm_to_blib$
-^blibdirs$
+^pm_to_blib
+^blibdirs
 ^TODO$
 ^cover_db/
 ^tmp/
@@ -25,3 +25,8 @@ t/dummy-perl/.*(pm|3)$
 \.rpt$
 lib/CPANPLUS/inc/installers/patches/
 Changes
+^patches/
+\.org$
+\.rej$
+dev-bin/
+^CPANPLUS

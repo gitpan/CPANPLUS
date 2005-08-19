@@ -147,7 +147,7 @@ sub _check_trees {
     return 1 if $conf->get_conf('no_update') && !$update_source;
 
     ### a check to see if our source files are still up to date ###
-    msg( loc("Checking if source files are up to date"), $verbose );
+    cp_msg( loc("Checking if source files are up to date"), $verbose );
 
     my $uptodate = 1; # default return value
 
@@ -231,7 +231,7 @@ sub __check_uptodate {
               return 0;       # return 0 so 'uptodate' will be set to 0, meaning no use
                               # of previously stored hashrefs!
          } else {
-              msg( loc("Unable to update source, attempting to get away with using old source file!"), $args->{verbose} );
+              cp_msg( loc("Unable to update source, attempting to get away with using old source file!"), $args->{verbose} );
               return 1;
          }
 
@@ -293,7 +293,7 @@ sub _update_source {
         ### it's not platform dependant. -kane
         my ($dir, $file) = $conf->_get_mirror( $args->{'name'} ) =~ m|(.+/)(.+)$|sg;
 
-        msg( loc("Updating source file '%1'", $file), $args->{'verbose'} );
+        cp_msg( loc("Updating source file '%1'", $file), $args->{'verbose'} );
 
         my $fake = CPANPLUS::Module::Fake->new(
                         module  => $args->{'name'},
@@ -312,14 +312,14 @@ sub _update_source {
 
 
         unless ($rv) {
-            error loc("Couldn't fetch '%1'", $file);
+            cp_error( loc("Couldn't fetch '%1'", $file) );
             return;
         }
 
         ### `touch` the file, so windoze knows it's new -jmb
         ### works on *nix too, good fix -Kane
         utime ( $now, $now, File::Spec->catfile($path, $file) ) or
-            error loc("Couldn't touch %1", $file);
+            cp_error( loc("Couldn't touch %1", $file) );
 
     }
     return 1;
@@ -406,7 +406,7 @@ sub _build_trees {
 #     my $id = $self->_store_id( $self );
 #
 #     unless ( $id == $self->_id ) {
-#         error loc("IDs do not match: %1 != %2. Storage failed!", $id, $self->_id);
+#         cp_error( loc("IDs do not match: %1 != %2. Storage failed!", $id, $self->_id) );
 #     }
 
     return 1;
@@ -478,7 +478,7 @@ sub __retrieve_source {
                 );
 
     if ($storable && -e $stored && -s _ && $args->{'uptodate'}) {
-        msg loc("Retrieving %1", $stored), $args->{'verbose'};
+        cp_msg( loc("Retrieving %1", $stored), $args->{'verbose'} );
 
         my $href = Storable::retrieve($stored);
         return $href;
@@ -555,16 +555,16 @@ sub _save_source {
                         );
 
     if (-e $stored && not -w $stored) {
-        msg loc("%1 not writable; skipped.", $stored), $args->{'verbose'};
+        cp_msg( loc("%1 not writable; skipped.", $stored), $args->{'verbose'} );
         return;
     }
 
-    msg loc("Writing state information back to disk. This may take a little while."),
-	    $args->{'verbose'};
+    cp_msg( loc("Writing state information back to disk. This may take a little while."),
+	    $args->{'verbose'} );
 
     my $flag;
     unless( Storable::nstore( $to_write, $stored ) ) {
-        error loc("could not store %1!", $stored);
+        cp_error( loc("could not store %1!", $stored) );
         $flag++;
     }
 
@@ -623,7 +623,7 @@ sub __create_author_tree() {
                                 $conf->_get_source('auth')
                             );
 
-    msg(loc("Rebuilding author tree, this might take a while"),
+    cp_msg(loc("Rebuilding author tree, this might take a while"),
         $args->{verbose});
 
     ### extract the file ###
@@ -706,7 +706,7 @@ sub _create_mod_tree {
     my $args = check( $tmpl, \%hash ) or return undef;
     my $file = File::Spec->catfile($args->{path}, $conf->_get_source('mod'));
 
-    msg(loc("Rebuilding module tree, this might take a while"),
+    cp_msg(loc("Rebuilding module tree, this might take a while"),
         $args->{verbose});
 
 
@@ -757,7 +757,7 @@ sub _create_mod_tree {
 
 
         unless( $self->author_tree($author) ) {
-            error( loc( "No such author '%1' -- can't make module object " .
+            cp_error( loc( "No such author '%1' -- can't make module object " .
                         "'%2' that is supposed to belong to this author",
                         $author, $data[0] ) );
             next;
@@ -896,10 +896,10 @@ sub __create_dslip_tree {
     {   #local $@; can't use this, it's buggy -kane
 
         $cols = eval $ds_one;
-        error( loc("Error in eval of dslip source files: %1", $@) ) if $@;
+        cp_error( loc("Error in eval of dslip source files: %1", $@) ) if $@;
 
         $data = eval $ds_two;
-        error( loc("Error in eval of dslip source files: %1", $@) ) if $@;
+        cp_error( loc("Error in eval of dslip source files: %1", $@) ) if $@;
 
     }
 

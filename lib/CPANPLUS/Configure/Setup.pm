@@ -8,7 +8,7 @@ use CPANPLUS::inc;
 use CPANPLUS::Internals::Utils;
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Shell                 ();
-use CPANPLUS::Error                 qw[msg error];
+use CPANPLUS::Error;
 
 use Config;
 use Term::UI;
@@ -949,8 +949,10 @@ Again, if you don't understand this question, just press ENTER.
     {
         print loc("
 Some modules provide both a Build.PL (Module::Build) and a Makefile.PL
-(ExtUtils::MakeMaker).  By default, CPANPLUS prefers Build.PL when it
-is available.
+(ExtUtils::MakeMaker).  By default, CPANPLUS prefers Makefile.PL.
+
+Module::Build support is not bundled standard with CPANPLUS, but 
+requires you to install 'CPANPLUS::Dist::Build' from CPAN.
 
 Although Module::Build is a pure perl solution, which means you will
 not need a 'make' binary, it does have some limitations. The most

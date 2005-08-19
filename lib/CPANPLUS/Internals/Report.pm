@@ -146,12 +146,12 @@ sub _query_report {
     my $url = TESTERS_URL->($mod->package_name);
     my $req = HTTP::Request->new( GET => $url);
 
-    msg( loc("Fetching: '%1'", $url), $verbose );
+    cp_msg( loc("Fetching: '%1'", $url), $verbose );
 
     my $res = $ua->request( $req );
 
     unless( $res->is_success ) {
-        error( loc( "Fetching report for '%1' failed: %2",
+        cp_error( loc( "Fetching report for '%1' failed: %2",
                     $url, $res->message ) );
         return;
     }
@@ -252,7 +252,7 @@ sub _send_report {
 
     ### do you even /have/ test::reporter? ###
     unless( $self->_have_send_report_modules(verbose => 1) ) {
-        error( loc( "You don't have '%1' (or modules required by '%2') ".
+        cp_error( loc( "You don't have '%1' (or modules required by '%2') ".
                     "installed, you cannot report test results.",
                     'Test::Reporter', 'Test::Reporter' ) );
         return;
@@ -291,34 +291,46 @@ sub _send_report {
 
     my $grade;
     ### check if this is a platform specific module ###
-    unless( RELEVANT_TEST_RESULT->($mod) ) {
-        msg(loc("'%1' is a platform specific module, and the test results on".
+    ### if we failed the test, there may be reasons why 
+    ### an 'NA' might have to be insted
+    if ( $failed ) {
+        unless( RELEVANT_TEST_RESULT->($mod) ) {
+            cp_msg(loc(
+                "'%1' is a platform specific module, and the test results on".
                 " your platform are not relevant --sending N/A grade.",
                 $name), $verbose);
-
-        $grade = GRADE_NA;
-
-    } elsif ( UNSUPPORTED_OS->( $buffer ) ) {
-        msg(loc("'%1' is a platform specific module, and the test results on".
+        
+            $grade = GRADE_NA;
+        
+        } elsif ( UNSUPPORTED_OS->( $buffer ) ) {
+            cp_msg(loc(
+                "'%1' is a platform specific module, and the test results on".
                 " your platform are not relevant --sending N/A grade.",
                 $name), $verbose);
+        
+            $grade = GRADE_NA;
+        
+        ### you dont have a high enough perl version?    
+        } elsif ( PERL_VERSION_TOO_LOW->( $buffer ) ) {
+            cp_msg(loc("'%1' requires a higher version of perl than your current ".
+                    "version -- sending N/A grade.", $name), $verbose);
+        
+            $grade = GRADE_NA;                
 
-        $grade = GRADE_NA;
+        ### perhaps where were no tests...
+        ### see if the thing even had tests ###
+        } elsif ( NO_TESTS_DEFINED->( $buffer ) ) {
+            $grade = GRADE_UNKNOWN;
 
-    ### you dont have a high enough perl version?    
-    } elsif ( PERL_VERSION_TOO_LOW->( $buffer ) ) {
-        msg(loc("'%1' requires a higher version of perl than your current ".
-                "version -- sending N/A grade.", $name), $verbose);
+        } else {
+            
+            $grade = GRADE_FAIL;
+        }
 
-        $grade = GRADE_NA;                
-
-    ### see if the thing even had tests ###
-    } elsif ( NO_TESTS_DEFINED->( $buffer ) ) {
-        $grade = GRADE_UNKNOWN;
-
-    ### see if it was a pass or fail ###
+    ### if we got here, it didn't fail and tests were present.. so a PASS
+    ### is in order
     } else {
-        $grade = $failed ? GRADE_FAIL : GRADE_PASS;
+        $grade = GRADE_PASS;
     }
 
     ### so an error occurred, let's see what stage it went wrong in ###
@@ -327,7 +339,8 @@ sub _send_report {
 
         ### return if one or more missing external libraries
         if( my @missing = MISSING_EXTLIBS_LIST->($buffer) ) {
-            msg(loc("Not sending test report - external libraries not pre-installed"));
+            cp_msg(loc("Not sending test report - " .
+                    "external libraries not pre-installed"));
             return 1;
         }
 
@@ -350,7 +363,8 @@ sub _send_report {
                                 module  => $mod,
                                 missing => \@missing
                         )) {
-                msg(loc("Not sending test report - bogus missing prerequisites report"));
+                cp_msg(loc("Not sending test report - "  .
+                        "bogus missing prerequisites report"));
                 return 1;
             }
             $message .= REPORT_MISSING_PREREQS->($author,$email,@missing);
@@ -398,7 +412,7 @@ sub _send_report {
             }
 
             if( $count > MAX_REPORT_SEND and !$force) {
-                msg(loc("'%1' already reported for '%2', ".
+                cp_msg(loc("'%1' already reported for '%2', ".
                         "not cc-ing the author",
                         GRADE_FAIL, $dist ), $verbose );
                 $dont_cc_author++;
@@ -425,7 +439,7 @@ sub _send_report {
 
     ### do a callback to ask if we should send the report
     unless ($self->_callbacks->send_test_report->($mod, $grade)) {
-        msg(loc("Ok, not sending test report"));
+        cp_msg(loc("Ok, not sending test report"));
         return 1;
     }
 
@@ -450,25 +464,25 @@ sub _send_report {
     ### should we save it locally? ###
     if( $save ) {
         if( my $file = $reporter->write() ) {
-            msg(loc("Successfully wrote report for '%1' to '%2'",
+            cp_msg(loc("Successfully wrote report for '%1' to '%2'",
                     $dist, $file), $verbose);
             return $file;
 
         } else {
-            error(loc("Failed to write report for '%1'", $dist));
+            cp_error(loc("Failed to write report for '%1'", $dist));
             return;
         }
 
     ### should we send it to a bunch of people? ###
     ### XXX should we do an 'already sent' check? ###
     } elsif( $reporter->send( @inform ) ) {
-        msg(loc("Successfully sent '%1' report for '%2'", $grade, $dist),
+        cp_msg(loc("Successfully sent '%1' report for '%2'", $grade, $dist),
             $verbose);
         return 1;
 
     ### something broke :( ###
     } else {
-        error(loc("Could not send '%1' report for '%2': %3",
+        cp_error(loc("Could not send '%1' report for '%2': %3",
                 $grade, $dist, $reporter->errstr));
         return;
     }

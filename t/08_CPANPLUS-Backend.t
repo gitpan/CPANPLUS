@@ -99,6 +99,7 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
                     TIMB/DBI-1.20
                     TIMB/DBI-1.20.zip
                     FROO/Flub-Flob-1.1.zip
+                    G/GO/GOYALI/SMS_API_3_01.tar.gz
     ] ) {
         my $obj = $cb->parse_module( module => $guess );
         my ($auth) = $guess =~ m|^(.+?)/| ? $1 : $obj->author->cpanid;
@@ -106,7 +107,6 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
         ok( IS_FAKE_MODOBJ->(mod => $obj), "parse_module success by '$guess'" );     
         like( $obj->author->cpanid, "/$auth/i", "   proper author found" );
         like( $obj->path,           "/$auth/i", "   proper path found" );
-
 
     }
 
@@ -138,7 +138,7 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
     {   local $CPANPLUS::Error::MSG_FH    = output_handle() if $Trap_Output;
         local $CPANPLUS::Error::ERROR_FH  = output_handle() if $Trap_Output;
         
-        my $none = $cb->parse_module( module => 'Foo::Bar' );
+        my $none = $cb->parse_module( module => 'Foo::Bar'.$$ );
         ok( !IS_MODOBJ->(mod => $none),     "Non-existant module detected" );
         ok( !IS_FAKE_MODOBJ->(mod => $none),"Non-existant module detected" );
         
@@ -148,6 +148,17 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
         like( $warning, qr/Cannot find .+? in the module tree/,
                                         "   Unable to find module" );
     }
+    
+    ### test parsing of arbitrary URI
+    for my $guess ( qw[ http://foo/bar.gz
+                        http://a/b/c/d/e/f/g/h/i/j
+                        flub://floo ]
+    ) {
+        my $obj = $cb->parse_module( module => $guess );
+        ok( IS_FAKE_MODOBJ->(mod => $obj), "parse_module success by '$guess'" );
+        is( $obj->status->_fetch_from, $guess,
+                                            "   Fetch from set ok" );
+    }                                       
 }         
 
 ### RV tests ###

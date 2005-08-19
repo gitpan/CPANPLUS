@@ -14,7 +14,7 @@ BEGIN {
     use vars        qw[$VERSION @ISA $VERBOSE $CACHE @EXPORT_OK $ERROR];
     use Exporter;
     @ISA        =   qw[Exporter];
-    $VERSION    =   '0.07';
+    $VERSION    =   '0.08';
     $VERBOSE    =   0;
 
     @EXPORT_OK  =   qw[check_install can_load requires];

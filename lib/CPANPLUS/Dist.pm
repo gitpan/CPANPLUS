@@ -129,7 +129,7 @@ sub new {
 
 
     unless( can_load( modules => { $format => '0.0' }, verbose => 1 ) ) {
-        error(loc("'%1' not found -- you need '%2' version '%3' or higher ".
+        cp_error(loc("'%1' not found -- you need '%2' version '%3' or higher ".
                     "to detect plugins", $format, 'Module::Pluggable','2.4'));
         return;
     }
@@ -139,7 +139,7 @@ sub new {
 
     ### check if the format is available in this environment ###
     if( $conf->_get_build('sanity_check') and not $obj->format_available ) {
-        error( loc( "Format '%1' is not available",$format) );
+        cp_error( loc( "Format '%1' is not available",$format) );
         return;
     }
 
@@ -154,7 +154,7 @@ sub new {
 
     ### now initialize it or admit failure
     unless( $obj->init ) {
-        error(loc("Dist initialization of '%1' failed for '%2'",
+        cp_error(loc("Dist initialization of '%1' failed for '%2'",
                     $format, $mod->module));
         return;
     }
@@ -173,10 +173,14 @@ Returns a list of the CPANPLUS::Dist::* classes available
 ### will get overridden by Module::Pluggable if loaded
 ### XXX add support for 'plugin' dir in config as well
 {   my $Loaded;
-    my @Dists = (INSTALLER_BUILD, INSTALLER_MM);
+    my @Dists   = (INSTALLER_MM);
+    my @Ignore  = ();
 
     ### backdoor method to add more dist types
-    sub _add_dist_types { my $self = shift; push @Dists, @_ };
+    sub _add_dist_types     { my $self = shift; push @Dists,  @_ };
+    
+    ### backdoor method to exclude dist types
+    sub _ignore_dist_types  { my $self = shift; push @Ignore, @_ };
 
     ### locally add the plugins dir to @INC, so we can find extra plugins
     #local @INC = @INC, File::Spec->catdir(
@@ -197,11 +201,11 @@ Returns a list of the CPANPLUS::Dist::* classes available
                             sub_name    => '_dist_types',
                             search_path => __PACKAGE__,
                             only        => qr/$only_re/,
-                            except      => [ INSTALLER_MM, INSTALLER_SAMPLE,
-                                             INSTALLER_BUILD ],
+                            except      => [ INSTALLER_MM, INSTALLER_SAMPLE ]
                         );
-            push @Dists, grep { $_ !~ /CPANPLUS::Dist::Constants/ }
-                            __PACKAGE__->_dist_types;
+            my %ignore = map { $_ => $_ } @Ignore;                        
+                        
+            push @Dists, grep { not $ignore{$_}  } __PACKAGE__->_dist_types;
         }
 
         return @Dists;
@@ -271,13 +275,13 @@ sub _resolve_prereqs {
         #### XXX we ignore the version, and just assume that the latest
         #### version from cpan will meet your requirements... dodgy =/
         unless( $modobj ) {
-            error( loc( "No such module '%1' found on CPAN", $mod ) );
+            cp_error( loc( "No such module '%1' found on CPAN", $mod ) );
             next;
         }
 
         ### it's not uptodate, we need to install it
         if( !$modobj->is_uptodate(version => $version) ) {
-            msg(loc("Module '%1' requires '%2' version '%3' to be installed ",
+            cp_msg(loc("Module '%1' requires '%2' version '%3' to be installed ",
                     $self->module, $modobj->module, $version), $verbose );
 
             push @install_me, [$modobj, $version];
@@ -288,7 +292,7 @@ sub _resolve_prereqs {
                     !$modobj->package_is_perl_core and
                     ($target ne 'ignore')
         ) {
-            msg(loc("Module '%1' depends on '%2', creating a '%3' package ".
+            cp_msg(loc("Module '%1' depends on '%2', creating a '%3' package ".
                     "for it as well", $self->module, $modobj->module,
                     $format));
             push @install_me, [$modobj, $version];
@@ -302,16 +306,16 @@ sub _resolve_prereqs {
 
         ### but you have modules you need to install
         if( @install_me ) {
-            msg(loc("Ignoring prereqs, this may mean your install will fail"),
+            cp_msg(loc("Ignoring prereqs, this may mean your install will fail"),
                 $verbose);
-            msg(loc("'%1' listed the following dependencies:", $self->module),
+            cp_msg(loc("'%1' listed the following dependencies:", $self->module),
                 $verbose);
 
             for my $aref (@install_me) {
                 my ($mod,$version) = @$aref;
 
                 my $str = sprintf "\t%-35s %8s\n", $mod->module, $version;
-                msg($str,$verbose);
+                cp_msg($str,$verbose);
             }
 
             return;
@@ -340,7 +344,7 @@ sub _resolve_prereqs {
               $cb->_callbacks->install_prerequisite->($self, $modobj)
             )
         ) {
-            msg(loc("Will not install prerequisite '%1' -- Note " .
+            cp_msg(loc("Will not install prerequisite '%1' -- Note " .
                     "that the overall install may fail due to this",
                     $modobj->module), $verbose);
             next;
@@ -350,14 +354,14 @@ sub _resolve_prereqs {
         if( defined $modobj->status->installed
             && !$modobj->status->installed
         ) {
-            error( loc( "Prerequisite '%1' failed to install before in " .
+            cp_error( loc( "Prerequisite '%1' failed to install before in " .
                         "this session", $modobj->module ) );
             $flag++;
             last;
         }
 
         if( $modobj->package_is_perl_core ) {
-            error(loc("Prerequisite '%1' is perl-core (%2) -- not ".
+            cp_error(loc("Prerequisite '%1' is perl-core (%2) -- not ".
                       "installing that. Aborting install",
                       $modobj->module, $modobj->package ) );
             $flag++;
@@ -369,7 +373,7 @@ sub _resolve_prereqs {
 
         ### recursive dependency ###
         if ( $pending->{ $modobj->module } ) {
-            error( loc( "Recursive dependency detected (%1) -- skipping",
+            cp_error( loc( "Recursive dependency detected (%1) -- skipping",
                         $modobj->module ) );
             next;
         }
@@ -393,7 +397,7 @@ sub _resolve_prereqs {
                                     format  => $format,
                                     target  => $target )
         ) {
-            error(loc("Failed to install '%1' as prerequisite " .
+            cp_error(loc("Failed to install '%1' as prerequisite " .
                       "for '%2'", $modobj->module, $self->module ) );
             $flag++;
         }
@@ -407,7 +411,7 @@ sub _resolve_prereqs {
         ### don't want us to install? ###
         if( $target ne TARGET_INSTALL ) {
             my $dir = $modobj->status->extract
-                        or error(loc("No extraction dir for '%1' found ".
+                        or cp_error(loc("No extraction dir for '%1' found ".
                                      "-- weird", $modobj->module));
 
             $cb->_add_to_includepath(

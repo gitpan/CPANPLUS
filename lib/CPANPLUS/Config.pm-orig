@@ -63,7 +63,7 @@ sub new {
                              'debug' => 0,
                              'lib' => [],
                              'makemakerflags' => '',
-                             'prefer_makefile' => 0,
+                             'prefer_makefile' => 1,
                              'prefer_bin' => undef, # probed in setup
                              'shell' => 'CPANPLUS::Shell::Default',
                              'base' => '',

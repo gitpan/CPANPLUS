@@ -433,13 +433,31 @@ sub parse_module {
         return $maybe if IS_MODOBJ->( module => $maybe );
     }
 
-
     ### ok, so it looks like a distribution then?
     my @parts   = split '/', $mod;
     my $dist    = pop @parts;
 
+    ### ah, it's a URL
+    if( $mod =~ m|\w+://.+| ) {
+        my $modobj = CPANPLUS::Module::Fake->new(
+                        module  => $dist,
+                        version => 0,
+                        package => $dist,
+                        path    => File::Spec::Unix->catdir(
+                                        $conf->_get_mirror('base'),
+                                        UNKNOWN_DL_LOCATION ),
+                        author  => CPANPLUS::Module::Author::Fake->new
+                    );
+        
+        ### set the fetch_from accessor so we know to by pass the
+        ### usual mirrors
+        $modobj->status->_fetch_from( $mod );
+        
+        return $modobj;      
+    }
+
     unless( $dist ) {
-        error( loc("%1 is not a proper distribution name!", $mod) );
+        cp_error( loc("%1 is not a proper distribution name!", $mod) );
         return;
     }
     
@@ -462,7 +480,7 @@ sub parse_module {
 
     ### translate a distribution into a module name ###
     my $guess   = $dist;
-    $guess      =~ s/-(\d[.\w]*?)(?:\.[A-Za-z.]*)?$//; 
+    $guess      =~ s/(?:-|_)(\d[.\w]*?)(?:\.[A-Za-z.]*)?$//; 
                                     # versions must begin with a digit,
                                     # but may contain letters (wtf?? silly
                                     # cpan authors).
@@ -555,10 +573,10 @@ sub parse_module {
     } else {
 
         unless( $author ) {
-            error( loc( "'%1' does not contain an author part", $mod ) );
+            cp_error( loc( "'%1' does not contain an author part", $mod ) );
         }
 
-        error( loc( "Cannot find '%1' in the module tree", $mod ) );
+        cp_error( loc( "Cannot find '%1' in the module tree", $mod ) );
     }
 
     return;
@@ -606,7 +624,7 @@ sub reload_indices {
                                 verbose     => $conf->get_conf('verbose'),
                             );
 
-    error( loc( "Error rebuilding source trees!" ) );
+    cp_error( loc( "Error rebuilding source trees!" ) );
 
     return;
 }
@@ -671,7 +689,7 @@ sub flush {
 
     my $aref = $cache->{$type}
                     or (
-                        error( loc("No such cache '%1'", $type) ),
+                        cp_error( loc("No such cache '%1'", $type) ),
                         return
                     );
 
@@ -759,11 +777,11 @@ sub local_mirror {
 
     unless( -d $path ) {
         $self->_mkdir( dir => $path )
-                or( error( loc( "Could not create '%1', giving up", $path ) ),
+                or( cp_error( loc( "Could not create '%1', giving up", $path ) ),
                     return
                 );
     } elsif ( ! -w _ ) {
-        error( loc( "Could not write to '%1', giving up", $path ) );
+        cp_error( loc( "Could not write to '%1', giving up", $path ) );
         return;
     }
 
@@ -789,7 +807,7 @@ sub local_mirror {
                 $mod->_get_checksums_file(
                             %opts
                         ) or (
-                            error( loc( "Could not fetch %1 file, " .
+                            cp_error( loc( "Could not fetch %1 file, " .
                                         "skipping author '%2'",
                                         CHECKSUMS, $auth->cpanid ) ),
                             $flag++, next AUTHOR
@@ -797,7 +815,7 @@ sub local_mirror {
             }
 
             $mod->fetch( %opts )
-                    or( error( loc( "Could not fetch '%1'", $mod->module ) ),
+                    or( cp_error( loc( "Could not fetch '%1'", $mod->module ) ),
                         $flag++, next MODULE
                     );
         } }
@@ -854,7 +872,7 @@ sub autobundle {
 
     unless( -d $path ) {
         $self->_mkdir( dir => $path )
-                or( error(loc("Could not create directory '%1'", $path ) ),
+                or( cp_error(loc("Could not create directory '%1'", $path ) ),
                     return
                 );
     }
@@ -879,7 +897,7 @@ sub autobundle {
     }
     my $fh;
     unless( $fh = FileHandle->new( ">$file" ) ) {
-        error( loc( "Could not open '%1' for writing: %2", $file, $! ) );
+        cp_error( loc( "Could not open '%1' for writing: %2", $file, $! ) );
         return;
     }
 

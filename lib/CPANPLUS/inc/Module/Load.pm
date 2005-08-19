@@ -115,7 +115,7 @@ modules at runtime, since you will need to change the module notation
 (C<Acme::Comment>) to a file notation fitting the particular platform
 you are on.
 
-C<load> elimates the need for this overhead and will just DWYM.
+C<load> eliminates the need for this overhead and will just DWYM.
 
 =head1 Rules
 
@@ -144,13 +144,13 @@ If both fail, we die with the respective error messages.
 =head1 Caveats
 
 Because of a bug in perl (#19213), at least in version 5.6.1, we have
-to hardcode the path seperator for a require on Win32 to be C</>, like
-on Unix rather than the Win32 C<\>. Otherwise perl will not read it's
+to hardcode the path separator for a require on Win32 to be C</>, like
+on Unix rather than the Win32 C<\>. Otherwise perl will not read its
 own %INC accurately double load files if they are required again, or
 in the worst case, core dump.
 
 C<Module::Load> cannot do implicit imports, only explicit imports.
-(in other words, you always have to specify expliclity what you wish
+(in other words, you always have to specify explicitly what you wish
 to import from a module, even if the functions are in that modules'
 C<@EXPORT>)
 

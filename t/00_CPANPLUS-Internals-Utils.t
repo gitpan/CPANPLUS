@@ -21,7 +21,7 @@ use strict;
 
 ### make sure to keep the plan -- this is the only test
 ### supported for 'older' T::H (pre 2.28) -- see Makefile.PL for details
-use Test::More tests => 31;
+use Test::More tests => 36;
 
 use Cwd;
 use Data::Dumper;
@@ -37,6 +37,7 @@ my $Cwd     = File::Spec->rel2abs(cwd());
 my $Class   = 'CPANPLUS::Internals::Utils';
 my $Dir     = 'foo';
 my $Move    = 'bar';
+my $File    = 'zot';
 
 rmdir $Move if -d $Move;
 rmdir $Dir  if -d $Dir;
@@ -115,6 +116,27 @@ rmdir $Dir  if -d $Dir;
 
     foo();
 }
+        
+### _mode_plus_w tests ###
+{   open my $fh, ">$File" or die "Could not open $File for writing: $!";
+    close $fh;
+    
+    ### remove perms
+    ok( -e $File,               "File '$File' created" );
+    ok( chmod( 000, $File ),    "   File permissions set to 000" );
+    
+    ok( $Class->_mode_plus_w( file => $File ),
+                                "   File permissions set to +w" );
+    ok( -w $File,               "   File is writable" );
+
+    1 while unlink $File;
+    
+    ok( !-e $File,              "   File removed" );
+}
+    
+
+
+        
         
 # Local variables:
 # c-indentation-style: bsd

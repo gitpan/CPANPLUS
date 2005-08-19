@@ -13,6 +13,10 @@ use CPANPLUS::Backend;
 
 use Test::More 'no_plan';
 use Data::Dumper;
+use File::Spec;
+use Cwd;
+use File::Basename;
+use CPANPLUS::Internals::Constants;
 
 BEGIN { require 'conf.pl'; }
 my $conf = gimme_conf();
@@ -82,6 +86,26 @@ isa_ok( $mod,  'CPANPLUS::Module' );
     ### restore the hosts ###
     shift @$hosts; $conf->set_conf( hosts => $hosts );
 }
+
+### try and fetch a URI
+{   my $base    = basename($0);
+    my $me      = File::Spec->catfile( cwd(), $base );
+    my $target  = 'file://' . $me;
+    my $fake    = $cb->parse_module( module => $target );
+    
+    ok( IS_FAKE_MODOBJ->(mod => $fake), 
+                                "Fake module created from $0" );
+    is( $fake->status->_fetch_from, $target,
+                                "   Fetch from set ok" );                                 
+                                
+    my $where = $fake->fetch;
+    ok( $where,                 "   $target fetched ok" );
+    ok( -s $where,              "   $where exists" );
+    like( $where, '/'. UNKNOWN_DL_LOCATION .'/',
+                                "   Saved to proper location" );
+    like( $where, qr/$base$/,   "   Saved with proper name" );                                
+}
+
 
 # Local variables:
 # c-indentation-style: bsd

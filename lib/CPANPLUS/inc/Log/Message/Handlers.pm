@@ -25,7 +25,7 @@ Log::Message::Handlers -- Message handlers for Log::Message
 
 Log::Message::Handlers provides handlers for Log::Message::Item objects.
 The handler corresponding to the level (see Log::Message::Item manpage
-for an explenation about levels) will be called automatically upon
+for an explanation about levels) will be called automatically upon
 storing the error.
 
 Handlers may also explicitly be called on an Log::Message::Item object
@@ -139,12 +139,12 @@ C<Log::Message::Handlers>
 
 Create subroutines with the same name as the levels you wish to
 handle in the Log::Message module (see the Log::Message manpage for
-explenation on levels)
+explanation on levels)
 
 =item *
 
 Require that file in your program, or add it in your configuration
-(see the Log::Message::Config manpage for explenation on how to use a
+(see the Log::Message::Config manpage for explanation on how to use a
 config file)
 
 =back

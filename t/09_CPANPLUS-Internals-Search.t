@@ -68,7 +68,7 @@ for my $type ( CPANPLUS::Module::Author->accessors() ) {
 
     {   ### try search that will yield nothing ###
         my @list = $cb->search( type    => 'module',
-                                allow   => ['Foo::Bar'] );
+                                allow   => ['Foo::Bar'.$$] );
 
         is( scalar(@list), 0,   "Valid search yields no results" );
         is( $warning, '',       "   No warnings issued" );

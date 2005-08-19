@@ -289,7 +289,7 @@ sub new {
     $acc->mk_accessors( qw[ installer_type dist_cpan dist prereqs
                             signature extract fetch readme uninstall
                             created installed prepared checksums 
-                            checksum_ok checksum_value ] );
+                            checksum_ok checksum_value _fetch_from] );
 
     $object->status( $acc );
 
@@ -431,14 +431,22 @@ sub fetch {
     my $self = shift;
     my $cb   = $self->parent;
 
-    my $where = $cb->_fetch( @_, module => $self ) or return;
+    ### custom args
+    my %args            = ( module => $self );
+
+    ### if a custom fetch location got specified before, add that here
+    $args{fetch_from}   = $self->status->_fetch_from 
+                            if $self->status->_fetch_from;
+
+    my $where = $cb->_fetch( @_, %args ) or return;
 
     ### do an md5 check ###
-    if( $cb->configure_object->get_conf('md5') and
+    if( !$self->status->_fetch_from and 
+        $cb->configure_object->get_conf('md5') and
         $self->package ne CHECKSUMS
     ) {
         unless( $self->_validate_checksum ) {
-            error( loc( "Checksum error for '%1' -- will not trust package",
+            cp_error( loc( "Checksum error for '%1' -- will not trust package",
                         $self->package) );
             return;
         }
@@ -462,7 +470,7 @@ sub extract {
     my $cb   = $self->parent;
 
     unless( $self->status->fetch ) {
-        error( loc( "You have not fetched '%1' yet -- cannot extract",
+        cp_error( loc( "You have not fetched '%1' yet -- cannot extract",
                     $self->module) );
         return;
     }
@@ -498,7 +506,7 @@ sub get_installer_type {
 
     my $extract = $self->status->extract();
     unless( $extract ) {
-        error(loc("Cannot determine installer type of unextracted module '%1'",
+        cp_error(loc("Cannot determine installer type of unextracted module '%1'",
                   $self->module));
         return;
     }
@@ -515,18 +523,18 @@ sub get_installer_type {
     $type = INSTALLER_MM    if  $found_makefile  && !$found_build;
 
     ### ok, so it's a 'build' installer, but you don't /have/ module build
-    if( $type eq INSTALLER_BUILD and 
-        !check_install( module => 'Module::Build' ) 
+    if( $type eq INSTALLER_BUILD and ( 
+            not grep { $_ eq INSTALLER_BUILD } CPANPLUS::Dist->dist_types )
     ) {
-        error( loc( "This module requires '%1' to be installed, ".
+        cp_error( loc( "This module requires '%1' and '%2' to be installed, ".
                     "but you don't have it! Will fall back to ".
-                    "'%2', but might not be able to install!",
-                     'Module::Build', INSTALLER_MM ) );
+                    "'%3', but might not be able to install!",
+                     'Module::Build', INSTALLER_BUILD, INSTALLER_MM ) );
         $type = INSTALLER_MM;
 
     ### ok, actually we found neither ###
     } elsif ( !$type ) {
-        error( loc( "Unable to find '%1' or '%2' for '%3'; ".
+        cp_error( loc( "Unable to find '%1' or '%2' for '%3'; ".
                     "Will default to '%4' but might be unable ".
                     "to install!", BUILD_PL->(), MAKEFILE_PL->(),
                     $self->module, INSTALLER_MM ) );
@@ -693,7 +701,7 @@ sub install {
         ( $self->status->installed() or $self->is_uptodate ) and
         !INSTALL_VIA_PACKAGE_MANAGER->($format)
     ) {
-        msg(loc("Module '%1' already up to date, won't install without force",
+        cp_msg(loc("Module '%1' already up to date, won't install without force",
                 $self->module), $args->{'verbose'} );
         return $self->status->installed(1);
     }
@@ -702,20 +710,20 @@ sub install {
     if( $self->package_is_perl_core() ) {
         # if the installed is newer, say so.
         if( $self->installed_version > $self->version ) {
-            error(loc("The core Perl %1 module '%2' (%3) is more ".
+            cp_error(loc("The core Perl %1 module '%2' (%3) is more ".
                       "recent than the latest release on CPAN (%4). ".
                       "Aborting install.",
                       $], $self->module, $self->installed_version,
                       $self->version ) );
         # if the installed matches, say so.
         } elsif( $self->installed_version == $self->version ) {
-            error(loc("The core Perl %1 module '%2' (%3) can only ".
+            cp_error(loc("The core Perl %1 module '%2' (%3) can only ".
                       "be installed by Perl itself. ".
                       "Aborting install.",
                       $], $self->module, $self->installed_version ) );
         # otherwise, the installed is older; say so.
         } else {
-            error(loc("The core Perl %1 module '%2' can only be ".
+            cp_error(loc("The core Perl %1 module '%2' can only be ".
                       "upgraded from %3 to %4 by Perl itself (%5). ".
                       "Aborting install.",
                       $], $self->module, $self->installed_version,
@@ -751,7 +759,7 @@ sub install {
     $format ||= $self->status->installer_type;
 
     unless( $format ) {
-        error( loc( "Don't know what installer to use; " .
+        cp_error( loc( "Don't know what installer to use; " .
                     "Couldn't find either '%1' or '%2' in the extraction " .
                     "directory '%3' -- will be unable to install",
                     BUILD_PL->(), MAKEFILE_PL->(), $self->status->extract ) );
@@ -764,7 +772,7 @@ sub install {
     ### do SIGNATURE checks? ###
     if( $conf->get_conf('signature') ) {
         unless( $self->check_signature( verbose => $args->{verbose} ) ) {
-            error( loc( "Signature check failed for module '%1' ".
+            cp_error( loc( "Signature check failed for module '%1' ".
                         "-- Not trusting this module, aborting install",
                         $self->module ) );
             $self->status->signature(0);
@@ -785,7 +793,7 @@ sub install {
         ### check what we need to install ###
         my @prereqs = $self->bundle_modules();
         unless( @prereqs ) {
-            error( loc( "Bundle '%1' does not specify any modules to install",
+            cp_error( loc( "Bundle '%1' does not specify any modules to install",
                         $self->module ) );
 
             ### XXX mark an error here? ###
@@ -796,7 +804,7 @@ sub install {
                             target  => $target, 
                             args    => $args );
     unless( $dist ) {
-        error( loc( "Unable to create a new distribution object for '%1' " .
+        cp_error( loc( "Unable to create a new distribution object for '%1' " .
                     "-- cannot continue", $self->module ) );
         return;
     }
@@ -827,13 +835,13 @@ sub bundle_modules {
     my $cb   = $self->parent;
 
     unless( $self->is_bundle ) {
-        error( loc("'%1' is not a bundle", $self->module ) );
+        cp_error( loc("'%1' is not a bundle", $self->module ) );
         return;
     }
 
     my $dir;
     unless( $dir = $self->status->extract ) {
-        error( loc("Don't know where '%1' was extracted to", $self->module ) );
+        cp_error( loc("Don't know where '%1' was extracted to", $self->module ) );
         return;
     }
 
@@ -846,7 +854,7 @@ sub bundle_modules {
     my $prereqs = {}; my @list; my $seen = {};
     for my $file ( @files ) {
         my $fh = FileHandle->new($file)
-                    or( error(loc("Could not open '%1' for reading: %2",
+                    or( cp_error(loc("Could not open '%1' for reading: %2",
                         $file,$!)), next );
 
         my $flag;
@@ -867,7 +875,7 @@ sub bundle_modules {
                 my $obj = $cb->module_tree($module);
 
                 unless( $obj ) {
-                    error(loc("Cannot find bundled module '%1'", $module),
+                    cp_error(loc("Cannot find bundled module '%1'", $module),
                           loc("-- it does not seem to exist") );
                     next;
                 }
@@ -921,7 +929,7 @@ sub readme {
     ### read the file into a scalar, to store in the original object ###
     my $fh = new FileHandle;
     unless( $fh->open($file) ) {
-        error( loc( "Could not open file '%1': %2", $file, $! ) );
+        cp_error( loc( "Could not open file '%1': %2", $file, $! ) );
         return;
     }
 
@@ -1115,7 +1123,7 @@ sub uninstall {
         ($conf->get_conf('dist_type') ne INSTALLER_BUILD) or
         ($conf->get_conf('dist_type') ne INSTALLER_MM))
     ) {
-        msg(loc("You have a default installer type set (%1) ".
+        cp_msg(loc("You have a default installer type set (%1) ".
                 "-- you should probably use that package manager to " .
                 "uninstall modules", $conf->get_conf('dist_type')), $verbose);
     }
@@ -1123,7 +1131,7 @@ sub uninstall {
     ### check if we even have the module installed -- no point in continuing
     ### otherwise
     unless( $self->installed_version ) {
-        error( loc( "Module '%1' is not installed, so cannot uninstall",
+        cp_error( loc( "Module '%1' is not installed, so cannot uninstall",
                     $self->module ) );
         return;
     }
@@ -1142,14 +1150,14 @@ sub uninstall {
     for my $file( @$files, $pack ) {
         next unless defined $file && -f $file;
 
-        msg(loc("Unlinking '%1'", $file), $verbose);
+        cp_msg(loc("Unlinking '%1'", $file), $verbose);
 
         my $buffer;
         unless ( run(   command => [$sudo, $^X, "-eunlink+q[$file]"],
                         verbose => $verbose,
                         buffer  => \$buffer )
         ) {
-            error(loc("Failed to unlink '%1': '%2'",$file, $buffer));
+            cp_error(loc("Failed to unlink '%1': '%2'",$file, $buffer));
             $flag++;
         }
     }
@@ -1162,13 +1170,13 @@ sub uninstall {
 
         next unless @count == 2;    # . and ..
 
-        msg(loc("Removing '%1'", $dir), $verbose);
+        cp_msg(loc("Removing '%1'", $dir), $verbose);
 
         ### this fails on my win2k machines.. it indeed leaves the
         ### dir, but it's not a critical error, since the files have
         ### been removed. --kane
         #unless( rmdir $dir ) {
-        #    error( loc( "Could not remove '%1': %2", $dir, $! ) )
+        #    cp_error( loc( "Could not remove '%1': %2", $dir, $! ) )
         #        unless $^O eq 'MSWin32';
         #}
         my $buffer;
@@ -1176,7 +1184,7 @@ sub uninstall {
                         verbose => $verbose,
                         buffer  => \$buffer )
         ) {
-            error(loc("Failed to rmdir '%1': %2",$dir,$buffer));
+            cp_error(loc("Failed to rmdir '%1': %2",$dir,$buffer));
             $flag++;
         }
     }
@@ -1280,7 +1288,7 @@ sub _extutils_installed {
     ### old versions of cygwin + perl < 5.8 are buggy here. bail out if we
     ### find we're being used by them
     {   my $err = ON_OLD_CYGWIN;
-        if($err) { error($err); return };
+        if($err) { cp_error($err); return };
     }
 
     return unless can_load(
@@ -1290,7 +1298,7 @@ sub _extutils_installed {
 
     my $inst;
     unless( $inst = ExtUtils::Installed->new() ) {
-        error( loc("Could not create an '%1' object", 'ExtUtils::Installed' ) );
+        cp_error( loc("Could not create an '%1' object", 'ExtUtils::Installed' ) );
 
         ### in case it's being used directly... ###
         return;
@@ -1303,7 +1311,7 @@ sub _extutils_installed {
 
         if( $@ ) {
             chomp $@;
-            error( loc("Could not get '%1' for '%2': %3",
+            cp_error( loc("Could not get '%1' for '%2': %3",
                         $method, $self->module, $@ ) );
             return;
         }

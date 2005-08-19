@@ -20,7 +20,7 @@ BEGIN {
     @ISA        = qw[Exporter];
     @EXPORT     = qw[   
                     FILE_EXISTS FILE_READABLE DIR_EXISTS IS_MODOBJ IS_AUTHOBJ 
-                    MAKEFILE MAKEFILE_PL BUILD_PL BUILD BUILD_DIR PREREQ_BUILD    
+                    MAKEFILE MAKEFILE_PL BUILD_PL PREREQ_BUILD    
                     IS_FAKE_MODOBJ IS_FAKE_AUTHOBJ README CHECKSUMS OPEN_FILE
                     PGP_HEADER ENV_CPANPLUS_CONFIG DEFAULT_EMAIL DOT_CPANPLUS
                     CPANPLUS_UA TESTERS_URL TESTERS_DETAILS_URL BLIB ARCH LIB
@@ -31,7 +31,8 @@ BEGIN {
                     STRIP_GZ_SUFFIX BLIB_LIBDIR GET_XS_FILES INSTALLER_BUILD
                     INSTALLER_MM ON_OLD_CYGWIN IS_FILE IS_DIR INSTALLER_SAMPLE
                     INSTALL_VIA_PACKAGE_MANAGER TARGET_CREATE TARGET_PREPARE
-                    TARGET_INSTALL TARGET_IGNORE
+                    TARGET_INSTALL TARGET_IGNORE OPT_AUTOFLUSH 
+                    UNKNOWN_DL_LOCATION
                 ];
 }
 
@@ -45,6 +46,11 @@ use constant TARGET_CREATE  => 'create';
 use constant TARGET_PREPARE => 'prepare';
 use constant TARGET_INSTALL => 'install';
 use constant TARGET_IGNORE  => 'ignore';
+
+use constant OPT_AUTOFLUSH  => '-MCPANPLUS::Internals::Utils::Autoflush';
+
+use constant UNKNOWN_DL_LOCATION
+                            => 'UNKNOWN-ORIGIN';   
 
 use constant INSTALL_VIA_PACKAGE_MANAGER 
                             => sub { my $fmt = $_[0] or return;
@@ -80,7 +86,7 @@ use constant FILE_EXISTS    => sub {
                                     return 1 if IS_FILE->($file);
                                     local $Carp::CarpLevel = 
                                             $Carp::CarpLevel+2;
-                                    error(loc(  q[File '%1' does not exist],
+                                    cp_error(loc(  q[File '%1' does not exist],
                                                 $file));
                                     return;
                             };    
@@ -90,7 +96,7 @@ use constant FILE_READABLE  => sub {
                                     return 1 if -e $file && -r _;
                                     local $Carp::CarpLevel = 
                                             $Carp::CarpLevel+2;
-                                    error( loc( q[File '%1' is not readable ].
+                                    cp_error( loc( q[File '%1' is not readable ].
                                                 q[or does not exist], $file));
                                     return;
                             };    
@@ -101,7 +107,7 @@ use constant DIR_EXISTS     => sub {
                                     return 1 if IS_DIR->($dir);
                                     local $Carp::CarpLevel = 
                                             $Carp::CarpLevel+2;                                    
-                                    error(loc(q[Dir '%1' does not exist],
+                                    cp_error(loc(q[Dir '%1' does not exist],
                                             $dir));
                                     return;
                             };   
@@ -121,14 +127,7 @@ use constant BUILD_PL       => sub { return @_
                                                             'Build.PL' )
                                         : 'Build.PL';
                             };
-use constant BUILD_DIR      => sub { return @_
-                                        ? File::Spec->catdir($_[0], '_build')
-                                        : '_build';
-                            }; 
-use constant BUILD          => sub { return @_
-                                        ? File::Spec->catfile($_[0], 'Build')
-                                        : 'Build';
-                            };
+                            
 use constant BLIB           => sub { return @_
                                         ? File::Spec->catfile($_[0], 'blib')
                                         : 'blib';
@@ -169,7 +168,7 @@ use constant OPEN_FILE      => sub {
                                     my($file, $mode) = (@_, '');
                                     my $fh;
                                     open $fh, "$mode" . $file
-                                        or error(loc(
+                                        or cp_error(loc(
                                             "Could not open file '%1': %2",
                                              $file, $!));
                                     return $fh if $fh;
