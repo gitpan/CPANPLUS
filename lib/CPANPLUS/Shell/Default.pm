@@ -25,7 +25,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.056';
+    $VERSION    =   '0.0561';
 }
 
 load CPANPLUS::Shell;
