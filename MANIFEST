@@ -89,6 +89,7 @@ Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
 README
+META.yml
 t/00_CPANPLUS-Inc.t
 t/00_CPANPLUS-Internals-Utils.t
 t/01_CPANPLUS-Configure.t
