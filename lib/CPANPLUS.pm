@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION    =   "0.0562";     #have to hardcode or cpan.org gets unhappy
+    $VERSION = "0.059_01";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -21,25 +21,25 @@ BEGIN {
 sub install {
     my $cpan = CPANPLUS::Backend->new;
     my $mod = shift or (
-                    cp_error(loc("No module specified!")), return
+                    error(loc("No module specified!")), return
                 );
 
     if ( ref $mod ) {
-        cp_error( loc( "You passed an object. Use %1 for OO style interaction",
+        error( loc( "You passed an object. Use %1 for OO style interaction",
                     'CPANPLUS::Backend' ));
         return;
 
     } else {
         my $obj = $cpan->module_tree($mod) or (
-                        cp_error(loc("No such module '%1'", $mod)),
+                        error(loc("No such module '%1'", $mod)),
                         return
                     );
 
         my $ok = $obj->install;
 
         $ok
-            ? cp_msg(loc("Installing of %1 successful", $mod),1)
-            : cp_msg(loc("Installing of %1 failed", $mod),1);
+            ? msg(loc("Installing of %1 successful", $mod),1)
+            : msg(loc("Installing of %1 failed", $mod),1);
 
         return $ok;
     }
@@ -50,25 +50,25 @@ sub fetch {
     my $cpan = CPANPLUS::Backend->new;
 
     my $mod = shift or (
-                    cp_error(loc("No module specified!")), return
+                    error(loc("No module specified!")), return
                 );
 
     if ( ref $mod ) {
-        cp_error( loc( "You passed an object. Use %1 for OO style interaction",
+        error( loc( "You passed an object. Use %1 for OO style interaction",
                     'CPANPLUS::Backend' ));
         return;
 
     } else {
         my $obj = $cpan->module_tree($mod) or (
-                        cp_error(loc("No such module '%1'", $mod)),
+                        error(loc("No such module '%1'", $mod)),
                         return
                     );
 
         my $ok = $obj->fetch( fetchdir => '.' );
 
         $ok
-            ? cp_msg(loc("Fetching of %1 successful", $mod),1)
-            : cp_msg(loc("Fetching of %1 failed", $mod),1);
+            ? msg(loc("Fetching of %1 successful", $mod),1)
+            : msg(loc("Fetching of %1 failed", $mod),1);
 
         return $ok;
     }

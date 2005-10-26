@@ -17,15 +17,16 @@ use Term::ReadLine;
 
 use Module::Load                qw[load];
 use Params::Check               qw[check];
-use Module::Load::Conditional   qw[can_load];
+use Module::Load::Conditional   qw[can_load check_install];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-local $Params::Check::VERBOSE = 1;
+local $Params::Check::VERBOSE   = 1;
+local $Data::Dumper::Indent     = 1; # for dumpering from !
 
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION    =   '0.0562';
+    $VERSION = "0.059_01";
 }
 
 load CPANPLUS::Shell;
@@ -92,50 +93,55 @@ CPANPLUS::Shell::Default
     ### Note that all commands can also take options.
     ### Look at their underlying CPANPLUS::Backend methods to see
     ### what options those are.
-    cpanp> h                # show help messages
-    cpanp> ?                # show help messages
+    cpanp> h                 # show help messages
+    cpanp> ?                 # show help messages
 
-    cpanp> m Acme           # find acme modules, allows regexes
-    cpanp> a KANE           # find modules by kane, allows regexes
-    cpanp> f Acme::Foo      # get a list of all releases of Acme::Foo
+    cpanp> m Acme            # find acme modules, allows regexes
+    cpanp> a KANE            # find modules by kane, allows regexes
+    cpanp> f Acme::Foo       # get a list of all releases of Acme::Foo
 
-    cpanp> i Acme::Foo      # install Acme::Foo
-    cpanp> i Acme-Foo-1.3   # install version 1.3 of Acme::Foo
-    cpanp> i <URI>          # install from URI, like http://foo.com/X.tgz
-    cpanp> i 1 3..5         # install search results 1, 3, 4 and 5
-    cpanp> i *              # install all search results
-    cpanp> a KANE; i *;     # find modules by kane, install all results
-    cpanp> t Acme::Foo      # test Acme::Foo, without installing it
-    cpanp> u Acme::Foo      # uninstall Acme::Foo
-    cpanp> d Acme::Foo      # download Acme::Foo
-    cpanp> z Acme::Foo      # download & extract Acme::Foo, then open a
-                            # shell in the extraction directory
+    cpanp> i Acme::Foo       # install Acme::Foo
+    cpanp> i Acme-Foo-1.3    # install version 1.3 of Acme::Foo
+    cpanp> i <URI>           # install from URI, like ftp://foo.com/X.tgz
+    cpanp> i 1 3..5          # install search results 1, 3, 4 and 5
+    cpanp> i *               # install all search results
+    cpanp> a KANE; i *;      # find modules by kane, install all results
+    cpanp> t Acme::Foo       # test Acme::Foo, without installing it
+    cpanp> u Acme::Foo       # uninstall Acme::Foo
+    cpanp> d Acme::Foo       # download Acme::Foo
+    cpanp> z Acme::Foo       # download & extract Acme::Foo, then open a
+                             # shell in the extraction directory
 
-    cpanp> c Acme::Foo      # get a list of test results for Acme::Foo
-    cpanp> l Acme::Foo      # view details about the Acme::Foo package
-    cpanp> r Acme::Foo      # view Acme::Foo's README file
-    cpanp> o                # get a list of all installed modules that
-                            # are out of date
-    cpanp> o 1..3           # list uptodateness from a previous search 
+    cpanp> c Acme::Foo       # get a list of test results for Acme::Foo
+    cpanp> l Acme::Foo       # view details about the Acme::Foo package
+    cpanp> r Acme::Foo       # view Acme::Foo's README file
+    cpanp> o                 # get a list of all installed modules that
+                             # are out of date
+    cpanp> o 1..3            # list uptodateness from a previous search 
                             
-    cpanp> s conf           # show config settings
-    cpanp> s conf md5 1     # enable md5 checks
-    cpanp> s program        # show program settings
-    cpanp> s edit           # edit config file
-    cpanp> s reconfigure    # go through initial configuration again
-    cpanp> s save           # save config to disk
+    cpanp> s conf            # show config settings
+    cpanp> s conf md5 1      # enable md5 checks
+    cpanp> s program         # show program settings
+    cpanp> s edit            # edit config file
+    cpanp> s reconfigure     # go through initial configuration again
+    cpanp> s save            # save config to disk
+    cpanp> s mirrors         # show currently selected mirrors
 
-    cpanp> ! [PERL CODE]    # execute the following perl code
-    cpanp> /source FILE     # read in commands from FILE
+    cpanp> ! [PERL CODE]     # execute the following perl code
 
-    cpanp> b                # create an autobundle for this computers
-                            # perl installation
-    cpanp> x                # reload index files (purges cache)
-    cpanp> p [FILE]         # print error stack (to a file)
-    cpanp> v                # show the banner
-    cpanp> w                # show last search results again
+    cpanp> b                 # create an autobundle for this computers
+                             # perl installation
+    cpanp> x                 # reload index files (purges cache)
+    cpanp> x --update_source # reload index files, get fresh source files
+    cpanp> p [FILE]          # print error stack (to a file)
+    cpanp> v                 # show the banner
+    cpanp> w                 # show last search results again
 
-    cpanp> q                # quit the shell
+    cpanp> q                 # quit the shell
+
+    cpanp> /plugins          # list avialable plugins
+    cpanp> /? PLUGIN         # list help test of <PLUGIN>                  
+
 
 =head1 DESCRIPTION
 
@@ -143,8 +149,6 @@ This module provides the default user interface to C<CPANPLUS>. You
 can start it via the C<cpanp> binary, or as detailed in the L<SYNOPSIS>.
 
 =cut
-
-### XXX note classic shell when done
 
 sub new {
     my $class   = shift;
@@ -332,7 +336,7 @@ sub dispatch_on_input {
                                         input   => $input,
                                         choice  => $key )
                 };
-                warn $@ if $@;
+                error( $@ ) if $@;
             }
         }
     }
@@ -489,13 +493,17 @@ loc('[Local Administration]'                                                    
 loc('    b                      # write a bundle file for your configuration'       ),
 loc('    s program [OPT VALUE]  # set program locations for this session'           ),
 loc('    s conf    [OPT VALUE]  # set config options for this session'              ),
+loc('    s mirrors              # show currently selected mirrors' ),
 loc('    s reconfigure | save   # reconfigure settings / save current settings'     ),
 loc('    s edit                 # open configuration file in editor and reload'     ),
-#loc('    /(dis)connect          # (dis)connect to a remote machine running cpanpd'  ),
-loc('    /source FILE [FILE ..] # read in commands from the specified file'         ),
 loc('    ! EXPR                 # evaluate a perl statement'                        ),
 loc('    p [FILE]               # print the error stack (optionally to a file)'     ),
 loc('    x                      # reload CPAN indices (purges cache)'                              ),
+loc('    x --update_source      # reload CPAN indices, get fresh source files'                              ),
+loc('[Plugins]'                                                             ),
+loc('   /plugins                # list available plugins'                   ),
+loc('   /? [PLUGIN NAME]        # show usage for (a particular) plugin(s)'  ),
+
     ) unless @Help;
 
     $self->_pager_open if (@Help >= $self->_term_rowcount);
@@ -503,6 +511,7 @@ loc('    x                      # reload CPAN indices (purges cache)'           
     print "Detailed help for the command '$input' is not available.\n\n"
       if length $input;
     print map {"$_\n"} @Help;
+    print $/;
     $self->_pager_close;
 }
 
@@ -524,7 +533,7 @@ sub _bang {
     }
 
     eval $input;
-    cp_error( $@ ) if $@;
+    error( $@ ) if $@;
     print "\n";
     return;
 }
@@ -1303,115 +1312,163 @@ sub _reports {
     return 1;
 }
 
-sub _meta {
-    my $self = shift;
-    my %hash = @_;
-    my $cb   = $self->backend;
-    my $term = $self->term;
-    my $conf = $cb->configure_object;
 
-    my $opts; my $input;
-    {   local $Params::Check::ALLOW_UNKNOWN = 1;
+### Load plugins
+{   my @PluginModules;
+    my %Dispatch = ( 
+        plugins => [ __PACKAGE__, '_list_plugins'   ], 
+        '?'     => [ __PACKAGE__, '_plugins_usage'  ],
+    );        
 
-        my $tmpl = {
-            options => { default => { }, store => \$opts },
-            input   => { default => '',  store => \$input },
-        };
+    sub plugin_modules  { return @PluginModules }
+    sub plugin_table    { return %Dispatch }
+    
+    ### find all plugins first
+    if( check_install(  module  => 'Module::Pluggable', version => '2.4') ) {
+        require Module::Pluggable;
 
-         check( $tmpl, \%hash ) or return;
+        my $only_re = __PACKAGE__ . '::Plugins::\w+$';
+
+        Module::Pluggable->import(
+                        sub_name    => '_plugins',
+                        search_path => __PACKAGE__,
+                        only        => qr/$only_re/,
+                        #except      => [ INSTALLER_MM, INSTALLER_SAMPLE ]
+                    );
+                    
+        push @PluginModules, __PACKAGE__->_plugins;
     }
 
-    my @parts   = split /\s+/, $input;
-    my $cmd     = lc(shift @parts);
-
-    if( $cmd eq 'connect' ) {
-        my $host = shift @parts || 'localhost';
-        my $port = shift @parts || $conf->_get_daemon('port');
-
-        load IO::Socket;
-
-        my $remote = IO::Socket::INET->new(
-                            Proto       => "tcp",
-                            PeerAddr    => $host,
-                            PeerPort    => $port,
-                        ) or (
-                            cp_error( loc( "Cannot connect to port '%1' ".
-                                        "on host '%2'", $port, $host ) ),
-                            return
-                        );
-        my $user; my $pass;
-        {   local $Params::Check::ALLOW_UNKNOWN = 1;
-
-            my $tmpl = {
-                user => { default => $conf->_get_daemon('username'),
-                            store => \$user },
-                pass => { default => $conf->_get_daemon('password'),
-                            store => \$pass },
-            };
-
-             check( $tmpl, $opts ) or return;
-        }
-
-        my $con = {
-            connection  => $remote,
-            username    => $user,
-            password    => $pass,
-        };
-
-        ### store the connection
-        $self->remote( $con );
-
-        my($status,$buffer) = $self->__send_remote_command("VERSION=$VERSION");
-
-        if( $status ) {
-            print "\n$buffer\n\n";
-
-            print loc(  "Successfully connected to '%1' on port '%2'",
-                        $host, $port );
-            print "\n\n";
-            print loc(  "Note that no output will appear until a command ".
-                        "has completed\n-- this may take a while" );
-            print "\n\n";
-
-            $self->prompt( $Brand .'@'. $host .'> ' );
-
-        } else {
-            print "\n$buffer\n\n";
-
-            print loc(  "Failed to connect to '%1' on port '%2'",
-                        $host, $port );
-            print "\n\n";
-
-            $self->remote( undef );
-        }
-
-
-    } elsif ( $cmd eq 'disconnect' ) {
-        print "\n", ($self->remote
-                        ? loc( "Disconnecting from remote host" )
-                        : loc( "Not connected to remote host" )
-                ), "\n\n";
-
-        $self->remote( undef );
-        $self->prompt( $Prompt );
-
-    } elsif ( $cmd eq 'source' ) {
-        while( my $file = shift @parts ) {
-            my $fh = FileHandle->new("$file")
-                        or( cp_error(loc("Could not open file '%1': %2",
-                            $file, $!)),
-                            return
-                        );
-            while( my $line = <$fh> ) {
-                chomp $line;
-                return 1 if $self->dispatch_on_input( input => $line );
+    ### now try to load them
+    for my $p ( __PACKAGE__->plugin_modules ) {
+        my %map = eval { load $p; $p->import; $p->plugins };
+        error(loc("Could not load plugin '$p': $@")), next if $@;
+    
+        ### register each plugin
+        while( my($name, $func) = each %map ) {
+            
+            if( not length $name or not length $func ) {
+                error(loc("Empty plugin name or dispatch function detected"));
+                next;
+            }                
+            
+            if( exists( $Dispatch{$name} ) ) {
+                error(loc("'%1' is already registered by '%2'", 
+                    $name, $Dispatch{$name}->[0]));
+                next;                    
             }
+    
+            ### register name, package and function
+            $Dispatch{$name} = [ $p, $func ];
         }
-    } else {
-        cp_error( loc( "Unknown command '%1'", $cmd ) );
-        return;
     }
-    return 1;
+
+    ### dispatch a plugin command to it's function
+    sub _meta {
+        my $self = shift;
+        my %hash = @_;
+        my $cb   = $self->backend;
+        my $term = $self->term;
+        my $conf = $cb->configure_object;
+    
+        my $opts; my $input;
+        {   local $Params::Check::ALLOW_UNKNOWN = 1;
+    
+            my $tmpl = {
+                options => { default => { }, store => \$opts },
+                input   => { default => '',  store => \$input },
+            };
+    
+             check( $tmpl, \%hash ) or return;
+        }
+    
+        $input =~ s/\s*(\S+)\s*//;
+        my $cmd = $1;
+    
+        ### look up the command, or go to the default
+        my $aref = $Dispatch{ $cmd } || [ __PACKAGE__, '_plugin_default' ];
+        
+        my($pkg,$func) = @$aref;
+        
+        my $rv = eval { $pkg->$func( $self, $cb, $cmd, $input, $opts ) };
+        
+        error( $@ ) if $@;
+
+        ### return $rv instead, so input loop can be terminated?
+        return 1;
+    }
+    
+    sub _plugin_default { error(loc("No such plugin command")) }
+}
+
+### plugin commands 
+{   my $help_format = "    /%-20s # %s\n"; 
+    
+    sub _list_plugins   {
+        print loc("Available plugins:\n");
+        print loc("    List usage by using: /? PLUGIN_NAME\n" );
+        print $/;
+        
+        my %table = __PACKAGE__->plugin_table;
+        for my $name( sort keys %table ) {
+            my $pkg     = $table{$name}->[0];
+            my $this    = __PACKAGE__;
+            
+            my $who = $pkg eq $this
+                ? "Standard Plugin"
+                : do { $pkg =~ s/^$this/../; "Provided by: $pkg" };
+            
+            printf $help_format, $name, $who;
+        }          
+    
+        print $/.$/;
+        
+        print   "    Write your own plugins? Read the documentation of:\n" .
+                "        CPANPLUS::Shell::Default::Plugins::HOWTO\n";
+                
+        print $/;        
+    }
+
+    sub _list_plugins_help {
+        return sprintf $help_format, 'plugins', loc("lists available plugins");
+    }
+
+    sub _plugins_usage {
+        my $pkg     = shift;
+        my $shell   = shift;
+        my $cb      = shift;
+        my $cmd     = shift;
+        my $input   = shift;
+        my %table   = __PACKAGE__->plugin_table;
+        
+        my @list = length $input ? split /\s+/, $input : sort keys %table;
+        
+        for my $name( @list ) {
+
+            ### no such plugin? skip
+            error(loc("No such plugin '$name'")), next unless $table{$name};
+
+            my $pkg     = $table{$name}->[0];
+            my $func    = $table{$name}->[1] . '_help';
+            
+            if ( my $sub = $pkg->can( $func ) ) {
+                eval { print $sub->() };
+                error( $@ ) if $@;
+            
+            } else {
+                print "    No usage for '$name' -- try perldoc $pkg";
+            }
+            
+            print $/;
+        }          
+    
+        print $/.$/;      
+    }
+    
+    sub _plugins_usage_help {
+        return sprintf $help_format, '? [NAME ...]',
+                                     loc("show usage for plugins");
+    }
 }
 
 ### send a command to a remote host, retrieve the answer;

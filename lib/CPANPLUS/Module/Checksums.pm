@@ -78,18 +78,18 @@ sub _validate_checksum {
             unless can_load( modules => { 'Digest::MD5' => '0.0' } );
 
     my $file = $self->_get_checksums_file( verbose => $verbose ) or (
-        cp_error(loc(q[Could not fetch '%1' file], CHECKSUMS)), return );
+        error(loc(q[Could not fetch '%1' file], CHECKSUMS)), return );
 
     $self->_check_signature_for_checksum_file( file => $file ) or (
-        cp_error(loc(q[Could not verify '%1' file], CHECKSUMS)), return );
+        error(loc(q[Could not verify '%1' file], CHECKSUMS)), return );
 
     my $href = $self->_parse_checksums_file( file => $file ) or (
-        cp_error(loc(q[Could not parse '%1' file], CHECKSUMS)), return );
+        error(loc(q[Could not parse '%1' file], CHECKSUMS)), return );
 
     my $md5 = $href->{ $self->package }->{'md5'};
 
     unless( defined $md5 ) {
-        cp_msg(loc("No 'md5' checksum known for '%1'",$self->package),$verbose);
+        msg(loc("No 'md5' checksum known for '%1'",$self->package),$verbose);
 
         return $self->status->checksum_ok(1);
     }
@@ -105,8 +105,8 @@ sub _validate_checksum {
 
     my $flag = $ctx->hexdigest eq $md5;
     $flag
-        ? cp_msg(loc("Checksum matches for '%1'", $self->package),$verbose)
-        : cp_error(loc("Checksum does not match for '%1': " .
+        ? msg(loc("Checksum matches for '%1'", $self->package),$verbose)
+        : error(loc("Checksum does not match for '%1': " .
                     "MD5 is '%2' but should be '%3'",
                     $self->package, $ctx->hexdigest, $md5),$verbose);
 
@@ -168,7 +168,7 @@ sub _parse_checksums_file {
             last;
 
         } else {
-            cp_error( loc("Malformed %1 line: %2", CHECKSUMS, $_) );
+            error( loc("Malformed %1 line: %2", CHECKSUMS, $_) );
         }
     }
 
@@ -203,12 +203,12 @@ sub _check_signature_for_checksum_file {
     }
 
     if ( !$signed ) {
-        cp_msg(loc("No signature found in %1 file '%2'",
+        msg(loc("No signature found in %1 file '%2'",
                 CHECKSUMS, $file), $verbose);
 
         return 1 unless $force;
 
-        cp_error( loc( "%1 file '%2' is not signed -- aborting",
+        error( loc( "%1 file '%2' is not signed -- aborting",
                     CHECKSUMS, $file ) );
         return;
 

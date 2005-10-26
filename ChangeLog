@@ -1,3 +1,56 @@
+Changes for 0.059_01    Sat Oct 15 14:20:16 CEST 2005
+=====================================================
+
+*   This is a development release supporting 3rd party
+    package creation and shell plugins
+*   Add new callback to filter prereqs 
+*   Add plugin support to the default shell
+*   Add a howto on writing plugins: 
+    CPANPLUS::Shell::Default::Plugins::HOWTO
+*   Set Data::Dumper::Indent to 1 in the default shell
+*   Document --update_source switch in the default shell
+*   Add 's mirrors' to the default shell documentation
+*   Improve Internals.pm documentation
+*   Add basic documentation to undocumented functions
+    in Utils.pm
+*   Implement proper 'ignore' option for cpan2dist and 
+    rename old 'ignore' to 'ban'
+*   Allow the --*list options to cpan2dist to be given
+    more than once.
+*   Fix typo in cpan2dist that wasn't setting the makefile
+    preference correctly
+*   Add an option to redirect output to cpan2dist
+*   Add alarm functionality to cpan2dist
+*   The 'sudo' setting is now being defaulted to its
+    previous setting during setup
+*   Attempt to show what previous config was found during
+    setup if possible.
+*   Disable checksums fetch when downloading readme
+*   Store found prereqs in the dist object when we can
+*   Use constants for strings where possible.
+*   Determine installer type in CPANPLUS::Module::dist()
+    if we haven't already
+*   Support both cp_error/error and cp_msg/msg as 
+    diagnostic functions
+*   When extracting files, make sure +x is set on directories
+*   When extracting files, store their names
+*   Renamed vcmp() to _vcmp() to mark it's privateness.
+*   Add a seperate method in Dist.pm to check if a prereq
+    has been satisfied, so modules subclassing Dist.pm may
+    override it (thanks to Ken Williams).
+*   Add an 'add_to_includepath' method to Module.pm, so
+    modules can add their build paths to @INC.
+*   Module::Build's 'perl version too low' diagnostic changed
+    between releases. Make sure our test reporter understands
+    both (fixes [#15197], thanks to Barbie)
+*   t/01_CPANPLUS-Configure.t doesn't load CPANPLUS::Config
+    directly anymore, as there may be an %ENV setting
+*   Fix t/05_CPANPLUS-Internals-Fetch.t to compensate
+    when being on non-unixy platforms [#1455]
+    pointing to the config file instead
+*   Update bundled modules to their latest version    
+
+
 Changes for 0.0561      Sat Aug 20 19:57:15 CEST 2005
 =====================================================
 

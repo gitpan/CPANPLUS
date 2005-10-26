@@ -28,8 +28,6 @@ lib/CPANPLUS/inc/Archive/Extract.pm
 lib/CPANPLUS/inc/Archive/Tar.pm
 lib/CPANPLUS/inc/Archive/Tar/Constant.pm
 lib/CPANPLUS/inc/Archive/Tar/File.pm
-lib/CPANPLUS/inc/Config/Auto.pm
-lib/CPANPLUS/inc/DBIx/Simple/OO.pm
 lib/CPANPLUS/inc/File/Fetch.pm
 lib/CPANPLUS/inc/File/Fetch/Item.pm
 lib/CPANPLUS/inc/File/Spec.pm
@@ -85,11 +83,14 @@ lib/CPANPLUS/Module/Signature.pm
 lib/CPANPLUS/Shell.pm
 lib/CPANPLUS/Shell/Classic.pm
 lib/CPANPLUS/Shell/Default.pm
+lib/CPANPLUS/Shell/Default/Plugins/HOWTO.pod
+lib/CPANPLUS/Shell/Default/Plugins/Remote.pm
+lib/CPANPLUS/Shell/Default/Plugins/Source.pm
 Makefile.PL
 MANIFEST			This list of files
 MANIFEST.SKIP
-README
 META.yml
+README
 t/00_CPANPLUS-Inc.t
 t/00_CPANPLUS-Internals-Utils.t
 t/01_CPANPLUS-Configure.t

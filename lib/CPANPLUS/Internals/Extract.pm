@@ -126,7 +126,7 @@ sub _extract {
     my $loc = $mod->status->extract();
     
     if( $loc && !$force ) {
-        cp_msg(loc("Already extracted '%1' to '%2'. ".
+        msg(loc("Already extracted '%1' to '%2'. ".
                 "Won't extract again without force",
                 $mod->module, $loc), $verbose);
         return $loc;
@@ -135,7 +135,7 @@ sub _extract {
     ### did we already fetch the file? ###
     my $file = $mod->status->fetch();
     unless( -s $file ) {
-        cp_error( loc( "File '%1' has zero size: cannot extract", $file ) );    
+        error( loc( "File '%1' has zero size: cannot extract", $file ) );    
         return;
     }
 
@@ -156,13 +156,13 @@ sub _extract {
     my $ae = Archive::Extract->new( archive => $file );
 
     unless( $ae->extract( to => $to ) ) {
-        cp_error( loc( "Unable to extract '%1' to '%2': %3",
+        error( loc( "Unable to extract '%1' to '%2': %3",
                     $file, $to, $ae->error ) );
         return;
     }
     
     ### print out what files we extracted ###  
-    cp_msg(loc("Extracted '%1'",$_),$verbose) for @{$ae->files};  
+    msg(loc("Extracted '%1'",$_),$verbose) for @{$ae->files};  
     
     ### set them all to be +w for the owner, so we don't get permission
     ### denied for overwriting files that are just +r
@@ -197,14 +197,16 @@ sub _extract {
                                             
     ### test if the dir exists ###
     unless( $dir && -d $dir ) {
-        cp_error(loc("Unable to determine extract dir for '%1'",$mod->module));
+        error(loc("Unable to determine extract dir for '%1'",$mod->module));
         return;
     
     } else {    
-        cp_msg(loc("Extracted '%1' to '%2'", $mod->module, $dir), $verbose);
+        msg(loc("Extracted '%1' to '%2'", $mod->module, $dir), $verbose);
         
-        ### register where we extracted the files to ###
+        ### register where we extracted the files to,
+        ### also store what files were extracted
         $mod->status->extract( $dir ); 
+        $mod->status->files( $ae->files );
     }
       
     ### also, figure out what kind of install we're dealing with ###

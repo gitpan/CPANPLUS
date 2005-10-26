@@ -28,13 +28,15 @@ my $conf = gimme_conf();
 
 my $map = {
     cp_msg      => ["This is just a test message"],
+    msg         => ["This is just a test message"],
     cp_error    => ["This is just a test error"],
+    error       => ["This is just a test error"],
 };
 
 ### check if CPANPLUS::Error can do what we expect 
 {   for my $name ( keys %$map ) {
         can_ok('CPANPLUS::Error',   $name);
-        can_ok('main',              $name);     # did it get exporter?
+        can_ok('main',              $name);     # did it get exported?
     }
 }
         
@@ -98,10 +100,10 @@ my $map = {
     }
 
     ### check the stack, flush it, check again ###
-    is( scalar(()=CPANPLUS::Error->stack), 2,  
-                        "Two items on stack" );
-    is( scalar(()=CPANPLUS::Error->flush), 2,
-                        "Two items flushed" );
+    is( scalar(()=CPANPLUS::Error->stack), scalar(keys(%$map)),  
+                        "All items on stack" );
+    is( scalar(()=CPANPLUS::Error->flush), scalar(keys(%$map)),
+                        "All items flushed" );
     is( scalar(()=CPANPLUS::Error->stack), 0,  
                         "No items on stack" );                        
     

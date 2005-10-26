@@ -146,12 +146,12 @@ sub _query_report {
     my $url = TESTERS_URL->($mod->package_name);
     my $req = HTTP::Request->new( GET => $url);
 
-    cp_msg( loc("Fetching: '%1'", $url), $verbose );
+    msg( loc("Fetching: '%1'", $url), $verbose );
 
     my $res = $ua->request( $req );
 
     unless( $res->is_success ) {
-        cp_error( loc( "Fetching report for '%1' failed: %2",
+        error( loc( "Fetching report for '%1' failed: %2",
                     $url, $res->message ) );
         return;
     }
@@ -252,7 +252,7 @@ sub _send_report {
 
     ### do you even /have/ test::reporter? ###
     unless( $self->_have_send_report_modules(verbose => 1) ) {
-        cp_error( loc( "You don't have '%1' (or modules required by '%2') ".
+        error( loc( "You don't have '%1' (or modules required by '%2') ".
                     "installed, you cannot report test results.",
                     'Test::Reporter', 'Test::Reporter' ) );
         return;
@@ -295,7 +295,7 @@ sub _send_report {
     ### an 'NA' might have to be insted
     if ( $failed ) {
         unless( RELEVANT_TEST_RESULT->($mod) ) {
-            cp_msg(loc(
+            msg(loc(
                 "'%1' is a platform specific module, and the test results on".
                 " your platform are not relevant --sending N/A grade.",
                 $name), $verbose);
@@ -303,7 +303,7 @@ sub _send_report {
             $grade = GRADE_NA;
         
         } elsif ( UNSUPPORTED_OS->( $buffer ) ) {
-            cp_msg(loc(
+            msg(loc(
                 "'%1' is a platform specific module, and the test results on".
                 " your platform are not relevant --sending N/A grade.",
                 $name), $verbose);
@@ -312,7 +312,7 @@ sub _send_report {
         
         ### you dont have a high enough perl version?    
         } elsif ( PERL_VERSION_TOO_LOW->( $buffer ) ) {
-            cp_msg(loc("'%1' requires a higher version of perl than your current ".
+            msg(loc("'%1' requires a higher version of perl than your current ".
                     "version -- sending N/A grade.", $name), $verbose);
         
             $grade = GRADE_NA;                
@@ -339,7 +339,7 @@ sub _send_report {
 
         ### return if one or more missing external libraries
         if( my @missing = MISSING_EXTLIBS_LIST->($buffer) ) {
-            cp_msg(loc("Not sending test report - " .
+            msg(loc("Not sending test report - " .
                     "external libraries not pre-installed"));
             return 1;
         }
@@ -363,7 +363,7 @@ sub _send_report {
                                 module  => $mod,
                                 missing => \@missing
                         )) {
-                cp_msg(loc("Not sending test report - "  .
+                msg(loc("Not sending test report - "  .
                         "bogus missing prerequisites report"));
                 return 1;
             }
@@ -412,7 +412,7 @@ sub _send_report {
             }
 
             if( $count > MAX_REPORT_SEND and !$force) {
-                cp_msg(loc("'%1' already reported for '%2', ".
+                msg(loc("'%1' already reported for '%2', ".
                         "not cc-ing the author",
                         GRADE_FAIL, $dist ), $verbose );
                 $dont_cc_author++;
@@ -439,7 +439,7 @@ sub _send_report {
 
     ### do a callback to ask if we should send the report
     unless ($self->_callbacks->send_test_report->($mod, $grade)) {
-        cp_msg(loc("Ok, not sending test report"));
+        msg(loc("Ok, not sending test report"));
         return 1;
     }
 
@@ -464,25 +464,25 @@ sub _send_report {
     ### should we save it locally? ###
     if( $save ) {
         if( my $file = $reporter->write() ) {
-            cp_msg(loc("Successfully wrote report for '%1' to '%2'",
+            msg(loc("Successfully wrote report for '%1' to '%2'",
                     $dist, $file), $verbose);
             return $file;
 
         } else {
-            cp_error(loc("Failed to write report for '%1'", $dist));
+            error(loc("Failed to write report for '%1'", $dist));
             return;
         }
 
     ### should we send it to a bunch of people? ###
     ### XXX should we do an 'already sent' check? ###
     } elsif( $reporter->send( @inform ) ) {
-        cp_msg(loc("Successfully sent '%1' report for '%2'", $grade, $dist),
+        msg(loc("Successfully sent '%1' report for '%2'", $grade, $dist),
             $verbose);
         return 1;
 
     ### something broke :( ###
     } else {
-        cp_error(loc("Could not send '%1' report for '%2': %3",
+        error(loc("Could not send '%1' report for '%2': %3",
                 $grade, $dist, $reporter->errstr));
         return;
     }

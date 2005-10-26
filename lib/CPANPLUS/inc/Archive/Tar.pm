@@ -14,7 +14,7 @@ use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
 $DEBUG              = 0;
 $WARN               = 1;
 $FOLLOW_SYMLINK     = 0;
-$VERSION            = "1.25";
+$VERSION            = "1.26";
 $CHOWN              = 1;
 $CHMOD              = 1;
 $DO_NOT_USE_PREFIX  = 0;
@@ -262,10 +262,19 @@ sub _read_tar {
         ### source code (tar.c) to GNU cpio.
         next if $chunk eq TAR_END;
 
+        ### pass the realname, so we can set it 'proper' right away
+        ### some of the heuristics are done on the name, so important
+        ### to set it ASAP
         my $entry;
-        unless( $entry = Archive::Tar::File->new( chunk => $chunk ) ) {
-            $self->_error( qq[Couldn't read chunk at offset $offset] );
-            next;
+        {   my %extra_args = ();
+            $extra_args{'name'} = $$real_name if defined $real_name;
+            
+            unless( $entry = Archive::Tar::File->new(   chunk => $chunk, 
+                                                        %extra_args ) 
+            ) {
+                $self->_error( qq[Couldn't read chunk at offset $offset] );
+                next;
+            }
         }
 
         ### ignore labels:
@@ -1156,7 +1165,7 @@ method call instead.
 Returns true if we currently have C<IO::String> support loaded.
 
 Either C<IO::String> or C<perlio> support is needed to support writing 
-stringified archives. Currently, C<perlio> is the preffered method, if
+stringified archives. Currently, C<perlio> is the preferred method, if
 available.
 
 See the C<GLOBAL VARIABLES> section to see how to change this preference.
@@ -1172,7 +1181,7 @@ Returns true if we currently have C<perlio> support loaded.
 This requires C<perl-5.8> or higher, compiled with C<perlio> 
 
 Either C<IO::String> or C<perlio> support is needed to support writing 
-stringified archives. Currently, C<perlio> is the preffered method, if
+stringified archives. Currently, C<perlio> is the preferred method, if
 available.
 
 See the C<GLOBAL VARIABLES> section to see how to change this preference.

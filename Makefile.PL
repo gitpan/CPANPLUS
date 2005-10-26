@@ -158,7 +158,14 @@ you configure it properly.
 
 ### check if we found some config that we can use as a base config;
 ### if not, put a copy of the config.pm-orig in place;
-unless( $HasPrev = is_configured() ) {
+if( $HasPrev = is_configured() ) {
+
+    ### tell the user where we found the previous config;
+    ### XXX this doesn't take into account any environment settings
+    #my $where = $INC{'CPANPLUS/Config.pm'} || local_config();
+    #print "\n\tExisting config found at '$where'\n\n" if -e $where;
+
+} else {
     my $lc = local_config();
     
     my $require = -e $lc ? $lc : $lc . '-orig';

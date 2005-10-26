@@ -121,7 +121,7 @@ use constant PERL_VERSION_TOO_LOW
                                 }
                                 # Module::Build format
                                 if( $buffer =~
-                                        /ERROR: perl: Version .*? is installed, but we need version >= .*?/m ) {
+                                        /ERROR:( perl:)? Version .*?( of perl)? is installed, but we need version >= .*?/m ) {
                                     return 1;
                                 }
                                 return 0;

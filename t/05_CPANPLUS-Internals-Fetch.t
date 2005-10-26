@@ -90,7 +90,10 @@ isa_ok( $mod,  'CPANPLUS::Module' );
 ### try and fetch a URI
 {   my $base    = basename($0);
     my $me      = File::Spec->catfile( cwd(), $base );
-    my $target  = 'file://' . $me;
+    
+    ### do an ON_UNIX test, cygwin will fail tests otherwise (#14553)
+    #my $target  = 'file://' . $me;
+    my $target = (&File::Fetch::ON_UNIX ? 'file:/' : 'file://') . $me;
     my $fake    = $cb->parse_module( module => $target );
     
     ok( IS_FAKE_MODOBJ->(mod => $fake), 

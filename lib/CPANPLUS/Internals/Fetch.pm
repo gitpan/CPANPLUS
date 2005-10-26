@@ -108,7 +108,7 @@ sub _fetch {
 
     ### check if we already downloaded the thing ###
     if( (my $where = $modobj->status->fetch()) && !$force ) {
-        cp_msg(loc("Already fetched '%1' to '%2', " .
+        msg(loc("Already fetched '%1' to '%2', " .
                 "won't fetch again without force",
                 $modobj->module, $where ), $verbose );
         return $where;
@@ -127,7 +127,7 @@ sub _fetch {
         ### create the path if it doesn't exist ###
         unless( -d $local_path ) {
             unless( $self->_mkdir( dir => $local_path ) ) {
-                cp_msg( loc("Could not create path '%1'", $local_path), $verbose);
+                msg( loc("Could not create path '%1'", $local_path), $verbose);
                 return;
             }
         }
@@ -148,7 +148,7 @@ sub _fetch {
             ### some fetches will fail if the files exist already, so let's
             ### delete them first
             unlink $local_file
-                or cp_msg( loc("Could not delete %1, some methods may " .
+                or msg( loc("Could not delete %1, some methods may " .
                             "fail to force a download", $local_file), $verbose);
          } else {
 
@@ -167,7 +167,7 @@ sub _fetch {
                                         verbose => $verbose );
                                         
         unless( $abs ) {
-            cp_error(loc("Unable to download '%1'", $fetch_from));
+            error(loc("Unable to download '%1'", $fetch_from));
             return;
         }            
 
@@ -184,7 +184,7 @@ sub _fetch {
                                         $modobj->package,
                                     );
             unless( $remote_file ) {
-                cp_error( loc('No remote file given for download') );
+                error( loc('No remote file given for download') );
                 return;
             }
         }
@@ -264,9 +264,9 @@ sub _fetch {
         }
     
         $found_host
-            ? cp_error(loc("Fetch failed: host list exhausted " .
+            ? error(loc("Fetch failed: host list exhausted " .
                         "-- are you connected today?"))
-            : cp_error(loc("No hosts found to download from " .
+            : error(loc("No hosts found to download from " .
                         "-- check your config"));
     }
     
@@ -288,17 +288,17 @@ sub __file_fetch {
     
     check( $tmpl, \%hash ) or return;
 
-    cp_msg(loc("Trying to get '%1'", $where ), $verbose );
+    msg(loc("Trying to get '%1'", $where ), $verbose );
 
     ### build the object ###
     my $ff = File::Fetch->new( uri => $where );
 
     ### sanity check ###
-    cp_error(loc("Bad uri '%1'",$where)),next unless $ff;
+    error(loc("Bad uri '%1'",$where)),next unless $ff;
 
     if( my $file = $ff->fetch( to => $local_path ) ) {
         unless( -e $file && -s _ ) {
-            cp_msg(loc("'%1' said it fetched '%2', but it was not created",
+            msg(loc("'%1' said it fetched '%2', but it was not created",
                     'File::Fetch', $file), $verbose);
 
         } else {
@@ -307,7 +307,7 @@ sub __file_fetch {
         }
 
     } else {
-        cp_error(loc("Fetching of '%1' failed: %2", $where, $ff->error));
+        error(loc("Fetching of '%1' failed: %2", $where, $ff->error));
     }
 
     return;

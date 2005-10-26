@@ -33,13 +33,13 @@ sub check_signature {
     check( $tmpl, \%hash ) or return;
 
     my $dir = $self->status->extract or (
-                cp_error( loc( "Do not know what dir '%1' was extracted to; ".
+                error( loc( "Do not know what dir '%1' was extracted to; ".
                             "Cannot check signature", $self->module ) ),
                 return );
 
     my $cwd = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
-        cp_error(loc(  "Could not chdir to '%1', cannot verify distribution '%2'",
+        error(loc(  "Could not chdir to '%1', cannot verify distribution '%2'",
                     $dir, $self->module ));
         return;
     }

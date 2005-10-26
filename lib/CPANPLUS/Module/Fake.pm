@@ -68,7 +68,7 @@ sub new {
     my $obj = CPANPLUS::Module->new( %$args ) or return;
     
     unless( $obj->_id ) {
-        cp_error(loc("No '%1' specified -- No CPANPLUS object associated!",'_id'));
+        error(loc("No '%1' specified -- No CPANPLUS object associated!",'_id'));
         return;
     }        
     

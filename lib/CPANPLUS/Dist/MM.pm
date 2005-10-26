@@ -137,13 +137,13 @@ sub format_available {
   
     my $mod = "ExtUtils::MakeMaker";
     unless( can_load( modules => { $mod => 0.0 } ) ) {
-        cp_error( loc( "You do not have '%1' -- '%2' not available",
+        error( loc( "You do not have '%1' -- '%2' not available",
                     $mod, __PACKAGE__ ) ); 
         return;
     }
     
     unless( $conf->get_program('make') ) { 
-        cp_error( loc( "You do not have '%1' -- '%2' not available",
+        error( loc( "You do not have '%1' -- '%2' not available",
                     'make', __PACKAGE__ ) ); 
         return;
     }
@@ -192,7 +192,7 @@ sub prepare {
 
     my $dir;
     unless( $dir = $self->status->extract ) {
-        cp_error( loc( "No dir found to operate on!" ) );
+        error( loc( "No dir found to operate on!" ) );
         return;
     }
     
@@ -224,7 +224,7 @@ sub prepare {
     ### chdir to work directory ###
     my $orig = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
-        cp_error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
         return;
     }
     
@@ -232,13 +232,13 @@ sub prepare {
     RUN: {
         ### don't run 'perl makefile.pl' again if there's a makefile already 
         if( -e MAKEFILE->() && (-M MAKEFILE->() < -M $dir) && !$force ) {
-            cp_msg(loc("'%1' already exists, not running '%2 %3' again ".
+            msg(loc("'%1' already exists, not running '%2 %3' again ".
                     " unless you force",
                     MAKEFILE->(), $perl, MAKEFILE_PL->() ), $verbose );
             
         } else {
             unless( -e MAKEFILE_PL->() ) {
-                cp_msg(loc("No '%1' found - attempting to generate one",
+                msg(loc("No '%1' found - attempting to generate one",
                         MAKEFILE_PL->() ), $verbose );
                         
                 $dist->write_makefile_pl( 
@@ -248,7 +248,7 @@ sub prepare {
                 
                 ### bail out if there's no makefile.pl ###
                 unless( -e MAKEFILE_PL->() ) {
-                    cp_error( loc( "Could not find '%1' - cannot continue", 
+                    error( loc( "Could not find '%1' - cannot continue", 
                                 MAKEFILE_PL->() ) );
         
                     ### mark that we screwed up ###
@@ -287,7 +287,7 @@ sub prepare {
                                 buffer  => \$captured,
                                 verbose => $run_verbose, # may be interactive   
             ) ) {
-                cp_error( loc( "Could not run '%1 %2': %3 -- cannot continue",
+                error( loc( "Could not run '%1 %2': %3 -- cannot continue",
                             $perl, MAKEFILE_PL->(), $captured ) );
                 
                 $dist->status->makefile(0);
@@ -295,7 +295,7 @@ sub prepare {
             }
 
             ### put the output on the stack, don't print it
-            cp_msg( $captured, 0 );
+            msg( $captured, 0 );
         }
         
         ### if we got here, we managed to make a 'makefile' ###
@@ -311,7 +311,7 @@ sub prepare {
                                 );
         
         unless( $prereqs ) {
-            cp_error( loc( "Unable to scan '%1' for prereqs", 
+            error( loc( "Unable to scan '%1' for prereqs", 
                         $dist->status->makefile ) );
 
             $fail++; last RUN;
@@ -319,7 +319,7 @@ sub prepare {
     }
    
 	unless( $cb->_chdir( dir => $orig ) ) {
-        cp_error( loc( "Could not chdir back to start dir '%1'", $orig ) );
+        error( loc( "Could not chdir back to start dir '%1'", $orig ) );
     }   
    
     ### save where we wrote this stuff -- same as extract dir in normal
@@ -358,7 +358,7 @@ sub _find_prereqs {
     
     my $fh = FileHandle->new();
     unless( $fh->open( $file ) ) {
-        cp_error( loc( "Cannot open '%1': %2", $file, $! ) );
+        error( loc( "Cannot open '%1': %2", $file, $! ) );
         return;
     }
     
@@ -370,7 +370,7 @@ sub _find_prereqs {
         
         while( $found =~ m/(?:\s)([\w\:]+)=>(?:q\[(.*?)\],?|undef)/g ) {
             if( defined $p{$1} ) {
-                cp_msg(loc("Warning: PREREQ_PM mentions '%1' more than once. " .
+                msg(loc("Warning: PREREQ_PM mentions '%1' more than once. " .
                         "Last mention wins.", $1 ), $verbose );
             }
             
@@ -379,10 +379,12 @@ sub _find_prereqs {
         last;
     }
 
-    $self->status->prereqs( \%p );
+    my $href = $cb->_callbacks->filter_prereqs->( $cb, \%p );
+
+    $self->status->prereqs( $href );
     
     ### just to make sure it's not the same reference ###
-    return { %p };                              
+    return { %$href };                              
 }     
 
 =pod
@@ -424,7 +426,7 @@ sub create {
 
     my $dir;
     unless( $dir = $self->status->extract ) {
-        cp_error( loc( "No dir found to operate on!" ) );
+        error( loc( "No dir found to operate on!" ) );
         return;
     }
     
@@ -464,7 +466,7 @@ sub create {
     $dist->status->_create_args( $args );
     
     unless( $dist->status->prepared ) {
-        cp_error( loc( "You have not successfully prepared a '%2' distribution ".
+        error( loc( "You have not successfully prepared a '%2' distribution ".
                     "yet -- cannot create yet", __PACKAGE__ ) );
         return;
     }
@@ -473,7 +475,7 @@ sub create {
     ### chdir to work directory ###
     my $orig = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
-        cp_error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
         return;
     }
     
@@ -491,14 +493,14 @@ sub create {
                     );
         
         unless( $cb->_chdir( dir => $dir ) ) {
-            cp_error( loc( "Could not chdir to build directory '%1'", $dir ) );
+            error( loc( "Could not chdir to build directory '%1'", $dir ) );
             return;
         }       
                   
         unless( $ok ) {
        
             #### use $dist->flush to reset the cache ###
-            cp_error( loc( "Unable to satisfy prerequisites for '%1' " .
+            error( loc( "Unable to satisfy prerequisites for '%1' " .
                         "-- aborting install", $self->module ) );    
             $dist->status->make(0);
             $fail++; $prereq_fail++;
@@ -510,7 +512,7 @@ sub create {
         
         ### 'make' section ###    
         if( -d BLIB->($dir) && (-M BLIB->($dir) < -M $dir) && !$force ) {
-            cp_msg(loc("Already ran '%1' for this module [%2] -- " .
+            msg(loc("Already ran '%1' for this module [%2] -- " .
                     "not running again unless you force", 
                     $make, $self->module ), $verbose );
         } else {
@@ -518,20 +520,18 @@ sub create {
                                 buffer  => \$captured,
                                 verbose => $verbose ) 
             ) {
-                cp_error( loc( "MAKE failed: %1 %2", $!, $captured ) );
+                error( loc( "MAKE failed: %1 %2", $!, $captured ) );
                 $dist->status->make(0);
                 $fail++; last RUN;
             }
             
             ### put the output on the stack, don't print it
-            cp_msg( $captured, 0 );
+            msg( $captured, 0 );
 
             $dist->status->make(1);
 
             ### add this directory to your lib ###
-            $cb->_add_to_includepath(
-                directories => [ BLIB_LIBDIR->( $self->status->extract ) ]
-            );
+            $self->add_to_includepath();
             
             ### dont bail out here, there's a conditional later on
             #last RUN if $skiptest;
@@ -564,14 +564,14 @@ sub create {
                 ### log this occasion non-verbosely, so our test reporter can
                 ### pick up on this
                 if ( NO_TESTS_DEFINED->( $captured ) ) {
-                    cp_msg( NO_TESTS_DEFINED->( $captured ), 0 )
+                    msg( NO_TESTS_DEFINED->( $captured ), 0 )
                 } else {
-                    cp_msg( loc( "MAKE TEST passed: %2", $captured ) );
+                    msg( loc( "MAKE TEST passed: %2", $captured ) );
                 }
             
                 $dist->status->test(1);
             } else {
-                cp_error( loc( "MAKE TEST failed: %1 %2", $!, $captured ) );
+                error( loc( "MAKE TEST failed: %1 %2", $!, $captured ) );
             
                 ### send out error report here? or do so at a higher level?
                 ### --higher level --kane.
@@ -585,7 +585,7 @@ sub create {
     } #</RUN>
       
     unless( $cb->_chdir( dir => $orig ) ) {
-        cp_error( loc( "Could not chdir back to start dir '%1'", $orig ) );
+        error( loc( "Could not chdir back to start dir '%1'", $orig ) );
     }  
     
     ### send out test report?
@@ -597,7 +597,7 @@ sub create {
             buffer  => CPANPLUS::Error->stack_as_string,
             verbose => $verbose,
             force   => $force,
-        ) or cp_error(loc("Failed to send test report for '%1'",
+        ) or error(loc("Failed to send test report for '%1'",
                     $self->module ) );
     }            
             
@@ -628,14 +628,14 @@ sub install {
     
     
     unless( $dist->status->created ) {
-        cp_error( loc( "You have not successfully created a '%2' distribution yet " .
+        error( loc( "You have not successfully created a '%2' distribution yet " .
                     "-- cannot install yet", __PACKAGE__ ) );
         return;
     }
  
     my $dir;
     unless( $dir = $self->status->extract ) {
-        cp_error( loc( "No dir found to operate on!" ) );
+        error( loc( "No dir found to operate on!" ) );
         return;
     }
     
@@ -660,7 +660,7 @@ sub install {
     if( defined $self->status->installed && 
         !$self->status->installed && !$force 
     ) {
-        cp_error( loc( "Module '%1' has failed to install before this session " .
+        error( loc( "Module '%1' has failed to install before this session " .
                     "-- aborting install", $self->module ) );
         return;
     }
@@ -670,7 +670,7 @@ sub install {
     
     my $orig = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
-        cp_error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
         return;
     }
     
@@ -687,15 +687,15 @@ sub install {
                         verbose => $verbose,
                         buffer  => \$captured,
     ) ) {                   
-        cp_error( loc( "MAKE INSTALL failed: %1 %2", $!, $captured ) );
+        error( loc( "MAKE INSTALL failed: %1 %2", $!, $captured ) );
         $fail++; 
     }       
 
     ### put the output on the stack, don't print it
-    cp_msg( $captured, 0 );
+    msg( $captured, 0 );
     
     unless( $cb->_chdir( dir => $orig ) ) {
-        cp_error( loc( "Could not chdir back to start dir '%1'", $orig ) );
+        error( loc( "Could not chdir back to start dir '%1'", $orig ) );
     }   
     
     return $dist->status->installed( $fail ? 0 : 1 );
@@ -731,7 +731,7 @@ sub write_makefile_pl {
 
     my $dir;
     unless( $dir = $self->status->extract ) {
-        cp_error( loc( "No dir found to operate on!" ) );
+        error( loc( "No dir found to operate on!" ) );
         return;
     }
     
@@ -747,7 +747,7 @@ sub write_makefile_pl {
     
     my $file = MAKEFILE_PL->($dir);
     if( -s $file && !$force ) {
-        cp_msg(loc("Already created '%1' - not doing so again without force", 
+        msg(loc("Already created '%1' - not doing so again without force", 
                 $file ), $verbose );
         return 1;
     }     
@@ -761,7 +761,7 @@ sub write_makefile_pl {
 
     my $fh = new FileHandle;
     unless( $fh->open( ">$file" ) ) {
-        cp_error( loc( "Could not create file '%1': %2", $file, $! ) );
+        error( loc( "Could not create file '%1': %2", $file, $! ) );
         return;
     }
     
@@ -821,14 +821,14 @@ sub dist_dir {
 
     my $dir;
     unless( $dir = $self->status->extract ) {
-        cp_error( loc( "No dir found to operate on!" ) );
+        error( loc( "No dir found to operate on!" ) );
         return;
     }
     
     ### chdir to work directory ###
     my $orig = cwd();
     unless( $cb->_chdir( dir => $dir ) ) {
-        cp_error( loc( "Could not chdir to build directory '%1'", $dir ) );
+        error( loc( "Could not chdir to build directory '%1'", $dir ) );
         return;
     }
 
@@ -842,7 +842,7 @@ sub dist_dir {
                             buffer  => \$captured,
                             verbose => $verbose ) 
         ) {
-            cp_error( loc( "MAKE DISTDIR failed: %1 %2", $!, $captured ) );
+            error( loc( "MAKE DISTDIR failed: %1 %2", $!, $captured ) );
             ++$fail, last TRY;
         }
 
@@ -851,13 +851,13 @@ sub dist_dir {
                                                 $self->package_version );
 
         unless( -d $distdir ) {
-            cp_error(loc("Do not know where '%1' got created", 'distdir'));
+            error(loc("Do not know where '%1' got created", 'distdir'));
             ++$fail, last TRY;
         }
     }
 
     unless( $cb->_chdir( dir => $orig ) ) {
-        cp_error( loc( "Could not chdir to start directory '%1'", $orig ) );
+        error( loc( "Could not chdir to start directory '%1'", $orig ) );
         return;
     }
 

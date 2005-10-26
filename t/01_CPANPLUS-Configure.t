@@ -28,7 +28,7 @@ my $Trap_Output = @ARGV ? 0 : 1;
 my $Config_pm   = 'CPANPLUS/Config.pm';
 
 
-for my $mod (qw[CPANPLUS::Configure CPANPLUS::Config]) {
+for my $mod (qw[CPANPLUS::Configure]) {
     use_ok($mod) or diag qq[Can't load $mod];
 }    
 

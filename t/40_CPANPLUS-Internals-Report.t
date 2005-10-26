@@ -23,11 +23,11 @@ use CPANPLUS::inc;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants::Report;
 
-my $send_tests  = 48;
+my $send_tests  = 55;
 my $query_tests = 7;
 my $total_tests = $send_tests + $query_tests;
 
-use Test::More                  tests => 109;
+use Test::More                  tests => 117;
 use Module::Load::Conditional   qw[can_load];
 
 use FileHandle;
@@ -96,8 +96,17 @@ my $map = {
                 ],
         check   => 0,
     },    
-    perl_version_too_low_build => {
-        buffer  => perl_version_too_low_buffer_build(),
+    perl_version_too_low_build1 => {
+        buffer  => perl_version_too_low_buffer_build(1),
+        failed  => 1,
+        match   => ['/This distribution has been tested/',
+                    '/http://testers.cpan.org//',
+                    '/NA/',
+                ],
+        check   => 0,
+    },    
+    perl_version_too_low_build2 => {
+        buffer  => perl_version_too_low_buffer_build(2),
         failed  => 1,
         match   => ['/This distribution has been tested/',
                     '/http://testers.cpan.org//',
@@ -132,7 +141,9 @@ my $map = {
 
     {   ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer_mm() ),
                                         "Perl version too low" );
-        ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer_build() ),
+        ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer_build(1) ),
+                                        "Perl version too low" );
+        ok(PERL_VERSION_TOO_LOW->( perl_version_too_low_buffer_build(2) ),
                                         "Perl version too low" );
         ok(!PERL_VERSION_TOO_LOW->('foo'),
                                         "   Perl version adequate" );
@@ -389,12 +400,19 @@ BEGIN failed--compilation aborted at Makefile.PL line 1.
 }    
 
 sub perl_version_too_low_buffer_build {
+    my $type = shift;
     return q[
 ERROR: perl: Version 5.006001 is installed, but we need version >= 5.008001
 ERROR: version: Prerequisite version isn't installed
 ERRORS/WARNINGS FOUND IN PREREQUISITES.  You may wish to install the versions
  of the modules indicated above before proceeding with this installation.
-    ];
+    ]   if($type == 1);
+    return q[
+ERROR: Version 5.006001 of perl is installed, but we need version >= 5.008001
+ERROR: version: Prerequisite version isn't installed
+ERRORS/WARNINGS FOUND IN PREREQUISITES.  You may wish to install the versions
+ of the modules indicated above before proceeding with this installation.
+    ]   if($type == 2);
 }    
 
 # Local variables:

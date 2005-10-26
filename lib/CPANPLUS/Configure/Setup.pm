@@ -781,11 +781,20 @@ If you do not have '%1' yet, you can get it from:
     {   my $pgm     = 'sudo';
         my $sudo    = $conf->get_program($pgm) || can_run($pgm);
 
-        ### default to 'yes' if you're not root ###
+        ### default to 'yes' if you're not root
+        ### or if we're allowed to use a previous config, use that
         if($sudo) {
-            my $default = $>
-                            ? (-w $Config{'installsitelib'} ? 'n' : 'y')
-                            : 'y';
+#            my $default = $>
+#                            ? (-w $Config{'installsitelib'} ? 'n' : 'y')
+#                            : 'y';
+            my $default = $self->use_previous 
+                            ? $conf->get_program($pgm) 
+                                ? 1
+                                : 0
+                            : $>
+                                ? (-w $Config{'installsitelib'} ? 'n' : 'y')
+                                : 'y';
+
 
             my $yn = $term->ask_yn(
                         prompt  => loc("I found %1 in your path, would you like to use it for '%2'?", $pgm, 'make install' ),

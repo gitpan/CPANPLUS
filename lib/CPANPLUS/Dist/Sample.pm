@@ -50,8 +50,8 @@ use CPANPLUS::inc;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 ### for error handling, which gets added to the error stack
-### use as: cp_error(loc("Something is wrong: %1", $error));
-### or:     cp_msg(loc("FYI: %1 and %2", $foo, $bar), $verbose);
+### use as: error(loc("Something is wrong: %1", $error));
+### or:     msg(loc("FYI: %1 and %2", $foo, $bar), $verbose);
 use CPANPLUS::Error;
 
 ### common constants ###
@@ -120,7 +120,7 @@ sub prepare {
                         );
 
         unless( $builder ) {
-            cp_error( loc( q[Could not create a dist for '%1' with ] .
+            error( loc( q[Could not create a dist for '%1' with ] .
                         q[installer type '%2'], $self->module,
                         $self->status->installer_type ) );
             $fail++; last BUILD;

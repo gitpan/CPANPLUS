@@ -72,7 +72,7 @@ sub new {
     ### this code may change between releases, depending on
     ### compatibillity with previous versions.
     unless( $class->_config_version_sufficient ) {
-        cp_error(loc(  "Your config is of version '%1' but '%2' requires ".
+        error(loc(  "Your config is of version '%1' but '%2' requires ".
                     "a config of '%3' or higher. Your '%4' is of " .
                     "version '%5', but your config requires a version ".
                     "of '%6' or higher. You will need to reconfigure",
@@ -88,7 +88,7 @@ sub new {
                 }, $class;
 
     unless( $self->_load_args( options => \%hash ) ) {
-        cp_error(loc(qq[Unable to initialize configuration!]));
+        error(loc(qq[Unable to initialize configuration!]));
         return;
     }
 
@@ -117,14 +117,14 @@ sub _load_cpanplus_config {
 
     my $ok;
     $@
-        ? cp_error( loc("Could not load your personal config: %1: %2",
+        ? error( loc("Could not load your personal config: %1: %2",
                     $ENV{$env}, "$@"), "\n",
                 loc("Falling back to system-wide config."), "\n" )
         : ($ok = 1) if $tried;
 
     unless($ok) {
         eval { load CPANPLUS::Config };
-        cp_error("$@"), return if $@;
+        error("$@"), return if $@;
     }
 
     return 1;
@@ -311,7 +311,7 @@ _END_OF_CONFIG_
 
     my $fh = new FileHandle;
     $fh->open(">$file")
-        or (cp_error(loc("Could not open '%1' for writing: %2", $file, $!)),
+        or (error(loc("Could not open '%1' for writing: %2", $file, $!)),
             return );
 
     $fh->print($msg);
@@ -469,7 +469,7 @@ sub AUTOLOAD {
     my $conf = $self->conf;
 
     unless( scalar @_ ) {
-        cp_error( loc("No arguments provided!") );
+        error( loc("No arguments provided!") );
         return;
     }
 
@@ -484,7 +484,7 @@ sub AUTOLOAD {
     $type .= $field if $field;
 
     unless ( exists $conf->{$type} ) {
-        cp_error( loc("Invalid method type: '%1'", $name) );
+        error( loc("Invalid method type: '%1'", $name) );
         return;
     }
 
@@ -503,7 +503,7 @@ sub AUTOLOAD {
                 return $self->get_conf($key);  
                 
             } else {     
-                cp_error( loc(q[No such key '%1' in field '%2'], $key, $type) );
+                error( loc(q[No such key '%1' in field '%2'], $key, $type) );
                 return;
             }
 
@@ -520,7 +520,7 @@ sub AUTOLOAD {
                 $conf->{$type}->{$key} = $val;
 
             } else {
-                cp_error( loc(q[No such key '%1' in field '%2'], $key, $type) );
+                error( loc(q[No such key '%1' in field '%2'], $key, $type) );
                 return;
             }
         }
@@ -534,7 +534,7 @@ sub AUTOLOAD {
         while( my($key,$val) = each %args ) {
 
             if( exists $conf->{$type}->{$key} ) {
-                cp_error( loc( q[Key '%1' already exists for field '%2'],
+                error( loc( q[Key '%1' already exists for field '%2'],
                             $key, $type));
                 return;
             } else {
@@ -544,7 +544,7 @@ sub AUTOLOAD {
         return 1;
     } else {
 
-        cp_error( loc(q[Unknown action '%1'], $action) );
+        error( loc(q[Unknown action '%1'], $action) );
         return;
     }
 }

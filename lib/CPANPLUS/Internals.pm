@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = '0.0562';
+$VERSION = "0.059_01";
 
 =pod
 
@@ -99,7 +99,7 @@ for my $key ( qw[_conf _id _lib _perl5lib _modules _hosts _methods _status
 
 =head1 METHODS
 
-=head2 _init( _conf => CONFIG_OBJ )
+=head2 $internals = CPANPLUS::Internals->_init( _conf => CONFIG_OBJ )
 
 C<_init> creates a new CPANPLUS::Internals object.
 
@@ -108,7 +108,9 @@ You have to pass it a valid C<CPANPLUS::Configure> object.
 Returns the object on success, or dies on failure.
 
 =cut
-{
+{   ### NOTE:
+    ### if extra callbacks are added, don't forget to update the
+    ### 02-internals.t test script with them!
     my $callback_map = {
         ### name            default value    
         install_prerequisite    => 1,   # install prereqs when 'ask' is set?
@@ -116,6 +118,8 @@ Returns the object on success, or dies on failure.
         send_test_report        => 1,   # send the test report?
                                         # munge the test report
         munge_test_report       => sub { return $_[1] },
+                                        # filter out unwanted prereqs
+        filter_prereqs          => sub { return $_[1] },
     };
     
     my $status = Object::Accessor->new;
@@ -169,7 +173,7 @@ Returns the object on success, or dies on failure.
                          $callback_map->{$name} ? 'true' : 'false';
         
             $args->_callbacks->$name(
-                sub { cp_msg(loc("DEFAULT '%1' HANDLER RETURNING '%2'",
+                sub { msg(loc("DEFAULT '%1' HANDLER RETURNING '%2'",
                               $name, $rv), $args->_conf->get_conf('debug')); 
                       return ref $callback_map->{$name} 
                                 ? $callback_map->{$name}->( @_ )
@@ -189,14 +193,14 @@ Returns the object on success, or dies on failure.
         $args->_lib( [@INC] );
 
         $conf->_set_build( startdir => cwd() ),
-            or cp_error( loc("couldn't locate current dir!") );
+            or error( loc("couldn't locate current dir!") );
 
         $ENV{FTP_PASSIVE} = 1, if $conf->get_conf('passive');
 
         my $id = $args->_store_id( $args );
 
         unless ( $id == $args->_id ) {
-            cp_error( loc("IDs do not match: %1 != %2. Storage failed!",
+            error( loc("IDs do not match: %1 != %2. Storage failed!",
                         $id, $args->_id) );
         }
 
@@ -205,7 +209,7 @@ Returns the object on success, or dies on failure.
 
 =pod
 
-=head2 _flush( list => \@caches )
+=head2 $bool = $internals->_flush( list => \@caches )
 
 Flushes the designated caches from the C<CPANPLUS> object.
 
@@ -257,7 +261,7 @@ be flushed.
 
             } else {
                 unless ( exists $self->{$cache} && exists $Tmpl->{$cache} ) {
-                    cp_error( loc( "No such cache: '%1'", $what ) );
+                    error( loc( "No such cache: '%1'", $what ) );
                     $flag++;
                     next;
                 } else {
@@ -272,7 +276,9 @@ be flushed.
 ### if extra callbacks are added, don't forget to update the
 ### 02-internals.t test script with them!
 
-=pod _register_callback( name => CALLBACK_NAME, code => CODEREF );
+=pod 
+
+=head2 $bool = $internals->_register_callback( name => CALLBACK_NAME, code => CODEREF );
 
 Registers a callback for later use by the internal libraries.
 
@@ -327,11 +333,46 @@ to skip it.
 
         return 1;
     }
+
+# =head2 $bool = $internals->_add_callback( name => CALLBACK_NAME, code => CODEREF );
+# 
+# Adds a new callback to be used from anywhere in the system. If the callback
+# is already known, an error is raised and false is returned. If the callback
+# is not yet known, it is added, and the corresponding coderef is registered
+# using the
+# 
+# =cut
+# 
+#     sub _add_callback {
+#         my $self = shift or return;
+#         my %hash = @_;
+#         
+#         my ($name,$code);
+#         my $tmpl = {
+#             name    => { required => 1, store => \$name, },
+#             code    => { required => 1, allow => IS_CODEREF,
+#                          store => \$code },
+#         };
+# 
+#         check( $tmpl, \%hash ) or return;
+# 
+#         if( $callback->can( $name ) ) {
+#             error(loc("Callback '%1' is already registered"));
+#             return;
+#         }
+# 
+#         $callback->mk_accessor( $name );
+# 
+#         $self->_register_callback( name => $name, code => $code ) or return;
+# 
+#         return 1;
+#     }
+
 }
 
 =pod
 
-=head2 _add_to_includepath( directories => \@dirs )
+=head2 $bool = $internals->_add_to_includepath( directories => \@dirs )
 
 Adds a list of directories to the include path.
 This means they get added to C<@INC> as well as C<$ENV{PERL5LIB}>.
@@ -366,23 +407,23 @@ sub _add_to_includepath {
 
 =pod
 
-=head2 _last_id
+=head2 $id = CPANPLUS::Internals->_last_id
 
 Return the id of the last object stored.
 
-=head2 _store_id
+=head2 $id = CPANPLUS::Internals->_store_id( $internals )
 
 Store this object; return its id.
 
-=head2 _retrieve_id( $ID )
+=head2 $obj = CPANPLUS::Internals->_retrieve_id( $ID )
 
 Retrieve an object based on its ID -- return false on error.
 
-=head2 _remove_id( $ID )
+=head2 CPANPLUS::Internals->_remove_id( $ID )
 
 Remove the object marked by $ID from storage.
 
-=head2 _return_all_objects
+=head2 @objs = CPANPLUS::Internals->_return_all_objects
 
 Return all stored objects.
 
@@ -406,7 +447,7 @@ Return all stored objects.
         my $obj     = shift or return;
 
        unless( IS_INTERNALS_OBJ->($obj) ) {
-            cp_error( loc("The object you passed has the wrong ref type: '%1'",
+            error( loc("The object you passed has the wrong ref type: '%1'",
                         ref $obj) );
             return;
         }

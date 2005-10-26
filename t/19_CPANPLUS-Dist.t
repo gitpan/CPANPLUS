@@ -363,6 +363,63 @@ ok( $Mod,                       "Got module object" );
     }
 }
 
+
+### prereq satisfied tests
+{   my $map = {
+        # version   regex
+        0   =>      undef,
+        1   =>      undef,
+        2   =>      qr/have to resolve/,
+    };       
+
+    my $mod = CPANPLUS::Module::Fake->new(
+                    module  => $$,
+                    package => $$,
+                    path    => $$,
+                    version => 1 );
+
+    ok( $mod,                   "Fake module created" );
+    is( $mod->version, 1,       "   Version set correctly" );
+    
+     my $dist = CPANPLUS::Dist->new(
+                            format  => $Module,
+                            module  => $Mod
+                        );
+    
+    ok( $dist,                  "Dist object created" );
+    isa_ok( $dist,              $Module );
+    
+    
+    ### scope it for the locals
+    {   local $^W;  # quell sub redefined warnings;
+    
+        ### is_uptodate will need to return false for this test
+        local *CPANPLUS::Module::Fake::is_uptodate = sub { return };
+        local *CPANPLUS::Module::Fake::is_uptodate = sub { return };
+        CPANPLUS::Error->flush;    
+    
+    
+        ### it's satisfied
+        while( my($ver, $re) = each %$map ) {
+        
+            my $rv = $dist->prereq_satisfied(
+                        version => $ver,
+                        modobj  => $mod );
+                        
+            ok( 1,                  "Testing ver: $ver" );                    
+            is( $rv, undef,       "   Return value as expected" );
+            
+            if( $re ) {
+                like( CPANPLUS::Error->stack_as_string, $re,
+                                    "   Error as expected" );
+            }
+        
+            CPANPLUS::Error->flush;
+        }
+    }
+}
+
+
 ### dist_types tests
 {   can_ok( 'CPANPLUS::Dist',       'dist_types' );
 

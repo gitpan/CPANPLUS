@@ -129,7 +129,7 @@ sub new {
 
 
     unless( can_load( modules => { $format => '0.0' }, verbose => 1 ) ) {
-        cp_error(loc("'%1' not found -- you need '%2' version '%3' or higher ".
+        error(loc("'%1' not found -- you need '%2' version '%3' or higher ".
                     "to detect plugins", $format, 'Module::Pluggable','2.4'));
         return;
     }
@@ -139,7 +139,7 @@ sub new {
 
     ### check if the format is available in this environment ###
     if( $conf->_get_build('sanity_check') and not $obj->format_available ) {
-        cp_error( loc( "Format '%1' is not available",$format) );
+        error( loc( "Format '%1' is not available",$format) );
         return;
     }
 
@@ -154,7 +154,7 @@ sub new {
 
     ### now initialize it or admit failure
     unless( $obj->init ) {
-        cp_error(loc("Dist initialization of '%1' failed for '%2'",
+        error(loc("Dist initialization of '%1' failed for '%2'",
                     $format, $mod->module));
         return;
     }
@@ -212,6 +212,42 @@ Returns a list of the CPANPLUS::Dist::* classes available
     }
 }
 
+=head2 prereq_satisfied( modobj => $modobj, version => $version_spec )
+
+Returns true if this prereq is satisfied.  Returns false if it's not.
+Also issues an error if it seems "unsatisfiable," i.e. if it can't be
+found on CPAN or the latest CPAN version doesn't satisfy it.
+
+=cut
+
+sub prereq_satisfied {
+    my $dist = shift;
+    my $cb   = $dist->parent->parent;
+    my %hash = @_;
+  
+    my($mod,$ver);
+    my $tmpl = {
+        version => { required => 1, store => \$ver },
+        modobj  => { required => 1, store => \$mod, allow => IS_MODOBJ },
+    };
+    
+    check( $tmpl, \%hash ) or return;
+  
+    return 1 if $mod->is_uptodate( version => $ver );
+  
+    if ( $cb->_vcmp( $ver, $mod->version ) > 0 ) {
+
+        error(loc(  
+                "This distribution depends on %1, but the latest version".
+                " of %2 on CPAN (%3) doesn't satisfy the specific version".
+                " dependency (%4). You may have to resolve this dependency ".
+                "manually.", 
+                $mod->module, $mod->module, $mod->version, $ver ));
+  
+    }
+
+    return;
+}
 
 =head2 _resolve_prereqs
 
@@ -275,13 +311,13 @@ sub _resolve_prereqs {
         #### XXX we ignore the version, and just assume that the latest
         #### version from cpan will meet your requirements... dodgy =/
         unless( $modobj ) {
-            cp_error( loc( "No such module '%1' found on CPAN", $mod ) );
+            error( loc( "No such module '%1' found on CPAN", $mod ) );
             next;
         }
 
         ### it's not uptodate, we need to install it
-        if( !$modobj->is_uptodate(version => $version) ) {
-            cp_msg(loc("Module '%1' requires '%2' version '%3' to be installed ",
+        if( !$dist->prereq_satisfied(modobj => $modobj, version => $version)) {
+            msg(loc("Module '%1' requires '%2' version '%3' to be installed ",
                     $self->module, $modobj->module, $version), $verbose );
 
             push @install_me, [$modobj, $version];
@@ -290,10 +326,10 @@ sub _resolve_prereqs {
         ### manager... we'll need to install it as well, via the PM
         } elsif ( INSTALL_VIA_PACKAGE_MANAGER->($format) and
                     !$modobj->package_is_perl_core and
-                    ($target ne 'ignore')
+                    ($target ne TARGET_IGNORE)
         ) {
-            cp_msg(loc("Module '%1' depends on '%2', creating a '%3' package ".
-                    "for it as well", $self->module, $modobj->module,
+            msg(loc("Module '%1' depends on '%2', may need to build a '%3' ".
+                    "package for it as well", $self->module, $modobj->module,
                     $format));
             push @install_me, [$modobj, $version];
         }
@@ -306,16 +342,16 @@ sub _resolve_prereqs {
 
         ### but you have modules you need to install
         if( @install_me ) {
-            cp_msg(loc("Ignoring prereqs, this may mean your install will fail"),
+            msg(loc("Ignoring prereqs, this may mean your install will fail"),
                 $verbose);
-            cp_msg(loc("'%1' listed the following dependencies:", $self->module),
+            msg(loc("'%1' listed the following dependencies:", $self->module),
                 $verbose);
 
             for my $aref (@install_me) {
                 my ($mod,$version) = @$aref;
 
                 my $str = sprintf "\t%-35s %8s\n", $mod->module, $version;
-                cp_msg($str,$verbose);
+                msg($str,$verbose);
             }
 
             return;
@@ -336,7 +372,7 @@ sub _resolve_prereqs {
         ### if either force or prereq_build are given, the prereq
         ### should be built anyway
         next if (!$force and !$prereq_build) && 
-                $modobj->is_uptodate(version => $version);
+                $dist->prereq_satisfied(modobj => $modobj, version => $version);
 
         ### either we're told to ignore the prereq,
         ### or the user wants us to ask him
@@ -344,7 +380,7 @@ sub _resolve_prereqs {
               $cb->_callbacks->install_prerequisite->($self, $modobj)
             )
         ) {
-            cp_msg(loc("Will not install prerequisite '%1' -- Note " .
+            msg(loc("Will not install prerequisite '%1' -- Note " .
                     "that the overall install may fail due to this",
                     $modobj->module), $verbose);
             next;
@@ -354,14 +390,14 @@ sub _resolve_prereqs {
         if( defined $modobj->status->installed
             && !$modobj->status->installed
         ) {
-            cp_error( loc( "Prerequisite '%1' failed to install before in " .
+            error( loc( "Prerequisite '%1' failed to install before in " .
                         "this session", $modobj->module ) );
             $flag++;
             last;
         }
 
         if( $modobj->package_is_perl_core ) {
-            cp_error(loc("Prerequisite '%1' is perl-core (%2) -- not ".
+            error(loc("Prerequisite '%1' is perl-core (%2) -- not ".
                       "installing that. Aborting install",
                       $modobj->module, $modobj->package ) );
             $flag++;
@@ -373,7 +409,7 @@ sub _resolve_prereqs {
 
         ### recursive dependency ###
         if ( $pending->{ $modobj->module } ) {
-            cp_error( loc( "Recursive dependency detected (%1) -- skipping",
+            error( loc( "Recursive dependency detected (%1) -- skipping",
                         $modobj->module ) );
             next;
         }
@@ -397,7 +433,7 @@ sub _resolve_prereqs {
                                     format  => $format,
                                     target  => $target )
         ) {
-            cp_error(loc("Failed to install '%1' as prerequisite " .
+            error(loc("Failed to install '%1' as prerequisite " .
                       "for '%2'", $modobj->module, $self->module ) );
             $flag++;
         }
@@ -411,15 +447,11 @@ sub _resolve_prereqs {
         ### don't want us to install? ###
         if( $target ne TARGET_INSTALL ) {
             my $dir = $modobj->status->extract
-                        or cp_error(loc("No extraction dir for '%1' found ".
+                        or error(loc("No extraction dir for '%1' found ".
                                      "-- weird", $modobj->module));
 
-            $cb->_add_to_includepath(
-                    directories => [
-                        File::Spec->catdir(BLIB->($dir), LIB),
-                        File::Spec->catdir(BLIB->($dir), ARCH),
-                    ]
-            );
+            $modobj->add_to_includepath();
+            
             next;
         }
     }

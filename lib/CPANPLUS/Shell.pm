@@ -213,7 +213,7 @@ sub _pager_open {
 
     my $fh = new FileHandle;
     unless ( $fh->open("| $cmd") ) {
-        cp_error(loc("could not pipe to %1: %2\n", $cmd, $!) );
+        error(loc("could not pipe to %1: %2\n", $cmd, $!) );
         return;
     }
 

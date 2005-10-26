@@ -164,7 +164,7 @@ sub distributions {
         if( @list ) {
             $mod = $list[0];
         } else {
-            cp_error( loc( "This author has released no modules" ) );
+            error( loc( "This author has released no modules" ) );
             return;
         }
     }

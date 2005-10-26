@@ -457,7 +457,7 @@ sub parse_module {
     }
 
     unless( $dist ) {
-        cp_error( loc("%1 is not a proper distribution name!", $mod) );
+        error( loc("%1 is not a proper distribution name!", $mod) );
         return;
     }
     
@@ -573,10 +573,10 @@ sub parse_module {
     } else {
 
         unless( $author ) {
-            cp_error( loc( "'%1' does not contain an author part", $mod ) );
+            error( loc( "'%1' does not contain an author part", $mod ) );
         }
 
-        cp_error( loc( "Cannot find '%1' in the module tree", $mod ) );
+        error( loc( "Cannot find '%1' in the module tree", $mod ) );
     }
 
     return;
@@ -624,7 +624,7 @@ sub reload_indices {
                                 verbose     => $conf->get_conf('verbose'),
                             );
 
-    cp_error( loc( "Error rebuilding source trees!" ) );
+    error( loc( "Error rebuilding source trees!" ) );
 
     return;
 }
@@ -689,7 +689,7 @@ sub flush {
 
     my $aref = $cache->{$type}
                     or (
-                        cp_error( loc("No such cache '%1'", $type) ),
+                        error( loc("No such cache '%1'", $type) ),
                         return
                     );
 
@@ -777,11 +777,11 @@ sub local_mirror {
 
     unless( -d $path ) {
         $self->_mkdir( dir => $path )
-                or( cp_error( loc( "Could not create '%1', giving up", $path ) ),
+                or( error( loc( "Could not create '%1', giving up", $path ) ),
                     return
                 );
     } elsif ( ! -w _ ) {
-        cp_error( loc( "Could not write to '%1', giving up", $path ) );
+        error( loc( "Could not write to '%1', giving up", $path ) );
         return;
     }
 
@@ -807,7 +807,7 @@ sub local_mirror {
                 $mod->_get_checksums_file(
                             %opts
                         ) or (
-                            cp_error( loc( "Could not fetch %1 file, " .
+                            error( loc( "Could not fetch %1 file, " .
                                         "skipping author '%2'",
                                         CHECKSUMS, $auth->cpanid ) ),
                             $flag++, next AUTHOR
@@ -815,7 +815,7 @@ sub local_mirror {
             }
 
             $mod->fetch( %opts )
-                    or( cp_error( loc( "Could not fetch '%1'", $mod->module ) ),
+                    or( error( loc( "Could not fetch '%1'", $mod->module ) ),
                         $flag++, next MODULE
                     );
         } }
@@ -872,7 +872,7 @@ sub autobundle {
 
     unless( -d $path ) {
         $self->_mkdir( dir => $path )
-                or( cp_error(loc("Could not create directory '%1'", $path ) ),
+                or( error(loc("Could not create directory '%1'", $path ) ),
                     return
                 );
     }
@@ -897,7 +897,7 @@ sub autobundle {
     }
     my $fh;
     unless( $fh = FileHandle->new( ">$file" ) ) {
-        cp_error( loc( "Could not open '%1' for writing: %2", $file, $! ) );
+        error( loc( "Could not open '%1' for writing: %2", $file, $! ) );
         return;
     }
 

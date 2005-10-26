@@ -39,7 +39,7 @@ CPANPLUS libraries.
 
 =head1 METHODS
 
-=head2 _mkdir( dir => '/some/dir' )
+=head2 $cb->_mkdir( dir => '/some/dir' )
 
 C<_mkdir> creates a full path to a directory.
 
@@ -59,7 +59,7 @@ sub _mkdir {
     my $args = check( $tmpl, \%hash ) or return;
 
     unless( can_load( modules => { 'File::Path' => 0.0 } ) ) {
-        cp_error( loc("Could not use File::Path! This module should be core!") );
+        error( loc("Could not use File::Path! This module should be core!") );
         return;
     }
 
@@ -67,7 +67,7 @@ sub _mkdir {
 
     if($@) {
         chomp($@);
-        cp_error(loc(qq[Could not create directory '%1': %2], $args->{dir}, $@ ));
+        error(loc(qq[Could not create directory '%1': %2], $args->{dir}, $@ ));
         return;
     }
 
@@ -76,7 +76,7 @@ sub _mkdir {
 
 =pod
 
-=head2 _chdir( dir => '/some/dir' )
+=head2 $cb->_chdir( dir => '/some/dir' )
 
 C<_chdir> changes directory to a dir.
 
@@ -95,7 +95,7 @@ sub _chdir {
     my $args = check( $tmpl, \%hash ) or return;
 
     unless( chdir $args->{dir} ) {
-        cp_error( loc(q[Could not chdir into '%1'], $args->{dir}) );
+        error( loc(q[Could not chdir into '%1'], $args->{dir}) );
         return;
     }
 
@@ -104,7 +104,7 @@ sub _chdir {
 
 =pod
 
-=head2 _rmdir( dir => '/some/dir' );
+=head2 $cb->_rmdir( dir => '/some/dir' );
 
 Removes a directory completely, even if it is non-empty.
 
@@ -123,7 +123,7 @@ sub _rmdir {
     my $args = check( $tmpl, \%hash ) or return;
 
     unless( can_load( modules => { 'File::Path' => 0.0 } ) ) {
-        cp_error( loc("Could not use File::Path! This module should be core!") );
+        error( loc("Could not use File::Path! This module should be core!") );
         return;
     }
 
@@ -131,7 +131,7 @@ sub _rmdir {
 
     if($@) {
         chomp($@);
-        cp_error(loc(qq[Could not delete directory '%1': %2], $args->{dir}, $@ ));
+        error(loc(qq[Could not delete directory '%1': %2], $args->{dir}, $@ ));
         return;
     }
 
@@ -140,7 +140,7 @@ sub _rmdir {
 
 =pod
 
-=head2 _perl_version ( perl => 'some/perl/binary' );
+=head2 $cb->_perl_version ( perl => 'some/perl/binary' );
 
 C<_perl_version> returns the version of a certain perl binary.
 It does this by actually running a command.
@@ -179,7 +179,7 @@ sub _perl_version {
 
 =pod
 
-=head2 _version_to_number( version => $version );
+=head2 $cb->_version_to_number( version => $version );
 
 Returns a proper module version, or '0.0' if none was available.
 
@@ -202,7 +202,7 @@ sub _version_to_number {
 
 =pod
 
-=head2 _whoami
+=head2 $cb->_whoami
 
 Returns the name of the subroutine you're currently in.
 
@@ -235,7 +235,7 @@ sub _get_file_contents {
     return $contents;
 }
 
-=pod _move( from => $file|$dir, to => $target );
+=pod $cb->_move( from => $file|$dir, to => $target );
 
 Moves a file or directory to the target.
 
@@ -259,10 +259,18 @@ sub _move {
     if( File::Copy::move( $from, $to ) ) {
         return 1;
     } else {
-        cp_error(loc("Failed to move '%1' to '%2': %3", $from, $to, $!));
+        error(loc("Failed to move '%1' to '%2': %3", $from, $to, $!));
         return;
     }
 }
+
+=pod $cb->_copy( from => $file|$dir, to => $target );
+
+Moves a file or directory to the target.
+
+Returns true on success, false on failure.
+
+=cut
 
 sub _copy {
     my $self = shift;
@@ -280,10 +288,18 @@ sub _copy {
     if( File::Copy::copy( $from, $to ) ) {
         return 1;
     } else {
-        cp_error(loc("Failed to copy '%1' to '%2': %3", $from, $to, $!));
+        error(loc("Failed to copy '%1' to '%2': %3", $from, $to, $!));
         return;
     }
 }
+
+=head2 $cb->_mode_plus_w( file => '/path/to/file' );
+
+Sets the +w bit for the file.
+
+Returns true on success, false on failure.
+
+=cut
 
 sub _mode_plus_w {
     my $self = shift;
@@ -298,15 +314,26 @@ sub _mode_plus_w {
     
     check( $tmpl, \%hash ) or return;
     
-    my $x = File::stat::stat( $file );
-    if( $x and chmod( $x->mode|0200, $file ) ) {
+    ### set the mode to +w for a file and +wx for a dir
+    my $x       = File::stat::stat( $file );
+    my $mask    = -d $file ? 0100 : 0200;
+    
+    if( $x and chmod( $x->mode|$mask, $file ) ) {
         return 1;
 
     } else {        
-        cp_error(loc("Failed to '%1' '%2': '%3'", 'chmod +w', $file, $!));
+        error(loc("Failed to '%1' '%2': '%3'", 'chmod +w', $file, $!));
         return;
     }
 }    
+
+=head2 $uri = $cb->_host_to_uri( scheme => SCHEME, host => HOST, path => PATH );
+
+Turns a CPANPLUS::Config style C<host> entry into an URI string.
+
+Returns the uri on success, and false on failure
+
+=cut
 
 sub _host_to_uri {
     my $self = shift;
@@ -326,6 +353,20 @@ sub _host_to_uri {
     return "$scheme://" . File::Spec::Unix->catdir( $host, $path ); 
 }
 
+=head2 $cb->_vcmp( VERSION, VERSION );
+
+Normalizes the versions passed and does a '<=>' on them, returning the result.
+
+=cut
+
+sub _vcmp {
+    my $self = shift;
+    my ($x, $y) = @_;
+    
+    s/_//g foreach $x, $y;
+
+    return $x <=> $y;
+}
 
 1;
 

@@ -380,7 +380,7 @@ find out exactly what C<CPANPLUS::inc> is doing.
             ### or otherwise, the one not bundled
             ### or otherwise the newest
             my @sorted = sort {
-                            vcmp($b->[0], $a->[0])                  ||
+                            _vcmp($b->[0], $a->[0])                  ||
                             ($Cache{$interesting}
                                 ?($b->[2] eq $Cache{$interesting}->[0][2]) <=>
                                  ($a->[2] eq $Cache{$interesting}->[0][2])
@@ -395,7 +395,7 @@ find out exactly what C<CPANPLUS::inc> is doing.
                     if $DEBUG;
 
             if( $check_version and 
-                not (vcmp($sorted[0][0], $map->{$module}) >= 0) 
+                not (_vcmp($sorted[0][0], $map->{$module}) >= 0) 
             ) {
                 warn __PACKAGE__ .": Cannot find high enough version for "
                                  ."'$module' -- need '$map->{$module}' but "
@@ -431,7 +431,8 @@ find out exactly what C<CPANPLUS::inc> is doing.
     }
 }
 
-sub vcmp {
+### XXX copied from C::I::Utils, so there's no circular require here!
+sub _vcmp {
     my ($x, $y) = @_;
     s/_//g foreach $x, $y;
     return $x <=> $y;

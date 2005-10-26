@@ -28,12 +28,20 @@ C<$MSG_FH>, see the C<GLOBAL VARIABLES> section below), if the
 C<VERBOSE> option is true.
 The C<VERBOSE> option defaults to false.
 
+=head2 msg()
+
+An alias for C<cp_msg>.
+
 =head2 cp_error("error string" [,VERBOSE])
 
 Records an error on the stack, and prints it to C<STDERR> (or actually
 C<$ERROR_FH>, see the C<GLOBAL VARIABLES> sections below), if the
 C<VERBOSE> option is true.
 The C<VERBOSE> options defaults to true.
+
+=head2 error()
+
+An alias for C<cp_error>.
 
 =head1 CLASS METHODS
 
@@ -65,18 +73,23 @@ BEGIN {
     use vars            qw[@EXPORT @ISA $ERROR_FH $MSG_FH];
 
     @ISA        = 'Exporter';
-    @EXPORT     = qw[cp_error cp_msg];
+    @EXPORT     = qw[cp_error cp_msg error msg];
 
     my $log     = new Log::Message;
 
     for my $func ( @EXPORT ) {
         no strict 'refs';
+        
+        my $prefix  = 'cp_';
+        my $name    = $func;
+        $name       =~ s/^$prefix//g;
+        
         *$func = sub {
                         my $msg     = shift;
                         $log->store(
                                 message => $msg,
-                                tag     => uc $func,
-                                level   => $func,
+                                tag     => uc $name,
+                                level   => $prefix . $name,
                                 extra   => [@_]
                         );
                 };
@@ -108,12 +121,12 @@ BEGIN {
 
 =item $ERROR_FH
 
-This is the filehandle all the messages sent to C<cp_error()> are being
+This is the filehandle all the messages sent to C<error()> are being
 printed. This defaults to C<*STDERR>.
 
 =item $MSG_FH
 
-This is the filehandle all the messages sent to C<cp_msg()> are being
+This is the filehandle all the messages sent to C<msg()> are being
 printed. This default to C<*STDOUT>.
 
 =cut
@@ -135,8 +148,7 @@ use Carp ();
 
         my $old_fh = select $CPANPLUS::Error::MSG_FH;
 
-        my $tag = $self->tag(); $tag =~ s/cp_//i;
-        print '['. $tag . '] ' . $self->message . "\n";
+        print '['. $self->tag . '] ' . $self->message . "\n";
         select $old_fh;
 
         return;
@@ -156,8 +168,7 @@ use Carp ();
 
         ### maybe we didn't initialize an internals object (yet) ###
         my $debug   = $cb ? $cb->configure_object->get_conf('debug') : 0;
-        my $tag     = $self->tag(); $tag =~ s/cp_//i;
-        my $msg     =  '['. $tag . '] ' . $self->message . "\n";
+        my $msg     =  '['. $self->tag . '] ' . $self->message . "\n";
 
         ### i'm getting this warning in the test suite:
         ### Ambiguous call resolved as CORE::warn(), qualify as such or

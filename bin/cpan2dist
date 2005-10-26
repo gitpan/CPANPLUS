@@ -7,8 +7,11 @@ use Getopt::Long;
 use File::Basename;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-use constant PREREQ_SKIP_CLASS => 'CPANPLUS::To::Dist::PREREQ_SKIP';
+use constant PREREQ_SKIP_CLASS  => 'CPANPLUS::To::Dist::PREREQ_SKIP';
+use constant ALARM_CLASS        => 'CPANPLUS::To::Dist::ALARM';
 
+### print when you can
+$|++;
 
 my $cb      = CPANPLUS::Backend->new
                 or die loc("Could not create new CPANPLUS::Backend object");
@@ -23,8 +26,10 @@ GetOptions( $opts,
             'skiptest!',    'keepsource!',
             'makefile!',    'buildprereq!',
             'help',         'flushcache',
-            'ignore=s@',    'ignorelist=s',
-            'defaults',     'modulelist=s',
+            'ban=s@',       'banlist=s@',
+            'ignore=s@',    'ignorelist=s@',
+            'defaults',     'modulelist=s@',
+            'logfile=s',    'timeout=s'
         );
 
 die usage() if exists $opts->{'help'};
@@ -35,6 +40,9 @@ my $keep        = $opts->{'keepsource'} ? 1 : 0;
 my $prereqbuild = exists $opts->{'buildprereq'}
                     ? $opts->{'buildprereq'}
                     : 0;
+my $timeout     = exists $opts->{'timeout'} 
+                    ? $opts->{'timeout'} 
+                    : 300;
 
 ### use default answers?
 $ENV{'PERL_MM_USE_DEFAULT'} = $opts->{'defaults'} ? 1 : 0;
@@ -69,26 +77,43 @@ my $format;
     my $makefile    = exists $opts->{'makefile'}   
                             ? $opts->{'makefile'} 
                             : $conf->get_conf('prefer_makefile');
-    $conf->get_conf( prefer_makefile => $makefile );
+    $conf->set_conf( prefer_makefile => $makefile );
 }
 
 my @modules = @ARGV;
-if( $opts->{'modulelist'} ) {
-    push @modules, parse_file( $opts->{'modulelist'} ); 
+if( exists $opts->{'modulelist'} ) {
+    push @modules, map { parse_file( $_ ) } @{ $opts->{'modulelist'} }; 
 } 
 
 die usage() unless @modules;
 
 
+my $fh;
+LOGFILE: {
+    if( my $file = $opts->{logfile} ) {
+        open $fh, ">$file" or ( 
+            warn loc("Could not open '%1' for writing: %2", $file,$!),
+            last LOGFILE
+        );            
+        
+        warn "Logging to '$file'\n";
+        
+        *STDERR = $fh;
+        *STDOUT = $fh;
+    }
+}
+
 ### reload indices if so desired
 $cb->reload_indices() if $opts->{'flushcache'};
 
-{   my @ignore      = exists $opts->{'ignore'}  
-                            ? map { qr/$_/ } @{ $opts->{'ignore'} }
+{   my @ban      = exists $opts->{'ban'}  
+                            ? map { qr/$_/ } @{ $opts->{'ban'} }
                             : ();
 
-    push @ignore, parse_file( $opts->{'ignorelist'}, 1 ) 
-            if $opts->{'ignorelist'};
+
+    if( exists $opts->{'banlist'} ) {
+        push @ban, map { parse_file( $_, 1 ) } @{ $opts->{'banlist'} };
+    }
     
     ### use our prereq install callback 
     $conf->set_conf( prereqs => PREREQ_ASK );
@@ -100,7 +125,7 @@ $cb->reload_indices() if $opts->{'flushcache'};
     );
 
     
-    ### check for ignore patterns when handling prereqs
+    ### check for ban patterns when handling prereqs
     sub __ask_about_install {
   
         my $mod     = shift or return;
@@ -110,13 +135,61 @@ $cb->reload_indices() if $opts->{'flushcache'};
         ### die with an error object, so we can verify that
         ### the die came from this location, and that it's an
         ### 'acceptable' death
-        my $pat = ignore_me( $prereq );
+        my $pat = ban_me( $prereq );
         die bless \(loc("Module '%1' requires '%2' to be installed " .
-                    "but found in your ignore list (%3) -- skipping",
+                    "but found in your ban list (%3) -- skipping",
                     $mod->module, $prereq->module, $pat )),
                     PREREQ_SKIP_CLASS if $pat;
         return 1;
     }    
+    
+    ### should we skip this module?
+    sub ban_me {
+        my $mod = shift;
+        
+        for my $pat ( @ban ) {
+            return $pat if $mod->module =~ /$pat/;
+        }
+        return;
+    }
+}    
+
+### patterns to strip from prereq lists
+{   my @ignore      = exists $opts->{'ignore'}  
+                        ? map { qr/$_/ } @{ $opts->{'ignore'} }
+                        : ();
+
+    if( exists $opts->{'ignorelist'} ) {
+        push @ignore, map { parse_file( $_, 1 ) } @{ $opts->{'ignorelist'} };
+    }
+
+    
+    ### register install callback ###
+    $cb->_register_callback(
+            name    => 'filter_prereqs',
+            code    => \&__filter_prereqs,
+    );
+
+    sub __filter_prereqs {
+        my $cb      = shift;
+        my $href    = shift;
+        
+        for my $name ( keys %$href ) {
+            my $obj = $cb->parse_module( module => $name ) or (
+                warn "Cannot make a module object out of ".
+                        "'$name' -- skipping\n",
+                next );
+
+            if( my $pat = ignore_me( $obj ) ) {
+                warn loc("'%1' found in your ignore list (%2) ".
+                         "-- filtering it out\n", $name, $pat);
+
+                delete $href->{ $name };                         
+            }
+        }
+
+        return $href;
+    }
     
     ### should we skip this module?
     sub ignore_me {
@@ -124,10 +197,11 @@ $cb->reload_indices() if $opts->{'flushcache'};
         
         for my $pat ( @ignore ) {
             return $pat if $mod->module =~ /$pat/;
+            return $pat if $mod->package_name =~ /$pat/;
         }
         return;
-    }
-}    
+    }   
+}     
 
 my %done;
 for my $name (@modules) {
@@ -170,24 +244,49 @@ for my $name (@modules) {
                 next );
     }
 
-    if( my $pat = ignore_me( $obj ) ) {
-        warn loc("'%1' found in your ignore list (%2) -- skipping",
+    ### you banned it?
+    if( my $pat = ban_me( $obj ) ) {
+        warn loc("'%1' found in your ban list (%2) -- skipping\n",
                     $obj->module, $pat );
         next;
     }        
+    
+    ### or just ignored it? 
+    if( my $pat = ignore_me( $obj ) ) {
+        warn loc("'%1' found in your ignore list (%2) -- skipping\n",
+                    $obj->module, $pat );
+        next;
+    }        
+    
 
-    my $dist = eval { $obj->install(   
-                                prereq_target   => 'create',
-                                target          => 'create',
-                                keep_source     => $keep,
-                                prereq_build    => $prereqbuild )
+    my $dist = eval { 
+                    local $SIG{ALRM} = sub { die bless {}, ALARM_CLASS }
+                        if $timeout;
+                        
+                    alarm $timeout || 0;
+                    
+                    $obj->install(   
+                            prereq_target   => 'create',
+                            target          => 'create',
+                            keep_source     => $keep,
+                            prereq_build    => $prereqbuild );
+    
+                    alarm 0;                            
                 }; 
+                
+    ### set here again, in case the install dies
+    alarm 0;
 
     ### install failed due to a 'die' in our prereq skipper?
     if( $@ and ref $@ and $@->isa( PREREQ_SKIP_CLASS ) ) {
         warn loc("Dist creation of '%1' skipped: '%2'", 
                     $obj->module, ${$@} );
         next;
+
+    } elsif ( $@ and ref $@ and $@->isa( ALARM_CLASS ) ) {
+        warn loc("\nDist creation of '%1' skipped, build time exceeded: ".
+                 "%2 seconds\n", $obj->module, $timeout );
+        next;                    
 
     ### died for some other reason? just report and skip
     } elsif ( $@ ) {
@@ -265,12 +364,28 @@ Options:
 
     ### take argument:
     --format        Installer format to use (defaults to your config setting)
-    --ignore        Patterns of module names to skip during installation (also
+    --ban           Patterns of module names to skip during installation (also
                     affects prerequisites). May be given multiple times
-    --ignorelist    File containing patterns that could be given to --ignore
-                    Are appended to the ignore list built up by --ignore
+    --banlist       File containing patterns that could be given to --ban
+                    Are appended to the ban list built up by --ban
+                    May be given multiple times.
+    --ignore        Patterns of modules to exclude from prereq lists. Useful
+                    for when a prereq listed by a CPAN module is resolved in
+                    another way than from its corresponding CPAN package
+                    (Match is done on both module name, and package name of
+                    the package the module is in)
+    --ignorelist    File containing patterns that could be given to --ignore.
+                    Are appended to the ban list build up by --ignore.
+                    May be given multiple times.
     --modulelist    File containing a list of modules that should be built.
-                    Are appended to the list of command line modules
+                    Are appended to the list of command line modules.
+                    May be given multiple times.
+    --logfile       File to log all output to. By default, all output goes
+                    to the console.
+    --timeout       Sets the allowed time for buliding a distribution before
+                    aborting. This is useful to terminate any build that hang
+                    or happen to be interactive despite being told not to be.
+                    Defaults to 300 seconds. To turn off, you can set it to 0.
     
 Examples:
 
@@ -285,9 +400,18 @@ Examples:
     
     ### build a package from Net::FTP, but dont build any packages or
     ### dependencies whose name match 'Foo', 'Bar' or any of the patterns
-    ### mentioned in /tmp/ignore
-    $me --ignore Foo --ignore Bar --igorelist /tmp/ignore Net::FTP
+    ### mentioned in /tmp/ban
+    $me --ban Foo --ban Bar --banlist /tmp/ban Net::FTP
     
+    ### build a package from Net::FTP, but ignore it's listed dependency
+    ### on IO::Socket, as it's shipped per default with the OS we're on
+    $me --ignore IO::Socket Net::FTP
+    
+    ### building all modules listed, plus their prerequisites
+    $me --ignorelist /tmp/modules.ignore --banlist /tmp/modules.ban 
+      --modulelist /tmp/modules.list --buildprereq --flushcache 
+      --makefile --defaults
+      
     \n]
 }
 
@@ -311,8 +435,8 @@ cpan2dist - The CPANPLUS distribution creator
     
     ### build a package from Net::FTP, but dont build any packages or
     ### dependencies whose name match 'Foo', 'Bar' or any of the patterns
-    ### mentioned in /tmp/ignore
-    cpan2dist --ignore Foo --ignore Bar --igorelist /tmp/ignore Net::FTP
+    ### mentioned in /tmp/ban
+    cpan2dist --ban Foo --ban Bar --igorelist /tmp/ban Net::FTP
     
     ### please consult the usage message for elaborate options. Also 
     ### lists available formats.

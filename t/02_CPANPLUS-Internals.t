@@ -95,6 +95,7 @@ is($cb->_id, $cb->_last_id, "Comparing ID's");
         edit_test_report        => 0,   # edit the prepared test report?
         send_test_report        => 1,   # send the test report?
         munge_test_report       => $$,  # munge the test report
+        filter_prereqs          => $$,  # limit prereqs
     };
 
     for my $callback ( keys %$callback_map ) {
