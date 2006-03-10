@@ -294,7 +294,7 @@ sub __file_fetch {
     my $ff = File::Fetch->new( uri => $where );
 
     ### sanity check ###
-    error(loc("Bad uri '%1'",$where)),next unless $ff;
+    error(loc("Bad uri '%1'",$where)), return unless $ff;
 
     if( my $file = $ff->fetch( to => $local_path ) ) {
         unless( -e $file && -s _ ) {

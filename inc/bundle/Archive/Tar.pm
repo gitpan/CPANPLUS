@@ -14,7 +14,7 @@ use vars qw[$DEBUG $error $VERSION $WARN $FOLLOW_SYMLINK $CHOWN $CHMOD
 $DEBUG              = 0;
 $WARN               = 1;
 $FOLLOW_SYMLINK     = 0;
-$VERSION            = "1.26";
+$VERSION            = "1.29";
 $CHOWN              = 1;
 $CHMOD              = 1;
 $DO_NOT_USE_PREFIX  = 0;
@@ -133,6 +133,12 @@ The second argument may be considered optional if IO::Zlib is
 installed, since it will transparently Do The Right Thing.
 Archive::Tar will warn if you try to pass a compressed file if
 IO::Zlib is not available and simply return.
+
+Note that you can currently B<not> pass a C<gzip> compressed
+filehandle, which is not opened with C<IO::Zlib>, nor a string
+containing the full archive information (either compressed or
+uncompressed). These are worth while features, but not currently
+implemented. See the C<TODO> section.
 
 The third argument can be a hash reference with options. Note that
 all options are case-sensitive.
@@ -262,6 +268,18 @@ sub _read_tar {
         ### source code (tar.c) to GNU cpio.
         next if $chunk eq TAR_END;
 
+        ### according to the posix spec, the last 12 bytes of the header are
+        ### null bytes, to pad it to a 512 byte block. That means if these
+        ### bytes are NOT null bytes, it's a corrrupt header. See:
+        ### www.koders.com/c/fidCE473AD3D9F835D690259D60AD5654591D91D5BA.aspx
+        ### line 111
+        {   my $nulls = join '', "\0" x 12;
+            unless( $nulls eq substr( $chunk, 500, 12 ) ) {
+                $self->_error( qq[Invalid header block at offset $offset] );
+                next LOOP;
+            }
+        }
+
         ### pass the realname, so we can set it 'proper' right away
         ### some of the heuristics are done on the name, so important
         ### to set it ASAP
@@ -273,7 +291,7 @@ sub _read_tar {
                                                         %extra_args ) 
             ) {
                 $self->_error( qq[Couldn't read chunk at offset $offset] );
-                next;
+                next LOOP;
             }
         }
 
@@ -306,7 +324,7 @@ sub _read_tar {
             if( $handle->read( $$data, $block ) < $block ) {
                 $self->_error( qq[Read error on tarfile (missing data) '].
                                     $entry->full_path ."' at offset $offset" );
-                next;
+                next LOOP;
             }
 
             ### throw away trailing garbage ###
@@ -344,7 +362,7 @@ sub _read_tar {
         ### this is one ugly hack =/ but needed for direct extraction
         if( $entry->is_longlink ) {
             $real_name = $data;
-            next;
+            next LOOP;
         } elsif ( defined $real_name ) {
             $entry->name( $$real_name );
             $entry->prefix('');
@@ -414,22 +432,34 @@ Returns a list of filenames extracted.
 
 sub extract {
     my $self    = shift;
+    my @args    = @_;
     my @files;
 
     ### you requested the extraction of only certian files
-    if( @_ ) {
-        for my $file (@_) {
-            my $found;
-            for my $entry ( @{$self->_data} ) {
-                next unless $file eq $entry->full_path;
+    if( @args ) {
+        for my $file ( @args ) {
+            
+            ### it's already an object?
+            if( UNIVERSAL::isa( $file, 'Archive::Tar::File' ) ) {
+                push @files, $file;
+                next;
 
-                ### we found the file you're looking for
-                push @files, $entry;
-                $found++;
-            }
-
-            unless( $found ) {
-                return $self->_error( qq[Could not find '$file' in archive] );
+            ### go find it then
+            } else {
+            
+                my $found;
+                for my $entry ( @{$self->_data} ) {
+                    next unless $file eq $entry->full_path;
+    
+                    ### we found the file you're looking for
+                    push @files, $entry;
+                    $found++;
+                }
+    
+                unless( $found ) {
+                    return $self->_error( 
+                        qq[Could not find '$file' in archive] );
+                }
             }
         }
 
@@ -465,6 +495,8 @@ For example:
 
     $tar->extract_file( 'name/in/archive', 'name/i/want/to/give/it' );
 
+    $tar->extract_file( $at_file_object,   'name/i/want/to/give/it' );
+
 Returns true on success, false on failure.
 
 =cut
@@ -484,7 +516,6 @@ sub _extract_file {
     my $self    = shift;
     my $entry   = shift or return;
     my $alt     = shift;
-    my $cwd     = cwd();
 
     ### you wanted an alternate extraction location ###
     my $name = defined $alt ? $alt : $entry->full_path;
@@ -507,6 +538,7 @@ sub _extract_file {
 
     ### it's a relative path ###
     } else {
+        my $cwd     = cwd();
         my @dirs    = File::Spec::Unix->splitdir( $dirs );
         my @cwd     = File::Spec->splitdir( $cwd );
         $dir        = File::Spec->catdir( @cwd, @dirs );
@@ -717,6 +749,9 @@ sub _find_entry {
         $self->_error( qq[No file specified] );
         return;
     }
+
+    ### it's an object already
+    return $file if UNIVERSAL::isa( $file, 'Archive::Tar::File' );
 
     for my $entry ( @{$self->_data} ) {
         my $path = $entry->full_path;
@@ -989,10 +1024,16 @@ sub write {
     ### write the end markers ###
     print $handle TAR_END x 2 or
             return $self->_error( qq[Could not write tar end markers] );
+
     ### did you want it written to a file, or returned as a string? ###
-    return length($file) ? 1
+    my $rv =  length($file) ? 1
                         : $HAS_PERLIO ? $dummy
-                        : do { seek $handle, 0, 0; local $/; <$handle> }
+                        : do { seek $handle, 0, 0; local $/; <$handle> };
+
+    ### make sure to close the handle;
+    close $handle;
+    
+    return $rv;
 }
 
 sub _format_tar_entry {
@@ -1100,8 +1141,44 @@ Will add a file to the in-memory archive, with name C<$filename> and
 content C<$data>. Specific properties can be set using C<$opthashref>.
 The following list of properties is supported: name, size, mtime
 (last modified date), mode, uid, gid, linkname, uname, gname,
-devmajor, devminor, prefix.  (On MacOS, the file's path and
+devmajor, devminor, prefix, type.  (On MacOS, the file's path and
 modification times are converted to Unix equivalents.)
+
+Valid values for the file type are the following constants defined in
+Archive::Tar::Constants:
+
+=over 4
+
+=item FILE
+
+Regular file.
+
+=item HARDLINK
+
+=item SYMLINK
+
+Hard and symbolic ("soft") links; linkname should specify target.
+
+=item CHARDEV
+
+=item BLOCKDEV
+
+Character and block devices. devmajor and devminor should specify the major
+and minor device numbers.
+
+=item DIR
+
+Directory.
+
+=item FIFO
+
+FIFO (named pipe).
+
+=item SOCKET
+
+Socket.
+
+=back
 
 Returns the C<Archive::Tar::File> object that was just added, or
 C<undef> on failure.
@@ -1250,8 +1327,10 @@ reference to an open file handle (e.g. a GLOB reference).
 If C<list_archive()> is passed an array reference as its third
 argument it returns a list of hash references containing the requested
 properties of each file.  The following list of properties is
-supported: name, size, mtime (last modified date), mode, uid, gid,
-linkname, uname, gname, devmajor, devminor, prefix.
+supported: full_path, name, size, mtime (last modified date), mode, 
+uid, gid, linkname, uname, gname, devmajor, devminor, prefix.
+
+See C<Archive::Tar::File> for details about supported properties.
 
 Passing an array reference containing only one element, 'name', is
 special cased to return a list of names rather than a list of hash
@@ -1458,6 +1537,23 @@ have incompatible filetypes and still expect things to work).
 For other filetypes, like C<chardevs> and C<blockdevs> we'll warn that
 the extraction of this particular item didn't work.
 
+=item How do I extract only files that have property X from an archive?
+
+Sometimes, you might not wish to extract a complete archive, just
+the files that are relevant to you, based on some criteria.
+
+You can do this by filtering a list of C<Archive::Tar::File> objects
+based on your criteria. For example, to extract only files that have
+the string C<foo> in their title, you would use:
+
+    $tar->extract( 
+        grep { $_->full_path =~ /foo/ } $tar->get_files
+    ); 
+
+This way, you can filter on any attribute of the files in the archive.
+Consult the C<Archive::Tar::File> documentation on how to use these
+objects.
+
 =item How do I access .tar.Z files?
 
 The C<Archive::Tar> module can optionally use C<Compress::Zlib> (via
@@ -1508,6 +1604,18 @@ write a C<.tar.Z> file
 
 Currently I don't know of any portable pure perl way to do this.
 Suggestions welcome.
+
+=item Allow archives to be passed in as string
+
+Currently, we only allow opened filehandles or filenames, but
+not strings. The internals would need some reworking to facilitate
+stringified archives.
+
+=item Facilitate processing an opened filehandle of a compressed archive
+
+Currently, we only support this if the filehandle is an IO::Zlib object.
+Environments, like apache, will present you with an opened filehandle
+to an uploaded file, which might be a compressed archive.
 
 =back
 

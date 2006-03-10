@@ -151,9 +151,12 @@ It would looks something like this:
 
 {
     my $map = {
+        ### used to have 0.80, but not it was never released by coral
+        ### 0.79 *should* be good enough for now... asked coral to 
+        ### release 0.80 on 10/3/2006
+        'IPC::Run'                  => '0.79', 
         'File::Fetch'               => '0.07',
         #'File::Spec'                => '0.82', # can't, need it ourselves...
-        'IPC::Run'                  => '0.80',
         'IPC::Cmd'                  => '0.24',
         'Locale::Maketext::Simple'  => 0,
         'Log::Message'              => 0,
@@ -167,6 +170,7 @@ It would looks something like this:
         'Object::Accessor'          => '0.03',
         'Module::CoreList'          => '1.97',
         'Module::Pluggable'         => '2.4',
+        'Module::Loaded'            => 0,
         #'Config::Auto'             => 0,   # not yet, not using it yet
     };
 

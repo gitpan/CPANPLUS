@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = "0.059_01";
+$VERSION = "0.060";
 
 =pod
 
@@ -473,13 +473,6 @@ Return all stored objects.
 
     sub _return_all_objects { return values %$idref }
 }
-
-sub END {
-    my @obs = __PACKAGE__->_return_all_objects();
-
-    $obs[0]->_save_source() if scalar @obs;
-}
-
 
 1;
 

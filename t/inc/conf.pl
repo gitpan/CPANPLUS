@@ -1,5 +1,16 @@
 BEGIN { chdir 't' if -d 't' };
-use lib qw[../lib inc config];
+BEGIN {
+    use File::Spec;
+    require lib;
+    my @paths = map { File::Spec->rel2abs($_) } qw[../lib inc];
+    
+    ### include them, relative from t/
+    for ( @paths ) { my $l = 'lib'; $l->import( $_ ) }
+
+    ### and add them to the environment, so shellouts get them
+    $ENV{'PERL5LIB'} = join ':', grep { defined } $ENV{'PERL5LIB'}, @paths;
+}
+
 use strict;
 use CPANPLUS::Configure;
 use CPANPLUS::inc;

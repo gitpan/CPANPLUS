@@ -14,7 +14,9 @@ BEGIN { chdir 't' if -d 't' };
 BEGIN {
     use File::Spec;
     require lib;
-    for (qw[../lib inc config]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    for (qw[../lib inc config]) { 
+        my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) 
+    }
 }
 
 use strict;
@@ -45,11 +47,11 @@ SKIP: {
     my $path = CPANPLUS::inc->inc_path();
     ok( $path,                  "Retrieved include path" );
     ok( -d $path,               "   Include path is an actual directory" );
-    
-    skip "No files actually bundled in perl core", 1 if $ENV{PERL_CORE};
-    
-    ok( -s File::Spec->catfile( $path, $File ),
-                                "   Found '$File' in include path" );
+
+    ### XXX no more files are bundled this way, it's obsolete    
+    #skip "No files actually bundled in perl core", 1 if $ENV{PERL_CORE};
+    #ok( -s File::Spec->catfile( $path, $File ),
+    #                            "   Found '$File' in include path" );
 
     ### we don't do this anymore
     #my $out = join '', `$^X -V`; my $qm_path = quotemeta $path;

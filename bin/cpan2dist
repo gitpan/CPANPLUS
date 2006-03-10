@@ -296,8 +296,11 @@ for my $name (@modules) {
     }        
 
     ### we didn't get a dist object back?
-    $dist or (warn loc("Unable to create '%1' dist of '%2'",
-                        $format, $obj->module), next);
+    ($dist and $obj->status->dist) or (
+        warn loc("Unable to create '%1' dist of '%2'", $format, $obj->module),
+        next
+    );
+
 
     print "Created '$format' distribution for ", $obj->module,
                 " to:\n\t", $obj->status->dist->status->dist, "\n";

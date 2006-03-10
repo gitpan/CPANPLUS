@@ -14,11 +14,15 @@ BEGIN {
 
 
 ### include lib to @INC ###
-BEGIN { use File::Spec;
-        require lib;
-        my $l = 'lib'; $l->import( qw[lib] );
+BEGIN { 
+    use File::Spec;
+    use vars qw[@ORIG_INC];
+    @ORIG_INC = @INC;       # store for later use
 
-        $l->import('../../lib' ) if $ENV{PERL_CORE}
+    require lib;
+    my $l = 'lib'; $l->import( qw[lib], File::Spec->catdir(qw[inc bundle]) );
+
+    $l->import('../../lib' ) if $ENV{PERL_CORE}
 }
 
 
@@ -83,6 +87,14 @@ my $JFDI;           # just write the bloody makefile.pl already
     $AutoInstall = 1 if $ENV{PERL_MM_USE_DEFAULT};
 }
 
+### just f***ing do it
+if( $JFDI ) {
+     $ConfigObj = CPANPLUS::Configure->new;
+    write_makefile(); 
+    exit;
+}
+
+
 ### there's issues with redhat 9.0's stock perl -- they applied some
 ### custom patches on their 5.8.0 and it breaks use constant a => sub {};
 if( $^O eq 'linux' and -e '/etc/redhat-release' and 
@@ -105,40 +117,6 @@ We're sorry for the inconvenience.
     ") . $/;
 
     require 5.008001;
-}
-
-### XXX prereq_pm doesn't deal with the 'perl' keyword as expected
-### find out from sqrn what to do
-if(0){
-#if( $^O eq 'cygwin' and $] < '5.008' ) {
-    print loc("
-### IMPORTANT! ######################################################
-
-You are using $^O with a perl version lower than perl-5.8 (namely $]).
-This is sadly not supported, because 'IPC::Run' doesn't work properly,
-meaning we cannot run commandline programs reliably.
-
-I'm afraid you will have to upgrade to perl-5.8 or higher to be able
-to use CPANPLUS on this operating system. This will be added to the
-Makefile.PL's 'PREREQ_PM' section so automated installers will 'Do
-The Right Thing'.
-
-We're sorry for the inconvenience.
-    \n");
-
-    $Prereq_pm->{'perl'} = '5.8.0';
-
-    sleep 3;
-}
-else {
-    $Prereq_pm->{'perl'} = '5.6.1';
-}
-
-### just f***ing do it
-if( $JFDI ) {
-     $ConfigObj = CPANPLUS::Configure->new;
-    write_makefile(); 
-    exit;
 }
 
 print loc("
@@ -191,11 +169,9 @@ if( $HasPrev = is_configured() ) {
     }      
 }
 
-### XXX fetch nmake? (module::install does that, can't get it to work properly)
 
 ### by now we have required a workable CPANPLUS::Config, which we can
 ### pass to setup.pm's constructor.
-
 my $term = Term::ReadLine->new('');
 if( setup_needed() ) {
     $ConfigObj = CPANPLUS::Configure->new;
@@ -209,11 +185,10 @@ if( setup_needed() ) {
     my $setup = CPANPLUS::Configure::Setup->new(
                     term                => $term,
                     configure_object    => $ConfigObj,
+                    autoreply           => $AutoInstall,
                 );
 
-    $setup->autosetup(1)    if $AutoInstall;
-    #$setup->skip_mirrors(1) if $HasPrev;
-    $setup->use_previous(1) if $HasPrev;
+    $setup->use_previous( $HasPrev ? 1 : 0 );
     
     $setup->init or die loc("Setup failed");
     
@@ -232,26 +207,15 @@ if( setup_needed() ) {
 
 ### check if the user wants to run setup ###
 sub setup_needed {
-    my $run_setup;
-
-    ### first, look for SETUP=1 or SETUP=yes in @ARGV
-    foreach my $arg (@ARGV) {
-        $run_setup   = (($1 =~ /[1yY]/) ? 1 : 0) 
-                                    if $arg =~ /^SETUP=(.)/i;
-        $AutoInstall = (($1 =~ /[1yY]/) ? 1 : 0) 
-                                    if $arg =~ /^AUTOINSTALL=(.)/i;
-    }
+    my $run_setup = $RunSetup;
 
     ### removes the SETUP=* and AUTOINSTALL=* to make MakeMaker happier
-    if (defined $run_setup) {
-        @ARGV = grep { $_ !~ /^(?:SETUP|AUTOINSTALL)=./i } @ARGV;
-    
+    if (defined $run_setup) {  
     
     ### can't tell from @ARGV, so ask the user instead
     } else {     
         my $prompt = (
-            $HasPrev ? loc("Manually configure CPANPLUS ".
-                            "based on previous settings?") :
+            $HasPrev ? loc("Use previous settings to configure CPANPLUS?") :
             $HasOld  ? loc("Old settings detected. Do you " .
                             "want to modify them?")
                       : loc("Do you want to configure CPANPLUS now?")
@@ -289,11 +253,11 @@ sub is_configured {
     ### no config found in the local tree, let's go looking on the rest
     ### of the filesystem
     ### silence any error coming out of this, 
-    eval {  local $CPANPLUS::Error::ERROR_FH;
+    my $load_ret = eval {  local $CPANPLUS::Error::ERROR_FH;
             CPANPLUS::Configure->_load_cpanplus_config };
    
     ### so we couldn't load a suitable config ###
-    return 0 if $@;
+    return 0 if ($@ || !$load_ret);
     
     ### ok, we found a config.pm, but is it a high enough version? 
     return 1 if CPANPLUS::Configure->_config_version_sufficient;
@@ -307,27 +271,6 @@ sub local_config { return File::Spec->catfile(qw|lib CPANPLUS Config.pm|); }
 sub write_makefile {
     my $tests = shift;
 
-    ### XXX skip autoinstall stuff now, as EU::AI doesn't know about CPANPLUS'
-    ### new API and therefore will die in annoying ways. --kane
-    ### we require a config object for autoinstall to determine defaults
-    #try_autoinstall() if $ConfigObj;  
-
-    print loc("
-### PLEASE NOTE ###################################################
-
-Since CPANPLUS 0.050 has a changed API, we cannot automatically 
-install extra modules for you using ExtUtils::AutoInstall. All 
-required non-core modules are therefore bundled with CPANPLUS and 
-you will not need to install anything extra to run CPANPLUS.
-
-If you wish to facilitate some of the features you've chosen, you
-should install them yourself once CPANPLUS is installed.
-
-###################################################################
-    
-    ");    
-
-
     my $string;
     my $mods = CPANPLUS::inc->interesting_modules;
     for my $mod ( sort keys %$mods ) {
@@ -338,63 +281,31 @@ should install them yourself once CPANPLUS is installed.
 ### PLEASE NOTE ###################################################
 
 Since CPANPLUS 0.050 has a few prerequisites that are not core
-perl (yet), they are bundled with the distribution. CPANPLUS will
-do it's best to use the right version of a module when it can, by
-looking in the bundle directory, if your systemwide module version
-is too low. However, ideally use you should really install these 
-modules yourself. You can do this as soon as you've installed
-CPANPLUS:
+perl (yet), they are bundled with the distribution for boot-
+strapping purposes.
 
-%1
+You should install these prerequisites before continueing to
+install CPANPLUS. You can use the bootstrapped CPANPLUS to do
+this for you with the following command:
 
-You can also have all of them installed for you, including all of
-the optional modules CPANPLUS supports, by installing:
-    
-        %2    
+    %1
 
 ###################################################################
     
-    ", $string, 'Bundle::CPANPLUS::Dependencies');  
+    ", "$^X bin/cpanp-boxed -i --force Bundle::CPANPLUS::Dependencies" );  
 
+
+    $Prereq_pm = { %$Prereq_pm, %$mods };
 
     ### depending on your choices, we might need to add some modules
     ### to your PREREQ_PM
-    {   unless( $ConfigObj->get_conf('prefer_makefile')  ) {
-    
-            print loc("
-### PLEASE NOTE ###################################################
-
-You have chosen to use '%1' where possible. Therefor we 
-will have to add a dependency on '%2'. 
-Please ensure it is installed.
-
-###################################################################
-
-            ", 'Module::Build', 'CPANPLUS::Dist::Build' );
-    
+    {   if( $ConfigObj && !$ConfigObj->get_conf('prefer_makefile')  ) {
             $Prereq_pm->{ 'CPANPLUS::Dist::Build' } = '0.01';
         }
     
         
         if( $^O eq 'MSWin32') {
-            my $win_mod = 'Win32::Process';
-        
-            unless( check_install(  module  => $win_mod,                                       
-                                    version => 0 )
-            ) {
-                print loc("
-### PLEASE NOTE ###################################################
-
-On Win32, the module '%1' is required, which you do 
-not appear to have installed currently. We will add a dependency 
-to it. Please ensure it is installed.
-
-###################################################################
-
-                ",  $win_mod );
-            }
-
-            $Prereq_pm->{ $win_mod } = 0;
+            $Prereq_pm->{ 'Win32::Process' } = 0;
         }
     }
 
@@ -434,6 +345,9 @@ under your version.
     ### to make sure all warnings align nicely again
     print "\n\n";
 
+    ### restore the original @INC, so proper probing of missing 
+    ### prereqs can be done
+    @INC = @ORIG_INC;
     name            ('CPANPLUS');
     author          ('Jos Boumans <kane@cpan.org>');
     abstract        ('Ameliorated interface to the CPAN');
@@ -445,9 +359,18 @@ under your version.
     makemaker_args  ( test => { TESTS => $tests } ) if $tests;
     makemaker_args  ( clean => { FILES => 't/.*.output' } );
 
-    ### write the makefile ###
-    #&WriteAll( check_nmake => 1, sign => 1 );
-    &WriteAll( check_nmake => 1 );
+    ### write the makefile 
+    ### this makes all prereqs rediscovered
+    {   use Module::Loaded;
+        for ( keys %{ CPANPLUS::inc->interesting_modules } ) {
+            mark_as_unloaded( $_ ) if is_loaded( $_ );
+        }            
+        
+        ### silence warnings about redefines... 
+        ### this will still warn about redefine of CONSTANTS subs...
+        no warnings; local $^W;
+        &WriteAll( check_nmake => 1 ); 
+    }
 
     print loc("Now, please type '%1' to test, and '%2' to install.",
               "$Config{make} test", "$Config{make} install"), "\n";
@@ -462,137 +385,6 @@ under your version.
     #              "install dependencies."), "\n";
     #}
 }
-
-
-
-__END__
-
-
-sub try_autoinstall {
-    print loc("
-### PLEASE NOTE ###################################################
-
-Although the core features of CPANPLUS do not require external
-modules, they may depend on other modules to work according to your
-configuration.  If you skip the probing, or answer 'n' to questions
-that defaults to 'Y', there might be _unpredictable failures_!
-
-###################################################################
-");
-
-    my $install = $AutoInstall || 
-                  $term->ask_yn(
-                    prompt  => loc('Let the installer probe for dependencies?'),
-                    default => 'y' 
-                  );
-
-    
-    my $has_cc      = $Config::Config{'cc'};
-    my $has_gpg     = can_run('gpg') 
-                        || check_install( module => 'Crypt::OpenPGP' );
-    
-    if( $install ) {
-        ExtUtils::AutoInstall->import(
-            -core                   => 'all',
-            -config                 => [
-                ### Skip all tests to speed up installation.
-                ### Also, following modules are particularly bad:
-                ### - LWP takes lots of time to finish.
-                ### - Term::ReadLine::Perl's test is interactive.
-                ### - Compress::Zlib works but fails tests on Darwin.
-                -skiptest           => 1,
-                -prereqs            => 1,
-                -do_once            => 1,
-            ],               
-    
-            ### source files and friends ###
-            loc('Uncompress .tar.gz files')     => [
-                -default            => ($has_cc && 
-                                        !$ConfigObj->get_program('tar')),
-                'Compress::Zlib'    => 0.01,
-                'IO::Zlib'          => 1.03,
-                'Archive::Tar'      => 1.10,
-            ],
-            loc('Uncompress .zip files')        => [
-                -default            => !$ConfigObj->get_program('unzip'),
-                'Archive::Zip'      => 0.01,
-            ],
-            
-            ### need a compiler for these ###
-            $has_cc ? (
-                loc('Uncompress .gz files')     => [
-                    -default            => !$ConfigObj->get_program('gzip'),
-                    'Compress::Zlib'    => 1.00,
-                ],
-                loc('Cached metadata')          => [
-                    -default            => $ConfigObj->get_conf('storable'),
-                    'Storable'          => 1.00,
-                ],
-                loc('MD5 checksum')             => [
-                    -default            => $ConfigObj->get_conf('md5'),
-                    'Digest::MD5'       => 2.00,
-                ],
-            ) : (),
-            
-            
-            ### networking stuff ###
-            loc('Net::FTP support')             => [
-                -default            => 1,
-                'Net::FTP'          => 2.00,
-            ],
-            loc('File::RsyncP support')         => [
-                -default            => 0,
-                'File::RsyncP'      => 0,
-            ],
-            
-            loc('Local file support & CPAN test query') => [
-                -default            => 0,
-                'URI'               => 1.00,
-                'HTML::HeadParser'  => 0,
-                'Net::FTP'          => 2.00,
-                'MIME::Base64'      => 2.00,
-                'Digest::MD5'       => 2.00,
-                'LWP'               => 5.60,
-            ],
-            
-            loc('CPAN Test reporting')          => [
-                -default            => $ConfigObj->get_conf('cpantest'),
-                'Net::SMTP'         => 0.01,
-                'Test::Reporter'    => 1.27,
-                'YAML'              => 0,
-            ],
-            
-            ### XXX term::size/win32console? ###
-            
-            ### XXX IPC::Run probing? (bundled now)
-            
-            ### XXX Distributions? (not yet done)
-            
-            ### XXX Shells (interface changed, not working)
-            
-            ### XXX Poe/IO::String for cpanpd? (experimental, wait)
-            
-            ### want to have signature checks? ###
-            $has_gpg ? (
-                loc('PGP signatures')           => [
-                    -default            => $ConfigObj->get_conf('signature'),
-                    'Module::Signature' => 0.33,
-                ],
-            ) : (),
-            
-            ### L10N?
-            loc('Localized messages')           => [
-                -default                    => 0,
-                'Locale::Maketext'          => 0.20,
-                'Locale::Maketext::Lexicon' => 0.28,
-            ],
-        );
-    }
-    
-    ### XXX import keys to gnupg? ###
-}    
-
-
 
 __END__
 

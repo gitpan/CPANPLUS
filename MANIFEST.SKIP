@@ -11,7 +11,7 @@ t/dummy-perl/.*(pm|3|packlist)$
 ^MANIFEST.bak$
 ^lib/CPANPLUS/Config\.pm$
 ^lib/CPANPLUS/Config\.pm~$
-^lib/CPANPLUS/Config\.pm\..*$
+^lib/CPANPLUS/Config\.pm-orig.+$
 ^pm_to_blib
 ^blibdirs
 ^TODO$
@@ -30,3 +30,4 @@ Changes
 \.rej$
 dev-bin/
 ^CPANPLUS
+^.cpanplus/

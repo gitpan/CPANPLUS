@@ -24,7 +24,7 @@ use constant ZIP            => 'zip';
 
 use vars qw[$VERSION $PREFER_BIN $PROGRAMS $WARN $DEBUG];
 
-$VERSION        = '0.07';
+$VERSION        = '0.08';
 $PREFER_BIN     = 0;
 $WARN           = 1;
 $DEBUG          = 0;
@@ -219,7 +219,11 @@ This is the directory that the files where extracted to.
 
 =item $ae->files
 
-This is an array ref with the paths of all the files in the archive.
+This is an array ref with the paths of all the files in the archive,
+relative to the C<to> argument you specified.
+To get the full path to an extracted file, you would use:
+
+    File::Spec->catfile( $to, $ae->files->[0] );
 
 Note that all files from a tar archive will be in unix format, as per
 the tar specification.
@@ -495,12 +499,10 @@ sub _untar_bin {
         ### we might not have them, due to lack of buffers
         if( $self->files ) {
             ### now that we've extracted, figure out where we extracted to
-            my ($dir) = -d $self->files->[0]
-                                ? $self->files->[0]
-                                : dirname($self->files->[0]);
+            my $dir = $self->__get_extract_dir( $self->files );
     
             ### store the extraction dir ###
-            $self->extract_path( File::Spec->rel2abs($dir) );
+            $self->extract_path( $dir );
         }
     }
 
@@ -570,8 +572,7 @@ sub _untar_at {
     }
 
     my @files   = $tar->list_files;
-    my $test    = File::Spec->rel2abs( $files[0] );
-    my $dir     = -d $test ? $test : dirname($test);
+    my $dir     = $self->__get_extract_dir( \@files );
 
     ### store the files that are in the archive ###
     $self->files(\@files);
@@ -740,9 +741,9 @@ sub _unzip_bin {
 
         if( scalar @{$self->files} ) {
             my $files   = $self->files;
-            my $dir     = -d $files->[0] ? $files->[0] : dirname( $files->[0] );
+            my $dir     = $self->__get_extract_dir( $files );
 
-            $self->extract_path( File::Spec->rel2abs($dir) );
+            $self->extract_path( $dir );
         }
     }
 
@@ -775,7 +776,7 @@ sub _unzip_az {
         }
     }
 
-    my $dir = -d $files[0] ? $files[0] : dirname( $files[0] );
+    my $dir = $self->__get_extract_dir( \@files );
 
     ### set what files where extract, and where they went ###
     $self->files( \@files );
@@ -783,6 +784,44 @@ sub _unzip_az {
 
     return 1;
 }
+
+sub __get_extract_dir {
+    my $self    = shift;
+    my $files   = shift or return;
+
+    my($dir1, $dir2);
+    for my $aref ( [ \$dir1, 0 ], [ \$dir2, -1 ] ) {
+        my($dir,$pos) = @$aref;
+
+        ### add a catdir(), so that any trailing slashes get
+        ### take care of (removed)
+        my $res = -d $files->[$pos]
+                    ? File::Spec->catdir( $files->[$pos], '' )
+                    : dirname( $files->[$pos] );
+
+        $$dir = $res;
+    }
+
+    ### if the first and last dir don't match, make sure the 
+    ### dirname is not set wrongly
+    my $dir;
+ 
+    ### dirs are the same, so we know for sure what the extract dir is
+    if( $dir1 eq $dir2 ) {
+        $dir = $dir1;
+    
+    ### dirs are different.. do they share the base dir?
+    ### if so, use that, if not, fall back to '.'
+    } else {
+        my $base1 = [ File::Spec->splitdir( $dir1 ) ]->[0];
+        my $base2 = [ File::Spec->splitdir( $dir2 ) ]->[0];
+        
+        $dir = File::Spec->rel2abs( $base1 eq $base2 ? $base1 : '.' ); 
+    }        
+
+    return File::Spec->rel2abs( $dir );
+}
+
 
 #################################
 #

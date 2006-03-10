@@ -18,6 +18,10 @@ BEGIN {
     require lib;
     for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
 }
+
+### leave this BEFORE any use of CPANPLUS::modules, especially ::inc!
+BEGIN { require 'conf.pl'; }
+
 use strict;
 
 use CPANPLUS::inc;
@@ -33,8 +37,6 @@ use Config;
 use Data::Dumper;
 use File::Basename ();
 use File::Spec ();
-
-BEGIN { require 'conf.pl'; }
 
 my $conf    = gimme_conf();
 my $cb      = CPANPLUS::Backend->new( $conf );

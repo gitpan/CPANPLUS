@@ -18,7 +18,7 @@ BEGIN {
     @ISA        =   qw[ Exporter ];
     @EXPORT_OK  =   qw[check allow last_error];
 
-    $VERSION                = '0.23';
+    $VERSION                = '0.24';
     $VERBOSE                = $^W ? 1 : 0;
     $NO_DUPLICATES          = 0;
     $STRIP_LEADING_DASHES   = 0;
@@ -432,7 +432,12 @@ sub allow {
 
         ### loop over the elements, see if one of them says the
         ### value is OK
-        return unless grep { allow( $_[0], $_ ) } @{$_[1]};
+        ### also, short-cicruit when possible
+        for ( @{$_[1]} ) {
+            return 1 if allow( $_[0], $_ );
+        }
+        
+        return;
 
     ### fall back to a simple, but safe 'eq' ###
     } else {

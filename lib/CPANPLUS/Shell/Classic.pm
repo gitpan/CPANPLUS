@@ -124,7 +124,7 @@ sub _input_loop {
             $SIG{$sig} = $entry->{handler} if exists($entry->{handler});
         }
 
-        last if $self->dispatch_on_input( input => $input );
+        last if $self->_dispatch_on_input( input => $input );
 
         ### flush the lib cache ###
         $cb->_flush( list => [qw|lib load|] );

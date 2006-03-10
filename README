@@ -21,16 +21,45 @@ you configure it properly.
 
 ###################################################################
 
-* Installation
+###################################################################
+###
+### Installation
+###
+###################################################################
 
 CPANPLUS uses the standard perl module install process:
 
-perl Makefile.PL
-make                    # or 'nmake' on Windows
-make test
-make install
+    perl Makefile.PL
+    make                    # or 'nmake' on Windows
+    make test
+    make install
 
-* Notes for Windows users
+You can give the 'perl Makefile.PL' stage the following options:
+
+    AUTOINSTALL=1   # dont ask any questions, just do it
+    SETUP=1         # force running setup -- default on a fresh install
+
+
+CPANPLUS also ships a 'boxed' cpanp client, so you can run it
+out of it's extraction dir, by typing:
+
+    perl bin/cpanp-boxed
+
+This may help you with bootstrap issues, or other situations 
+where you need to use CPANPLUS but can not use a system installation.
+
+All the modules bundled are found in the 'inc/bundle' directory. If
+you, for whatever reason, wish to not install these from cpan, you
+could include them into your environment as such (using tcsh):
+
+    $ setenv PERL5LIB `pwd`/inc/bundle
+    
+    
+###################################################################
+###
+### Notes for windows users
+###
+###################################################################
 
 If you are using Microsoft Windows, you will probably need the 'nmake'
 utility before installation. It's available at:
@@ -52,7 +81,12 @@ there; that will create the 'nmake.exe' file.
 You may then resume the installation process above, but replace 'make'
 with 'nmake' in the last three lines.
 
-* Notes on CPAN testing
+
+###################################################################
+###
+### Notes on CPAN testing
+###
+###################################################################
 
 CPANPLUS offers several features to query and report module testing results.
 
@@ -69,167 +103,31 @@ cpantest 1" and "s save" to save the settings.
 Please consult the CPAN Tester's Website (http://testers.cpan.org/) for 
 detailed information.
 
-* Contact
+
+###################################################################
+###
+### Contact
+###
+###################################################################
 
 CPANPLUS has several mailing lists you can write to:
 
-- General suggestions: <cpanplus-info@lists.sourceforge.net>
-- Bug reporting:       <cpanplus-bugs@lists.sourceforge.net>
-- Development list:    <cpanplus-devel@lists.sourceforge.net>
+- Questions/suggestions:    <cpanplus-info@lists.sourceforge.net>
+- Development list:         <cpanplus-devel@lists.sourceforge.net>
+- Bug reporting:            <bug-cpanplus@rt.cpan.org>
 
 News and project updates are available at http://cpanplus.sf.net/.
 
-* Copyright
 
-Copyright 2001, 2002, 2003, 2004 by Jos Boumans <kane@cpan.org>.
+###################################################################
+###
+### License
+###
+###################################################################
+
+Copyright 2001-2006 by Jos Boumans <kane@cpan.org>.
 
 All rights reserved.  You can redistribute and/or modify
 this bundle under the same terms as Perl itself.
 
 See <http://www.perl.com/perl/misc/Artistic.html>.
-
-* CPANPLUS Abbreviated Manpage
-
-NAME
-       CPANPLUS - Command-line access to the CPAN interface
-
-SYNOPSIS
-           cpanp
-           cpanp -i Some::Module
-
-           perl -MCPANPLUS -eshell
-           perl -MCPANPLUS -e'fetch Some::Module'
-
-           ### for programmatic interfacing, see below ###
-
-DESCRIPTION
-       The "CPANPLUS" library is an API to the "CPAN" mirrors and a collection
-       of interactive shells, commandline programs, daemons, etc, that use
-       this API.
-
-       This documentation will discuss all of these briefly and direct you to
-       the appropriate tool to use for the job at hand.
-
-INTERFACES
-       COMMANDLINE
-
-       The "CPANPLUS" library comes with several command line tools;
-
-       "cpanp"
-           This is the commandline tool to start the default interactive shell
-           (see "SHELLS" below), or to do one-off commands. See "cpanp -h" for
-           details.
-
-       "cpan2dist.pl"
-           This is a commandline tool to convert any distribution from "CPAN"
-           into a package in the format of your choice, like for example
-           ".deb" or "FreeBSD ports". See "cpan2dist.pl -h" for details.
-
-       "cpanpd.pl"
-           This is a daemon that acts as a remote backend to your default
-           shell.  This allows you to administrate multiple perl installations
-           on multiple machines using only one frontend. See "cpanpd.pl -h"
-           for details.
-
-       SHELLS
-
-       Interactive shells are there for when you want to do multiple queries,
-       browse the "CPAN" mirrors, consult a distributions "README", etc.
-
-       The "CPANPLUS" library comes with a variety of possible shells. You can
-       install third party shells from the "CPAN" mirrors if the default one
-       is not to your liking.
-
-       CPANPLUS::Shell::Default
-           This is the standard shell shipped with "CPANPLUS". The commands
-
-               cpanp
-
-           and
-
-               perl -MCPANPLUS -eshell
-
-           should fire it up for you. Type "h" at the prompt to see how to use
-           it.
-
-       CPANPLUS::Shell::Classic
-           This is the emulation shell that looks and feels just like the old
-           "CPAN.pm" shell.
-
-       API
-
-       All the above tools are written using the "CPANPLUS" API. If you have
-       any needs that aren't already covered by the above tools, you might
-       consider writing your own. To do this, use the "CPANPLUS::Backend" mod-
-       ule. It implements the full "CPANPLUS" API.
-
-       Consult the "CPANPLUS::Backend" documentation on how to use it.
-
-       PLUGINS
-
-       There are various plugins avaiable for "CPANPLUS". Below is a short
-       listing of just a few of these plugins;
-
-       Various shells
-           As already available in the "0.04x" series, "CPANPLUS" provides
-           various shells (as described in the "SHELL" section above). There
-           are also 3rd party shells you might get from a "cpan" mirror near
-           you like:
-
-           CPANPLUS::Shell::Curses
-                   A shell using "libcurses"
-
-           CPANPLUS::Shell::Tk
-                   A shell using the graphical tooklit "Tk"
-
-       Various package manager plugins
-           As already available in the "0.04x" series, "CPANPLUS" can provide
-           a hook to install modules via the package manager of your choice.
-           Look in the "CPANPLUS::Dist::" namespace on "cpan" to see what's
-           available. Installing such a plugin will allow you to create pack-
-           ages of that type using the "cpan2dist" program provided with
-           "CPANPLUS" or by saying, to create for example, debian distribu-
-           tions:
-
-               cpanp -i Acme::Bleach --format=debian
-
-           There are a few package manager plugins available and/or planned
-           already, they include, but are not limited to:
-
-           CPANPLUS::Dist::Ports
-                   Allows you to create packages for "FreeBSD ports".
-
-           CPANPLUS::Dist::Deb
-                   Allows you to create ".deb" packages for "Debian linux".
-
-           CPANPLUS::Dist::MDK
-                   Allows you to create packages for "MandrakeLinux".
-
-           CPANPLUS::Dist::PPM
-                   Allows you to create packages in the "PPM" format, commonly
-                   used by "ActiveState Perl".
-
-       CPANPLUS Remote Daemon
-           New in the "0.05x" series is the "CPANPLUS Daemon". This applica-
-           tion allows you to remotely control several machines running the
-           "CPANPLUS Daemon", thus enabling you to update several machines at
-           once, or updating machines from the comfort of your own desktop.
-           This is done using "CPANPLUS::Shell::Default"'s "dispatch_on_input"
-           method. See the "CPANPLUS::Shell::Default" manpage for details on
-           that method.
-
-       Scriptable Shell
-           New in the "0.05x" series is the possibility of scripting the
-           default shell. This can be done by using it's "dispatch_on_input"
-           method.  See the "CPANPLUS::Shell::Default" manpage for details on
-           that method.
-
-           Also, soon it will be possible to have a ".rc" file for the default
-           shell, making aliases for all your commonly used functions. For
-           exmpale, you could alias 'd' to do this:
-
-               d --fetchdir=/my/downloads
-
-           or you could make the re-reading of your sourcefiles force a
-           refetch of those files at all times:
-               x --update_source

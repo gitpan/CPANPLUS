@@ -793,6 +793,19 @@ sub install {
                         "-- Not trusting this module, aborting install",
                         $self->module ) );
             $self->status->signature(0);
+            
+            ### send out test report on broken sig
+            if( $conf->get_conf('cpantest') ) {
+                $cb->_send_report( 
+                    module  => $self,
+                    failed  => 1,
+                    buffer  => CPANPLUS::Error->stack_as_string,
+                    verbose => $args->{verbose},
+                    force   => $args->{force},
+                ) or error(loc("Failed to send test report for '%1'",
+                     $self->module ) );
+            }  
+            
             return;
 
         } else {

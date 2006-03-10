@@ -52,7 +52,7 @@ The flow looks like this:
                 $cb->__retrieve_source
                 $cb->__create_dslip_tree
                     $cb->__retrieve_source
-    $cb->_save_source
+            $cb->_save_source
 
     $cb->_dslip_defs
 
@@ -359,7 +359,6 @@ Returns a boolean indicating success.
 =cut
 
 ### (re)build the trees ###
-### takes one optional argument, which indicates if we're already up-to-date. ###
 sub _build_trees {
     my ($self, %hash)   = @_;
     my $conf            = $self->configure_object;
@@ -398,8 +397,11 @@ sub _build_trees {
     ### return if we weren't able to build the trees ###
     return unless $self->{_modtree} && $self->{_authortree};
 
-    ### only do it at the end of the program, not after parsing ###
-    #$self->_save_source( map { $_ => $args->{$_} } qw[path verbose] );
+    ### write the stored files to disk, so we can keep using them
+    ### from now on, till they become invalid
+    ### write them if the original sources weren't uptodate, or
+    ### we didn't just load storable files
+    $self->_save_source() if !$uptodate or not keys %$stored;
 
     ### still necessary? can only run one instance now ###
     ### will probably stay that way --kane
@@ -559,7 +561,7 @@ sub _save_source {
         return;
     }
 
-    msg( loc("Writing state information back to disk. This may take a little while."),
+    msg( loc("Writing compiled source information to disk. This might take a little while."),
 	    $args->{'verbose'} );
 
     my $flag;

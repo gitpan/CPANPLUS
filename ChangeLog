@@ -1,3 +1,34 @@
+Changes for 0.060       Fri Mar 10 17:19:06 CET 2006
+=====================================================
+
+*   This is a major release of CPANPLUS, supporting
+    3rd party package creation and shell plugins
+*   include bin/cpanp-boxed for a bootstrapped version of cpanp;
+    this allows you to use cpanp without configuring/installing
+    anything.
+*   Include clear installation instructions in the README, beyond
+    the simple 'perl Makefile.PL; make; make install'
+*   save sources to disk after creating the trees, not at end of script
+    this should speed up closing the application, at a one time overhead
+    when parsing the sourcefiles
+*   add more diagnostics on updating source files    
+*   Make CPANPLUS::inc redundant -- bundled modules required for boot
+    strapping no longer get installed.
+*   Update bundled modules for bootstrapping to most recent versions
+*   Various tweaks to Makefile.PL to make installing friendlier
+*   perl Makefile.PL AUTOINSTALL=1 now no longer requires any user 
+    input (just like $ENV{PERL_MM_USE_DEFAULT} already did).
+*   Filter out .meta files from the CHECKSUMS file
+*   apply patch from yperl@club-internet.fr to stop Makefile.PL
+    from dying if user doesn't want to configure now, and doesn't
+    have an existing config.pm
+*   fix typo introduced in 0.052 that broke Classic.pm
+*   fix cpan2dist's ungraceful dying if the dist object was undefined
+    (fixes part of [#17568] bad diagnostics from checksum errors/cpan2dist)
+*   address #17655: [WISHLIST] Report bad signature send out a fail test 
+    report when a signature check fails
+*   address #17984: (Two Problems in Makefile.PL)
+
 Changes for 0.059_01    Sat Oct 15 14:20:16 CEST 2005
 =====================================================
 

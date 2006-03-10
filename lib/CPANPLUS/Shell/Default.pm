@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.059_01";
+    $VERSION = "0.060";
 }
 
 load CPANPLUS::Shell;
@@ -762,7 +762,16 @@ sub _reload_indices {
         $args = check( $tmpl, \%hash ) or return;
     }
 
-    return $cb->reload_indices( %$opts );
+    my $rv = $cb->reload_indices( %$opts );
+    
+    ### so the update failed, but you didnt give it any options either
+    if( !$rv and !(keys %$opts) ) {
+        print   "\nFailure may be due to corrupt source files\n" .
+                "Try this:\n\tx --update_source\n\n";
+    }
+    
+    return $rv;
+    
 }
 
 sub _install {

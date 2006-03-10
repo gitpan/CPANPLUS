@@ -2,13 +2,17 @@ package CPANPLUS::Configure::Setup;
 
 use strict;
 use vars    qw(@ISA);
-@ISA    =   qw[CPANPLUS::Internals::Utils CPANPLUS::Shell];
+@ISA    =   qw[CPANPLUS::Internals::Utils];
 
 use CPANPLUS::inc;
 use CPANPLUS::Internals::Utils;
 use CPANPLUS::Internals::Constants;
-use CPANPLUS::Shell                 ();
 use CPANPLUS::Error;
+
+### dont' USE cpanplus::shell -- it triggers improt which is magic
+### don't think we need any of it's functions anyway, so comment it
+### out for now.. if we *DO* need it, 'load' it instead -- kane
+#use CPANPLUS::Shell                 ();
 
 use Config;
 use Term::UI;
@@ -45,7 +49,7 @@ $ENV{PERL_READLINE_NOWARN} = 1;
 $Term::UI::VERBOSE = 0;
 
 ### autogenerate accessors ###
-for my $key (qw[configure_object term backend autosetup location
+for my $key (qw[configure_object term backend autoreply location
             custom_config skip_mirrors use_previous]
 ) {
     no strict 'refs';
@@ -90,27 +94,23 @@ sub new {
         use_previous        => $up,
     };
 
-    ### enable autoreply if that was passed ###
-    $Term::UI::AUTOREPLY = $ar;
+    my $obj = bless $setup, $class;
 
-    return bless $setup, $class;
+    ### enable autoreply if that was passed ###
+    $Term::UI::AUTOREPLY = $obj->autoreply;
+
+    return $obj;
 }
 
 sub init {
     my $self = shift;
     my $conf = $self->configure_object;
 
-    ### in case we are totally supposed to Just Guess
-    {   local   $Term::UI::AUTOREPLY =
-                $Term::UI::AUTOREPLY || $ENV{PERL_MM_USE_DEFAULT} || 0;
-    
-        my $loc = $self->_save_where or return;
-        $self->location($loc);
-    }
-    
-    my $manual = $self->_manual;
+    my $loc = $self->location || $self->_save_where or return;
+    $self->location($loc);
 
-    $Term::UI::AUTOREPLY = 1 if $manual;
+    ### user didn't want to do manual configuration?
+    $Term::UI::AUTOREPLY = 1 if $self->_do_autosetup;
 
     $self->_setup_base            or return;
     $self->_setup_ftp             or return;
@@ -337,7 +337,7 @@ This means CPANPLUS will use your *old* configuration!
 ###
 ####################################
 
-sub _manual {
+sub _do_autosetup {
     my $self = shift;
     my $term = $self->term;
 
@@ -351,7 +351,7 @@ CPANPLUS, you have to configure it properly.
 
 ]);
 
-    unless( $self->autosetup ) {
+    unless( $self->autoreply ) {
         print loc(q[
 Although we recommend an interactive configuration session, you can
 also enter 'n' here to use default values for all questions.
@@ -362,10 +362,10 @@ also enter 'n' here to use default values for all questions.
                     default => 'y',
                 );
 
-        $self->autosetup(!$ok);
+        $self->autoreply(!$ok);
     }
 
-    return $self->autosetup;
+    return $self->autoreply;
 }
 
 #######################################
@@ -784,15 +784,14 @@ If you do not have '%1' yet, you can get it from:
         ### default to 'yes' if you're not root
         ### or if we're allowed to use a previous config, use that
         if($sudo) {
-#            my $default = $>
-#                            ? (-w $Config{'installsitelib'} ? 'n' : 'y')
-#                            : 'y';
             my $default = $self->use_previous 
                             ? $conf->get_program($pgm) 
                                 ? 1
                                 : 0
-                            : $>
-                                ? (-w $Config{'installsitelib'} ? 'n' : 'y')
+                            : $>    # check for all install dirs!
+                                ? ( -w $Config{'installsitelib'} &&
+                                    -w $Config{'installsiteman3dir'} &&
+                                    -w $Config{'installsitebin'} ? 'n' : 'y')
                                 : 'y';
 
 
@@ -1503,7 +1502,7 @@ are done.
 
                 $self->_view_hosts(@hosts);
 
-                goto QUIT if $self->autosetup;
+                goto QUIT if $self->autoreply;
                 redo CHOICE;
             }
         }
@@ -1551,7 +1550,7 @@ if the file is on your local disk. Note the three /// after the file: bit
                         $href->{'path'}     eq $_->{'path'}
                     } @hosts;
 
-                last CHOICE if $self->autosetup;
+                last CHOICE if $self->autoreply;
             } else {
                 print loc("Invalid uri! Please try again!");
             }

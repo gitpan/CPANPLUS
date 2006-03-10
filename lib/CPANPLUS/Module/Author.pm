@@ -179,7 +179,11 @@ sub distributions {
         $clone->package( $dist );
         $clone->module( $clone->package_name );
         $clone->version( $clone->package_version );
-        push @rv, $clone;
+
+        ### .meta files are now also in the checksums file,
+        ### which means we have to filter out things that dont
+        ### match our regex
+        push @rv, $clone if $clone->package_extension;
     }
 
     return @rv;

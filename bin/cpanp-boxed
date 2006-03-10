@@ -1,0 +1,89 @@
+#!/usr/bin/perl -w
+
+use strict;
+use warnings;
+
+use FindBin;
+use File::Spec;
+use lib File::Spec->catdir( $FindBin::Bin, qw[.. lib] ),
+        File::Spec->catdir( $FindBin::Bin, qw[.. inc bundle] );
+
+use Term::ReadLine;
+
+use CPANPLUS::Error;
+use CPANPLUS::Configure;
+use CPANPLUS::Configure::Setup;
+use CPANPLUS::Internals::Constants;
+use CPANPLUS::Internals::Utils;
+
+### put the name in the dir, so other users can use it if they want
+my $Who  = getlogin || getpwuid($<) || $<;
+my $Base = File::Spec->catfile( $FindBin::Bin, '..', DOT_CPANPLUS, $Who );
+my $Util = 'CPANPLUS::Internals::Utils';
+my $File = File::Spec->catfile( $Base, 'config.boxed' );
+my $Env  = ENV_CPANPLUS_CONFIG;
+
+### setup the environment if needed 
+{   ### no base dir even, set it up
+    unless( IS_DIR->( $Base ) ) {
+        $Util->_mkdir( dir => $Base ) or die CPANPLUS::Error->stack_as_string;
+    }
+    
+    ### check for a config file
+    unless( IS_FILE->( $File ) ) {
+        eval { 
+            require File::Spec->catfile( qw[lib CPANPLUS Config.pm-orig] );
+            $INC{'CPANPLUS/Config.pm'} = $INC{'lib/CPANPLUS/Config.pm-orig'};
+        } or die "Could not load default config: $@";
+        
+        my $setup = CPANPLUS::Configure::Setup->new(
+                        term                => Term::ReadLine->new(''),
+                        configure_object    => CPANPLUS::Configure->new,
+                        autoreply           => 1,
+                    );
+                    
+        $setup->location(  $File );
+        
+        ### silence output
+        {   ### can't do this -- perl 5.6.x core dumps on it!
+            ### and STDERR can't be treated like this at all in 5.6.x
+            #local *STDOUT; local *STDERR;
+            open my $oldout, ">&STDOUT"; close STDOUT;
+            local $^W;
+            $setup->init;
+            open STDOUT, ">&", $oldout;
+        }
+        
+        ### alter what needs changing
+        {   my $conf = $setup->configure_object;
+        
+            $conf->set_conf( base       => $Base ); # new base dir
+            $conf->set_conf( verbose    => 1     ); # be verbose
+            $conf->set_conf( prereqs    => 1     ); # install prereqs
+            $conf->save( $File );
+        }
+    }       
+}
+
+print qq[
+===
+
+You boxed CPANPLUS install is setup to use:
+  Metadir:  $Base
+  Config:   $File
+
+===
+    \n    
+];
+
+$ENV{ $Env } = $File;
+$ENV{'PERL5LIB'} = join ':', grep { defined } 
+                    $ENV{'PERL5LIB'},
+                    File::Spec->catdir( $FindBin::Bin, qw[.. lib] ),
+                    File::Spec->catdir( $FindBin::Bin, qw[.. inc bundle] );
+
+system( 
+    $^X, 
+    File::Spec->catfile( $FindBin::Bin, 'cpanp' ),
+    @ARGV,
+);
