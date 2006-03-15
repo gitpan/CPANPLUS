@@ -184,9 +184,9 @@ sub _show_banner {
     $rl_avail = loc("ReadLine support %1.", $rl_avail);
     $rl_avail = "\n*** $rl_avail" if (length($rl_avail) > 45);
 
-    print loc("%1 -- CPAN exploration and modules installation (v%2)",
+    print loc("%1 -- CPAN exploration and module installation (v%2)",
                 $self->which, $self->which->VERSION()), "\n",
-          loc("*** Please report bugs to <cpanplus-bugs\@lists.sourceforge.net>."), "\n",
+          loc("*** Please report bugs to <bug-cpanplus\@rt.cpan.org>."), "\n",
           loc("*** Using CPANPLUS::Backend v%1.  %2",
                 $cpan->VERSION, $rl_avail), "\n\n";
 }

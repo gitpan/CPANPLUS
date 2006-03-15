@@ -1,3 +1,15 @@
+Changes for 0.061       Wed Mar 15 16:09:03 CET 2006
+=====================================================
+
+*   The template for the original configuration got shipped
+    with a few default values that will not work on every
+    system. Anyone who manually configures should not be
+    affected, but the automated configuration may draw
+    the wrong conclusion.
+    For safetey sake, and to minimize possible issues for
+    users, this release ships a template with sensible
+    cross-platform defaults again
+
 Changes for 0.060       Fri Mar 10 17:19:06 CET 2006
 =====================================================
 
