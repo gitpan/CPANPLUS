@@ -18,8 +18,6 @@ BEGIN {
 }
 
 use strict;
-
-use CPANPLUS::inc;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants::Report;
 

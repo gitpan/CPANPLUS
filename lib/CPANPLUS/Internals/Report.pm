@@ -1,7 +1,7 @@
 package CPANPLUS::Internals::Report;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Internals::Constants::Report;

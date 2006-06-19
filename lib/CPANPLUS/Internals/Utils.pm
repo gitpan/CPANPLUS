@@ -1,10 +1,11 @@
 package CPANPLUS::Internals::Utils;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 
+use Cwd;
 use File::Copy;
 use Params::Check               qw[check];
 use Module::Load::Conditional   qw[can_load];
@@ -56,7 +57,9 @@ sub _mkdir {
         dir     => { required => 1 },
     };
 
-    my $args = check( $tmpl, \%hash ) or return;
+    my $args = check( $tmpl, \%hash ) or (
+        error(loc( Params::Check->last_error ) ), return
+    );       
 
     unless( can_load( modules => { 'File::Path' => 0.0 } ) ) {
         error( loc("Could not use File::Path! This module should be core!") );
@@ -366,6 +369,24 @@ sub _vcmp {
     s/_//g foreach $x, $y;
 
     return $x <=> $y;
+}
+
+=head2 $cb->_homedir
+
+Returns the user's homedir, or C<cwd> if it could not be found
+
+=cut
+
+sub _home_dir {
+    my @os_home_envs = qw( APPDATA HOME USERPROFILE WINDIR SYS$LOGIN );
+
+    for my $env ( @os_home_envs ) {
+        next unless exists $ENV{ $env };
+        next unless defined $ENV{ $env } && length $ENV{ $env };
+        return $ENV{ $env } if -d $ENV{ $env };
+    }
+
+    return cwd();
 }
 
 1;

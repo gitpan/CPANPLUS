@@ -2,7 +2,7 @@
 # $Revision: #17 $ $Change: 9922 $ $DateTime: 2004/02/06 11:13:31 $
 
 package Locale::Maketext::Simple;
-$Locale::Maketext::Simple::VERSION = '0.11';
+$Locale::Maketext::Simple::VERSION = "-1";
 
 use strict;
 

@@ -12,7 +12,7 @@ local $Params::Check::VERBOSE = 1;
 BEGIN {
     use vars        qw[$VERSION @ISA $STACK $CONFIG];
 
-    $VERSION    =   0.01;
+    $VERSION = "-1";
 
     $STACK      =   [];
 }
@@ -313,11 +313,13 @@ sub _new_stack {
                 },
     };
 
-    my $args = check( $tmpl, \%hash, $CONFIG->verbose )
-                or (
-                    warn(loc(q[Could not create a new stack object!])),
-                    return
-                );
+    my $args = check( $tmpl, \%hash, $CONFIG->verbose ) or (
+        warn(loc(q[Could not create a new stack object: %1], 
+                Params::Check->last_error)
+        ),
+        return
+    );
+
 
     my %self = map { uc, $args->{$_} } keys %$args;
 
@@ -397,8 +399,10 @@ sub store {
         %hash = @_;
     }
 
-    my $args = check( $tmpl, \%hash )
-            or ( warn( loc(q[Could not store error!]) ), return );
+    my $args = check( $tmpl, \%hash ) or ( 
+        warn( loc(q[Could not store error: %1], Params::Check->last_error) ), 
+        return 
+    );
 
     my $extra = delete $args->{extra};
     my $item = Log::Message::Item->new(   %$args,
@@ -483,9 +487,11 @@ sub retrieve {
         %hash = @_;
     }
 
-    my $args = check( $tmpl, \%hash )
-        or ( warn( loc(q[Could not parse input!]) ), return  );
-
+    my $args = check( $tmpl, \%hash ) or (
+        warn( loc(q[Could not parse input: %1], Params::Check->last_error) ), 
+        return 
+    );
+    
     my @list =
             grep { $_->tag      =~ /$args->{tag}/       ? 1 : 0 }
             grep { $_->level    =~ /$args->{level}/     ? 1 : 0 }

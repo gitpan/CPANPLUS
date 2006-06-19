@@ -3,7 +3,7 @@ package CPANPLUS::Module::Checksums;
 use strict;
 use vars qw[@ISA];
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 

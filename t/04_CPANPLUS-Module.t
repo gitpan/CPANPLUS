@@ -18,7 +18,7 @@ BEGIN {
 }
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Configure;
 use CPANPLUS::Backend;
 use CPANPLUS::Module::Fake;
@@ -238,20 +238,21 @@ is( $mod->author->author(), $auth->author,            "Module eq Author" );
  
 ### testing that the uptodate/installed tests don't find things in the
 ### cpanplus::inc tree
-{   my $href    = CPANPLUS::inc->interesting_modules;
-    my $incpath = quotemeta CPANPLUS::inc->inc_path;
-
-    for my $name ( keys %$href ) {
-
-        ### clone a module, change the name
-        ### as that's all the installed functions look at
-        my $clone = $mod->clone;
-        $clone->module( $name );
-        
-        my $file = $clone->installed_file;
-        unlike( $file, qr/$incpath/,"   File not found in CP::inc ($file)" );
-    }
-}
+### XXX CPANPLUS::inc code is now obsolete, so it has been removed.
+# {   my $href    = CPANPLUS::inc->interesting_modules;
+#     my $incpath = quotemeta CPANPLUS::inc->inc_path;
+# 
+#     for my $name ( keys %$href ) {
+# 
+#         ### clone a module, change the name
+#         ### as that's all the installed functions look at
+#         my $clone = $mod->clone;
+#         $clone->module( $name );
+#         
+#         my $file = $clone->installed_file;
+#         unlike( $file, qr/$incpath/,"   File not found in CP::inc ($file)" );
+#     }
+# }
 
 ### testing odd version numbers 
 {   my $clone = $mod->clone;

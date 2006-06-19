@@ -1,7 +1,7 @@
 package CPANPLUS::Internals::Fetch;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 

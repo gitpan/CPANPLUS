@@ -2,7 +2,7 @@ package CPANPLUS::Backend;
 
 use strict;
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Configure;
 use CPANPLUS::Internals;
@@ -65,22 +65,17 @@ This information might be useful somehow to spawned processes.
 
 =head1 METHODS
 
-=head2 new( [CONFIG_OBJ | config => { ... }] )
+=head2 new( [CONFIGURE_OBJ] )
 
 This method returns a new C<CPANPLUS::Backend> object.
 This also initialises the config corresponding to this object.
-You have three choices in this:
+You have two choices in this:
 
 =over 4
 
 =item Provide a valid C<CPANPLUS::Configure> object
 
 This will be used verbatim.
-
-=item Provide a few options like config => { ... }
-
-These will override your existing config, but use your default
-config for options you didn't specify.
 
 =item No arguments
 
@@ -100,7 +95,7 @@ sub new {
     if( $_[0] && IS_CONFOBJ->( conf => $_[0] ) ) {
         $conf = shift;
     } else {
-        $conf = CPANPLUS::Configure->new( @_ ) or return;
+        $conf = CPANPLUS::Configure->new() or return;
     }
 
     my $self = $class->SUPER::_init( _conf => $conf );

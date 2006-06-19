@@ -1,7 +1,7 @@
 package CPANPLUS::Shell;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Configure;
 

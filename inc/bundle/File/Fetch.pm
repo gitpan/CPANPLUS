@@ -3,7 +3,7 @@ package File::Fetch;
 use strict;
 use FileHandle;
 use File::Copy;
-use File::Spec 0.82;
+use File::Spec;
 use File::Spec::Unix;
 use File::Fetch::Item;
 use File::Basename              qw[dirname];
@@ -21,7 +21,7 @@ use vars    qw[ $VERBOSE $PREFER_BIN $FROM_EMAIL $USER_AGENT
                 $FTP_PASSIVE $TIMEOUT $DEBUG $WARN
             ];
 
-$VERSION        = 0.07;
+$VERSION = "-1";
 $PREFER_BIN     = 0;        # XXX TODO implement
 $FROM_EMAIL     = 'File-Fetch@example.com';
 $USER_AGENT     = 'File::Fetch/$VERSION';
@@ -409,7 +409,11 @@ sub _wget_fetch {
         ### shell out ###
         my $captured;
         unless( run( command => $cmd, buffer => \$captured, verbose => 0 ) ) {
-            return $self->_error(loc("Command failed: %1",$captured));
+            ### wget creates the output document always, even if the fetch
+            ### fails.. so unlink it in that case
+            1 while unlink $to;
+            
+            return $self->_error(loc( "Command failed: %1", $captured || '' ));
         }
 
         return $to;
@@ -499,10 +503,17 @@ sub _lynx_fetch {
                     buffer  => \$captured,
                     verbose => $DEBUG )
         ) {
-            return $self->_error(loc("Command failed: %1",$captured));
+            return $self->_error(loc("Command failed: %1", $captured || ''));
         }
 
         ### print to local file ###
+        ### XXX on a 404 with a special error page, $captured will actually
+        ### hold the contents of that page, and make it *appear* like the
+        ### request was a success, when really it wasn't :(
+        ### there doesn't seem to be an option for lynx to change the exit
+        ### code based on a 4XX status or so.
+        ### the closest we can come is using --error_file and parsing that,
+        ### which is very unreliable ;(
         $local->print( $captured );
         $local->close or return;
 
@@ -548,7 +559,7 @@ sub _ncftp_fetch {
                     buffer  => \$captured,
                     verbose => $DEBUG )
         ) {
-            return $self->_error(loc("Command failed: %1",$captured));
+            return $self->_error(loc("Command failed: %1", $captured || ''));
         }
 
         return $to;
@@ -584,7 +595,9 @@ sub _curl_fetch {
     		push(@$cmd, '--user', "anonymous:$FROM_EMAIL");
     	}
 
-        push @$cmd, '--fail', '--output', $to, $self->uri;
+        ### curl doesn't follow 302 (temporarily moved) etc automatically
+        ### so we add --location to enable that.
+        push @$cmd, '--fail', '--location', '--output', $to, $self->uri;
 
         my $captured;
         unless(run( command => $cmd,
@@ -592,7 +605,7 @@ sub _curl_fetch {
                     verbose => $DEBUG )
         ) {
 
-            return $self->_error(loc("Command failed: %1",$captured));
+            return $self->_error(loc("Command failed: %1", $captured || ''));
         }
 
         return $to;
@@ -666,7 +679,7 @@ sub _rsync_fetch {
                     verbose => $DEBUG )
         ) {
 
-            return $self->_error(loc("Command failed: %1",$captured));
+            return $self->_error(loc("Command failed: %1", $captured || ''));
         }
 
         return $to;
@@ -861,6 +874,19 @@ example, to use an ftp proxy:
     $ENV{ftp_proxy} = 'foo.com';
 
 Refer to the LWP::UserAgent manpage for more details.
+
+=head2 I used 'lynx' to fetch a file, but its contents is all wrong!
+
+C<lynx> can only fetch remote files by dumping its contents to C<STDOUT>,
+which we in turn capture. If that content is a 'custom' error file
+(like, say, a C<404 handler>), you will get that contents instead.
+
+Sadly, C<lynx> doesn't support any options to return a different exit
+code on non-C<200 OK> status, giving us no way to tell the difference
+between a 'successfull' fetch and a custom error page.
+
+Therefor, we recommend to only use C<lynx> as a last resort. This is 
+why it is at the back of our list of methods to try as well.
 
 =head1 TODO
 

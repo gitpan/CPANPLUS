@@ -1,3 +1,84 @@
+Changes for 0.070_01    Mon Jun 19 17:23:38 CEST 2006
+=====================================================
+*   This is a major beta release of CPANPLUS, revamping 
+    the configuration mechanism. From now on, CPANPLUS 
+    no longer requires a setup to be run at installation
+    time and should work 'out of the box' on most 
+    systems using a pre-built configuration file.
+*   CPANPLUS now supports stacked configuration files:
+    *   CPANPLUS::Config is the heuristic config file
+        which will always be installed sytemwide.
+    *   CPANPLUS::Config::System is the systemwide
+        config file which can be installed by an admin
+        in your perl installation path. This file will
+        be available for everyone and override settings
+        from CPANPLUS::Config
+    *   CPANPLUS::Config::User is the per-user config
+        which can be installed by any user in their
+        $HOME/.cpanplus directory. This file will be
+        available for the user only and override settings 
+        from CPANPLUS::Config and CPANPLUS::Config::System
+    *   $HOME/.cpanplus/lib gets added automatically to your
+        config search path.
+    *   All configuration types can be created and saved
+        via the interactive Setup. You can invoke it from
+        the default shell as follows:
+        
+        CPAN Terminal> s conf user      # per user config
+        CPAN Terminal> s conf system    # system wide config
+        
+        or during installation time like this:
+        
+        $ perl Makefile.PL --setup  
+*   Makefile.PL has been stripped from all it's magic    
+*   Setup is now menu based for a better user experience.    
+*   make loading plugin configs work, with priority 
+    for system & user configs before the rest
+*   address #19438: Key 'file' is of invalid type
+    Turns out it's a bug in Module::Build, reported as 
+    #19741, which creates a 'Build' file when running
+    'perl Makefile.PL' on a M::B generated Makefile.PL
+    Add a patch that detects this situation and informs 
+    the user
+*   Demand Test::Harness 2.62 to be installed due to 
+    bug #19505 in earlier versions
+*   IPC::Run is now required for Win32 & Cygwin
+*   use $Config{path_ext} instead of hardcoded ':' to 
+    seperate $PATH in cpanp-boxed
+*   Small test changes in 20.t to make sure no test output
+    counter mismatches occur.
+*   remove all 'clever' code from CPANPLUS::inc, as the
+    new config methodology makes it obsolete. Basic 
+    functionality is retained only for backwards compat.
+*   remove CPANPLUS config version checks back and forth 
+    -- should work without from now on
+*   make cpanp-boxed work from others dirs than just bin/..
+*   make use of package::constants
+*   Make sure Bundle-Foo.tgz also gets recognized as bundle
+*   Data::Dumper indenting style set to '1' in default shell
+*   make constants for libdir etc accept a list, not just 
+    a single param
+*   address #19738: bogus entry in @INC
+*   address: #18270: cpan2dist --archive breaks with 
+    relative path    
+*   address #18121: invalid value for 'checksum_value'
+    which showed that old .stored files can mess up CPANPLUS
+    untill they are rebuilt. From now on, Makefile.PL will
+    delete old .stored files when installing a new version
+*   mark all the versions of inc/ modules as -1, so we
+    are always 'not uptodate' when asked to install them
+*   remove old api that lets you set values in configure 
+    object via backend->new or configure->new, which was
+    impractical and unused.
+*   updated our bugreporting address to point at the
+    rt.cpan.org queue.
+*   Clean up source tree from obsolete files
+*   Have 'make clean' clean up all the generated files
+
+     
+
+    
+
 Changes for 0.061       Wed Mar 15 16:09:03 CET 2006
 =====================================================
 

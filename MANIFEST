@@ -39,6 +39,7 @@ inc/bundle/Module/Load/Conditional.pm
 inc/bundle/Module/Loaded.pm
 inc/bundle/Module/Pluggable.pm
 inc/bundle/Object/Accessor.pm
+inc/bundle/Package/Constants.pm
 inc/bundle/Params/Check.pm
 inc/bundle/Term/UI.pm
 inc/bundle/Term/UI/History.pm
@@ -54,7 +55,7 @@ inc/Module/Install/WriteAll.pm
 lib/CPANPLUS.pm
 lib/CPANPLUS/Backend.pm
 lib/CPANPLUS/Backend/RV.pm
-lib/CPANPLUS/Config.pm-orig
+lib/CPANPLUS/Config.pm
 lib/CPANPLUS/Configure.pm
 lib/CPANPLUS/Configure/Setup.pm
 lib/CPANPLUS/Dist.pm
@@ -64,7 +65,6 @@ lib/CPANPLUS/Error.pm
 lib/CPANPLUS/FAQ.pod
 lib/CPANPLUS/Hacking.pod
 lib/CPANPLUS/inc.pm
-lib/CPANPLUS/inc/.inc
 lib/CPANPLUS/Internals.pm
 lib/CPANPLUS/Internals/Constants.pm
 lib/CPANPLUS/Internals/Constants/Report.pm
@@ -135,14 +135,6 @@ t/dummy-perl/lib/.hidden
 t/dummy-perl/man/man1/.hidden
 t/dummy-perl/man/man3/.hidden
 t/inc/conf.pl
-t/inc/harness/Test/Harness.pm
-t/inc/harness/Test/Harness/Assert.pm
-t/inc/harness/Test/Harness/Iterator.pm
-t/inc/harness/Test/Harness/Point.pm
-t/inc/harness/Test/Harness/Straps.pm
-t/inc/harness/Test/Harness/TAP.pod
-t/inc/Test/Builder.pm
-t/inc/Test/More.pm
 t/src/Build/noxs/Foo-Bar-0.01.tar.gz
 t/src/Build/xs/Foo-Bar-0.01.tar.gz
 t/src/MM/noxs/Foo-Bar-0.01.tar.gz

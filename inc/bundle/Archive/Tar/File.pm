@@ -10,7 +10,7 @@ use Archive::Tar::Constant;
 
 use vars qw[@ISA $VERSION];
 @ISA        = qw[Archive::Tar];
-$VERSION    = '0.02';
+$VERSION = "-1";
 
 ### set value to 1 to oct() it during the unpack ###
 my $tmpl = [

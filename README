@@ -8,19 +8,6 @@ module usage information. For shell usage, please consult
 You may also want to read the 'ChangeLog' file, which describes new
 features, bugfixes and additional notes for this release.
 
-### PLEASE NOTE ###################################################
-
-CPANPLUS will be shipped alongside CPAN.pm in the 5.10 core. 
-Although you should *NOT* expect it to work just like CPAN.pm, 
-there is a compatible shell available. See perldoc CPANPLUS::Shell 
-after installation
-
-You are strongly urged to configure CPANPLUS now, since otherwise
-non-privileged (non-root) users may be unable to use CPANPLUS until
-you configure it properly.
-
-###################################################################
-
 ###################################################################
 ###
 ### Installation
@@ -29,21 +16,26 @@ you configure it properly.
 
 CPANPLUS uses the standard perl module install process:
 
-    perl Makefile.PL
-    make                    # or 'nmake' on Windows
-    make test
-    make install
+    $ perl Makefile.PL
+    $ make                    # or 'nmake' on Windows
+    $ make test
+    $ make install
 
 You can give the 'perl Makefile.PL' stage the following options:
 
     AUTOINSTALL=1   # dont ask any questions, just do it
     SETUP=1         # force running setup -- default on a fresh install
 
+After installation you can start CPANPLUS' interactive client
+by running one of the following commands:
+
+    $ cpanp
+    $ perl -MCPANPLUS -eshell
 
 CPANPLUS also ships a 'boxed' cpanp client, so you can run it
 out of it's extraction dir, by typing:
 
-    perl bin/cpanp-boxed
+    $ perl bin/cpanp-boxed
 
 This may help you with bootstrap issues, or other situations 
 where you need to use CPANPLUS but can not use a system installation.
@@ -51,7 +43,7 @@ where you need to use CPANPLUS but can not use a system installation.
 You can install all of CPANPLUS' dependencies like this, before 
 installing CPANPLUS itself by running:
 
-    perl bin/cpanp-boxed -i --force Bundle::CPANPLUS::Dependencies
+    $ perl bin/cpanp-boxed -i Bundle::CPANPLUS::Dependencies
 
 All the modules bundled are found in the 'inc/bundle' directory. If
 you, for whatever reason, wish to not install these from cpan, you

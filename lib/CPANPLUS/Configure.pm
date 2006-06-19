@@ -1,16 +1,20 @@
 package CPANPLUS::Configure;
 use strict;
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Error;
+use CPANPLUS::Config;
 
 use Log::Message;
 use Module::Load                qw[load];
 use Params::Check               qw[check];
+use File::Basename              qw[dirname];
+use Module::Loaded              ();
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 use vars                        qw[$AUTOLOAD $VERSION $MIN_CONFIG_VERSION];
+use base                        qw[CPANPLUS::Internals::Utils];
 
 local $Params::Check::VERBOSE = 1;
 
@@ -18,10 +22,26 @@ local $Params::Check::VERBOSE = 1;
 require CPANPLUS::Internals;
 $VERSION = $CPANPLUS::Internals::VERSION = $CPANPLUS::Internals::VERSION;
 
-### The minimum required config version
-### Update this if we have incompatible config changes
-#$MIN_CONFIG_VERSION = $VERSION;
-$MIN_CONFIG_VERSION = '0.050_04';
+### find plugins & extra configs
+### check $home/.cpanplus/lib as well
+use Module::Pluggable
+    search_path => ['CPANPLUS::Config'],
+    search_dirs => [ CONFIG_USER_LIB_DIR ],
+    except      => qr/::SUPER$/,
+    sub_name    => 'configs';
+
+
+### can't use O::A as we're using our own AUTOLOAD to get to
+### the config options.
+for my $meth ( qw[conf]) {
+    no strict 'refs';
+    
+    *$meth = sub {
+        my $self = shift;
+        $self->{'_'.$meth} = $_[0] if @_;
+        return $self->{'_'.$meth};
+    }     
+}
 
 
 =pod
@@ -32,7 +52,7 @@ CPANPLUS::Configure
 
 =head1 SYNOPSIS
 
-    $conf   = CPANPLUS::Configure->new( options => { ... } );
+    $conf   = CPANPLUS::Configure->new( );
 
     $bool   = $conf->can_save;
     $bool   = $conf->save( $where );
@@ -53,167 +73,103 @@ obtain a C<CPANPLUS::Configure> object.
 
 =head1 METHODS
 
-=head2 new( [options => HASHREF] )
+=head2 $Configure = CPANPLUS::Configure->new( load_configs => BOOL )
 
 This method returns a new object. Normal users will never need to
 invoke the C<new> method, but instead retrieve the desired object via
 a method call on a C<CPANPLUS::Backend> object.
 
+The C<load_configs> parameter controls wether or not additional
+user configurations are to be loaded or not. Defaults to C<true>.
+
 =cut
 
-sub new {
-    my $class = shift;
-    my %hash  = @_;
+### store teh CPANPLUS::Config object in a closure, so we only
+### initialize it once.. otherwise, on a 2nd ->new, settings
+### from configs on top of this one will be reset
+{   my $Config;
 
-    ### ok, we need to find your config now ###
-    $class->_load_cpanplus_config() or return;
-
-    ### minimum version requirement.
-    ### this code may change between releases, depending on
-    ### compatibillity with previous versions.
-    unless( $class->_config_version_sufficient ) {
-        error(loc(  "Your config is of version '%1' but '%2' requires ".
-                    "a config of '%3' or higher. Your '%4' is of " .
-                    "version '%5', but your config requires a version ".
-                    "of '%6' or higher. You will need to reconfigure",
-                    $CPANPLUS::Config::VERSION, 'CPANPLUS',
-                    $MIN_CONFIG_VERSION, 'CPANPLUS', $VERSION,
-                    ($CPANPLUS::Config::MIN_CPANPLUS_VERSION || 0) ));
-        return;
+    sub new {
+        my $class   = shift;
+        my %hash    = @_;
+        
+        my ($load);
+        my $tmpl    = {
+            load_configs    => { default => 1, store => \$load },
+        };
+        
+        check( $tmpl, \%hash ) or (
+            warn Params::Check->last_error, return
+        );
+        
+        $Config     ||= CPANPLUS::Config->new;
+        my $self    = bless {}, $class;
+        $self->conf( $Config );
+    
+        ### you want us to load other configs?
+        ### these can override things in the default config
+        $self->init if $load;
+    
+        return $self;
     }
-
-    my $self = bless {
-                    _conf   => CPANPLUS::Config->new(),
-                    _error  => Log::Message->new(),
-                }, $class;
-
-    unless( $self->_load_args( options => \%hash ) ) {
-        error(loc(qq[Unable to initialize configuration!]));
-        return;
-    }
-
-    return $self;
 }
 
+=head2 $bool = $Configure->init
 
-### allow loading of an alternate configuration file ###
-sub _load_cpanplus_config {
-    my $class = shift;
+Initialize the configure with other config files than just
+the default 'CPANPLUS::Config'.
 
-    ### apparently we loaded it already ###
-    return 1 if $INC{'CPANPLUS/Config.pm'};
+Called from C<new()> to load user/system configurations
 
-    my $tried;
-    my $env = ENV_CPANPLUS_CONFIG;
+=cut
 
-    ### check it has length, and is an actual file ###
-    if ( defined $ENV{$env} and length $ENV{$env} and
-        -f $ENV{$env} and -s _
-    ) {
-        eval{ load $ENV{$env} };
-        $tried++;
-        $INC{'CPANPLUS/Config.pm'} = $ENV{$env} unless $@;
+sub init {
+    my $self    = shift;
+    my $obj     = $self->conf;
+    
+    ### make sure that the homedir is included now
+    local @INC = ( CONFIG_USER_LIB_DIR->(), @INC );
+    
+    ### do system config, user config, rest.. in that order
+    ### apparently, on a 2nd invocation of -->configs, a
+    ### ::ISA::CACHE package can appear.. that's bad...
+    my %confs = map  { $_ => $_ } 
+                grep { $_ !~ /::ISA::/ } __PACKAGE__->configs;
+    my @confs = grep { defined } 
+                map  { delete $confs{$_} } CONFIG_SYSTEM, CONFIG_USER;
+    push @confs, sort keys %confs;                    
+
+    for my $plugin ( @confs ) {
+        msg(loc("Found plugin '%1'", $plugin),0);
+        
+        ### if we already did this the /last/ time around dont 
+        ### run the setup agian.
+        next if Module::Loaded::is_loaded( $plugin );
+        msg(loc("Loading plugin '%1'", $plugin),0);
+        
+        eval { load $plugin };
+        
+        if( $@ ) {
+            error(loc("Could not load '%1': %2", $plugin, $@));
+            next;
+        }     
+        
+        my $sub = $plugin->can('setup');
+        $sub->( $self ) if $sub;
     }
-
-    my $ok;
-    $@
-        ? error( loc("Could not load your personal config: %1: %2",
-                    $ENV{$env}, "$@"), "\n",
-                loc("Falling back to system-wide config."), "\n" )
-        : ($ok = 1) if $tried;
-
-    unless($ok) {
-        eval { load CPANPLUS::Config };
-        error("$@"), return if $@;
-    }
+    
+    ### clean up the paths once more, just in case
+    $obj->_clean_up_paths;
 
     return 1;
 }
-
-### this code may change between releases, depending on backwards
-### compatibility between configs.
-### if this is returning false, you can also not just use your
-### old config as base for your new config -- sorry :(
-sub _config_version_sufficient {
-
-    my $fail;
-
-    ### first check if the config is good enough for this version of CPANPLUS
-    CONFIG: {
-        ### If they're the same, we're done already.
-        last CONFIG if $CPANPLUS::Config::VERSION eq $VERSION;
-
-        ### Split the version numbers into a major part and a devel part.
-        my $config_version = $CPANPLUS::Config::VERSION;
-        $config_version =~ s/_(\d+)$//;
-        my $config_devel = $1 || 0;
-
-        my $version = $MIN_CONFIG_VERSION;
-        $version =~ s/_(\d+)$//;
-        my $devel = $1 || 0;
-
-        ### If the configuration has a newer major version than us,
-        ### it's sufficient.
-        last CONFIG if $config_version > $version;
-
-        ### If the configuration has the same major version and a newer devel
-        ### version than us, it's sufficient.
-        last CONFIG if $config_version == $version && $config_devel >= $devel;
-
-        ### ok, the versions are no good, it's WRONG
-        $fail++
-
-    }
-
-    ### now check if CPANPLUS is good enough for the config we've loaded
-    CPANPLUS: {
-        ### we know it failed already...
-        last CPANPLUS if $fail;
-
-        ### no minversion specified? that's also too old
-        ++$fail && last CPANPLUS 
-            unless $CPANPLUS::Config::MIN_CPANPLUS_VERSION;;
-
-        ### If they're the same, we're done already.
-        last CPANPLUS if $CPANPLUS::Config::VERSION eq $VERSION;
-
-        ### Split the version numbers into a major part and a devel part.
-        my $cp_version = $VERSION;
-        $cp_version =~ s/_(\d+)$//;
-        my $cp_devel = $1 || 0;
-
-        my $version = $CPANPLUS::Config::MIN_CPANPLUS_VERSION;
-        $version =~ s/_(\d+)$//;
-        my $devel = $1 || 0;
-
-        ### If cpanplus has a newer major version than what we minimally
-        ### require, it's enough
-        last CPANPLUS if $cp_version > $version;
-
-        ### If cpanplus has the same major version and a newer devel
-        ### version than what we minimally require, it's enough
-        last CPANPLUS if $cp_version == $version && $cp_devel >= $devel;
-
-        ### ok, the versions are no good, it's WRONG
-        $fail++
-    }
-
-    ### Otherwise, the configuration does not have a newer version than us;
-    ### it's insufficient.
-    return if $fail;
-
-    return 1;
-}
-
-
 
 =pod
 
 =head2 can_save( [$config_location] )
 
 Check if we can save the configuration to the specified file.
-If no file is provided, defaults to your personal config, or
-failing that, C<$INC{'CPANPLUS/Config.pm'}>.
+If no file is provided, defaults to your personal config.
 
 Returns true if the file can be saved, false otherwise.
 
@@ -221,8 +177,8 @@ Returns true if the file can be saved, false otherwise.
 
 sub can_save {
     my $self = shift;
-    my $env  = ENV_CPANPLUS_CONFIG;
-    my $file = shift || $ENV{$env} || $INC{'CPANPLUS/Config.pm'};
+    my $file = shift || CONFIG_USER_FILE->();
+    
     return 1 unless -e $file;
 
     chmod 0644, $file;
@@ -231,41 +187,106 @@ sub can_save {
 
 =pod
 
-=head2 save( [$config_location] )
+=head2 save( [$package_name] )
 
-Saves the configuration to the location you provided.
-If no file is provided, defaults to your personal config, or
-failing that, C<$INC{'CPANPLUS/Config.pm'}>.
+Saves the configuration to the package name you provided.
+If this package is not C<CPANPLUS::Config::System>, it will
+be saved in your C<.cpanplus> directory, otherwise it will
+be attempted to be saved in the system wide directory.
+
+If no argument is provided, it will default to your personal
+config.
 
 Returns true if the file was saved, false otherwise.
 
 =cut
 
-sub save {
+sub _config_pm_to_file {
     my $self = shift;
-    my $env  = ENV_CPANPLUS_CONFIG;
-    my $file = shift || $ENV{$env} || $INC{'CPANPLUS/Config.pm'};
+    my $pm   = shift or return;
+    my $dir  = shift || CONFIG_USER_LIB_DIR->();
 
+    ### only 3 types of files know: home, system and 'other'
+    ### so figure out where to save them based on their type
+    my $file;
+    if( $pm eq CONFIG_USER ) {
+        $file = CONFIG_USER_FILE->();   
+
+    } elsif ( $pm eq CONFIG_SYSTEM ) {
+        $file = CONFIG_SYSTEM_FILE->();
+        
+    ### third party file        
+    } else {
+        my $cfg_pkg = CONFIG . '::';
+        unless( $pm =~ /^$cfg_pkg/ ) {
+            error(loc(
+                "WARNING: Your config package '%1' is not in the '%2' ".
+                "namespace and will not be automatically detected by %3",
+                $pm, $cfg_pkg, 'CPANPLUS'
+            ));        
+        }                        
+    
+        $file = File::Spec->catfile(
+            $dir,
+            split( '::', $pm )
+        ) . '.pm';        
+    }
+
+    return $file;
+}
+
+
+sub save {
+    my $self    = shift;
+    my $pm      = shift || CONFIG_USER;
+    my $savedir = shift || '';
+    
+    my $file = $self->_config_pm_to_file( $pm, $savedir ) or return;
+    my $dir  = dirname( $file );
+    
+    unless( -d $dir ) {
+        $self->_mkdir( dir => $dir ) or (
+            error(loc("Can not create directory '%1' to save config to",$dir)),
+            return
+        )
+    }       
     return unless $self->can_save($file);
 
-    my $time = gmtime;
+    ### find only accesors that are not private
+    my @acc = sort grep { $_ !~ /^_/ } $self->conf->ls_accessors;
 
-    load Data::Dumper;
-    local $Data::Dumper::Sortkeys = 1; 
+    ### for dumping the values
+    use Data::Dumper;
     
-    my $data = Data::Dumper->Dump([$self->conf], ['conf']);
+    my @lines;
+    for my $acc ( @acc ) {
+        
+        push @lines, "### $acc section", $/;
+        
+        for my $key ( $self->conf->$acc->ls_accessors ) {
+            my $val = Dumper( $self->conf->$acc->$key );
+        
+            $val =~ s/\$VAR1\s+=\s+//;
+            $val =~ s/;\n//;
+        
+            push @lines, '$'. "conf->set_${acc}( $key => $val );", $/;
+        }
+        push @lines, $/,$/;
 
-    ## get rid of the bless'ing
-    $data =~ s/=\s*bless\s*\(\s*\{/= {/;
-    $data =~ s/\s*},\s*'[A-Za-z0-9:]+'\s*\);/\n    };/;
+    }
+
+    my $str = join '', map { "    $_" } @lines;
 
     ### use a variable to make sure the pod parser doesn't snag it
-    my $is = '=';
-
-    my $msg = <<_END_OF_CONFIG_;
+    my $is      = '=';
+    my $time    = gmtime;
+   
+    
+    my $msg     = <<_END_OF_CONFIG_;
 ###############################################
-###           CPANPLUS::Config              ###
-###  Configuration structure for CPANPLUS   ###
+###                                         
+###  Configuration structure for $pm        
+###                                         
 ###############################################
 
 #last changed: $time GMT
@@ -275,39 +296,32 @@ ${is}pod
 
 ${is}head1 NAME
 
-CPANPLUS::Config
+$pm
 
 ${is}head1 DESCRIPTION
 
-This is your CPANPLUS configuration file. Editing this
+This is a CPANPLUS configuration file. Editing this
 config changes the way CPANPLUS will behave
 
 ${is}cut
 
-package CPANPLUS::Config;
-
-\$VERSION = "$MIN_CONFIG_VERSION";
-
-\$MIN_CPANPLUS_VERSION = "$CPANPLUS::Config::MIN_CPANPLUS_VERSION";
+package $pm;
 
 use strict;
 
-sub new {
-    my \$class = shift;
+sub setup {
+    my \$conf = shift;
+    
+$str
 
-    my $data
-    bless(\$conf, \$class);
-    return \$conf;
-
-} #new
-
+    return 1;    
+} 
 
 1;
 
 _END_OF_CONFIG_
 
-    ### make a backup ###
-    rename $file, "$file~", if -f $file;
+    $self->_move( file => $file, to => "$file~" ) if -f $file;
 
     my $fh = new FileHandle;
     $fh->open(">$file")
@@ -316,61 +330,6 @@ _END_OF_CONFIG_
 
     $fh->print($msg);
     $fh->close;
-
-    return 1;
-}
-
-=pod
-
-=head2 conf()
-
-Return the C<CPANPLUS::Config> object.  For internal use only.
-
-=cut
-
-sub conf {
-    my $self = shift;
-    $self->{_conf} = shift if $_[0];
-    return $self->{_conf};
-}
-
-=pod
-
-=head2 _load_args( [options => HASHREF] );
-
-Called by C<new> to do the actual altering of options.
-
-Returns true on success, false on failure.
-
-=cut
-
-sub _load_args {
-    my $self = shift;
-    my %hash = @_;
-
-    my $opts;
-    my $tmpl = {
-        options => { default => {}, strict_type => 1, store => \$opts },
-    };
-
-    my $args = check( $tmpl, \%hash ) or return;
-
-    for my $option ( keys %$opts ) {
-
-        # translate to calling syntax
-        my $method;
-        if( $option =~ /^_/) {
-            ($method = $option) =~ s/^(_)?/$1set_/;
-        } else {
-            $method = 'set_' . $option;
-        }
-
-        $self->$method( %{$opts->{$option}} );
-    }
-
-    ### XXX return values?? where does this GO? ###
-    #CPANPLUS::Configure->Setup->init( conf => $self )
-    #    unless $self->_get_build('make');
 
     return 1;
 }
@@ -398,7 +357,10 @@ sub options {
 
     check($tmpl, \%hash) or return;
 
-    return sort keys %{$conf->{$type}} if $conf->{$type};
+    my %seen;
+    return sort grep { !$seen{$_}++ }
+                map { $_->$type->ls_accessors if $_->can($type)  } 
+                $self->conf;
     return;
 }
 
@@ -465,16 +427,11 @@ Settings for C<cpanpd>, the CPANPLUS daemon.
 =cut
 
 sub AUTOLOAD {
-    my $self = shift;
-    my $conf = $self->conf;
+    my $self    = shift;
+    my $conf    = $self->conf;
 
-    unless( scalar @_ ) {
-        error( loc("No arguments provided!") );
-        return;
-    }
-
-    my $name = $AUTOLOAD;
-    $name =~ s/.+:://;
+    my $name    = $AUTOLOAD;
+    $name       =~ s/.+:://;
 
     my ($private, $action, $field) =
                 $name =~ m/^(_)?((?:[gs]et|add))_([a-z]+)$/;
@@ -483,8 +440,13 @@ sub AUTOLOAD {
     $type .= '_'    if $private;
     $type .= $field if $field;
 
-    unless ( exists $conf->{$type} ) {
+    unless ( $conf->can($type) ) {
         error( loc("Invalid method type: '%1'", $name) );
+        return;
+    }
+
+    unless( scalar @_ ) {
+        error( loc("No arguments provided!") );
         return;
     }
 
@@ -493,8 +455,9 @@ sub AUTOLOAD {
         for my $key (@_) {
             my @list = ();
 
-            if( exists $conf->{$type}->{$key} ) {
-                push @list, $conf->{$type}->{$key};
+            ### get it from the user config first
+            if( $conf->can($type) and $conf->$type->can($key) ) {
+                push @list, $conf->$type->$key;
 
             ### XXX EU::AI compatibility hack to provide lookups like in
             ### cpanplus 0.04x; we renamed ->_get_build('base') to
@@ -516,9 +479,9 @@ sub AUTOLOAD {
 
         while( my($key,$val) = each %args ) {
 
-            if( exists $conf->{$type}->{$key} ) {
-                $conf->{$type}->{$key} = $val;
-
+            if( $conf->can($type) and $conf->$type->can($key) ) {
+                $conf->$type->$key( $val );
+                
             } else {
                 error( loc(q[No such key '%1' in field '%2'], $key, $type) );
                 return;
@@ -533,15 +496,17 @@ sub AUTOLOAD {
 
         while( my($key,$val) = each %args ) {
 
-            if( exists $conf->{$type}->{$key} ) {
+            if( $conf->$type->can($key) ) {
                 error( loc( q[Key '%1' already exists for field '%2'],
                             $key, $type));
                 return;
             } else {
-                $conf->{$type}->{$key} = $val;
+                $conf->$type->mk_accessors( $key );
+                $conf->$type->$key( $val );
             }
         }
         return 1;
+
     } else {
 
         error( loc(q[Unknown action '%1'], $action) );

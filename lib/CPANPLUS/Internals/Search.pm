@@ -1,7 +1,7 @@
 package CPANPLUS::Internals::Search;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Module;
@@ -270,7 +270,8 @@ sub _all_installed {
     ### modules -- they're just there in case they're not on the
     ### perl install, but the user shouldn't trust them for *other*
     ### modules!
-    local @INC = CPANPLUS::inc->original_inc;
+    ### XXX CPANPLUS::inc is now obsolete, remove the calls
+    #local @INC = CPANPLUS::inc->original_inc;
 
     for my $dir (@INC ) {
         next if $dir eq '.';
@@ -278,6 +279,10 @@ sub _all_installed {
         ### not a directory after all ###
         next unless -d $dir;
 
+        ### make sure to clean up the directories just in case,
+        ### as we're making assumptions about the length
+        ### This solves rt.cpan issue #19738
+        $dir = File::Spec->canonpath( $dir );
 
         File::Find::find(
             {   %find_args,

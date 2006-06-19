@@ -1,6 +1,6 @@
 package CPANPLUS::Module::Fake;
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Module;
 use CPANPLUS::Module::Author::Fake;

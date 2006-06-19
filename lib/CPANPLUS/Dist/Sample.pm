@@ -44,7 +44,7 @@ use strict;
 use base qw[CPANPLUS::Dist];
 
 ### to set up the include paths properly for bundled modules ###
-use CPANPLUS::inc;
+
 
 ### for I18N ###
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';

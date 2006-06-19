@@ -1,6 +1,6 @@
 package Module::Load;
 
-$VERSION = '0.10';
+$VERSION = "-1";
 
 use strict;
 use File::Spec ();

@@ -3,7 +3,7 @@ package CPANPLUS::Backend::RV;
 use strict;
 use vars qw[$STRUCT];
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 

@@ -13,7 +13,6 @@ BEGIN {
 
 use strict;
 use CPANPLUS::Configure;
-use CPANPLUS::inc;
 
 use FileHandle;
 use File::Basename  qw[basename];
@@ -24,16 +23,17 @@ use File::Basename  qw[basename];
 }
 
 sub gimme_conf { 
-    CPANPLUS::Configure->new( 
-                conf => {   
-                    hosts       => [ { 
+    my $conf = CPANPLUS::Configure->new();
+    $conf->set_conf( hosts  => [ { 
                         path        => 'dummy-CPAN',
                         scheme      => 'file',
                     } ],      
-                    base        => 'dummy-cpanplus',   
-                    dist_type   => '',
-                } );
+    );
+    $conf->set_conf( base       => 'dummy-cpanplus' );
+    $conf->set_conf( dist_type  => '' );
+    $conf->set_conf( signature  => 0 );
 
+    return $conf;
 };
 
 my $fh;

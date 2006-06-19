@@ -1,7 +1,7 @@
 package CPANPLUS::Internals::Source;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Module;
 use CPANPLUS::Module::Fake;
@@ -468,16 +468,7 @@ sub __retrieve_source {
     return unless $storable;
 
     ### $stored is the name of the frozen data structure ###
-    my $stored = File::Spec->rel2abs(
-                    File::Spec->catfile(
-                                $args->{path},      #base dir
-                                #$args->{name}       #file
-                                $conf->_get_source('stored')
-                                . '.' .
-                                $Storable::VERSION  #the version of storable used to store
-                                . '.stored'         #append a suffix
-                    )
-                );
+    my $stored = $self->__storable_file( $args->{path} );
 
     if ($storable && -e $stored && -s _ && $args->{'uptodate'}) {
         msg( loc("Retrieving %1", $stored), $args->{'verbose'} );
@@ -547,14 +538,7 @@ sub _save_source {
     return unless keys %$to_write;
 
     ### $stored is the name of the frozen data structure ###
-    ### changed to use File::Spec->catfile -jmb
-    my $stored = File::Spec->catfile(
-                            $args->{path},                  #base dir
-                            $conf->_get_source('stored')    #file
-                            . '.' .
-                            $Storable::VERSION              #the version of storable used to store
-                            . '.stored'                     #append a suffix
-                        );
+    my $stored = $self->__storable_file( $args->{path} );
 
     if (-e $stored && not -w $stored) {
         msg( loc("%1 not writable; skipped.", $stored), $args->{'verbose'} );
@@ -573,6 +557,32 @@ sub _save_source {
     return $flag ? 0 : 1;
 }
 
+sub __storable_file {
+    my $self = shift;
+    my $conf = $self->configure_object;
+    my $path = shift or return;
+
+    ### check if we can retrieve a frozen data structure with storable ###
+    my $storable = $conf->get_conf('storable')
+                        ? can_load( modules => {'Storable' => '0.0'} )
+                        : 0;
+
+    return unless $storable;
+    
+    ### $stored is the name of the frozen data structure ###
+    ### changed to use File::Spec->catfile -jmb
+    my $stored = File::Spec->rel2abs(
+        File::Spec->catfile(
+            $path,                          #base dir
+            $conf->_get_source('stored')    #file
+            . '.' .
+            $Storable::VERSION              #the version of storable 
+            . '.stored'                     #append a suffix
+        )
+    );
+
+    return $stored;
+}
 
 =pod
 

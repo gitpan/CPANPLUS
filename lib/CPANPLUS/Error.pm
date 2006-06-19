@@ -1,7 +1,7 @@
 package CPANPLUS::Error;
 
 use strict;
-use CPANPLUS::inc;
+
 use Log::Message private => 0;;
 
 =pod

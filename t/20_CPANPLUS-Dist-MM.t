@@ -24,7 +24,6 @@ BEGIN { require 'conf.pl'; }
 
 use strict;
 
-use CPANPLUS::inc;
 use CPANPLUS::Configure;
 use CPANPLUS::Backend;
 use CPANPLUS::Dist;
@@ -48,11 +47,19 @@ my $noperms = ($< and not $conf->get_program('sudo')) &&
 $cb->_callbacks->send_test_report( sub { 0 } );
 $conf->set_conf( cpantest => 0 );
 
+
 ### Redirect errors to file ###
 local $CPANPLUS::Error::ERROR_FH = output_handle() unless @ARGV;
 local $CPANPLUS::Error::MSG_FH   = output_handle() unless @ARGV;
-*STDOUT                          = output_handle() unless @ARGV;
 *STDERR                          = output_handle() unless @ARGV;
+
+### dont uncomment this, it screws up where STDOUT goes and makes
+### test::harness create test counter mismatches
+#*STDOUT                          = output_handle() unless @ARGV;
+### for the same test-output counter mismatch, we disable verbose
+### mode
+$conf->set_conf( verbose => 0 );
+$conf->set_conf( allow_build_interactivity => 0 );
 
 ### start with fresh sources ###
 ok( $cb->reload_indices( update_source => 0 ),
@@ -306,7 +313,7 @@ SKIP: {
                 my $dist = shift; my $self = $dist->parent;
                 my $fh = OPEN_FILE->(
                             MAKEFILE_PL->($self->status->extract), '>' );
-                print $fh "die '$0'";
+                print $fh "exit 1;";
                 close $fh;
             };
 

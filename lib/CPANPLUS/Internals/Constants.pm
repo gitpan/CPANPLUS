@@ -1,40 +1,24 @@
 package CPANPLUS::Internals::Constants;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 
 use File::Spec;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-### for the version number ###
-require CPANPLUS::Internals;
+require Exporter;
+use vars    qw[$VERSION @ISA @EXPORT];
+
+use Package::Constants;
 
 
-BEGIN {
+$VERSION    = 0.01;
+@ISA        = qw[Exporter];
+@EXPORT     = Package::Constants->list( __PACKAGE__ );
 
-    require Exporter;
-    use vars    qw[$VERSION @ISA @EXPORT];
-  
-    $VERSION    = 0.01;
-    @ISA        = qw[Exporter];
-    @EXPORT     = qw[   
-                    FILE_EXISTS FILE_READABLE DIR_EXISTS IS_MODOBJ IS_AUTHOBJ 
-                    MAKEFILE MAKEFILE_PL BUILD_PL PREREQ_BUILD    
-                    IS_FAKE_MODOBJ IS_FAKE_AUTHOBJ README CHECKSUMS OPEN_FILE
-                    PGP_HEADER ENV_CPANPLUS_CONFIG DEFAULT_EMAIL DOT_CPANPLUS
-                    CPANPLUS_UA TESTERS_URL TESTERS_DETAILS_URL BLIB ARCH LIB
-                    DOT_SHELL_DEFAULT_RC PREREQ_INSTALL PREREQ_ASK IS_CONFOBJ 
-                    PREREQ_IGNORE BOOLEANS CALLING_FUNCTION IS_RVOBJ LIB_DIR
-                    ARCH_DIR DOT_EXISTS AUTO LIB_AUTO_DIR ARCH_AUTO_DIR    
-                    PERL_CORE IS_INTERNALS_OBJ IS_CODEREF CREATE_FILE_URI   
-                    STRIP_GZ_SUFFIX BLIB_LIBDIR GET_XS_FILES INSTALLER_BUILD
-                    INSTALLER_MM ON_OLD_CYGWIN IS_FILE IS_DIR INSTALLER_SAMPLE
-                    INSTALL_VIA_PACKAGE_MANAGER TARGET_CREATE TARGET_PREPARE
-                    TARGET_INSTALL TARGET_IGNORE OPT_AUTOFLUSH 
-                    UNKNOWN_DL_LOCATION
-                ];
-}
+
+sub constants { @EXPORT };
 
 use constant INSTALLER_BUILD
                             => 'CPANPLUS::Dist::Build';
@@ -42,15 +26,24 @@ use constant INSTALLER_MM   => 'CPANPLUS::Dist::MM';
 use constant INSTALLER_SAMPLE   
                             => 'CPANPLUS::Dist::Sample';
 
+use constant CONFIG         => 'CPANPLUS::Config';
+use constant CONFIG_USER    => 'CPANPLUS::Config::User';
+use constant CONFIG_SYSTEM  => 'CPANPLUS::Config::System';
+
 use constant TARGET_CREATE  => 'create';
 use constant TARGET_PREPARE => 'prepare';
 use constant TARGET_INSTALL => 'install';
 use constant TARGET_IGNORE  => 'ignore';
+use constant DOT_CPANPLUS   => $^O eq 'VMS' ? '_cpanplus' : '.cpanplus';         
 
 use constant OPT_AUTOFLUSH  => '-MCPANPLUS::Internals::Utils::Autoflush';
 
 use constant UNKNOWN_DL_LOCATION
                             => 'UNKNOWN-ORIGIN';   
+
+use constant NMAKE          => 'nmake.exe';
+use constant NMAKE_URL      => 
+                        'ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe';
 
 use constant INSTALL_VIA_PACKAGE_MANAGER 
                             => sub { my $fmt = $_[0] or return;
@@ -113,51 +106,78 @@ use constant DIR_EXISTS     => sub {
                             };   
 
 use constant MAKEFILE_PL    => sub { return @_
-                                        ? File::Spec->catfile( $_[0],
+                                        ? File::Spec->catfile( @_,
                                                             'Makefile.PL' )
                                         : 'Makefile.PL';
                             };                   
 use constant MAKEFILE       => sub { return @_
-                                        ? File::Spec->catfile( $_[0],
+                                        ? File::Spec->catfile( @_,
                                                             'Makefile' )
                                         : 'Makefile';
                             }; 
 use constant BUILD_PL       => sub { return @_
-                                        ? File::Spec->catfile( $_[0],
+                                        ? File::Spec->catfile( @_,
                                                             'Build.PL' )
                                         : 'Build.PL';
                             };
                             
 use constant BLIB           => sub { return @_
-                                        ? File::Spec->catfile($_[0], 'blib')
+                                        ? File::Spec->catfile(@_, 'blib')
                                         : 'blib';
                             };                  
 
 use constant LIB            => 'lib';
 use constant LIB_DIR        => sub { return @_
-                                        ? File::Spec->catdir($_[0], LIB)
+                                        ? File::Spec->catdir(@_, LIB)
                                         : LIB;
                             }; 
 use constant AUTO           => 'auto';                            
 use constant LIB_AUTO_DIR   => sub { return @_
-                                        ? File::Spec->catdir($_[0], LIB, AUTO)
+                                        ? File::Spec->catdir(@_, LIB, AUTO)
                                         : File::Spec->catdir(LIB, AUTO)
                             }; 
 use constant ARCH           => 'arch';
 use constant ARCH_DIR       => sub { return @_
-                                        ? File::Spec->catdir($_[0], ARCH)
+                                        ? File::Spec->catdir(@_, ARCH)
                                         : ARCH;
                             }; 
 use constant ARCH_AUTO_DIR  => sub { return @_
-                                        ? File::Spec->catdir($_[0],ARCH,AUTO)
+                                        ? File::Spec->catdir(@_,ARCH,AUTO)
                                         : File::Spec->catdir(ARCH,AUTO)
                             };                            
 
 use constant BLIB_LIBDIR    => sub { return @_
                                         ? File::Spec->catdir(
-                                                $_[0], BLIB->(), LIB )
+                                                @_, BLIB->(), LIB )
                                         : File::Spec->catdir( BLIB->(), LIB );
                             };  
+
+use constant CONFIG_USER_LIB_DIR => sub { 
+                                    require CPANPLUS::Internals::Utils;
+                                    LIB_DIR->(
+                                        CPANPLUS::Internals::Utils->_home_dir,
+                                        DOT_CPANPLUS
+                                    );
+                                };        
+use constant CONFIG_USER_FILE    => sub {
+                                    File::Spec->catfile(
+                                        CONFIG_USER_LIB_DIR->(),
+                                        split('::', CONFIG_USER),
+                                    ) . '.pm';
+                                };
+use constant CONFIG_SYSTEM_FILE  => sub {
+                                    require CPANPLUS::Internals;
+                                    require File::Basename;
+                                    my $dir = File::Basename::dirname(
+                                        $INC{'CPANPLUS/Internals.pm'}
+                                    );
+                                
+                                    ### XXX use constants
+                                    File::Spec->catfile( 
+                                        $dir, qw[Config System.pm]
+                                    );
+                                };        
+      
 use constant README         => sub { my $obj = $_[0];
                                      my $pkg = $obj->package_name;
                                      $pkg .= '-' . $obj->package_version .
@@ -187,8 +207,10 @@ use constant PGP_HEADER     => '-----BEGIN PGP SIGNED MESSAGE-----';
 use constant ENV_CPANPLUS_CONFIG
                             => 'PERL5_CPANPLUS_CONFIG';
 use constant DEFAULT_EMAIL  => 'cpanplus@example.com';   
-use constant DOT_CPANPLUS   => $^O eq 'VMS' ? '_cpanplus' : '.cpanplus';         
-use constant CPANPLUS_UA    => sub { "CPANPLUS/$CPANPLUS::Internals::VERSION" };
+use constant CPANPLUS_UA    => sub { ### for the version number ###
+                                     require CPANPLUS::Internals;
+                                     "CPANPLUS/$CPANPLUS::Internals::VERSION" 
+                                };
 use constant TESTERS_URL    => sub {
                                     "http://testers.cpan.org/show/" .
                                     $_[0] .".yaml" 

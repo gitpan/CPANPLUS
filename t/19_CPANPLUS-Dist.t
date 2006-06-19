@@ -89,15 +89,6 @@ my $Mod  = $cb->module_tree('Text::Bastardize');
 ok( $Mod,                       "Got module object" );
 
 
-
-### register new format ###
-{   my $ok = $conf->_add_dist( $Module => 1 );
-    ok( $ok,                    "New dist format registered" );
-
-    my $class = $conf->_get_dist($Module);
-    ok( $class,                 "   Proper format found" );
-}
-
 ### straight forward dist build - prepare, create, install
 {   my $dist = CPANPLUS::Dist->new(
                             format  => $Module,

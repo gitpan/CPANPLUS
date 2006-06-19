@@ -1,7 +1,7 @@
 package CPANPLUS::Shell::Default::Plugins::Remote;
 
 use strict;
-use CPANPLUS::inc;
+
 use Module::Load;
 use Params::Check               qw[check];
 use CPANPLUS::Error             qw[error msg];

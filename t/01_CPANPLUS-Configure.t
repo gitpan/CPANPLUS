@@ -45,16 +45,18 @@ isa_ok( $r, 'CPANPLUS::Config' );
     is( $base, $c->get_conf('base'),    "   Value as expected" );
 }
 
-for my $cat ( keys %$r ) {
+for my $cat ( $r->ls_accessors ) {
 
     ### what field can they take? ###
     my @options = $c->options( type => $cat );
+
+    ### copy for use on the config object itself
+    my $accessor    = $cat;
+    my $prepend     = ($cat =~ s/^_//) ? '_' : '';
     
-    my $prepend = ($cat =~ s/^_//) ? '_' : '';
-    
-    my $getmeth = $prepend . 'get_'. $cat;
-    my $setmeth = $prepend . 'set_'. $cat;
-    my $addmeth = $prepend . 'add_'. $cat;
+    my $getmeth     = $prepend . 'get_'. $cat;
+    my $setmeth     = $prepend . 'set_'. $cat;
+    my $addmeth     = $prepend . 'add_'. $cat;
     
     ok( scalar(@options),               "Possible options obtained" );
     
@@ -72,9 +74,11 @@ for my $cat ( keys %$r ) {
     }
 
     ### poke in the object, get the actual hashref out ### 
-    my $hash = $r->{ $prepend . $cat };
+    my %hash = map {
+        $_ => $r->$accessor->$_     
+    } $r->$accessor->ls_accessors;
     
-    while( my ($key,$val) = each %$hash ) {
+    while( my ($key,$val) = each %hash ) {
         my $is = $c->$getmeth($key); 
         is_deeply( $val, $is,           "deep check for '$key'" );
         ok( $c->$setmeth($key => 1 ),   "   $setmeth('$key' => 1)" );
@@ -83,16 +87,21 @@ for my $cat ( keys %$r ) {
     }
 
     ### now check if we found all the keys with options or not ###
-    delete $hash->{$_} for @options;
-    ok( !(scalar keys %$hash),          "All possible keys found" );
+    delete $hash{$_} for @options;
+    ok( !(scalar keys %hash),          "All possible keys found" );
     
 }    
 
 
 ### see if we can save the config ###
-{   my $file = File::Spec->catfile('dummy-cpanplus','.config');
+{   no warnings 'redefine';
+    my $dummydir = 'dummy-cpanplus';
+    local *CPANPLUS::Internals::Utils::_home_dir = sub { $dummydir };
+
+    my $file = CONFIG_USER_FILE->();
+    
     ok( $c->can_save($file),    "Able to save config" );
-    ok( $c->save($file),        "   File saved" );
+    ok( $c->save( CONFIG_USER ),"   File saved" );
     ok( -e $file,               "   File exists" );
     ok( -s $file,               "   File has size" );
 
@@ -107,8 +116,12 @@ for my $cat ( keys %$r ) {
         }       
         ok( $conf,              "Config loaded from environment" );
         isa_ok( $conf,          "CPANPLUS::Configure" );
-        is( $INC{$Config_pm}, $file,
+        
+        TODO: {
+            local $TODO = 'FIXME after configure api is complete';
+            is( $INC{$Config_pm}, $file,
                                 "   Proper config file loaded" );
+        }
     }
 }
 
@@ -125,111 +138,8 @@ for my $cat ( keys %$r ) {
     }
     
     CPANPLUS::Error->flush;
-    
-    #################################################
-    ### tests for config version too low for cpanplus
-    #################################################
-    
-    {   ### try creating a new configure object with an out of date
-        ### config. set version to 0, remove entry from %INC     
-        local $CPANPLUS::Config::VERSION = 0;      
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        my $err = CPANPLUS::Error->stack_as_string;
-        ok( !$rv,       "Out of date config version detected" );
-        like( $err, qr/You will need to reconfigure/,
-                        "   Error stored as expected" );
-    }
+}    
 
-    CPANPLUS::Error->flush;
-    
-    {   ### ensure that we handle x.xx_aa < x.xx_bb properly
-        local $CPANPLUS::Config::VERSION = "0.00_01";
-        local $CPANPLUS::Configure::MIN_CONFIG_VERSION = "0.00_02";
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        my $err = CPANPLUS::Error->stack_as_string;
-        ok( !$rv,       "Out of date config version detected" );
-        like( $err, qr/You will need to reconfigure/,
-                        "   Error stored as expected" );
-    }
-    
-    CPANPLUS::Error->flush;
-    
-    {   ### ensure that we handle x.xx_aa < y.yy_aa properly
-        local $CPANPLUS::Config::VERSION = "0.00_00";
-        local $CPANPLUS::Configure::MIN_CONFIG_VERSION = "0.01_00";
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        my $err = CPANPLUS::Error->stack_as_string;
-        ok( !$rv,       "Out of date config version detected" );
-        like( $err, qr/You will need to reconfigure/,
-                        "   Error stored as expected" );
-    }
-    
-    CPANPLUS::Error->flush;
-    
-    {   ### load config when versions are equal
-        local $CPANPLUS::Config::VERSION = "0.00_00";
-        local $CPANPLUS::Configure::MIN_CONFIG_VERSION = "0.00_00";
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        ok( $rv,        "Config loaded from environment" );
-        isa_ok( $rv,    "CPANPLUS::Configure" );
-    }
-
-    CPANPLUS::Error->flush;
-
-    
-    #################################################
-    ### tests for CPANPLUS version too low for config
-    #################################################
-
-    {   ### ensure that we handle x.xx_aa < y.yy_aa properly
-        local $CPANPLUS::Configure::VERSION = "0.00_00";
-        local $CPANPLUS::Config::MIN_CONFIG_VERSION = "0.01_00";
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        my $err = CPANPLUS::Error->stack_as_string;
-        ok( !$rv,       "Out of date cpanplus version detected" );
-        like( $err, qr/You will need to reconfigure/,
-                        "   Error stored as expected" );
-    }
-
-    CPANPLUS::Error->flush;
-
-    {   ### ensure that we handle x.xx_aa < x.xx_bb properly
-        local $CPANPLUS::Configure::VERSION = "0.00_01";
-        local $CPANPLUS::Config::MIN_CONFIG_VERSION = "0.00_02";
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        my $err = CPANPLUS::Error->stack_as_string;
-        ok( !$rv,       "Out of date cpanplus version detected" );
-        like( $err, qr/You will need to reconfigure/,
-                        "   Error stored as expected" );
-    }
-
-    CPANPLUS::Error->flush;
-
-    {   ### load config when versions are equal
-        local $CPANPLUS::Config::MIN_CPANPLUS_VERSION = "0.00_00";
-        local $CPANPLUS::Configure::VERSION = "0.00_00";
-        local $INC{$Config_pm} = undef;
-        
-        my $rv  = CPANPLUS::Configure->new();
-        ok( $rv,        "Config loaded from environment" );
-        isa_ok( $rv,    "CPANPLUS::Configure" );
-    }
-
-    CPANPLUS::Error->flush;
-
-};
 
 # Local variables:
 # c-indentation-style: bsd

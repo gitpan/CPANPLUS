@@ -2,33 +2,27 @@ package CPANPLUS::Configure::Setup;
 
 use strict;
 use vars    qw(@ISA);
-@ISA    =   qw[CPANPLUS::Internals::Utils];
 
-use CPANPLUS::inc;
+use base    qw[CPANPLUS::Internals::Utils];
+use base    qw[Object::Accessor];
+
+use Config;
+use Term::UI;
+use Module::Load;
+use Term::ReadLine;
+
+
 use CPANPLUS::Internals::Utils;
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Error;
 
-### dont' USE cpanplus::shell -- it triggers improt which is magic
-### don't think we need any of it's functions anyway, so comment it
-### out for now.. if we *DO* need it, 'load' it instead -- kane
-#use CPANPLUS::Shell                 ();
-
-use Config;
-use Term::UI;
-use File::Spec;
-use FileHandle;
-use Module::Load;
-use Term::ReadLine;
-use File::Basename;
-
-use Cwd                         qw[cwd];
 use IPC::Cmd                    qw[can_run];
 use Params::Check               qw[check];
 use Module::Load::Conditional   qw[check_install];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-$Params::Check::VERBOSE = 1;
+### silence Term::UI
+$Term::UI::VERBOSE = 0;
 
 #Can't ioctl TIOCGETP: Unknown error
 #Consider installing Term::ReadKey from CPAN site nearby
@@ -45,56 +39,42 @@ $Params::Check::VERBOSE = 1;
 ### setting this var in the meantime to avoid this warning ###
 $ENV{PERL_READLINE_NOWARN} = 1;
 
-### silence Term::UI
-$Term::UI::VERBOSE = 0;
-
-### autogenerate accessors ###
-for my $key (qw[configure_object term backend autoreply location
-            custom_config skip_mirrors use_previous]
-) {
-    no strict 'refs';
-    *{__PACKAGE__."::$key"} = sub {
-        my $self = shift;
-        $self->{$key} = $_[0] if @_;
-        return $self->{$key};
-    }
-}
 
 sub new {
     my $class = shift;
     my %hash  = @_;
 
-    my ($cb,$term,$conf,$ar,$sm, $up);
     my $tmpl = {
-        configure_object => { store  => \$conf   },
-        term             => { store  => \$term   },
-        backend          => { store  => \$cb     },
-        autoreply        => { store  => \$ar,    default => 0, },
-        skip_mirrors     => { store  => \$sm,    default => 0, },
-        use_previous     => { store  => \$up,    default => 1, },
+        configure_object => { },
+        term             => { },
+        backend          => { },
+        autoreply        => { default => 0, },
+        skip_mirrors     => { default => 0, },
+        use_previous     => { default => 1, },
+        config_type      => { default => CONFIG_USER },
     };
 
     my $args = check( $tmpl, \%hash ) or return;
 
-
+    ### initialize object
+    my $obj = $class->SUPER::new( keys %$tmpl );
+    for my $acc ( $obj->ls_accessors ) {
+        $obj->$acc( $args->{$acc} );
+    }     
+    
     ### otherwise there's a circular use ###
     load CPANPLUS::Configure;
     load CPANPLUS::Backend;
 
-    $conf   ||= CPANPLUS::Configure->new();
-    $cb     ||= CPANPLUS::Backend->new( $conf );
-    $term   ||= Term::ReadLine->new();
+    $obj->configure_object( CPANPLUS::Configure->new() )
+        unless $obj->configure_object;
+        
+    $obj->backend( CPANPLUS::Backend->new( $obj->configure_object ) )
+        unless $obj->backend;
 
-    my $setup = {
-        backend             => $cb,
-        configure_object    => $conf,
-        term                => $term,
-        autoreply           => $ar,
-        skip_mirrors        => $sm,
-        use_previous        => $up,
-    };
-
-    my $obj = bless $setup, $class;
+    ### use empty string in case user only has T::R::Stub -- it complains
+    $obj->term( Term::ReadLine->new('') ) 
+        unless $obj->term;
 
     ### enable autoreply if that was passed ###
     $Term::UI::AUTOREPLY = $obj->autoreply;
@@ -104,296 +84,174 @@ sub new {
 
 sub init {
     my $self = shift;
-    my $conf = $self->configure_object;
+    my $term = $self->term;
+    
+    ### default setting, unless changed
+    $self->config_type( CONFIG_USER ) unless $self->config_type;
+    
+    my $save = loc('Save & exit');
+    my $exit = loc('Quit without saving');
+    my @map  = (
+        # key on the display                        # method to dispatch to
+        [ loc('Select Configuration file')      => '_save_where'        ],
+        [ loc('Setup CLI Programs')             => '_setup_program'     ],
+        [ loc('Setup CPANPLUS Home directory')  => '_setup_base'        ],
+        [ loc('Setup FTP/Email settings')       => '_setup_ftp'         ],
+        [ loc('Setup basic preferences')        => '_setup_conf'        ],
+        [ loc('Setup installer settings')       => '_setup_installer'   ],
+        [ loc('Select mirrors'),                => '_setup_hosts'       ],      
+        [ loc('Edit configuration file')        => '_edit'              ],    
+        [ $save                                 => '_save'              ],
+        [ $exit                                 => 1                    ],             
+    );
 
-    my $loc = $self->location || $self->_save_where or return;
-    $self->location($loc);
+    my @keys = map { $_->[0] } @map;    # sorted keys
+    my %map  = map { @$_     } @map;    # lookup hash
+   
+    PICK_SECTION: {
+        print loc("
+=================>      MAIN MENU       <=================        
+        
+Welcome to the CPANPLUS configuration. Please select which
+parts you wish to configure
 
-    ### user didn't want to do manual configuration?
-    $Term::UI::AUTOREPLY = 1 if $self->_do_autosetup;
+Defaults are taken from your current configuration.
+If you would save now, your settings would be written to:
+    
+    %1
+    
+        ", $self->config_type );
+    
+        my $choice = $term->get_reply(
+                            prompt  => "Section to configure:",
+                            choices => \@keys,
+                            default => $keys[0]
+                        );       
+               
+        ### exit configuration?
+        if( $choice eq $exit ) {
+            print loc("
+Quitting setup, changes will not be saved.
+            ");
+            return 1;
+        }      
+            
+        my $method = $map{$choice};
+        
+        my $rv = $self->$method or print loc("
+There was an error setting up this section. You might want to try again
+        ");
 
-    $self->_setup_base            or return;
-    $self->_setup_ftp             or return;
-    $self->_setup_program         or return;
-    $self->_setup_conf            or return;
-    ($self->_setup_hosts          or return)
-            unless $self->skip_mirrors;
-    $conf->save($self->location)  or return;
-    $self->_edit                  or return;
+        ### was it save & exit?
+        if( $choice eq $save and $rv ) {
+            print loc("
+Quitting setup, changes are saved to '%1'
+            ", $self->config_type 
+            );
+            return 1;
+        }
 
-    $self->_issue_non_default_config_warning($self->location)
-        if $self->custom_config;
+        ### otherwise, present choice again
+        redo PICK_SECTION;
+    }  
 
     return 1;
 }
 
-### looking in the existing config object to get the proper defaults ###
-sub _get {
-    my $self    = shift;
-    my $conf    = $self->configure_object;
-    my $key     = shift;
-    my $default = shift;
-    my @options = qw/n y a b/;
 
-    return $default unless $self->use_previous;
 
-    ### maybe this is a new key the old conf doesn't have yet
-    ### don't error, just add the key and return the default
-    unless( grep { $key eq $_ } $conf->options(type => 'conf') ) {
-        $conf->add_conf( $key => $default );
-        return $options[$default];
-    }
-
-    my $value   = $conf->get_conf($key);
-    return defined  $value
-                        ? $value =~ /^\d+$/
-                            ? ($options[$value])
-                            : $value
-                        : $default;
-}
-
-######################
-###
-### Config location
-###
-######################
-
-### offer a few locations where to save the config ###
+### sub that figures out what kind of config type the user wants
 sub _save_where {
     my $self = shift;
     my $term = $self->term;
     my $conf = $self->configure_object;
 
-    ### default place, installed along with the rest of cpanplus
-    my $default_unix = $INC{'CPANPLUS/Configure.pm'};
-    $default_unix    =~ s/ure(\.pm)$/$1/i;
 
-    ### it might be a non-unixy OS that wants a non-unixy path
-    my $default = File::Spec->catfile( split('/',$default_unix) );
+    ASK_CONFIG_TYPE: {
+    
+        print loc( q[  
+Where would you like to save your CPANPLUS Configuration file?
 
-    ### homedir ###
-    my $home = File::Spec->catfile( $self->_home_dir, DOT_CPANPLUS, 'config');
+If you want to configure CPANPLUS for this user only, 
+select the '%1' option.
+The file will then be saved in your homedirectory.
 
-   print loc( q[
-Where would you like to save the CPANPLUS Configuration file?
+If you are the system administrator of this machine, 
+and would like to make this config available globally, 
+select the '%2' option.
+The file will be then be saved in your CPANPLUS 
+installation directory.
 
-If you wish to use a custom configuration file, or do not have administrator
-privileges, you probably can't or don't want to write to the systemwide perl
-installation directory. In this case, you must provide an alternate location
-(like your home directory) where you do have permissions.
+        ], CONFIG_USER, CONFIG_SYSTEM );
+    
 
-You can override the system wide CPANPLUS Configuration file by setting
-   $ENV{%1}
-to the path of your personal configuration file.
-
-Note that if you choose to use a custom configuration file you MUST set the
-environment variables BEFORE running 'make', or CPANPLUS will be unable to find
-your custom location and most likely prompt you for setup again.
-
-If you save your config to your CPANPLUS build directory, it will be installed
-along with the rest of CPANPLUS (illustrated by option 1).
-
-If you are unsure what to answer here, just hit ENTER and CPANPLUS will try to
-put your Configuration file in the default location.
-
-], ENV_CPANPLUS_CONFIG);
-
-    ### maybe the config we're reading from is somewhere altogether
-    ### different. let's check for that.
-    my $other   = 'Somewhere else';
-    my $choices;
-    if( $INC{'CPANPLUS/Config.pm'} and
-        $INC{'CPANPLUS/Config.pm'} ne $default_unix
-    ) {
-        $choices = [$default, $INC{'CPANPLUS/Config.pm'}, $other];
-
-    ### no need to worry, just go with the normal settings ###
-    } else {
-        $choices = [$default, $other];
-    }
-
-    my $loc     = $term->get_reply(
-                    prompt  => loc("Location of the Configuration file"),
-                    default => $default,
-                    choices => $choices,
-              );
-
-
-    $self->custom_config(1) unless $loc eq $default;
-
-    ### custom location ###
-    if( $loc eq $other ) {
-        CONFIG_FILE: {
+        ### ask what config type we should save to
+        my $type = $term->get_reply(
+                        prompt  => loc("Type of configuration file"),
+                        default => $self->config_type || CONFIG_USER,
+                        choices => [CONFIG_USER, CONFIG_SYSTEM],
+                  );
+    
+        my $file = $conf->_config_pm_to_file( $type );
+        
+        ### can we save to this file?
+        unless( $conf->can_save( $file ) ) {
+            error(loc(
+                "Can not save to file '%1'-- please check permissions " .
+                "and try again", $file       
+            ));
+            
+            redo ASK_CONFIG_FILE;
+        } 
+        
+        ### you already have the file -- are we allowed to overwrite
+        ### or should we try again?
+        if ( -e $file and -w _ ) {
             print loc(q[
-Where would you like to save the config instead?
-
-A suggestion might be your homedirectory
+I see you already have this file:
     %1
 
-or to use the default location anyway
-    %2
+If you continue & save this file, the previous version will be overwritten.
 
-Note that you will have to set the environment variable
-    $ENV{%3}
-to point to the chosen location, so it can be found again.
-
-    ].$/, $home, $default, ENV_CPANPLUS_CONFIG );
-
-            $loc = $term->get_reply(
-                        prompt  => loc('Configuration file name'),
-                        default => $home,
-                    );
-
-            if( -e $loc and -w _ ) {
-                last CONFIG_FILE if $term->ask_yn(
-                                prompt  => loc("I see you already have this file. It is writable. Shall I overwrite it?"),
-                                default => 'n',
-                            );
-            } else {
-                my $dir = dirname($loc);
-                last CONFIG_FILE if -w $dir;
-                $self->_mkdir( dir => $dir )
-                    and chmod( 0755, $dir )
-                    and last CONFIG_FILE;
-            }
-
-            print loc( "I cannot write to %1, I don't have permission.", $loc), "\n";
-            redo CONFIG_FILE;
-        }
-    }
-
-    print "\n", loc("OK, I will save your configuration file to:"),
-                "\n\t$loc\n\n";
-
-    unless ($conf->can_save($loc) ) {
-        print loc("*** Error: CPANPLUS %1 was not configured properly, and we cannot write to\n    %2",
-                    $CPANPLUS::Internals::VERSION, $loc), "\n",
-              loc("*** Please check its permission, or contact your administrator."), "\n";
-        return;
-    }
-
-    $self->_issue_non_default_config_warning($loc) if $self->custom_config;
-
-    return $loc;
-}
-
-sub _home_dir {
-    my @os_home_envs = qw( APPDATA HOME USERPROFILE WINDIR SYS$LOGIN );
-
-    for my $env ( @os_home_envs ) {
-        next unless exists $ENV{ $env };
-        next unless defined $ENV{ $env } && length $ENV{ $env };
-        return $ENV{ $env } if -d $ENV{ $env };
-    }
-
-    return cwd();
-}
-
-sub _issue_non_default_config_warning {
-    my $self    = shift;
-    my $where   = shift;
-    my $env     = ENV_CPANPLUS_CONFIG;
-
-    if( not defined $ENV{$env} ) {
-
-        print loc( qq[
-### IMPORTANT #####################################################
-
-Since you chose a custom config file location, do not forget to set
-the environment variable "%1" to
-    "%2"
-before running '%3' or your config will not be detected!
-
-###################################################################
-
-        ], ENV_CPANPLUS_CONFIG, $where, 'make');
-
-        sleep 3;
-
-    } elsif ( $ENV{$env} ne $where ) {
-
-
-        print loc( qq[
-### IMPORTANT #####################################################
-
-Since you chose a custom config file location at
-    "%1"
-your environment variable "%2" should be set to
-the same location, but it is currently set to
-    "%3"
-
-This means CPANPLUS will use your *old* configuration!
-
-###################################################################
-        ], $where, $env, $ENV{$env} );
-
-        sleep 3;
-    }
-}
-
-####################################
-###
-### Banner + Auto/Manual setup
-###
-####################################
-
-sub _do_autosetup {
-    my $self = shift;
-    my $term = $self->term;
-
-    print loc(q[
-
-CPAN is the world-wide archive of perl resources. It consists of about
-100 sites that all replicate the same contents all around the globe.
-Many countries have at least one CPAN site already. The resources found
-on CPAN are easily accessible with CPANPLUS modules. If you want to use
-CPANPLUS, you have to configure it properly.
-
-]);
-
-    unless( $self->autoreply ) {
-        print loc(q[
-Although we recommend an interactive configuration session, you can
-also enter 'n' here to use default values for all questions.
-
-]);
-        my $ok = $term->ask_yn(
-                    prompt  => loc("Are you ready for manual configuration?"),
-                    default => 'y',
+            ], $file );
+            
+            redo ASK_CONFIG_TYPE 
+                unless $term->ask_yn(
+                    prompt  => loc( "Shall I overwrite it?"),
+                    default => 'n',
                 );
-
-        $self->autoreply(!$ok);
-    }
-
-    return $self->autoreply;
+        }
+        
+        print $/, loc("Using '%1' as your configuration type", $type);
+        
+        return $self->config_type($type);
+    }            
 }
 
-#######################################
-###
-### Setup home dir and rules
-###
-#######################################
 
+### setup the build & cache dirs
 sub _setup_base {
     my $self = shift;
     my $term = $self->term;
     my $conf = $self->configure_object;
 
-    my $home = File::Spec->catdir( $self->_home_dir, DOT_CPANPLUS );
-
     my $base = $conf->get_conf('base');
-
+    my $home = File::Spec->catdir( $self->_home_dir, DOT_CPANPLUS );
+    
     print loc("
-The CPAN++ module needs a directory of its own to cache important index
-files and maybe keep a temporary mirror of CPAN files.  This may be a
-site-wide directory or a personal directory.
+CPANPLUS needs a directory of its own to cache important index
+files and maybe keep a temporary mirror of CPAN files.  
+This may be a site-wide directory or a personal directory.
+
+For a single-user installation, we suggest using your home directory.
+
 ");
 
     my $where;
     ASK_HOME_DIR: {
         my $other = loc('Somewhere else');
         if( $base and ($base ne $home) ) {
-            print "\n", loc("You have several choices: "), "\n";
+            print loc("You have several choices:");
 
             $where = $term->get_reply(
                         prompt  => loc('Please pick one'),
@@ -405,8 +263,11 @@ site-wide directory or a personal directory.
         }
 
         if( $where and -d $where ) {
-            print   "\n", loc("I see you already have a directory:"),
-                    "\n\n    $where\n\n";
+            print loc("
+I see you already have a directory:
+    %1
+    
+            "), $where;
 
             my $yn = $term->ask_yn(
                             prompt  => loc('Should I use it?'),
@@ -422,9 +283,10 @@ site-wide directory or a personal directory.
             }
 
         } elsif( not $where or ($where eq $other) ) {
-            print   "\n",
-                    loc("First of all, I'd like to create this directory."),
-                    "\n\n";
+            print loc("
+First of all, I'd like to create this directory.
+
+            ");
 
             NEW_HOME: {
                 $where = $term->get_reply(
@@ -449,26 +311,9 @@ site-wide directory or a personal directory.
         }
     }
 
-    ### this actually changes path seperators to unixy stuff on win32.
-    ### and i don't see a reason not to use File::Spec, so switch here...
-    #$where = Cwd::abs_path($where);
+    ### tidy up the path and store it
     $where = File::Spec->rel2abs($where);
-
     $conf->set_conf( base => $where );
-
-    ### set default values to _build for upgrading to 0.040+
-    {
-        my $map = {
-            distdir             => 'dist',
-            autobundle          => 'autobundle',
-            autobundle_prefix   => 'Snapshot',
-        };
-
-        while( my($key,$val) = each %$map ) {
-            $conf->_set_build( $key => $val )
-                    unless $conf->_get_build( $key );
-        }
-    }
 
     ### create subdirectories ###
     my @dirs =
@@ -486,22 +331,18 @@ site-wide directory or a personal directory.
 
     ### clear away old storable images before 0.031
     for my $src (qw[dslip mailrc packages]) {
-        unlink File::Spec->catfile( $where, $src );
+        1 while unlink File::Spec->catfile( $where, $src );
 
     }
 
-    print " \n", loc("Your CPAN++ build and cache directory has been set to:"),
-            "\n    $where\n";
+    print loc(q[
+Your CPANPLUS build and cache directory has been set to:
+    %1
+    
+    ], $where);
 
     return 1;
 }
-
-
-#######################################
-###
-### Passive FTP? Where to send SPAM?
-###
-#######################################
 
 sub _setup_ftp {
     my $self = shift;
@@ -520,7 +361,7 @@ FTP all that well you can use passive FTP.
 
     my $yn = $term->ask_yn(
                 prompt  => loc("Use passive FTP?"),
-                default => $self->_get(passive => 'y'),
+                default => $conf->get_conf('passive'),
             );
 
     $conf->set_conf(passive => $yn);
@@ -529,10 +370,11 @@ FTP all that well you can use passive FTP.
     ### the configuration is saved. but we fetch files BEFORE that.
     $ENV{FTP_PASSIVE} = $yn;
 
+    print "\n";
     print $yn
             ? loc("I will use passive FTP.")
             : loc("I won't use passive FTP.");
-    print "\n\n";
+    print "\n";
 
     #############################
     ## should fetches timeout? ##
@@ -547,16 +389,16 @@ If none is desired (or to skip this question), enter '0'.
     my $timeout = 0 + $term->get_reply(
                 prompt  => loc("Network timeout for downloads"),
                 default => $conf->get_conf('timeout') || 0,
-		### whole numbers only
-		allow	=> qr/(?!\D)/,
+                allow   => qr/(?!\D)/,            ### whole numbers only
             );
 
     $conf->set_conf(timeout => $timeout);
 
+    print "\n";
     print $timeout
             ? loc("The network timeout for downloads is %1 seconds.", $timeout)
             : loc("The network timeout for downloads is not set.");
-    print "\n\n";
+    print "\n";
 
     ############################
     ## where can I reach you? ##
@@ -570,257 +412,128 @@ like one.
 Also, if you choose to report test results at some point, a valid email
 is required for the 'from' field, so choose wisely.
 
-");
+    ");
 
-    my $other = 'Something else';
+    my $other   = 'Something else';
     my @choices = (DEFAULT_EMAIL, $Config{cf_email}, $other);
-    my $current = $self->_get(email => DEFAULT_EMAIL);
+    my $current = $conf->get_conf('email');
+
+    ### if your current address is not in the list, add it to the choices
     unless (grep { $_ eq $current } @choices) {
-	unshift @choices, $current;
+	   unshift @choices, $current;
     }
+    
     my $email = $term->get_reply(
                     prompt  => loc('Which email address shall I use?'),
-                    default => $choices[0],
+                    default => $current || $choices[0],
                     choices => \@choices,
                 );
 
     if( $email eq $other ) {
-	print "\n";
         EMAIL: {
             $email = $term->get_reply(
-                        prompt  => loc('Email address:'),
+                        prompt  => loc('Email address: '),
                     );
+            
             unless( $self->_valid_email($email) ) {
-                print loc("You did not enter a valid email address, please try again!"), "\n"
-                        if length $email;
+                print loc("
+You did not enter a valid email address, please try again!
+                ") if length $email;
 
                 redo EMAIL;
             }
         }
     }
 
-    print "\n", loc("Your 'email' is now:"), "\n    $email\n\n";
+    print loc("
+Your 'email' is now:
+    %1
+    
+    ", $email);
 
-    $conf->set_conf(email => $email);
+    $conf->set_conf( email => $email );
 
     return 1;
 }
 
-{
-    my $RFC822PAT; # RFC pattern to match for valid email address
 
-    sub _valid_email {
-        my $self = shift;
-        if (!$RFC822PAT) {
-            my $esc        = '\\\\'; my $Period      = '\.'; my $space      = '\040';
-            my $tab         = '\t';  my $OpenBR     = '\[';  my $CloseBR    = '\]';
-            my $OpenParen  = '\(';   my $CloseParen  = '\)'; my $NonASCII   = '\x80-\xff';
-            my $ctrl        = '\000-\037';                   my $CRlist     = '\012\015';
-
-            my $qtext = qq/[^$esc$NonASCII$CRlist\"]/;
-            my $dtext = qq/[^$esc$NonASCII$CRlist$OpenBR$CloseBR]/;
-            my $quoted_pair = qq< $esc [^$NonASCII] >; # an escaped character
-            my $ctext   = qq< [^$esc$NonASCII$CRlist()] >;
-            my $Cnested = qq< $OpenParen $ctext* (?: $quoted_pair $ctext* )* $CloseParen >;
-            my $comment = qq< $OpenParen $ctext* (?: (?: $quoted_pair | $Cnested ) $ctext* )* $CloseParen >;
-            my $X = qq< [$space$tab]* (?: $comment [$space$tab]* )* >;
-            my $atom_char  = qq/[^($space)<>\@,;:\".$esc$OpenBR$CloseBR$ctrl$NonASCII]/;
-            my $atom = qq< $atom_char+ (?!$atom_char) >;
-            my $quoted_str = qq< \" $qtext * (?: $quoted_pair $qtext * )* \" >;
-            my $word = qq< (?: $atom | $quoted_str ) >;
-            my $domain_ref  = $atom;
-            my $domain_lit  = qq< $OpenBR (?: $dtext | $quoted_pair )* $CloseBR >;
-            my $sub_domain  = qq< (?: $domain_ref | $domain_lit) $X >;
-            my $domain = qq< $sub_domain (?: $Period $X $sub_domain)* >;
-            my $route = qq< \@ $X $domain (?: , $X \@ $X $domain )* : $X >;
-            my $local_part = qq< $word $X (?: $Period $X $word $X )* >;
-            my $addr_spec  = qq< $local_part \@ $X $domain >;
-            my $route_addr = qq[ < $X (?: $route )?  $addr_spec > ];
-            my $phrase_ctrl = '\000-\010\012-\037'; # like ctrl, but without tab
-            my $phrase_char = qq/[^()<>\@,;:\".$esc$OpenBR$CloseBR$NonASCII$phrase_ctrl]/;
-            my $phrase = qq< $word $phrase_char * (?: (?: $comment | $quoted_str ) $phrase_char * )* >;
-            $RFC822PAT = qq< $X (?: $addr_spec | $phrase $route_addr) >;
-        }
-
-        return scalar ($_[0] =~ /$RFC822PAT/ox);
-    }
-}
-
-####################################
-###
 ### commandline programs
-###
-####################################
-
 sub _setup_program {
     my $self = shift;
     my $term = $self->term;
     my $conf = $self->configure_object;
 
-    ### leaving out 'shell' 'pager' and 'sudo'
-    my %map;
-    $map{'make'} = $conf->get_program('make') ||
-		   can_run($Config{'make'}) ||
-		   can_run('make');
+    print loc("
+CPANPLUS can use command line utilities to do certain
+tasks, rather than use perl modules.
 
-    ### some additions ###
-    $map{'pager'} = $conf->get_program('pager') ||
-                    $ENV{'PAGER'}               ||
-                    can_run('less')             ||
-                    can_run('more');
+If you wish to use a certain command utility, just enter
+the full path (or accept the default). If you do not wish
+to use it, enter a single space.
 
-    ### remove whitespace from windows paths if possible
-    ### see below for explenation
-    if( $^O eq 'MSWin32' ) {
-        for my $pgm (qw[make pager]) {
-            $map{$pgm} = Win32::GetShortPathName( $map{$pgm} )
-                            if $map{$pgm} =~ /\s+/;
-        }
-    }
-
-    print loc(q[
 Note that the paths you provide should not contain spaces, which is
 needed to make a distinction between program name and options to that
 program. For Win32 machines, you can use the short name for a path,
 like '%1'.
 
-],      'c:\Progra~1\prog.exe');
+    ", 'c:\Progra~1\prog.exe' );
 
-    if( $^O eq 'MSWin32' ) {
-        print loc(q[
-If you do not have '%1' yet, you can get it from:
-    %2
-
-],      'nmake.exe', 'ftp://ftp.microsoft.com/Softlib/MSLFILES/nmake15.exe');
-    }
-
-    while( my($pgm,$default) = each %map ) {
+    for my $prog ( sort $conf->options( type => 'program') ) {
         PROGRAM: {
-            my $where = $term->get_reply(
-                            prompt  => loc("Where can I find your '%1' program?", $pgm),
-                            default => $default,
-                        );
-
-            my $full;
-
-            ### empty line -> no answer ###
-            unless ( length $where ) {
-                if( $pgm eq 'make' ) {
-                    warn loc("Without your '%1' executable I can't function!", $pgm), "\n";
-                    redo PROGRAM;
-                }
-
-            } else {
-                my ($prog, @args) = split(/ /, $where);
-                ### make sure it's the full path ###
-                $full = can_run($prog);
-
-
-                unless( $full ) {
-                    warn loc("No such binary '%1'\n", $prog);
-
-                    $term->ask_yn(
-                            prompt  => loc("Are you use you want to use '%1'", $prog),
-                            default => 'y',
-                    ) or redo PROGRAM;
-                    $full = $prog;
-                }
-
-                $conf->set_program( $pgm => join(' ', $full, @args) );
+            print loc("Where can I find your '%1' utility? ".
+                      "(Enter a single space to disable)", $prog );
+            
+            my $loc = $term->get_reply(
+                            prompt  => "Path to your '$prog'",
+                            default => $conf->get_program( $prog ),
+                        );       
+                        
+            ### empty line clears it            
+            my $bin = $loc =~ /^\s*$/ ? undef : $loc;
+            
+            ### did you provide a valid program ?
+            if( $bin and not can_run( $bin ) ) {
+                print "\n";
+                print loc("Can not find the binary '%1' in your path!", $bin);
+                redo PROGRAM;
             }
 
-            print   "\n", loc("Your '%1' program has been set to:", $pgm),
-                    "\n    ", (length $full ? $full : loc('*nothing entered*')),
-                    "\n\n";
-        }
-    }
-
-    #############################################
-    ## what commandprompt/editor should we use ##
-    #############################################
-
-    {
-        my $map = {
-            shell   => $conf->get_program('shell') ||
-                        ($^O eq 'MSWin32' ? $ENV{COMSPEC} : $ENV{SHELL}),
-            editor  => $conf->get_program('editor') ||
-                        $ENV{'EDITOR'}  || $ENV{'VISUAL'} ||
-                        can_run('vi')   || can_run('pico')
-        };
-
-        while( my($pgm, $default) = each %$map ) {
-            PROGRAM: {
-                my $where = $term->get_reply(
-                                prompt  => loc("Your favorite command line %1?", $pgm),
-                                default => $default,
-                            );
-
-                my $full = can_run($where);
-                if( length $where and !$full ) {
-                    warn loc("No such binary '%1'\n", $where);
-                    $term->ask_yn(
-                            prompt  => loc("Are you use you want to use '%1'?", $where),
-                            default => 'y',
-                    ) or redo PROGRAM;
-                    $full = $where;
+            ### make is special -- we /need/ it!
+            if( $prog eq 'make' and not $bin ) {
+                print loc(
+                    "==> Without your '%1' utility, I can not function! <==",
+                    'make'
+                );
+                print loc("Please provide one!");
+                
+                ### show win32 where to download
+                if ( $^O eq 'MSWin32' ) {            
+                    print loc("You can get '%1' from:", NMAKE);
+                    print "\t". NMAKE_URL ."\n";
                 }
-
-                print   "\n", loc("Your '%1' program has been set to:", $pgm),
-                        "\n    ", (length $full ? $full : loc('*nothing entered*')),
-                        "\n\n";
-
-                $conf->set_program($pgm => $full);
+                print "\n";
+                redo PROGRAM;                    
             }
+
+            $conf->set_program( $prog => $bin );
+            print $bin
+                ? loc(  "Your '%1' utility has been set to '%2'", 
+                        $prog, $bin )
+                : loc(  "Your '%1' has been disabled", $prog );           
+            print "\n";
         }
     }
-
-    ##############################
-    ## does this box have sudo? ##
-    ##############################
-
-    {   my $pgm     = 'sudo';
-        my $sudo    = $conf->get_program($pgm) || can_run($pgm);
-
-        ### default to 'yes' if you're not root
-        ### or if we're allowed to use a previous config, use that
-        if($sudo) {
-            my $default = $self->use_previous 
-                            ? $conf->get_program($pgm) 
-                                ? 1
-                                : 0
-                            : $>    # check for all install dirs!
-                                ? ( -w $Config{'installsitelib'} &&
-                                    -w $Config{'installsiteman3dir'} &&
-                                    -w $Config{'installsitebin'} ? 'n' : 'y')
-                                : 'y';
-
-
-            my $yn = $term->ask_yn(
-                        prompt  => loc("I found %1 in your path, would you like to use it for '%2'?", $pgm, 'make install' ),
-                        default => $default,
-                    );
-           $sudo = '' unless $yn;
-
-           print $yn
-                ? loc("Ok, I will use '%1' for '%2'", $pgm, 'make install')
-                : loc("Ok, I won't use '%1' for '%2'", $pgm, 'make install');
-           print "\n\n";
-
-           $conf->set_program( $pgm => $sudo );
-        }
-    }
-
+    
     return 1;
-}
+}    
 
-sub _setup_conf {
+sub _setup_installer {
     my $self = shift;
     my $term = $self->term;
     my $conf = $self->configure_object;
 
     my $none = 'None';
-
-    {
+    {   
         print loc("
 CPANPLUS uses binary programs as well as Perl modules to accomplish
 various tasks. Normally, CPANPLUS will prefer the use of Perl modules
@@ -829,17 +542,15 @@ over binary programs.
 You can change this setting by making CPANPLUS prefer the use of
 certain binary programs if they are available.
 
-");
+        ");
         
         ### default to using binaries if we don't have compress::zlib only
         ### -- it'll get very noisy otherwise
-        my $type    = 'prefer_bin';
-        my $default = eval { require Compress::Zlib; 1 } ? 'n' : 'y';
-        
-        my $yn   = $term->ask_yn(
-                        prompt  => loc("Should I prefer the use of binary programs?"),
-                        default => $self->_get( $type => $default ),
-                    );
+        my $type = 'prefer_bin';
+        my $yn = $term->ask_yn(
+            prompt  => loc("Should I prefer the use of binary programs?"),
+            default => $conf->get_conf( $type ),
+        );
 
         print $yn
                 ? loc("Ok, I will prefer to use binary programs if possible.")
@@ -867,12 +578,12 @@ settings.)
 
 If you don't understand this question, just press ENTER.
 
-");
+        ");
 
         my $type = 'makemakerflags';
         my $flags = $term->get_reply(
                             prompt  => 'Makefile.PL flags?',
-                            default => $self->_get( $type => $none ),
+                            default => $conf->get_conf($type),
                     );
 
         $flags = '' if $flags eq $none || $flags !~ /\S/;
@@ -899,11 +610,11 @@ settings.)
 
 Again, if you don't understand this question, just press ENTER.
 
-");
+        ");
         my $type        = 'makeflags';
         my $flags   = $term->get_reply(
                                 prompt  => 'make flags?',
-                                default => $self->_get($type => $none),
+                                default => $conf->get_conf($type),
                             );
 
         $flags = '' if $flags eq $none || $flags !~ /\S/;
@@ -935,12 +646,12 @@ want to enter:
 
 Again, if you don't understand this question, just press ENTER.
 
-");
+        ");
 
         my $type    = 'buildflags';
         my $flags   = $term->get_reply(
                                 prompt  => 'Build.PL and Build flags?',
-                                default => $self->_get($type => $none),
+                                default => $conf->get_conf($type),
                             );
 
         $flags = '' if $flags eq $none || $flags !~ /\S/;
@@ -969,11 +680,11 @@ by Module::Build.
 
 Again, if you don't understand this question, just press ENTER.
 
-");
+        ");
         my $type = 'prefer_makefile';
         my $yn = $term->ask_yn(
                     prompt  => loc("Prefer Makefile.PL over Build.PL?"),
-                    default => $self->_get( $type => 1 ),
+                    default => $conf->get_conf($type),
                  );
 
         $conf->set_conf( $type => $yn );
@@ -987,13 +698,13 @@ external environment or perl interpreter.  Enter a space separated list of
 pathnames to be added to your @INC, quoting any with embedded whitespace.
 (To clear the current value enter a single space.)
 
-');
+        ');
 
         my $type    = 'lib';
         my $flags = $term->get_reply(
-                            prompt  => loc('Additional @INC directories to add?'),
-                            default => (join " ", @{$self->_get($type => [])} ),
-                        );
+                        prompt  => loc('Additional @INC directories to add?'),
+                        default => (join " ", @{$conf->get_conf($type) || []} ),
+                    );
 
         my $lib;
         unless( $flags =~ /\S/ ) {
@@ -1011,7 +722,17 @@ pathnames to be added to your @INC, quoting any with embedded whitespace.
 
         $conf->set_conf( $type => $lib );
     }
+    
+    return 1;
+}    
+    
 
+sub _setup_conf {
+    my $self = shift;
+    my $term = $self->term;
+    my $conf = $self->configure_object;
+
+    my $none = 'None';
     {
         ############
         ## noisy? ##
@@ -1021,19 +742,17 @@ pathnames to be added to your @INC, quoting any with embedded whitespace.
 In normal operation I can just give you basic information about what I
 am doing, or I can be more verbose and give you every little detail.
 
-");
+        ");
 
         my $type = 'verbose';
         my $yn   = $term->ask_yn(
                             prompt  => loc("Should I be verbose?"),
-                            default => $self->_get( $type => 'n' ),
-                        );
+                            default => $conf->get_conf( $type ),                        );
 
         print "\n";
         print $yn
                 ? loc("You asked for it!")
                 : loc("I'll try to be quiet");
-        print "\n\n";
 
         $conf->set_conf( $type => $yn );
     }
@@ -1049,18 +768,18 @@ successfully and which failed in the current session.  We can flush this
 data automatically, or you can explicitly issue a 'flush' when you want
 to purge it.
 
-");
+        ");
+
         my $type = 'flush';
         my $yn   = $term->ask_yn(
                             prompt  => loc("Flush automatically?"),
-                            default => $self->_get( $type => 'y' ),
+                            default => $conf->get_conf( $type ),
                         );
 
         print "\n";
         print $yn
                 ? loc("I'll flush after every full module install.")
                 : loc("I won't flush until you tell me to.");
-        print "\n\n";
 
         $conf->set_conf( $type => $yn );
     }
@@ -1074,20 +793,18 @@ to purge it.
 Usually, when a test fails, I won't install the module, but if you
 prefer, I can force the install anyway.
 
-");
-
+        ");
 
         my $type = 'force';
         my $yn   = $term->ask_yn(
                         prompt  => loc("Force installs?"),
-                        default => $self->_get( $type => 'n' ),
+                        default => $conf->get_conf( $type ),
                     );
 
         print "\n";
         print $yn
                 ? loc("I will force installs.")
                 : loc("I won't force installs.");
-        print "\n\n";
 
         $conf->set_conf( $type => $yn );
     }
@@ -1099,7 +816,7 @@ prefer, I can force the install anyway.
 
         print loc("
 Sometimes a module will require other modules to be installed before it
-will work.  CPAN++ can attempt to install these for you automatically
+will work.  CPANPLUS can attempt to install these for you automatically
 if you like, or you can do the deed yourself.
 
 If you would prefer that we NEVER try to install extra modules
@@ -1114,60 +831,49 @@ more details).
 
 Otherwise, select ASK to have us ask your permission to install them.
 
-");
+        ");
 
         my $type = 'prereqs';
-        my $map  = {
-                    0   => 'No',
-                    1   => 'Yes',
-                    2   => 'Ask',
-                    3   => 'Build',
-                };
-
-        my $default = defined $conf->get_conf($type)
-                            ? $map->{ $conf->get_conf($type) }
-                            : 'Ask';
-
+        
+        my @map = (
+            # conf value    UI value    diagnostic message
+            [ PREREQ_IGNORE, 'No',   loc("I won't install prerequisites")    ],
+            [ PREREQ_INSTALL,'Yes',  loc("I will install prerequisites")     ],
+            [ PREREQ_ASK,    'Ask',  loc("I will ask permission to install") ],
+            [ PREREQ_BUILD,  'Build',loc(
+                "I will only build, but not  install prerequisites" )        ],
+        );
+       
+        my %reply = map { $_->[1] => $_->[0] } @map; # choice => value
+        my %diag  = map { $_->[1] => $_->[2] } @map; # choice => diag message
+        my %conf  = map { $_->[0] => $_->[1] } @map; # value => ui choice
+        
         my $reply   = $term->get_reply(
                         prompt  => loc('Follow prerequisites?'),
-                        default => $default,
-                        choices => [@$map{sort keys %$map}],
+                        default => $conf{ $conf->get_conf( $type ) },
+                        choices => [ @conf{ sort keys %conf } ],
                     );
         print "\n";
+        
+        my $value = $reply{ $reply };
+        my $diag  = $diag{  $reply };
 
-        while( my($key,$val) = each %$map ) {
-            next unless $val eq $reply;
-
-            $conf->set_conf( $type => $key );
-
-            print   $reply eq 'No'      ? loc("I won't install prerequisites") :
-                    $reply eq 'Yes'     ? loc("I will install prerequisites") :
-                    $reply eq 'Ask'     ? loc("I will ask permission to install prerequisites") :
-                    $reply eq 'Build'   ? loc("I will only build, but not install prerequisites") :
-                                          loc("You shouldn't get here!");
-
-
-            last;
-        }
-
-        print "\n\n";
+        $conf->set_conf( $type => $value );
+        print $diag, "\n";
     }
 
-    {
-
-        print loc("
+    {   print loc("
 Modules in the CPAN archives are protected with md5 checksums.
 
 This requires the Perl module Digest::MD5 to be installed (which
 CPANPLUS can do for you later);
 
-");
+        ");
         my $type    = 'md5';
-        my $default = check_install( module => 'Digest::MD5' ) ? 'y' : 'n';
-
+        
         my $yn = $term->ask_yn(
                     prompt  => loc("Shall I use the MD5 checksums?"),
-                    default => $default,
+                    default => $conf->get_conf( $type ),
                 );
 
         print $yn
@@ -1176,50 +882,53 @@ CPANPLUS can do for you later);
 
         $conf->set_conf( $type => $yn );
 
-        print "\n\n";
     }
 
-    {
-        ###########################################
+    
+    {   ###########################################
         ## sally sells seashells by the seashore ##
         ###########################################
 
         print loc("
-By default CPAN++ uses its own shell when invoked.  If you would prefer
+By default CPANPLUS uses its own shell when invoked.  If you would prefer
 a different shell, such as one you have written or otherwise acquired,
 please enter the full name for your shell module.
 
-");
+        ");
+
         my $type    = 'shell';
         my $other   = 'Other';
-        my $default = $self->_get( $type => 'CPANPLUS::Shell::Default' );
         my @choices = (qw|  CPANPLUS::Shell::Default
-                            CPANPLUS::Shell::Classic |, # currently unavail.
-#                           CPANPLUS::Shell::Curses,
+                            CPANPLUS::Shell::Classic |, 
                             $other );
+        my $default = $conf->get_conf($type);
 
         unshift @choices, $default unless grep { $_ eq $default } @choices;
 
-        my $reply   = $term->get_reply(
-                        prompt  => loc('Which CPANPLUS "shell" do you want to use?'),
-                        default => $default,
-                        choices => \@choices,
-                    );
+        my $reply = $term->get_reply(
+            prompt  => loc('Which CPANPLUS shell do you want to use?'),
+            default => $default,
+            choices => \@choices,
+        );
 
         if( $reply eq $other ) {
             SHELL: {
                 $reply = $term->get_reply(
-                                prompt  => loc('Please enter the name of the shell you wish to use'),
-                            );
+                    prompt => loc(  'Please enter the name of the shell '.
+                                    'you wish to use: '),
+                );
 
                 unless( check_install( module => $reply ) ) {
-                    print "\n", loc("Could not find '$reply' in your path -- please try again"), "\n";
+                    print "\n", 
+                          loc("Could not find '$reply' in your path " .
+                          "-- please try again"), 
+                          "\n";
                     redo SHELL;
                 }
             }
         }
 
-        print "\n", loc("Your shell is now:   $reply"), "\n\n";
+        print "\n", loc("Your shell is now:   %1", $reply), "\n\n";
 
         $conf->set_conf( $type => $reply );
     }
@@ -1236,18 +945,14 @@ Would you like to do this?
 
 ");
         my $type    = 'storable';
-        my $default;
-        $default      = ($conf->get_conf($type) ? 'y' : 'n') if length $conf->get_conf($type);
-        $default    ||= check_install( modules => 'Storable' ) ? 'y' : 'n';
         my $yn      = $term->ask_yn(
                                 prompt  => loc("Use Storable?"),
-                                default => $default,
+                                default => $conf->get_conf( $type ) ? 1 : 0,
                             );
         print "\n";
         print $yn
                 ? loc("I will use Storable if you have it")
                 : loc("I will not use Storable");
-        print "\n\n";
 
         $conf->set_conf( $type => $yn );
     }
@@ -1270,19 +975,18 @@ This package bundles all the required modules to enable test reporting
 and querying from CPANPLUS.
 You can do so straight after this installation.
 
-", 'Bundle::CPANPLUS::Test::Reporter');
+        ", 'Bundle::CPANPLUS::Test::Reporter');
 
         my $type = 'cpantest';
         my $yn   = $term->ask_yn(
                         prompt  => loc('Report test results?'),
-                        default => $self->_get( $type => 'n' ),
+                        default => $conf->get_conf( $type ) ? 1 : 0,
                     );
 
         print "\n";
         print $yn
                 ? loc("I will prompt you to report test results")
                 : loc("I won't prompt you to report test results");
-        print "\n\n";
 
         $conf->set_conf( $type => $yn );
     }
@@ -1299,25 +1003,18 @@ module's cryptographic integrity before attempting to install them?
 Note that this requires either the 'gpg' utility or Crypt::OpenPGP
 to be installed.
 
-");
+        ");
         my $type = 'signature';
-
-        my $default;
-        $default      = ($conf->get_conf($type) ? 'y' : 'n') if length $conf->get_conf($type);
-        $default    ||= can_run( 'gpg' ) || check_install( modules => 'Crypt::OpenPGP' )
-                            ? 'y'
-                            : 'n';
 
         my $yn = $term->ask_yn(
                             prompt  => loc('Shall I check module signatures?'),
-                            default => $default,
+                            default => $conf->get_conf($type) ? 1 : 0,
                         );
 
         print "\n";
         print $yn
                 ? loc("Ok, I will attempt to check module signatures.")
                 : loc("Ok, I won't attempt to check module signatures.");
-        print "\n\n";
 
         $conf->set_conf( $type => $yn );
     }
@@ -1358,7 +1055,6 @@ Otherwise, select 'No' and you can reconfigure your hosts
     MAIN: {
 
         print loc("
-
 Now we need to know where your favorite CPAN sites are located. Make a
 list of a few sites (just in case the first on the array won't work).
 
@@ -1383,7 +1079,6 @@ are done.
                         choices => [qw|Mirror Custom View Quit|],
                         default => 'Mirror',
                     );
-        print "\n\n";
 
         goto MIRROR if $reply eq 'Mirror';
         goto CUSTOM if $reply eq 'Custom';
@@ -1415,7 +1110,6 @@ are done.
                                 default => $continent,
                                 choices => \@choices,
                             );
-            print "\n\n";
 
             goto MAIN   if $reply eq 'Up';
             goto CUSTOM if $reply eq 'Custom';
@@ -1440,7 +1134,6 @@ are done.
                                 default => $country,
                                 choices => \@choices,
                             );
-            print "\n\n";
 
             goto CONTINENT  if $reply eq 'Up';
             goto CUSTOM     if $reply eq 'Custom';
@@ -1473,6 +1166,12 @@ are done.
                 ### should make t::ui figure out pager opens
                 #$self->_pager_open;     # host lists might be long
             
+                print loc("
+You can enter multiple sites by seperating them by a space.
+For example:
+    1 4 2 5
+                ");    
+            
                 my @reply = $term->get_reply(
                                     prompt  => loc('Please pick a site: '),
                                     choices => [sort(keys %map), 
@@ -1480,7 +1179,6 @@ are done.
                                     default => $default,
                                     multi   => 1,
                             );
-                print "\n\n";
                 #$self->_pager_close;
     
 
@@ -1510,7 +1208,6 @@ are done.
 
     CUSTOM: {
         print loc("
-
 If there are any additional URLs you would like to use, please add them
 now.  You may enter them separately or as a space delimited list.
 
@@ -1838,10 +1535,60 @@ sub _guess_from_timezone {
     return ($continent, $country, $site);
 } # _guess_from_timezone
 
+
+### big big regex, stolen to check if you enter a valid address
+{
+    my $RFC822PAT; # RFC pattern to match for valid email address
+
+    sub _valid_email {
+        my $self = shift;
+        if (!$RFC822PAT) {
+            my $esc        = '\\\\'; my $Period      = '\.'; my $space      = '\040';
+            my $tab         = '\t';  my $OpenBR     = '\[';  my $CloseBR    = '\]';
+            my $OpenParen  = '\(';   my $CloseParen  = '\)'; my $NonASCII   = '\x80-\xff';
+            my $ctrl        = '\000-\037';                   my $CRlist     = '\012\015';
+
+            my $qtext = qq/[^$esc$NonASCII$CRlist\"]/;
+            my $dtext = qq/[^$esc$NonASCII$CRlist$OpenBR$CloseBR]/;
+            my $quoted_pair = qq< $esc [^$NonASCII] >; # an escaped character
+            my $ctext   = qq< [^$esc$NonASCII$CRlist()] >;
+            my $Cnested = qq< $OpenParen $ctext* (?: $quoted_pair $ctext* )* $CloseParen >;
+            my $comment = qq< $OpenParen $ctext* (?: (?: $quoted_pair | $Cnested ) $ctext* )* $CloseParen >;
+            my $X = qq< [$space$tab]* (?: $comment [$space$tab]* )* >;
+            my $atom_char  = qq/[^($space)<>\@,;:\".$esc$OpenBR$CloseBR$ctrl$NonASCII]/;
+            my $atom = qq< $atom_char+ (?!$atom_char) >;
+            my $quoted_str = qq< \" $qtext * (?: $quoted_pair $qtext * )* \" >;
+            my $word = qq< (?: $atom | $quoted_str ) >;
+            my $domain_ref  = $atom;
+            my $domain_lit  = qq< $OpenBR (?: $dtext | $quoted_pair )* $CloseBR >;
+            my $sub_domain  = qq< (?: $domain_ref | $domain_lit) $X >;
+            my $domain = qq< $sub_domain (?: $Period $X $sub_domain)* >;
+            my $route = qq< \@ $X $domain (?: , $X \@ $X $domain )* : $X >;
+            my $local_part = qq< $word $X (?: $Period $X $word $X )* >;
+            my $addr_spec  = qq< $local_part \@ $X $domain >;
+            my $route_addr = qq[ < $X (?: $route )?  $addr_spec > ];
+            my $phrase_ctrl = '\000-\010\012-\037'; # like ctrl, but without tab
+            my $phrase_char = qq/[^()<>\@,;:\".$esc$OpenBR$CloseBR$NonASCII$phrase_ctrl]/;
+            my $phrase = qq< $word $phrase_char * (?: (?: $comment | $quoted_str ) $phrase_char * )* >;
+            $RFC822PAT = qq< $X (?: $addr_spec | $phrase $route_addr) >;
+        }
+
+        return scalar ($_[0] =~ /$RFC822PAT/ox);
+    }
+}
+
+
+
+
+
+
+1;
+
+
 sub _edit {
     my $self    = shift;
     my $conf    = $self->configure_object;
-    my $file    = shift || $self->location;
+    my $file    = shift || $conf->_config_pm_to_file( $self->config_type );
     my $editor  = shift || $conf->get_program('editor');
     my $term    = $self->term;
 
@@ -1854,25 +1601,17 @@ post-configuration editing of the config file
         return 1;
     }
 
-    print loc("
-Your configuration has now been saved. Would you like to inspect the
-resulting file and possibly make some manual changes?
-
-This feature should only be used if you are an expert or you think
-you made a typo you need to fix.
-
-");
-
-    my $yn = $term->ask_yn(
-                    prompt  => loc("Would you like to edit the config file?"),
-                    default => 'n'
-                );
-
-    print "\n";
-
-    return 1 unless $yn;
+    ### save the thing first, so there's something to edit
+    $self->_save;
 
     return !system("$editor $file");
 }
+
+sub _save {
+    my $self = shift;
+    my $conf = $self->configure_object;
+    
+    return $conf->save( $self->config_type );
+}    
 
 1;

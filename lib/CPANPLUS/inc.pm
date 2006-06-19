@@ -1,13 +1,32 @@
 package CPANPLUS::inc;
 
+=head1 NAME
+
+CPANPLUS::inc
+
+=head1 DESCRIPTION
+
+OBSOLETE
+
+=cut
+
+sub original_perl5opt   { $ENV{PERL5OPT}    };
+sub original_perl5lib   { $ENV{PERL5LIB}    };
+sub original_inc        { @INC              };
+
+1;
+
+__END__
+
 use strict;
-use vars        qw[$DEBUG $VERSION $ENABLE_INC_HOOK %LIMIT];
+use vars        qw[$DEBUG $VERSION $ENABLE_INC_HOOK %LIMIT $QUIET];
 use File::Spec  ();
 use Config      ();
 
 ### 5.6.1. nags about require + bareword otherwise ###
 use lib ();
 
+$QUIET              = 0;
 $DEBUG              = 0;
 %LIMIT              = ();
 
@@ -252,8 +271,12 @@ find out exactly what C<CPANPLUS::inc> is doing.
         my $pkg = shift;
 
         ### filter DEBUG, and toggle the global
-        map { $LIMIT{$_} = 1 }  grep { /DEBUG/ ? ++$DEBUG && 0 : 1 } @_;
-
+        map { $LIMIT{$_} = 1 }  
+            grep {  /DEBUG/ ? ++$DEBUG && 0 : 
+                    /QUIET/ ? ++$QUIET && 0 :
+                    1 
+            } @_;
+        
         ### only load once ###
         return 1 if $Loaded++;
 
@@ -405,7 +428,7 @@ find out exactly what C<CPANPLUS::inc> is doing.
                                  ."'$module' -- need '$map->{$module}' but "
                                  ."only found '$sorted[0][0]'. Returning "
                                  ."highest found version but this may cause "
-                                 ."problems\n";
+                                 ."problems\n" unless $QUIET;
             };
 
             ### right, so that damn )#$(*@#)(*@#@ Module::Build makes

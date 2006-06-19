@@ -8,7 +8,7 @@ use Locale::Maketext::Simple Style => 'gettext';
 
 BEGIN {
     use vars        qw[$VERSION $AUTOLOAD];
-    $VERSION    =   0.01;
+    $VERSION = "-1";
 }
 
 sub new {

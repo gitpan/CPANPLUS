@@ -2,7 +2,7 @@ package CPANPLUS;
 
 use strict;
 use Carp;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Backend;
 
@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION = "0.061";     #have to hardcode or cpan.org gets unhappy
+    $VERSION = "0.070_04";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:

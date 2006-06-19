@@ -1,7 +1,7 @@
 package CPANPLUS::Internals::Extract;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 
@@ -117,7 +117,7 @@ sub _extract {
         prefer_bin  => { default => $conf->get_conf('prefer_bin') },
         extractdir  => { default => $conf->get_conf('extractdir') },
         module      => { required => 1, allow => IS_MODOBJ, store => \$mod },
-        perl        => { default => $conf->get_program('perl') || $^X },
+        perl        => { default => $^X },
     };
     
     my $args = check( $tmpl, \%hash ) or return;
@@ -160,6 +160,17 @@ sub _extract {
                     $file, $to, $ae->error ) );
         return;
     }
+    
+    ### if ->files is not filled, we dont know what the hell was
+    ### extracted.. try to offer a suggestion and bail :(
+    unless ( $ae->files ) {
+        error( loc( "'%1' was not able to determine extracted ".
+                    "files from the archive. Instal '%2' and ensure ".
+                    "it works properly and try again",
+                    $ae->is_zip ? 'Archive::Zip' : 'Archive::Tar' ) );
+        return;                    
+    }                    
+    
     
     ### print out what files we extracted ###  
     msg(loc("Extracted '%1'",$_),$verbose) for @{$ae->files};  

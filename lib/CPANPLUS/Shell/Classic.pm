@@ -8,7 +8,7 @@ package CPANPLUS::Shell::Classic;
 
 use strict;
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Backend;
 use CPANPLUS::Configure::Setup;

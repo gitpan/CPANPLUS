@@ -1,7 +1,7 @@
 package Module::CoreList;
 use strict;
 use vars qw/$VERSION %released %version %families/;
-$VERSION = '1.98';
+$VERSION = "-1";
 
 =head1 NAME
 

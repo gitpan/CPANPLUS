@@ -2,7 +2,7 @@ package CPANPLUS::Shell::Default;
 
 use strict;
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use CPANPLUS::Backend;
 use CPANPLUS::Configure::Setup;
@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.061";
+    $VERSION = "0.070_04";
 }
 
 load CPANPLUS::Shell;
@@ -494,8 +494,9 @@ loc('    b                      # write a bundle file for your configuration'   
 loc('    s program [OPT VALUE]  # set program locations for this session'           ),
 loc('    s conf    [OPT VALUE]  # set config options for this session'              ),
 loc('    s mirrors              # show currently selected mirrors' ),
-loc('    s reconfigure | save   # reconfigure settings / save current settings'     ),
-loc('    s edit                 # open configuration file in editor and reload'     ),
+loc('    s reconfigure          # reconfigure settings ' ),
+loc('    s save [user|system]   # save settings for this user or systemwide' ),
+loc('    s edit [user|system]   # open configuration file in editor and reload'     ),
 loc('    ! EXPR                 # evaluate a perl statement'                        ),
 loc('    p [FILE]               # print the error stack (optionally to a file)'     ),
 loc('    x                      # reload CPAN indices (purges cache)'                              ),
@@ -532,6 +533,7 @@ sub _bang {
         my $args = check( $tmpl, \%hash ) or return;
     }
 
+    local $Data::Dumper::Indent     = 1; # for dumpering from !
     eval $input;
     error( $@ ) if $@;
     print "\n";
@@ -704,7 +706,7 @@ sub _shell {
 
         $cb->_chdir( dir => $mod->status->extract() )   or next;
 
-        local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
+        #local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt;
         if( system($shell) and $! ) {
             print loc("Error executing your subshell '%1': %2",
                         $shell, $!),"\n";
@@ -1025,10 +1027,15 @@ sub _set_conf {
         return $setup->init;
 
     } elsif ( $type eq 'save' ) {
-        my $rv = $cb->configure_object->save();
+        my $where = {
+            user    => CONFIG_USER,
+            system  => CONFIG_SYSTEM,
+        }->{ $key } || CONFIG_USER;      
+        
+        my $rv = $cb->configure_object->save( $where );
 
         print $rv
-                ? loc("Configuration successfully saved\n")
+                ? loc("Configuration successfully saved to %1\n", $where)
                 : loc("Failed to save configuration\n" );
         return $rv;
 
@@ -1037,20 +1044,23 @@ sub _set_conf {
         my $editor  = $conf->get_program('editor')
                         or( print(loc("No editor specified")), return );
 
-        my $env     = ENV_CPANPLUS_CONFIG;
-        my $where   = $ENV{$env} || $INC{'CPANPLUS/Config.pm'};
-
-        system("$editor $where");
+        my $where = {
+            user    => CONFIG_USER,
+            system  => CONFIG_SYSTEM,
+        }->{ $key } || CONFIG_USER;      
+        
+        my $file = $conf->_config_pm_to_file( $where );
+        system("$editor $file");
 
         ### now reload it
         ### disable warnings for this
-        {   local $^W;
-            delete $INC{'CPANPLUS/Config.pm'};
-            $conf->_load_cpanplus_config;
-        }
+        {   require Module::Loaded;
+            Module::Loaded::mark_as_unloaded( $_ ) for $conf->configs;
 
-        ### and use the new config ###
-        $conf->conf( CPANPLUS::Config->new() );
+            ### reinitialize the config
+            local $^W;
+            $conf->init;
+        }
 
         return 1;
 

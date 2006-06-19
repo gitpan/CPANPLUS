@@ -4,7 +4,7 @@ use strict;
 use vars    qw[@ISA $STATUS];
 @ISA =      qw[CPANPLUS::Dist];
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Internals::Constants::Report;
 use CPANPLUS::Error;
@@ -200,9 +200,7 @@ sub prepare {
     my( $force, $verbose, $perl, $mmflags );
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
-            perl            => {    default => 
-                                        $conf->get_program('perl') || $^X, 
-                                    store => \$perl },
+            perl            => {    default => $^X, store => \$perl },
             makemakerflags  => {    default =>
                                         $conf->get_conf('makemakerflags'),
                                     store => \$mmflags },                 
@@ -296,6 +294,26 @@ sub prepare {
 
             ### put the output on the stack, don't print it
             msg( $captured, 0 );
+        }
+        
+        ### so, nasty feature in Module::Build, that when a Makefile.PL
+        ### is a disguised Build.PL, it generates a Build file, not a
+        ### Makefile. this breaks everything :( see rt bug #19741
+        if( not -e MAKEFILE->( $dir ) and -e BUILD_PL->( $dir ) ) {
+            error(loc(
+                    "We just ran '%1' without errors, but no '%2' is ".
+                    "present. However, there is a '%3' file, so this may ".
+                    "be related to bug #19741 in %4, which describes a ".
+                    "fake '%5' which generates a '%6' file instead of a '%7'. ".
+                    "You could try to work around this issue by setting '%8' ".
+                    "to false and trying again. This will attempt to use the ".
+                    "'%9' instead.",
+                    "$^X ".MAKEFILE_PL->(), MAKEFILE->(), BUILD_PL->(),
+                    'Module::Build', MAKEFILE_PL->(), 'Build', MAKEFILE->(),
+                    'prefer_makefile', BUILD_PL->()
+            ));           
+            
+            $fail++, last RUN;
         }
         
         ### if we got here, we managed to make a 'makefile' ###
@@ -435,9 +453,7 @@ sub create {
         $mmflags, $prereq_format, $prereq_build);
     {   local $Params::Check::ALLOW_UNKNOWN = 1;
         my $tmpl = {
-            perl            => {    default => 
-                                        $conf->get_program('perl') || $^X, 
-                                    store => \$perl },
+            perl            => {    default => $^X, store => \$perl },
             force           => {    default => $conf->get_conf('force'), 
                                     store   => \$force },
             verbose         => {    default => $conf->get_conf('verbose'), 
@@ -544,7 +560,8 @@ sub create {
             ### included in make test -- it should build without
             ### also, modules that run in taint mode break if we leave
             ### our code ref in perl5opt
-            local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt || '';
+            ### XXX CPANPLUS::inc functionality is now obsolete.
+            #local $ENV{PERL5OPT} = CPANPLUS::inc->original_perl5opt || '';
 
             ### you can turn off running this verbose by changing
             ### the config setting below, although it is really not 
@@ -556,7 +573,8 @@ sub create {
 
             ### XXX need to add makeflags here too? 
             ### yes, but they should really be split out -- see bug #4143
-            if(run( command => [$make, 'test', $makeflags],
+            if( scalar run( 
+                        command => [$make, 'test', $makeflags],
                         buffer  => \$captured,
                         verbose => $run_verbose,
             ) ) {
@@ -566,7 +584,7 @@ sub create {
                 if ( NO_TESTS_DEFINED->( $captured ) ) {
                     msg( NO_TESTS_DEFINED->( $captured ), 0 )
                 } else {
-                    msg( loc( "MAKE TEST passed: %2", $captured ) );
+                    msg( loc( "MAKE TEST passed: %2", $captured ), $verbose );
                 }
             
                 $dist->status->test(1);

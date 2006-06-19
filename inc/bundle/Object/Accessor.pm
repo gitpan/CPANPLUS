@@ -6,7 +6,7 @@ use vars            qw[$FATAL $DEBUG $AUTOLOAD $VERSION];
 use Params::Check   qw[allow];
 use Data::Dumper;
 
-$VERSION    = '0.12';
+$VERSION = "-1";
 $FATAL      = 0;
 $DEBUG      = 0;
 

@@ -24,7 +24,7 @@ use constant ZIP            => 'zip';
 
 use vars qw[$VERSION $PREFER_BIN $PROGRAMS $WARN $DEBUG];
 
-$VERSION        = '0.08';
+$VERSION = "-1";
 $PREFER_BIN     = 0;
 $WARN           = 1;
 $DEBUG          = 0;

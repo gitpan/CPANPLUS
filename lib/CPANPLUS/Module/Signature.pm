@@ -2,7 +2,7 @@ package CPANPLUS::Module::Signature;
 
 use strict;
 
-use CPANPLUS::inc;
+
 use Cwd;
 use CPANPLUS::Error;
 use Params::Check               qw[check];

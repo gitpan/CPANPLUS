@@ -22,13 +22,21 @@ BEGIN {
 use strict;
 use Test::More 'no_plan';
 
+my $Class = 'CPANPLUS::inc';
+use_ok( $Class );
+can_ok( $Class, qw[original_perl5opt original_perl5lib original_inc] );
+
+__END__
+
+# XXX CPANPLUS::inc functionality is obsolete, so it is removed
+
 my $Module = 'Params::Check';
 my $File   = File::Spec->catfile(qw|Params Check.pm|);
 my $Ufile  = 'Params/Check.pm';
 my $Boring = 'IO::File';
 my $Bfile  = 'IO/File.pm';
 
-use_ok('CPANPLUS::inc');
+
 
 ### now, first element should be a coderef ###
 my $code = $INC[0];

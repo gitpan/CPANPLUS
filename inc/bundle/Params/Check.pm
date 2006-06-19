@@ -18,7 +18,7 @@ BEGIN {
     @ISA        =   qw[ Exporter ];
     @EXPORT_OK  =   qw[check allow last_error];
 
-    $VERSION                = '0.24';
+    $VERSION = "-1";
     $VERBOSE                = $^W ? 1 : 0;
     $NO_DUPLICATES          = 0;
     $STRIP_LEADING_DASHES   = 0;
@@ -506,6 +506,13 @@ sub _sanity_check_and_defaults {
             } grep {
                 not $known_keys{$_}
             } keys %{$utmpl{$key}};
+        
+            ### make sure you passed a ref, otherwise, complain about it!
+            if ( exists $utmpl{$key}->{'store'} ) {
+                _store_error( loc(
+                    q|Store variable for '%1' is not a reference!|, $key
+                ), 1, 1 ) unless ref $utmpl{$key}->{'store'};
+            }
         }
     }
 

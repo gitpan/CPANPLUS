@@ -1,7 +1,7 @@
 package CPANPLUS::Module::Author;
 
 use strict;
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 use Params::Check               qw[check];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';

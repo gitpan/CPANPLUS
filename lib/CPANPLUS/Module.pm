@@ -3,7 +3,7 @@ package CPANPLUS::Module;
 use strict;
 use vars qw[@ISA];
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Dist;
 use CPANPLUS::Error;
 use CPANPLUS::Module::Signature;
@@ -388,8 +388,9 @@ with C<Bundle::>.
         return $core;
     }
 
+    ### make sure Bundle-Foo also gets flagged as bundle
     sub is_bundle {
-        return shift->module =~ /^bundle::/i ? 1 : 0;
+        return shift->module =~ /^bundle(?:-|::)/i ? 1 : 0;
     }
 }
 
@@ -1015,7 +1016,9 @@ Returns a boolean indicating if this module is uptodate or not.
             ### modules -- they're just there in case they're not on the
             ### perl install, but the user shouldn't trust them for *other*
             ### modules!
-            local @INC = CPANPLUS::inc->original_inc;
+            ### XXX CPANPLUS::inc is now obsolete, so this should not
+            ### be needed anymore
+            #local @INC = CPANPLUS::inc->original_inc;
 
             my $self = shift;
             my $href = check_install(
@@ -1194,8 +1197,11 @@ sub uninstall {
 
         msg(loc("Unlinking '%1'", $file), $verbose);
 
+        my @cmd = ($^X, "-eunlink+q[$file]");
+        unshift @cmd, $sudo if $sudo;
+
         my $buffer;
-        unless ( run(   command => [$sudo, $^X, "-eunlink+q[$file]"],
+        unless ( run(   command => \@cmd,
                         verbose => $verbose,
                         buffer  => \$buffer )
         ) {
@@ -1221,8 +1227,12 @@ sub uninstall {
         #    error( loc( "Could not remove '%1': %2", $dir, $! ) )
         #        unless $^O eq 'MSWin32';
         #}
+        
+        my @cmd = ($^X, "-ermdir+q[$dir]");
+        unshift @cmd, $sudo if $sudo;
+        
         my $buffer;
-        unless ( run(   command => [$sudo, $^X, "-ermdir+q[$dir]"],
+        unless ( run(   command => \@cmd,
                         verbose => $verbose,
                         buffer  => \$buffer )
         ) {
@@ -1402,6 +1412,8 @@ sub add_to_includepath {
 
 =head2 $path = $self->best_path_to_module_build();
 
+B<OBSOLETE>
+
 If a newer version of Module::Build is found in your path, it will
 return this C<special> path. If the newest version of C<Module::Build>
 is found in your regular C<@INC>, the method will return false. This
@@ -1437,22 +1449,24 @@ sub best_path_to_module_build {
     ### and upped the version to 0.26061 of the bundled version, and things
     ### work again
 
-    require Module::Build;
-    if( CPANPLUS::inc->path_to('Module::Build') and (
-        CPANPLUS::inc->path_to('Module::Build') eq
-        CPANPLUS::inc->installer_path )
-    ) {
-
-        ### if the module being installed is *not* Module::Build
-        ### itself -- as that would undoubtedly be newer -- add
-        ### the path to the installers to @INC
-        ### if it IS module::build itself, add 'lib' to its path,
-        ### as the Build.PL would do as well, but the API doesn't.
-        ### this makes self updates possible
-        return $self->module eq 'Module::Build'
-                        ? 'lib'
-                        : CPANPLUS::inc->installer_path;
-    }
+    ### this functionality is now obsolete -- prereqs should be installed
+    ### and we no longer use the CPANPLUS::inc magic.. so comment this out.
+#     require Module::Build;
+#     if( CPANPLUS::inc->path_to('Module::Build') and (
+#         CPANPLUS::inc->path_to('Module::Build') eq
+#         CPANPLUS::inc->installer_path )
+#     ) {
+# 
+#         ### if the module being installed is *not* Module::Build
+#         ### itself -- as that would undoubtedly be newer -- add
+#         ### the path to the installers to @INC
+#         ### if it IS module::build itself, add 'lib' to its path,
+#         ### as the Build.PL would do as well, but the API doesn't.
+#         ### this makes self updates possible
+#         return $self->module eq 'Module::Build'
+#                         ? 'lib'
+#                         : CPANPLUS::inc->installer_path;
+#     }
 
     ### otherwise, the path was found through a 'normal' way of
     ### scanning @INC.

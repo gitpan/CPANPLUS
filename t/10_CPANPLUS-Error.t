@@ -39,7 +39,13 @@ my $map = {
         can_ok('main',              $name);     # did it get exported?
     }
 }
-        
+
+### make sure we start with an empty stack
+{   CPANPLUS::Error->flush;
+    is( scalar(()=CPANPLUS::Error->stack), 0,  
+                        "Starting with empty stack" );        
+}
+
 ### global variables test ###
 {   my $file = output_file();
     unlink $file;   # just in case

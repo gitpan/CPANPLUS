@@ -6,7 +6,7 @@
 
 package IO::Zlib;
 
-$VERSION = "1.04";
+$VERSION = "-1";
 
 =head1 NAME
 

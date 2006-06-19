@@ -11,13 +11,14 @@ use File::Spec  ();
 use FileHandle  ();
 
 BEGIN {
-    use vars        qw[$VERSION @ISA $VERBOSE $CACHE @EXPORT_OK $ERROR];
+    use vars        qw[ $VERSION @ISA $VERBOSE $CACHE @EXPORT_OK 
+                        $FIND_VERSION $ERROR];
     use Exporter;
-    @ISA        =   qw[Exporter];
-    $VERSION    =   '0.08';
-    $VERBOSE    =   0;
-
-    @EXPORT_OK  =   qw[check_install can_load requires];
+    @ISA            = qw[Exporter];
+    $VERSION = "-1";
+    $VERBOSE        = 0;
+    $FIND_VERSION   = 1;
+    @EXPORT_OK      = qw[check_install can_load requires];
 }
 
 =pod
@@ -111,7 +112,9 @@ Full path to the file that contains the module
 =item version
 
 The version number of the installed module - this will be C<undef> if
-the module had no (or unparsable) version number.
+the module had no (or unparsable) version number, or if the variable
+C<$Module::Load::Conditional::FIND_VERSION> was set to true.
+(See the C<GLOBAL VARIABLES> section below for details)
 
 =item uptodate
 
@@ -197,28 +200,36 @@ sub check_install {
 
         $href->{file} = $filename;
 
-        while (local $_ = <$fh> ) {
+        ### user wants us to find the version from files
+        if( $FIND_VERSION ) {
+            
+            while (local $_ = <$fh> ) {
 
-	    ### skip commented out lines, they won't eval to anything.
-	    next if /^\s*#/;
-
-            ### the following regexp comes from the ExtUtils::MakeMaker
-            ### documentation.
-            if ( /([\$*])(([\w\:\']*)\bVERSION)\b.*\=/ ) {
-
-                ### this will eval the version in to $VERSION if it
-                ### was declared as $VERSION in the module.
-                ### else the result will be in $res.
-                ### this is a fix on skud's Module::InstalledVersion
-
-                local $VERSION;
-                my $res = eval $_;
-
-                ### default to '0.0' if there REALLY is no version
-                ### all to satisfy warnings
-                $href->{version} = $VERSION || $res || '0.0';
-
-                last DIR;
+                ### skip commented out lines, they won't eval to anything.
+                next if /^\s*#/;
+    
+                ### the following regexp comes from the ExtUtils::MakeMaker
+                ### documentation.
+                ### Following #18892, which tells us the original
+                ### regex breaks under -T, we must modifiy it so
+                ### it captures the entire expression, and eval /that/
+                ### rather than $_, which is insecure.
+                if ( /([\$*][\w\:\']*\bVERSION\b.*\=.*)/ ) {
+     
+                    ### this will eval the version in to $VERSION if it
+                    ### was declared as $VERSION in the module.
+                    ### else the result will be in $res.
+                    ### this is a fix on skud's Module::InstalledVersion
+     
+                    local $VERSION;
+                    my $res = eval $1;
+     
+                    ### default to '0.0' if there REALLY is no version
+                    ### all to satisfy warnings
+                    $href->{version} = $VERSION || $res || '0.0';
+    
+                    last DIR;
+                }
             }
         }
     }
@@ -227,8 +238,7 @@ sub check_install {
     return unless defined $href->{file};
 
     ### only complain if we expected fo find a version higher than 0.0 anyway
-    if( !defined $href->{version} ) {
-
+    if( $FIND_VERSION and not defined $href->{version} ) {
         {   ### don't warn about the 'not numeric' stuff ###
             local $^W;
 
@@ -438,6 +448,19 @@ This controls whether Module::Load::Conditional will issue warnings and
 explanations as to why certain things may have failed. If you set it
 to 0, Module::Load::Conditional will not output any warnings.
 The default is 0;
+
+=head2 $Module::Load::Conditional::FIND_VERSION
+
+This controls whether Module::Load::Conditional will try to parse
+(and eval) the version from the module you're trying to load. 
+
+If you don't wish to do this, set this variable to C<false>. Understand
+then that version comparisons are not possible, and Module::Load::Conditional
+can not tell you what module version you have installed.
+This may be desirable from a security or performance point of view. 
+Note that C<$FIND_VERSION> code runs safely under C<taint mode>.
+
+The default is 1;
 
 =head2 $Module::Load::Conditional::CACHE
 

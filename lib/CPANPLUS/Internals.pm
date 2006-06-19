@@ -7,7 +7,7 @@ use 5.006001;
 use strict;
 use Config;
 
-use CPANPLUS::inc;
+
 use CPANPLUS::Error;
 
 use CPANPLUS::Internals::Source;
@@ -38,7 +38,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = "0.061";
+$VERSION = "0.070_04";
 
 =pod
 

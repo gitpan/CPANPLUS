@@ -4,6 +4,7 @@ use CPANPLUS::Backend;
 use CPANPLUS::Dist;
 use CPANPLUS::Internals::Constants;
 use Getopt::Long;
+use File::Spec;
 use File::Basename;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
@@ -211,6 +212,9 @@ for my $name (@modules) {
     ### is it a tarball? then we get it locally and transform it
     ### and it's dependencies into .debs
     if( $tarball ) {
+        ### make sure we use an absolute path, so chdirs() dont
+        ### mess things up
+        $name = File::Spec->rel2abs( $name ); 
 
         ### ENOTARBALL?
         unless( -e $name ) {
