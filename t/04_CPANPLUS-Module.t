@@ -72,9 +72,19 @@ ok(!$mod->is_bundle,                                  "Package not bundle");
 
 ### check objects ###
 isa_ok( $mod->parent, 'CPANPLUS::Internals',          "Module parent" );
-isa_ok( $mod->status, 'Object::Accessor',             "Module status" );
 isa_ok( $mod->author, 'CPANPLUS::Module::Author',     "Module author" );
 is( $mod->author->author(), $auth->author,            "Module eq Author" );
+
+### XXX whitebox test 
+{   ok( !$mod->_status,     "Status object empty on start" );
+    
+    my $status = $mod->status;
+    ok( $status,            "   Status object defined after query" );
+    is( $status, $mod->_status,
+                            "   Object stored as expected" );
+    isa_ok( $status,        'Object::Accessor' );
+}
+
     
 
 {   ### extract + error test ###

@@ -61,7 +61,7 @@ sub checksums {
 ### checks if the package checksum matches the one
 ### from the checksums file
 sub _validate_checksum {
-    my $self = shift;
+    my $self = shift; #must be isa CPANPLUS::Module
     my $conf = $self->parent->configure_object;
     my %hash = @_;
 
@@ -76,16 +76,33 @@ sub _validate_checksum {
     ### if we can't check it, we must assume it's ok ###
     return $self->status->checksum_ok(1)
             unless can_load( modules => { 'Digest::MD5' => '0.0' } );
+    #class CPANPLUS::Module::Status is runtime-generated
 
     my $file = $self->_get_checksums_file( verbose => $verbose ) or (
         error(loc(q[Could not fetch '%1' file], CHECKSUMS)), return );
 
     $self->_check_signature_for_checksum_file( file => $file ) or (
         error(loc(q[Could not verify '%1' file], CHECKSUMS)), return );
+    #for whole CHECKSUMS file
 
     my $href = $self->_parse_checksums_file( file => $file ) or (
         error(loc(q[Could not parse '%1' file], CHECKSUMS)), return );
 
+    my $size = $href->{ $self->package }->{'size'};
+
+    ### the checksums file tells us the size of the archive
+    ### but the downloaded file is of different size
+    if( defined $size ) {
+        if( not (-s $self->status->fetch == $size) ) {
+            error(loc(  "Archive size does not match for '%1': " .
+                        "size is '%2' but should be '%3'",
+                        $self->package, -s $self->status->fetch, $size));
+            return $self->status->checksum_ok(0);
+        }
+    } else {
+        msg(loc("Archive size is not known for '%1'",$self->package),$verbose);
+    }
+    
     my $md5 = $href->{ $self->package }->{'md5'};
 
     unless( defined $md5 ) {

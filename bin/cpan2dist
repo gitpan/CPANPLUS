@@ -348,6 +348,8 @@ Usage:  $me [--format FORMAT] [OPTS] Module::Name [Module::Name, ...]
     Possible formats are:
 $formats
 
+    You can install more formats from CPAN!
+
 Options:
 
     ### take no argument:

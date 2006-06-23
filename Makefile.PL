@@ -147,15 +147,6 @@ Or let your package manager take care of it.
 ### write the makefile.pl
 {   
     $Prereq = {
-        ### used to have 0.80, but not it was never released by coral
-        ### 0.79 *should* be good enough for now... asked coral to 
-        ### release 0.80 on 10/3/2006
-        ### Win32 and Cygwin users need it.. otherwise, no buffers
-        ### can be captured
-        ($^O eq 'MSWin32' or $^O eq 'Cygwin'
-            ? ('IPC::Run'           => '0.79')
-            : ()
-        ), 
         'File::Fetch'               => '0.07',
         'File::Spec'                => '0.82',
         'IPC::Cmd'                  => '0.24',
@@ -187,6 +178,15 @@ Or let your package manager take care of it.
         if( $^O eq 'MSWin32') {
             $Prereq->{ 'Win32::Process' } = 0;
         }
+
+        ### used to have 0.80, but not it was never released by coral
+        ### 0.79 *should* be good enough for now... asked coral to 
+        ### release 0.80 on 10/3/2006
+        ### Win32 and Cygwin users need it.. otherwise, no buffers
+        ### can be captured
+        if( $^O eq 'MSWin32' or $^O eq 'Cygwin' ) {
+            $Prereq->{ 'IPC::Run' } = '0.79';
+        }            
     }
 
 

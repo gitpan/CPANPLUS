@@ -89,11 +89,20 @@ isa_ok( $mod,  'CPANPLUS::Module' );
 
 ### try and fetch a URI
 {   my $base    = basename($0);
-    my $me      = File::Spec->catfile( cwd(), $base );
-    
+
     ### do an ON_UNIX test, cygwin will fail tests otherwise (#14553)
-    #my $target  = 'file://' . $me;
-    my $target = (&File::Fetch::ON_UNIX ? 'file:/' : 'file://') . $me;
+    ### create a file URI. Make sure to split it by LOCAL rules
+    ### and JOIN by unix rules, so we get a proper file uri
+    ### otherwise, we might break win32. See bug #18702
+    my $target  = CREATE_FILE_URI->(
+                    File::Spec::Unix->catfile( 
+                        File::Spec::Unix->catdir(
+                            File::Spec->splitdir( cwd() ), 
+                        ), 
+                        $base 
+                    )
+                  );
+                  
     my $fake    = $cb->parse_module( module => $target );
     
     ok( IS_FAKE_MODOBJ->(mod => $fake), 

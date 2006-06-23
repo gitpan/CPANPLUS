@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION = "0.070_04";     #have to hardcode or cpan.org gets unhappy
+    $VERSION = "0.072";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -102,189 +102,101 @@ __END__
 
 =head1 NAME
 
-CPANPLUS - Command-line access to the CPAN interface
+CPANPLUS - API & CLI access to the CPAN mirrors
 
 =head1 SYNOPSIS
 
-    cpanp
-    cpanp -i Some::Module
+    ### standard invocation from the command line
+    $ cpanp
+    $ cpanp -i Some::Module
 
-    perl -MCPANPLUS -eshell
-    perl -MCPANPLUS -e'fetch Some::Module'
+    $ perl -MCPANPLUS -eshell
+    $ perl -MCPANPLUS -e'fetch Some::Module'
 
-    ### for programmatic interfacing, see below ###
-
+    
 =head1 DESCRIPTION
 
 The C<CPANPLUS> library is an API to the C<CPAN> mirrors and a
-collection of interactive shells, commandline programs, daemons, etc,
+collection of interactive shells, commandline programs, etc,
 that use this API.
 
-This documentation will discuss all of these briefly and direct you to
-the appropriate tool to use for the job at hand.
+=head1 GUIDE TO DOCUMENTATION
 
-=head1 INTERFACES
+=head2 GENERAL USAGE
 
-=head2 COMMAND LINE
+This is the document you are currently reading. It describes 
+basic usage and background information. Its main purpose is to 
+assist the user who wants to learn how to invoke CPANPLUS
+and install modules from the commandline and to point you
+to more indepth reading if required.
 
-The C<CPANPLUS> library comes with several command line tools;
+=head2 API REFERENCE
 
-=over 4
+The C<CPANPLUS> API is meant to let you programmatically 
+interact with the C<CPAN> mirrors. The documentation in
+L<CPANPLUS::Backend> shows you how to create an object
+capable of interacting with those mirrors, letting you
+create & retrieve module objects.
+L<CPANPLUS::Module> shows you how you can use these module
+objects to perform actions like installing and testing. 
 
-=item C<cpanp>
+The default shell, documented in L<CPANPLUS::Shell::Default>
+is also scriptable. You can use its API to dispatch calls
+from your script to the CPANPLUS Shell.
 
-This is the commandline tool to start the default interactive shell
-(see C<SHELLS> below), or to do one-off commands. See C<cpanp -h> for
-details.
+=cut
 
-=item C<cpan2dist.pl>
+=head1 COMMANDLINE TOOLS
 
-This is a commandline tool to convert any distribution from C<CPAN>
-into a package in the format of your choice, like for example C<.deb>
-or C<FreeBSD ports>. See C<cpan2dist.pl -h> for details.
+=head2 STARTING AN INTERACTIVE SHELL
 
-=item C<cpanpd.pl>
+You can start an interactive shell by running either of 
+the two following commands:
 
-This is a daemon that acts as a remote backend to your default shell.
-This allows you to administrate multiple perl installations on multiple
-machines using only one frontend. See C<cpanpd.pl -h> for details.
+    $ cpanp
 
-=back
+    $ perl -MCPANPLUS -eshell
 
-=head2 SHELLS
+All commans available are listed in the interactive shells
+help menu. See C<cpanp -h> or L<CPANPLUS::Shell::Default> 
+for instructions on using the default shell.  
+    
+=head2 CHOOSE A SHELL
 
-Interactive shells are there for when you want to do multiple queries,
-browse the C<CPAN> mirrors, consult a distributions C<README>, etc.
+By running C<cpanp> without arguments, you will start up
+the shell specified in your config, which defaults to 
+L<CPANPLUS::Shell::Default>. There are more shells available.
+C<CPANPLUS> itself ships with an emulation shell called 
+L<CPANPLUS::Shell::Classic> that looks and feels just like 
+the old C<CPAN.pm> shell.
 
-The C<CPANPLUS> library comes with a variety of possible shells. You
-can install third party shells from the C<CPAN> mirrors if the default
-one is not to your liking.
+You can start this shell by typing:
 
-=over 4
+    $ perl -MCPANPLUS -e'shell Classic'
+    
+Even more shells may be available from C<CPAN>.    
 
-=item CPANPLUS::Shell::Default
+Note that if you have changed your default shell in your
+configuration, that shell will be used instead. If for 
+some reason there was an error with your specified shell, 
+you will be given the default shell.
 
-This is the standard shell shipped with C<CPANPLUS>. The commands
+=head2 BUILDING PACKAGES
 
-    cpanp
+C<cpan2dist> is a commandline tool to convert any distribution 
+from C<CPAN> into a package in the format of your choice, like
+for example C<.deb> or C<FreeBSD ports>. 
 
-and
-
-    perl -MCPANPLUS -eshell
-
-should fire it up for you. Type C<h> at the prompt to see how to use it.
-
-=item CPANPLUS::Shell::Classic
-
-This is the emulation shell that looks and feels just like the old
-C<CPAN.pm> shell.
-
-=back
-
-=head2 API
-
-All the above tools are written using the C<CPANPLUS> API. If you have
-any needs that aren't already covered by the above tools, you might
-consider writing your own. To do this, use the C<CPANPLUS::Backend>
-module. It implements the full C<CPANPLUS> API.
-
-Consult the C<CPANPLUS::Backend> documentation on how to use it.
-
-=head2 PLUGINS
-
-There are various plugins available for C<CPANPLUS>. Below is a short
-listing of just a few of these plugins;
-
-=over 4
-
-=item Various shells
-
-As already available in the C<0.04x> series, C<CPANPLUS> provides
-various shells (as described in the C<SHELL> section above). There
-are also 3rd party shells you might get from a C<cpan> mirror near
-you, such as:
-
-=over 8
-
-=item CPANPLUS::Shell::Curses
-
-A shell using C<libcurses>
-
-=item CPANPLUS::Shell::Tk
-
-A shell using the graphical toolkit C<Tk>
-
-=back
-
-=item Various package manager plugins
-
-As already available in the C<0.04x> series, C<CPANPLUS> can provide
-a hook to install modules via the package manager of your choice.
-Look in the C<CPANPLUS::Dist::> namespace on C<cpan> to see what's
-available. Installing such a plugin will allow you to create packages
-of that type using the C<cpan2dist> program provided with C<CPANPLUS>
-or by saying, to create for example, debian distributions:
-
-    cpanp -i Acme::Bleach --format=debian
-
-There are a few package manager plugins available and/or planned
-already; they include, but are not limited to:
-
-=over 8
-
-=item CPANPLUS::Dist::Ports
-
-Allows you to create packages for C<FreeBSD ports>.
-
-=item CPANPLUS::Dist::Deb
-
-Allows you to create C<.deb> packages for C<Debian linux>.
-
-=item CPANPLUS::Dist::MDK
-
-Allows you to create packages for C<MandrakeLinux>.
-
-=item CPANPLUS::Dist::PPM
-
-Allows you to create packages in the C<PPM> format, commonly
-used by C<ActiveState Perl>.
-
-=back
-
-=item CPANPLUS Remote Daemon
-
-New in the C<0.05x> series is the C<CPANPLUS Daemon>. This application
-allows you to remotely control several machines running the C<CPANPLUS
-Daemon>, thus enabling you to update several machines at once, or
-updating machines from the comfort of your own desktop. This is done
-using C<CPANPLUS::Shell::Default>'s C<dispatch_on_input> method. See
-the C<CPANPLUS::Shell::Default> manpage for details on that method.
-
-=item Scriptable Shell
-
-New in the C<0.05x> series is the possibility of scripting the default
-shell. This can be done by using its C<dispatch_on_input> method.
-See the C<CPANPLUS::Shell::Default> manpage for details on that method.
-
-Also, soon it will be possible to have a C<.rc> file for the default
-shell, making aliases for all your commonly used functions. For exmpale,
-you could alias 'd' to do this:
-
-    d --fetchdir=/my/downloads
-
-or you could make the re-reading of your sourcefiles force a refetch
-of those files at all times:
-    x --update_source
-
-=back
-
+See C<cpan2dist -h> for details.
+    
+    
 =head1 FUNCTIONS
 
 For quick access to common commands, you may use this module,
 C<CPANPLUS> rather than the full programmatic API situated in
 C<CPANPLUS::Backend>. This module offers the following functions:
 
-=head2 install(NAME)
+=head2 $bool = install( Module::Name | /A/AU/AUTHOR/Module-Name-1.tgz )
 
 This function requires the full name of the module, which is case
 sensitive.  The module name can also be provided as a fully
@@ -293,36 +205,23 @@ the /authors/id directory on a CPAN mirror.
 
 It will download, extract and install the module.
 
-=head2 fetch(NAME)
+=head2 $where = fetch( Module::Name | /A/AU/AUTHOR/Module-Name-1.tgz )
 
 Like install, fetch needs the full name of a module or the fully
 qualified file name, and is case sensitive.
 
 It will download the specified module to the current directory.
 
-=head2 get(NAME)
+=head2 $where = get( Module::Name | /A/AU/AUTHOR/Module-Name-1.tgz )
 
 Get is provided as an alias for fetch for compatibility with
 CPAN.pm.
 
-=head2 shell
+=head2 shell()
 
 Shell starts the default CPAN shell.  You can also start the shell
 by using the C<cpanp> command, which will be installed in your
 perl bin.
-
-See L<CPANPLUS::Shell::Default> for instructions on using the default
-shell.  Note that if you have changed your default shell in your
-configuration, that shell will be used instead. If for some reason
-there was an error with your specified shell, you will be given the
-default shell.
-
-You may also optionally specify another shell to use for this invocation
-(which is a good way to test other shells):
-    perl -MCPANPLUS -e 'shell Classic'
-
-Shells are only designed to be used on the command-line; use
-of shells for scripting is discouraged and completely unsupported.
 
 =head1 FAQ
 
@@ -337,7 +236,7 @@ Jos Boumans E<lt>kane@cpan.orgE<gt>.
 =head1 COPYRIGHT
 
 The CPAN++ interface (of which this module is a part of) is
-copyright (c) 2001, 2002, 2003, 2004, 2005 Jos Boumans E<lt>kane@cpan.orgE<gt>.
+copyright (c) 2001-2006 Jos Boumans E<lt>kane@cpan.orgE<gt>.
 All rights reserved.
 
 This library is free software;
@@ -351,18 +250,17 @@ for a list of Credits and Contributors.
 
 =head1 SEE ALSO
 
-L<CPANPLUS::Backend>, L<CPANPLUS::Shell::Default>, L<CPANPLUS::FAQ>,
-L<cpanp>,  L<cpan2dist.pl>
+L<CPANPLUS::Shell::Default>, L<CPANPLUS::FAQ>, L<CPANPLUS::Backend>, L<CPANPLUS::Module>, L<cpanp>, L<cpan2dist>
 
 =head1 CONTACT INFORMATION
 
 =over 4
 
-=item * General suggestions:
+=item * General questions & suggestions:
 I<cpanplus-info@lists.sourceforge.net>
 
 =item * Bug reporting:
-I<cpanplus-bugs@lists.sourceforge.net>
+I<bug-cpanplus@rt.cpan.org>
 
 =item * Development list:
 I<cpanplus-devel@lists.sourceforge.net>

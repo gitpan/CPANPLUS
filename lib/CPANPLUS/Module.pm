@@ -69,7 +69,7 @@ my $tmpl = {
     dslip       => { default => '    ' },               # dslip information
     _id         => { required => 1 },                   # id of the Internals
                                                         # parent object
-    status      => { no_override => 1 },                # stores status object
+    _status     => { no_override => 1 },                # stores status object
     author      => { default => '', required => 1,
                      allow => IS_AUTHOBJ },             # module author
 };
@@ -285,15 +285,23 @@ sub new {
 
     bless $object, $class;
 
+    return $object;
+}
+
+### only create status objects when they're actually asked for
+sub status {
+    my $self = shift;
+    return $self->_status if $self->_status;
+    
     my $acc = Object::Accessor->new;
     $acc->mk_accessors( qw[ installer_type dist_cpan dist prereqs
                             signature extract fetch readme uninstall
                             created installed prepared checksums files
                             checksum_ok checksum_value _fetch_from] );
 
-    $object->status( $acc );
+    $self->_status( $acc );
 
-    return $object;
+    return $self->_status;
 }
 
 

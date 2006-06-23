@@ -1,3 +1,22 @@
+Changes for 0.072       Fri Jun 23 18:17:00 CEST 2006
+=====================================================
+
+*   This is a major release of CPANPLUS. It includes
+    all the changes from release 0.070_01, including
+    the following changes made after the beta was
+    released:
+*   The POD text of CPANPLUS.pm has been revamped to
+    be more of a guide than a technical reference.
+*   $module->status is now lazily initialized, lowering
+    overall RAM usage and startup time at the cost of
+    a runtime penalty. Overall, this improves performance
+    significantly.
+*   Address #20005: CPANPLUS does not check size of 
+    downloaded module this adds code that checks if 
+    the downloaded size is equal to the size specified 
+    by the checksums file
+*   Fix file fetching testing issue on Win32 (#18702)
+
 Changes for 0.070_01    Mon Jun 19 17:23:38 CEST 2006
 =====================================================
 *   This is a major beta release of CPANPLUS, revamping 
