@@ -299,12 +299,40 @@ sub _resolve_prereqs {
         PREREQ_IGNORE,  TARGET_IGNORE,
         PREREQ_INSTALL, TARGET_INSTALL,
     }->{ $conf->get_conf('prereqs') } || '';
-
+    
+    ### XXX BIG NASTY HACK XXX FIXME at some point.
+    ### when installing Bundle::CPANPLUS::Dependencies, we want to
+    ### install all packages matching 'cpanplus' to be installed last,
+    ### as all CPANPLUS' prereqs are being installed as well, but are
+    ### being loaded for bootstrapping purposes. This means CPANPLUS
+    ### can find them, but for example cpanplus::dist::build won't,
+    ### which gets messy FAST. So, here we sort our prereqs only IF
+    ### the parent module is Bundle::CPANPLUS::Dependencies.
+    ### Really, we would wnat some sort of sorted prereq mechanism,
+    ### but Bundle:: doesn't support it, and we flatten everything
+    ### to a hash internally. A sorted hash *might* do the trick if
+    ### we got a transparent implementation.. that would mean we would
+    ### just have to remove the 'sort' here, and all will be well
+    my @sorted_prereqs;
+    
+    ### use regex, could either be a module name, or a package name
+    if( $self->module =~ /^Bundle(::|-)CPANPLUS(::|-)Dependencies/ ) {
+        my (@first, @last);
+        for my $mod ( sort keys %$prereqs ) {
+            $mod =~ /CPANPLUS/
+                ? push @last,  $mod
+                : push @first, $mod;
+        }
+        @sorted_prereqs = (@first, @last);
+    } else {
+        @sorted_prereqs = sort keys %$prereqs;
+    }
 
     ### first, transfer this key/value pairing into a
     ### list of module objects + desired versions
     my @install_me;
-    for my $mod ( sort keys %$prereqs ) {
+    
+    for my $mod ( @sorted_prereqs ) {
         my $version = $prereqs->{$mod};
         my $modobj  = $cb->module_tree($mod);
 

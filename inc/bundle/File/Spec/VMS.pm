@@ -4,7 +4,7 @@ use strict;
 use vars qw(@ISA $VERSION);
 require File::Spec::Unix;
 
-$VERSION = "-1";
+$VERSION = '1.4';
 
 @ISA = qw(File::Spec::Unix);
 
@@ -27,118 +27,6 @@ the semantics.
 
 =over 4
 
-=item eliminate_macros
-
-Expands MM[KS]/Make macros in a text string, using the contents of
-identically named elements of C<%$self>, and returns the result
-as a file specification in Unix syntax.
-
-=cut
-
-sub eliminate_macros {
-    my($self,$path) = @_;
-    return '' unless $path;
-    $self = {} unless ref $self;
-
-    if ($path =~ /\s/) {
-      return join ' ', map { $self->eliminate_macros($_) } split /\s+/, $path;
-    }
-
-    my($npath) = unixify($path);
-    my($complex) = 0;
-    my($head,$macro,$tail);
-
-    # perform m##g in scalar context so it acts as an iterator
-    while ($npath =~ m#(.*?)\$\((\S+?)\)(.*)#gs) { 
-        if ($self->{$2}) {
-            ($head,$macro,$tail) = ($1,$2,$3);
-            if (ref $self->{$macro}) {
-                if (ref $self->{$macro} eq 'ARRAY') {
-                    $macro = join ' ', @{$self->{$macro}};
-                }
-                else {
-                    print "Note: can't expand macro \$($macro) containing ",ref($self->{$macro}),
-                          "\n\t(using MMK-specific deferred substitutuon; MMS will break)\n";
-                    $macro = "\cB$macro\cB";
-                    $complex = 1;
-                }
-            }
-            else { ($macro = unixify($self->{$macro})) =~ s#/\Z(?!\n)##; }
-            $npath = "$head$macro$tail";
-        }
-    }
-    if ($complex) { $npath =~ s#\cB(.*?)\cB#\${$1}#gs; }
-    $npath;
-}
-
-=item fixpath
-
-Catchall routine to clean up problem MM[SK]/Make macros.  Expands macros
-in any directory specification, in order to avoid juxtaposing two
-VMS-syntax directories when MM[SK] is run.  Also expands expressions which
-are all macro, so that we can tell how long the expansion is, and avoid
-overrunning DCL's command buffer when MM[KS] is running.
-
-If optional second argument has a TRUE value, then the return string is
-a VMS-syntax directory specification, if it is FALSE, the return string
-is a VMS-syntax file specification, and if it is not specified, fixpath()
-checks to see whether it matches the name of a directory in the current
-default directory, and returns a directory or file specification accordingly.
-
-=cut
-
-sub fixpath {
-    my($self,$path,$force_path) = @_;
-    return '' unless $path;
-    $self = bless {} unless ref $self;
-    my($fixedpath,$prefix,$name);
-
-    if ($path =~ /\s/) {
-      return join ' ',
-             map { $self->fixpath($_,$force_path) }
-	     split /\s+/, $path;
-    }
-
-    if ($path =~ m#^\$\([^\)]+\)\Z(?!\n)#s || $path =~ m#[/:>\]]#) { 
-        if ($force_path or $path =~ /(?:DIR\)|\])\Z(?!\n)/) {
-            $fixedpath = vmspath($self->eliminate_macros($path));
-        }
-        else {
-            $fixedpath = vmsify($self->eliminate_macros($path));
-        }
-    }
-    elsif ((($prefix,$name) = ($path =~ m#^\$\(([^\)]+)\)(.+)#s)) && $self->{$prefix}) {
-        my($vmspre) = $self->eliminate_macros("\$($prefix)");
-        # is it a dir or just a name?
-        $vmspre = ($vmspre =~ m|/| or $prefix =~ /DIR\Z(?!\n)/) ? vmspath($vmspre) : '';
-        $fixedpath = ($vmspre ? $vmspre : $self->{$prefix}) . $name;
-        $fixedpath = vmspath($fixedpath) if $force_path;
-    }
-    else {
-        $fixedpath = $path;
-        $fixedpath = vmspath($fixedpath) if $force_path;
-    }
-    # No hints, so we try to guess
-    if (!defined($force_path) and $fixedpath !~ /[:>(.\]]/) {
-        $fixedpath = vmspath($fixedpath) if -d $fixedpath;
-    }
-
-    # Trim off root dirname if it's had other dirs inserted in front of it.
-    $fixedpath =~ s/\.000000([\]>])/$1/;
-    # Special case for VMS absolute directory specs: these will have had device
-    # prepended during trip through Unix syntax in eliminate_macros(), since
-    # Unix syntax has no way to express "absolute from the top of this device's
-    # directory tree".
-    if ($path =~ /^[\[>][^.\-]/) { $fixedpath =~ s/^[^\[<]+//; }
-    $fixedpath;
-}
-
-=back
-
-=head2 Methods always loaded
-
-=over 4
-
 =item canonpath (override)
 
 Removes redundant portions of file specifications according to VMS syntax.
@@ -155,20 +43,40 @@ sub canonpath {
       else          { return vmsify($path);  }
     }
     else {
-      $path =~ s/([\[<])000000\./$1/g;                  # [000000.foo     ==> [foo
-      $path =~ s/([^-]+)\.(\]\[|><)?000000([\]\>])/$1$3/g;  # foo.000000] ==> foo]
-      $path =~ s-\]\[--g;  $path =~ s/><//g;            # foo.][bar       ==> foo.bar
-      1 while $path =~ s{([\[<-])\.-}{$1-};             # [.-.-           ==> [--
-      $path =~ s/\.[^\[<\.]+\.-([\]\>])/$1/;            # bar.foo.-]      ==> bar]
-      $path =~ s/([\[<])(-+)/$1 . "\cx" x length($2)/e; # encode leading '-'s
-      $path =~ s/([\[<\.])([^\[<\.\cx]+)\.-\.?/$1/g;    # bar.-.foo       ==> foo
-      $path =~ s/([\[<])(\cx+)/$1 . '-' x length($2)/e; # then decode
-      $path =~ s/^[\[<\]>]{2}//;                        # []foo           ==> foo
-      return $path;
+	$path =~ tr/<>/[]/;			# < and >       ==> [ and ]
+	$path =~ s/\]\[\./\.\]\[/g;		# ][.		==> .][
+	$path =~ s/\[000000\.\]\[/\[/g;		# [000000.][	==> [
+	$path =~ s/\[000000\./\[/g;		# [000000.	==> [
+	$path =~ s/\.\]\[000000\]/\]/g;		# .][000000]	==> ]
+	$path =~ s/\.\]\[/\./g;			# foo.][bar     ==> foo.bar
+	1 while ($path =~ s/([\[\.])(-+)\.(-+)([\.\]])/$1$2$3$4/);
+						# That loop does the following
+						# with any amount of dashes:
+						# .-.-.		==> .--.
+						# [-.-.		==> [--.
+						# .-.-]		==> .--]
+						# [-.-]		==> [--]
+	1 while ($path =~ s/([\[\.])[^\]\.]+\.-(-+)([\]\.])/$1$2$3/);
+						# That loop does the following
+						# with any amount (minimum 2)
+						# of dashes:
+						# .foo.--.	==> .-.
+						# .foo.--]	==> .-]
+						# [foo.--.	==> [-.
+						# [foo.--]	==> [-]
+						#
+						# And then, the remaining cases
+	$path =~ s/\[\.-/[-/;			# [.-		==> [-
+	$path =~ s/\.[^\]\.]+\.-\./\./g;	# .foo.-.	==> .
+	$path =~ s/\[[^\]\.]+\.-\./\[/g;	# [foo.-.	==> [
+	$path =~ s/\.[^\]\.]+\.-\]/\]/g;	# .foo.-]	==> ]
+	$path =~ s/\[[^\]\.]+\.-\]/\[000000\]/g;# [foo.-]       ==> [000000]
+	$path =~ s/\[\]// unless $path eq '[]';	# []		==>
+	return $path;
     }
 }
 
-=item catdir
+=item catdir (override)
 
 Concatenates a list of file specifications, and returns the result as a
 VMS-syntax directory specification.  No check is made for "impossible"
@@ -177,9 +85,10 @@ cases (e.g. elements other than the first being absolute filespecs).
 =cut
 
 sub catdir {
-    my ($self,@dirs) = @_;
-    my $dir = pop @dirs;
-    @dirs = grep($_,@dirs);
+    my $self = shift;
+    my $dir = pop;
+    my @dirs = grep {defined() && length()} @_;
+
     my $rslt;
     if (@dirs) {
 	my $path = (@dirs == 1 ? $dirs[0] : $self->catdir(@dirs));
@@ -202,7 +111,7 @@ sub catdir {
     return $self->canonpath($rslt);
 }
 
-=item catfile
+=item catfile (override)
 
 Concatenates a list of file specifications, and returns the result as a
 VMS-syntax file specification.
@@ -210,9 +119,10 @@ VMS-syntax file specification.
 =cut
 
 sub catfile {
-    my ($self,@files) = @_;
-    my $file = $self->canonpath(pop @files);
-    @files = grep($_,@files);
+    my $self = shift;
+    my $file = $self->canonpath(pop());
+    my @files = grep {defined() && length()} @_;
+
     my $rslt;
     if (@files) {
 	my $path = (@files == 1 ? $files[0] : $self->catdir(@files));
@@ -223,7 +133,7 @@ sub catfile {
 	}
 	else {
 	    $rslt = $self->eliminate_macros($spath);
-	    $rslt = vmsify($rslt.($rslt ? '/' : '').unixify($file));
+	    $rslt = vmsify($rslt.((defined $rslt) && ($rslt ne '') ? '/' : '').unixify($file));
 	}
     }
     else { $rslt = (defined($file) && length($file)) ? vmsify($file) : ''; }
@@ -277,8 +187,7 @@ is tainted, it is not used.
 my $tmpdir;
 sub tmpdir {
     return $tmpdir if defined $tmpdir;
-    my $self = shift;
-    $tmpdir = $self->_tmpdir( 'sys$scratch:', $ENV{TMPDIR} );
+    $tmpdir = $_[0]->_tmpdir( 'sys$scratch:', $ENV{TMPDIR} );
 }
 
 =item updir (override)
@@ -351,7 +260,19 @@ Split dirspec using VMS syntax.
 
 sub splitdir {
     my($self,$dirspec) = @_;
-    $dirspec =~ s/\]\[//g;  $dirspec =~ s/\-\-/-.-/g;
+    $dirspec =~ tr/<>/[]/;			# < and >	==> [ and ]
+    $dirspec =~ s/\]\[\./\.\]\[/g;		# ][.		==> .][
+    $dirspec =~ s/\[000000\.\]\[/\[/g;		# [000000.][	==> [
+    $dirspec =~ s/\[000000\./\[/g;		# [000000.	==> [
+    $dirspec =~ s/\.\]\[000000\]/\]/g;		# .][000000]	==> ]
+    $dirspec =~ s/\.\]\[/\./g;			# foo.][bar	==> foo.bar
+    while ($dirspec =~ s/(^|[\[\<\.])\-(\-+)($|[\]\>\.])/$1-.$2$3/g) {}
+						# That loop does the following
+						# with any amount of dashes:
+						# .--.		==> .-.-.
+						# [--.		==> [-.-.
+						# .--]		==> .-.-]
+						# [--]		==> [-.-]
     $dirspec = "[$dirspec]" unless $dirspec =~ /[\[<]/; # make legal
     my(@dirs) = split('\.', vmspath($dirspec));
     $dirs[0] =~ s/^[\[<]//s;  $dirs[-1] =~ s/[\]>]\Z(?!\n)//s;
@@ -416,8 +337,10 @@ sub abs2rel {
 
     # Now, remove all leading components that are the same
     my @pathchunks = $self->splitdir( $path_directories );
+    my $pathchunks = @pathchunks;
     unshift(@pathchunks,'000000') unless $pathchunks[0] eq '000000';
     my @basechunks = $self->splitdir( $base_directories );
+    my $basechunks = @basechunks;
     unshift(@basechunks,'000000') unless $basechunks[0] eq '000000';
 
     while ( @pathchunks && 
@@ -430,7 +353,13 @@ sub abs2rel {
 
     # @basechunks now contains the directories to climb out of,
     # @pathchunks now has the directories to descend in to.
-    $path_directories = join '.', ('-' x @basechunks, @pathchunks) ;
+    if ((@basechunks > 0) || ($basechunks != $pathchunks)) {
+      $path_directories = join '.', ('-' x @basechunks, @pathchunks) ;
+    }
+    else {
+      $path_directories = join '.', @pathchunks;
+    }
+    $path_directories = '['.$path_directories.']';
     return $self->canonpath( $self->catpath( '', $path_directories, $path_file ) ) ;
 }
 
@@ -443,10 +372,14 @@ Use VMS syntax when converting filespecs.
 
 sub rel2abs {
     my $self = shift ;
-    return vmspath(File::Spec::Unix::rel2abs( $self, @_ ))
-        if ( join( '', @_ ) =~ m{/} ) ;
-
     my ($path,$base ) = @_;
+    return undef unless defined $path;
+    if ($path =~ m/\//) {
+	$path = ( -d $path || $path =~ m/\/\z/  # educated guessing about
+		   ? vmspath($path)             # whether it's a directory
+		   : vmsify($path) );
+    }
+    $base = vmspath($base) if defined $base && $base =~ m/\//;
     # Clean up and split up $path
     if ( ! $self->file_name_is_absolute( $path ) ) {
         # Figure out the effective $base and clean it up.
@@ -484,7 +417,106 @@ sub rel2abs {
 }
 
 
+# eliminate_macros() and fixpath() are MakeMaker-specific methods
+# which are used inside catfile() and catdir().  MakeMaker has its own
+# copies as of 6.06_03 which are the canonical ones.  We leave these
+# here, in peace, so that File::Spec continues to work with MakeMakers
+# prior to 6.06_03.
+# 
+# Please consider these two methods deprecated.  Do not patch them,
+# patch the ones in ExtUtils::MM_VMS instead.
+sub eliminate_macros {
+    my($self,$path) = @_;
+    return '' unless (defined $path) && ($path ne '');
+    $self = {} unless ref $self;
+
+    if ($path =~ /\s/) {
+      return join ' ', map { $self->eliminate_macros($_) } split /\s+/, $path;
+    }
+
+    my($npath) = unixify($path);
+    my($complex) = 0;
+    my($head,$macro,$tail);
+
+    # perform m##g in scalar context so it acts as an iterator
+    while ($npath =~ m#(.*?)\$\((\S+?)\)(.*)#gs) { 
+        if ($self->{$2}) {
+            ($head,$macro,$tail) = ($1,$2,$3);
+            if (ref $self->{$macro}) {
+                if (ref $self->{$macro} eq 'ARRAY') {
+                    $macro = join ' ', @{$self->{$macro}};
+                }
+                else {
+                    print "Note: can't expand macro \$($macro) containing ",ref($self->{$macro}),
+                          "\n\t(using MMK-specific deferred substitutuon; MMS will break)\n";
+                    $macro = "\cB$macro\cB";
+                    $complex = 1;
+                }
+            }
+            else { ($macro = unixify($self->{$macro})) =~ s#/\Z(?!\n)##; }
+            $npath = "$head$macro$tail";
+        }
+    }
+    if ($complex) { $npath =~ s#\cB(.*?)\cB#\${$1}#gs; }
+    $npath;
+}
+
+# Deprecated.  See the note above for eliminate_macros().
+sub fixpath {
+    my($self,$path,$force_path) = @_;
+    return '' unless $path;
+    $self = bless {} unless ref $self;
+    my($fixedpath,$prefix,$name);
+
+    if ($path =~ /\s/) {
+      return join ' ',
+             map { $self->fixpath($_,$force_path) }
+	     split /\s+/, $path;
+    }
+
+    if ($path =~ m#^\$\([^\)]+\)\Z(?!\n)#s || $path =~ m#[/:>\]]#) { 
+        if ($force_path or $path =~ /(?:DIR\)|\])\Z(?!\n)/) {
+            $fixedpath = vmspath($self->eliminate_macros($path));
+        }
+        else {
+            $fixedpath = vmsify($self->eliminate_macros($path));
+        }
+    }
+    elsif ((($prefix,$name) = ($path =~ m#^\$\(([^\)]+)\)(.+)#s)) && $self->{$prefix}) {
+        my($vmspre) = $self->eliminate_macros("\$($prefix)");
+        # is it a dir or just a name?
+        $vmspre = ($vmspre =~ m|/| or $prefix =~ /DIR\Z(?!\n)/) ? vmspath($vmspre) : '';
+        $fixedpath = ($vmspre ? $vmspre : $self->{$prefix}) . $name;
+        $fixedpath = vmspath($fixedpath) if $force_path;
+    }
+    else {
+        $fixedpath = $path;
+        $fixedpath = vmspath($fixedpath) if $force_path;
+    }
+    # No hints, so we try to guess
+    if (!defined($force_path) and $fixedpath !~ /[:>(.\]]/) {
+        $fixedpath = vmspath($fixedpath) if -d $fixedpath;
+    }
+
+    # Trim off root dirname if it's had other dirs inserted in front of it.
+    $fixedpath =~ s/\.000000([\]>])/$1/;
+    # Special case for VMS absolute directory specs: these will have had device
+    # prepended during trip through Unix syntax in eliminate_macros(), since
+    # Unix syntax has no way to express "absolute from the top of this device's
+    # directory tree".
+    if ($path =~ /^[\[>][^.\-]/) { $fixedpath =~ s/^[^\[<]+//; }
+    $fixedpath;
+}
+
+
 =back
+
+=head1 COPYRIGHT
+
+Copyright (c) 2004 by the Perl 5 Porters.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 

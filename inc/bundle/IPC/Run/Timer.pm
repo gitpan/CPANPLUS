@@ -2,7 +2,7 @@ package IPC::Run::Timer ;
 
 =head1 NAME
 
-   IPC::Run::Timer -- Timer channels for IPC::Run.
+IPC::Run::Timer -- Timer channels for IPC::Run.
 
 =head1 SYNOPSIS
 

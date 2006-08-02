@@ -6,7 +6,7 @@ package IPC::Run ;
 # License or the Artistic License, as specified in the README file.
 #
 
-$VERSION = "-1";
+$VERSION = "0.80";
 
 =head1 NAME
 

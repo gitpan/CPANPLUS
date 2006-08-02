@@ -6,6 +6,8 @@ inc/bundle/Archive/Extract.pm
 inc/bundle/Archive/Tar.pm
 inc/bundle/Archive/Tar/Constant.pm
 inc/bundle/Archive/Tar/File.pm
+inc/bundle/Class/Inspector.pm
+inc/bundle/Devel/InnerPackage.pm
 inc/bundle/File/Fetch.pm
 inc/bundle/File/Fetch/Item.pm
 inc/bundle/File/Spec.pm
@@ -38,6 +40,7 @@ inc/bundle/Module/Load.pm
 inc/bundle/Module/Load/Conditional.pm
 inc/bundle/Module/Loaded.pm
 inc/bundle/Module/Pluggable.pm
+inc/bundle/Module/Pluggable/Object.pm
 inc/bundle/Object/Accessor.pm
 inc/bundle/Package/Constants.pm
 inc/bundle/Params/Check.pm

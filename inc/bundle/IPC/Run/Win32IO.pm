@@ -6,7 +6,7 @@ IPC::Run::Win32IO - helper routines for IPC::Run on Win32 platforms.
 
 =head1 SYNOPSIS
 
-use IPC::Run::Win32IO;   # Exports all by default
+    use IPC::Run::Win32IO;   # Exports all by default
 
 =head1 DESCRIPTION
 

@@ -489,7 +489,8 @@ like '%1'.
                         );       
                         
             ### empty line clears it            
-            my $bin = $loc =~ /^\s*$/ ? undef : $loc;
+            my $cmd     = $loc =~ /^\s*$/ ? undef : $loc;
+            my ($bin)   = $cmd =~ /^(\S+)/;
             
             ### did you provide a valid program ?
             if( $bin and not can_run( $bin ) ) {
@@ -515,10 +516,10 @@ like '%1'.
                 redo PROGRAM;                    
             }
 
-            $conf->set_program( $prog => $bin );
-            print $bin
+            $conf->set_program( $prog => $cmd );
+            print $cmd
                 ? loc(  "Your '%1' utility has been set to '%2'", 
-                        $prog, $bin )
+                        $prog, $cmd )
                 : loc(  "Your '%1' has been disabled", $prog );           
             print "\n";
         }

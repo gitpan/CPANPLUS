@@ -147,19 +147,20 @@ Or let your package manager take care of it.
 ### write the makefile.pl
 {   
     $Prereq = {
-        'File::Fetch'               => '0.07',
+        'File::Fetch'               => '0.08', # win32 ftp support
         'File::Spec'                => '0.82',
         'IPC::Cmd'                  => '0.24',
         'Locale::Maketext::Simple'  => '0.01',
         'Log::Message'              => '0.01',
         'Module::Load'              => '0.10',
-        'Module::Load::Conditional' => '0.07',
+        'Module::Load::Conditional' => '0.10', # %INC lookup support
         'Params::Check'             => '0.22',
         'Package::Constants'        => '0.01',
         'Term::UI'                  => '0.05',
         'Test::Harness'             => '2.62', # due to bug #19505
+                                               # only 2.58 and 2.60 are bad
         'Test::More'                => '0.47', # to run our tests
-        'Archive::Extract'          => '0.07',
+        'Archive::Extract'          => '0.11', # bzip2 support
         'Archive::Tar'              => '1.23',
         'IO::Zlib'                  => '1.04',
         'Object::Accessor'          => '0.03',
@@ -172,7 +173,7 @@ Or let your package manager take care of it.
     ### depending on your choices, we might need to add some modules
     ### to your PREREQ_PM
     {   if( !$Setup->configure_object->get_conf('prefer_makefile')  ) {
-            $Prereq->{ 'CPANPLUS::Dist::Build' } = '0.03';
+            $Prereq->{ 'CPANPLUS::Dist::Build' } = '0.04';
         }
         
         if( $^O eq 'MSWin32') {

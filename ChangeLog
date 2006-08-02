@@ -1,3 +1,32 @@
+Changes for 0.073_01    Wed Aug  2 15:40:38 CEST 2006
+=====================================================
+
+*   'install Bundle::CPANPLUS::Dependencies' should
+    now work properly from cpanp-boxed, even without
+    a --force option
+*   Up requirements to more recent versions of among
+    others Archive::Extract, CPANPLUS::Dist::Build,
+    File::Fetch & Module::Load::Conditional.
+*   Update bundled modules for cpanp-boxed
+*   Don't change versions of bundled modules, this 
+    breaks 'use Foo 1.0' statements in our dependencies
+    Uptodate check is now done with a new feature in
+    Module::Load::Conditional that can check %INC.
+*   Rework cpanp-boxed to deal better with bundled
+    modules and their uptodateness
+*   Move module::pluggable code to runtime rather than 
+    compiletime this makes 'require CPANPLUS' not run 
+    around the FS looking for config files until they 
+    are needed
+*   Address #20737 (Failed to Setup CLI Programs with 
+    Arguments) where the interactive configuration
+    wouldn't let you specify options to CLI programs
+*   Address #20640: Always Sent 'pass' Report With 
+    'force' => 1. Test reports are now marked as 
+    'fail' when they fail, even when 'force' is true.
+    *   sent mail to module-build@perl.org with the 
+        patch for C::D::Build to have the same behaviour
+    
 Changes for 0.072       Fri Jun 23 18:17:00 CEST 2006
 =====================================================
 

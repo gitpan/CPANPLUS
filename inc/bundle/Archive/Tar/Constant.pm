@@ -2,7 +2,7 @@ package Archive::Tar::Constant;
 
 BEGIN {
     require Exporter;
-    $VERSION = "-1";
+    $VERSION= '0.02';
     @ISA    = qw[Exporter];
     @EXPORT = qw[
                 FILE HARDLINK SYMLINK CHARDEV BLOCKDEV DIR FIFO SOCKET UNKNOWN

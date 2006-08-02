@@ -3,7 +3,7 @@ package File::Spec::Epoc;
 use strict;
 use vars qw($VERSION @ISA);
 
-$VERSION = "-1";
+$VERSION = '1.1';
 
 require File::Spec::Unix;
 @ISA = qw(File::Spec::Unix);
@@ -23,10 +23,6 @@ there. This package overrides the implementation of these methods, not
 the semantics.
 
 This package is still work in progress ;-)
-
-=head1 AUTHORS
-
-o.flebbe@gmx.de
 
 =cut
 
@@ -59,6 +55,17 @@ sub canonpath {
 }
 
 =pod
+
+=head1 AUTHOR
+
+o.flebbe@gmx.de
+
+=head1 COPYRIGHT
+
+Copyright (c) 2004 by the Perl 5 Porters.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =head1 SEE ALSO
 

@@ -6,19 +6,12 @@ use vars            qw[$FATAL $DEBUG $AUTOLOAD $VERSION];
 use Params::Check   qw[allow];
 use Data::Dumper;
 
-$VERSION = "-1";
+$VERSION    = '0.20';
 $FATAL      = 0;
 $DEBUG      = 0;
 
 use constant VALUE          => 0;       # array index in the hash value
 use constant ALLOW          => 1;       # array index in the hash value
-
-### bless a dummy object into a dummy class to serve as a 'placeholder'
-### allow handler. This way, we can skip over allow checks if the allow
-### handler is an object of this class. A plain ref won't work, as the
-### memory address may change between serializations =/
-use constant ANYTHING_CLASS => __PACKAGE__ . '::ANYTHING';
-use constant ANYTHING       => bless [], ANYTHING_CLASS;      
 
 =head1 NAME
 
@@ -27,36 +20,36 @@ Object::Accessor
 =head1 SYNOPSIS
 
     ### using the object
-    $object = Object::Accessor->new;        # create object
-    $object = Object::Accessor->new(@list); # create object with accessors
-    $object = Object::Accessor->new(\%h);   # create object with accessors
-                                            # and their allow handlers
+    $obj = Object::Accessor->new;        # create object
+    $obj = Object::Accessor->new(@list); # create object with accessors
+    $obj = Object::Accessor->new(\%h);   # create object with accessors
+                                         # and their allow handlers
 
-    $bool   = $object->mk_accessors('foo'); # create accessors
-    $bool   = $object->mk_accessors(        # create accessors with input
-                { foo => ALLOW_HANDLER } ); # validation
+    $bool   = $obj->mk_accessors('foo'); # create accessors
+    $bool   = $obj->mk_accessors(        # create accessors with input
+               {foo => ALLOW_HANDLER} ); # validation
                 
-    $clone  = $object->mk_clone;            # create a clone of original
-                                            # object without data
-    $bool   = $object->mk_flush;            # clean out all data
+    $clone  = $obj->mk_clone;            # create a clone of original
+                                         # object without data
+    $bool   = $obj->mk_flush;            # clean out all data
 
-    @list   = $object->ls_accessors;        # retrieves a list of all
-                                            # accessors for this object
+    @list   = $obj->ls_accessors;        # retrieves a list of all
+                                         # accessors for this object
 
-    $bar    = $object->foo('bar');          # set 'foo' to 'bar'
-    $bar    = $object->foo();               # retrieve 'bar' again
+    $bar    = $obj->foo('bar');          # set 'foo' to 'bar'
+    $bar    = $obj->foo();               # retrieve 'bar' again
 
-    $sub    = $object->can('foo');          # retrieve coderef for
-                                            # 'foo' accessor
-    $bar    = $sub->('bar');                # set 'foo' via coderef
-    $bar    = $sub->();                     # retrieve 'bar' by coderef
+    $sub    = $obj->can('foo');          # retrieve coderef for
+                                         # 'foo' accessor
+    $bar    = $sub->('bar');             # set 'foo' via coderef
+    $bar    = $sub->();                  # retrieve 'bar' by coderef
 
     ### using the object as base class
     package My::Class;
     use base 'Object::Accessor';
 
-    $object     = My::Class->new;               # create base object
-    $bool       = $object->mk_accessors('foo'); # create accessors, etc...
+    $obj    = My::Class->new;               # create base object
+    $bool   = $obj->mk_accessors('foo');    # create accessors, etc...
 
     ### make all attempted access to non-existant accessors fatal
     ### (defaults to false)
@@ -65,11 +58,14 @@ Object::Accessor
     ### enable debugging
     $Object::Accessor::DEBUG = 1;
 
+    ### advanced usage -- lvalue attributes
+    {   my $obj = Object::Accessor::Lvalue->new('foo');
+        print $obj->foo = 1;            # will print 1
+    }
 
     ### advanced usage -- scoped attribute values
-    {   my $obj = Object::Accessor->new;
+    {   my $obj = Object::Accessor->new('foo');
         
-        $obj->mk_accessors('foo');
         $obj->foo( 1 );
         print $obj->foo;                # will print 1
 
@@ -81,8 +77,6 @@ Object::Accessor
         }
         print $obj->foo;                # will print 1
     }
-
-
 
 
 =head1 DESCRIPTION
@@ -104,6 +98,11 @@ Creates a new (and empty) C<Object::Accessor> object. This method is
 inheritable.
 
 Any arguments given to C<new> are passed straight to C<mk_accessors>.
+
+If you want to be able to assign to your accessors as if they
+were C<lvalue>s, you should create your object in the 
+C<Object::Acccessor::Lvalue> namespace instead. See the section
+on C<LVALUE ACCESSORS> below.
 
 =cut
 
@@ -173,27 +172,26 @@ section for details.
 =cut
 
 sub mk_accessors {
-    my $self = $_[0];
+    my $self    = $_[0];
+    my $is_hash = UNIVERSAL::isa( $_[1], 'HASH' );
     
     ### first argument is a hashref, which means key/val pairs
     ### as keys + allow handlers
-    my %hash = UNIVERSAL::isa( $_[1], 'HASH' )
-                ? %{$_[1]}
-                : map { $_ => ANYTHING } @_[1..$#_]; 
-        
-    while( my($acc,$allow) = each %hash ) {
-
+    for my $acc ( $is_hash ? keys %{$_[1]} : @_[1..$#_] ) {
+    
         ### already created apparently
         if( exists $self->{$acc} ) {
-            _debug( "Accessor '$acc' already exists");
+            __PACKAGE__->___debug( "Accessor '$acc' already exists");
             next;
         }
 
-        _debug( "Creating accessor '$acc'");
+        __PACKAGE__->___debug( "Creating accessor '$acc'");
 
         ### explicitly vivify it, so that exists works in ls_accessors()
         $self->{$acc}->[VALUE] = undef;
-        $self->{$acc}->[ALLOW] = $allow;        
+        
+        ### set the allow handler only if one was specified
+        $self->{$acc}->[ALLOW] = $_[1]->{$acc} if $is_hash;
     }
 
     return 1;
@@ -214,14 +212,17 @@ sub ls_accessors {
 =head2 $ref = $self->ls_allow(KEY)
 
 Returns the allow handler for the given key, which can be used with
-C<Params::Check>'s C<allow()> handler.
+C<Params::Check>'s C<allow()> handler. If there was no allow handler
+specified, an allow handler that always returns true will be returned.
 
 =cut
 
 sub ls_allow {
     my $self = shift;
     my $key  = shift or return;
-    return $self->{$key}->[ALLOW];
+    return exists $self->{$key}->[ALLOW]
+                ? $self->{$key}->[ALLOW] 
+                : sub { 1 };
 }
 
 =head2 $clone = $self->mk_clone;
@@ -231,6 +232,8 @@ accessors as the current object, but without the data stored in them.
 
 =cut
 
+### XXX this creates an object WITH allow handlers at all times.
+### even if the original didnt
 sub mk_clone {
     my $self    = $_[0];
     my $class   = ref $self;
@@ -275,10 +278,10 @@ sub mk_verify {
     
     my $fail;
     for my $name ( $self->ls_accessors ) {
-        unless( allow( $self->$name, $self->{$name}->[ALLOW] ) ) {
+        unless( allow( $self->$name, $self->ls_allow( $name ) ) ) {
             my $val = defined $self->$name ? $self->$name : '<undef>';
 
-            _error("'$name' ($val) is invalid");
+            __PACKAGE__->___error("'$name' ($val) is invalid");
             $fail++;
         }
     }
@@ -312,18 +315,18 @@ sub can {
 
     ### it's one of our regular methods
     if( $self->UNIVERSAL::can($method) ) {
-        _debug( "Can '$method' -- provided by package" );
+        __PACKAGE__->___debug( "Can '$method' -- provided by package" );
         return $self->UNIVERSAL::can($method);
     }
 
     ### it's an accessor we provide;
     if( UNIVERSAL::isa( $self, 'HASH' ) and exists $self->{$method} ) {
-        _debug( "Can '$method' -- provided by object" );
+        __PACKAGE__->___debug( "Can '$method' -- provided by object" );
         return sub { $self->$method(@_); }
     }
 
     ### we don't support it
-    _debug( "Cannot '$method'" );
+    __PACKAGE__->___debug( "Cannot '$method'" );
     return;
 }
 
@@ -336,19 +339,29 @@ sub AUTOLOAD {
     my $self    = shift;
     my($method) = ($AUTOLOAD =~ /([^:']+$)/);
 
+    $self->___autoload( $method, @_ ) or return;
+
+    return $self->{$method}->[VALUE];
+}
+
+sub ___autoload {
+    my $self    = shift;
+    my $method  = shift;
+
     ### a method on our object
     if( UNIVERSAL::isa( $self, 'HASH' ) ) {
         if ( not exists $self->{$method} ) {
-            _error("No such accessor '$method'");
+            __PACKAGE__->___error("No such accessor '$method'", 1);
             return;
         } 
    
     ### a method on something else, die with a descriptive error;
     } else {     
         local $FATAL = 1;
-        _error( "You called '$AUTOLOAD' on '$self' which was interpreted by ".
+        __PACKAGE__->___error( 
+                "You called '$AUTOLOAD' on '$self' which was interpreted by ".
                 __PACKAGE__ . " as an object call. Did you mean to include ".
-                "'$method' from somewhere else?" );
+                "'$method' from somewhere else?", 1 );
     }        
 
     ### assign?
@@ -370,19 +383,22 @@ sub AUTOLOAD {
                 ${$_[0]} = $val;
             
             } else {
-                _error( "Can not bind '$method' to anything but a SCALAR" );
+                __PACKAGE__->___error( 
+                    "Can not bind '$method' to anything but a SCALAR", 1 
+                );
             }
         }
         
         ### need to check the value?
-        unless(UNIVERSAL::isa( $self->{$method}->[ALLOW], ANYTHING_CLASS )) {
+        if( exists $self->{$method}->[ALLOW] ) {
 
             ### double assignment due to 'used only once' warnings
             local $Params::Check::VERBOSE = 0;
             local $Params::Check::VERBOSE = 0;
             
             allow( $val, $self->{$method}->[ALLOW] ) or (
-                _error( "'$val' is an invalid value for '$method'"), 
+                __PACKAGE__->___error( 
+                    "'$val' is an invalid value for '$method'", 1), 
                 return 
             ); 
         }
@@ -392,22 +408,77 @@ sub AUTOLOAD {
         ### XXX implement rw vs ro accessors!
         $self->{$method}->[VALUE] = $val;
     }
-
-    return $self->{$method}->[VALUE];
+    
+    return 1;
 }
 
 
-sub _debug {
+sub ___debug {
     return unless $DEBUG;
 
+    my $self = shift;
+    my $msg  = shift;
+    my $lvl  = shift || 0;
+
     local $Carp::CarpLevel += 1;
-    carp(@_);
+    
+    carp($msg);
 }
 
-sub _error {
-    local $Carp::CarpLevel += 1;
-    $FATAL ? croak(@_) : carp(@_);
+sub ___error {
+    my $self = shift;
+    my $msg  = shift;
+    my $lvl  = shift || 0;
+    local $Carp::CarpLevel += ($lvl + 1);
+    $FATAL ? croak($msg) : carp($msg);
 }
+
+=head1 LVALUE ACCESSORS
+
+C<Object::Accessor> supports C<lvalue> attributes as well. To enable
+these, you should create your objects in the designated namespace,
+C<Object::Accessor::Lvalue>. For example:
+
+    my $obj = Object::Accessor::Lvalue->new('foo');
+    $obj->foo += 1;
+    print $obj->foo;
+    
+will actually print C<1> and work as expected. Since this is an
+optional feature, that's not desirable in all cases, we require
+you to explicitly use the C<Object::Accessor::Lvalue> class.
+
+Doing the same on the standard C<Object>>Accessor> class would
+generate the following code & errors:
+
+    my $obj = Object::Accessor->new('foo');
+    $obj->foo += 1;
+
+    Can't modify non-lvalue subroutine call
+
+=cut
+
+{   package Object::Accessor::Lvalue;
+    use base 'Object::Accessor';
+    use strict;
+    use vars qw[$AUTOLOAD];
+
+    ### constants needed to access values from the objects
+    *VALUE = *Object::Accessor::VALUE;
+    *ALLOW = *Object::Accessor::ALLOW;
+
+    ### XXX largely copied from O::A::Autoload 
+    sub AUTOLOAD : lvalue {
+        my $self    = shift;
+        my($method) = ($AUTOLOAD =~ /([^:']+$)/);
+    
+        $self->___autoload( $method, @_ ) or return;
+
+        ### *dont* add return to it, or it won't be stored
+        ### see perldoc perlsub on lvalue subs
+        $self->{$method}->[ VALUE() ];
+    }
+}    
+
 
 ### standard tie class for bound attributes
 {   package Object::Accessor::TIE;
@@ -437,7 +508,6 @@ sub _error {
     }              
 }
 
-
 =head1 GLOBAL VARIABLES
 
 =head2 $Object::Accessor::FATAL
@@ -466,6 +536,10 @@ to freeze the data structures using C<Storable>.
 Due to a bug in storable (until at least version 2.15), C<qr//> compiled 
 regexes also don't de-serialize properly. Although this bug has been 
 reported, you should be aware of this issue when serializing your objects.
+
+You can track the bug here: 
+
+    http://rt.cpan.org/Ticket/Display.html?id=1827
 
 =head1 AUTHOR
 

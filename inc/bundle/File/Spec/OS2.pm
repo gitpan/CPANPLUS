@@ -4,7 +4,7 @@ use strict;
 use vars qw(@ISA $VERSION);
 require File::Spec::Unix;
 
-$VERSION = "-1";
+$VERSION = '1.2';
 
 @ISA = qw(File::Spec::Unix);
 
@@ -37,8 +37,7 @@ sub _cwd {
 my $tmpdir;
 sub tmpdir {
     return $tmpdir if defined $tmpdir;
-    my $self = shift;
-    $tmpdir = $self->_tmpdir( @ENV{qw(TMPDIR TEMP TMP)},
+    $tmpdir = $_[0]->_tmpdir( @ENV{qw(TMPDIR TEMP TMP)},
 			      '/tmp',
 			      '/'  );
 }
@@ -262,5 +261,12 @@ Modifies the list of places temp directory information is looked for.
 Volumes can be drive letters or UNC sharenames (\\server\share).
 
 =back
+
+=head1 COPYRIGHT
+
+Copyright (c) 2004 by the Perl 5 Porters.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =cut

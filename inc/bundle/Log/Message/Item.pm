@@ -10,7 +10,7 @@ use Carp ();
 BEGIN {
     use vars qw[$AUTOLOAD $VERSION];
 
-    $VERSION = "-1";
+    $VERSION    =   $Log::Message::VERSION;
 }
 
 ### create a new item.

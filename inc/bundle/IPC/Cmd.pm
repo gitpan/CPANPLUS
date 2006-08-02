@@ -19,7 +19,7 @@ BEGIN {
                         $USE_IPC_RUN $USE_IPC_OPEN3
                     ];
 
-    $VERSION = "-1";
+    $VERSION        = '0.24';
     $VERBOSE        = 0;
     $USE_IPC_RUN    = $^O ne 'VMS';
     $USE_IPC_OPEN3  = $^O ne 'VMS';

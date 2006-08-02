@@ -12,12 +12,13 @@ use FileHandle  ();
 
 BEGIN {
     use vars        qw[ $VERSION @ISA $VERBOSE $CACHE @EXPORT_OK 
-                        $FIND_VERSION $ERROR];
+                        $FIND_VERSION $ERROR $CHECK_INC_HASH];
     use Exporter;
     @ISA            = qw[Exporter];
-    $VERSION = "-1";
+    $VERSION        = '0.10';
     $VERBOSE        = 0;
     $FIND_VERSION   = 1;
+    $CHECK_INC_HASH = 0;
     @EXPORT_OK      = qw[check_install can_load requires];
 }
 
@@ -43,7 +44,7 @@ Module::Load::Conditional - Looking up module information / loading at runtime
             : 'failed to load required modules';
 
 
-    my $rv = check_install( module => 'LWP', verion => 5.60 )
+    my $rv = check_install( module => 'LWP', version => 5.60 )
                 or print 'LWP is not installed!';
 
     print 'LWP up to date' if $rv->{uptodate};
@@ -54,6 +55,9 @@ Module::Load::Conditional - Looking up module information / loading at runtime
     print "LWP requires the following modules to be installed:\n";
     print join "\n", requires('LWP');
 
+    ### allow M::L::C to peek in your %INC rather than just
+    ### scanning @INC
+    $Module::Load::Conditional::CHECK_INC_HASH = 1;
 
     ### reset the 'can_load' cache
     undef $Module::Load::Conditional::CACHE;
@@ -77,7 +81,7 @@ and so forth.
 
 =head1 Methods
 
-=head1 check_install
+=head1 $href = check_install( module => NAME [, version => VERSION, verbose => BOOL ] );
 
 C<check_install> allows you to verify if a certain module is installed
 or not. You may call it with the following arguments:
@@ -159,81 +163,100 @@ sub check_install {
             version     => undef,
             uptodate    => undef,
     };
+    
+    my $filename;
 
-    DIR: for my $dir ( @INC ) {
+    ### check the inc hash if we're allowed to
+    if( $CHECK_INC_HASH ) {
+        $filename = $href->{'file'} = 
+            $INC{ $file } if defined $INC{ $file };
 
-        my( $fh, $filename );
-
-        if ( ref $dir ) {
-            ### @INC hook -- we invoke it and get the filehandle back
-            ### this is actually documented behaviour as of 5.8 ;)
-
-            if (UNIVERSAL::isa($dir, 'CODE')) {
-                ($fh) = $dir->($dir, $file);
-
-            } elsif (UNIVERSAL::isa($dir, 'ARRAY')) {
-                ($fh) = $dir->[0]->($dir, $file, @{$dir}{1..$#{$dir}})
-
-            } elsif (UNIVERSAL::can($dir, 'INC')) {
-                ($fh) = $dir->INC->($dir, $file);
-            }
-
-            if (!UNIVERSAL::isa($fh, 'GLOB')) {
-                warn loc(q[Cannot open file '%1': %2], $file, $!)
-                        if $args->{verbose};
-                next;
-            }
-
-            $filename = $INC{$file} || $file;
-
-        } else {
-            $filename = File::Spec->catfile($dir, $file);
-            next unless -e $filename;
-
-            $fh = new FileHandle;
-            if (!$fh->open($filename)) {
-                warn loc(q[Cannot open file '%1': %2], $file, $!)
-                        if $args->{verbose};
-                next;
-            }
+        ### find the version by inspecting the package
+        if( defined $filename && $FIND_VERSION ) {
+            no strict 'refs';
+            $href->{version} = ${ "$args->{module}"."::VERSION" }; 
         }
+    }     
 
-        $href->{file} = $filename;
+    ### we didnt find the filename yet by looking in %INC,
+    ### so scan the dirs
+    unless( $filename ) {
 
-        ### user wants us to find the version from files
-        if( $FIND_VERSION ) {
-            
-            while (local $_ = <$fh> ) {
-
-                ### skip commented out lines, they won't eval to anything.
-                next if /^\s*#/;
+        DIR: for my $dir ( @INC ) {
     
-                ### the following regexp comes from the ExtUtils::MakeMaker
-                ### documentation.
-                ### Following #18892, which tells us the original
-                ### regex breaks under -T, we must modifiy it so
-                ### it captures the entire expression, and eval /that/
-                ### rather than $_, which is insecure.
-                if ( /([\$*][\w\:\']*\bVERSION\b.*\=.*)/ ) {
-     
-                    ### this will eval the version in to $VERSION if it
-                    ### was declared as $VERSION in the module.
-                    ### else the result will be in $res.
-                    ### this is a fix on skud's Module::InstalledVersion
-     
-                    local $VERSION;
-                    my $res = eval $1;
-     
-                    ### default to '0.0' if there REALLY is no version
-                    ### all to satisfy warnings
-                    $href->{version} = $VERSION || $res || '0.0';
+            my $fh;
     
-                    last DIR;
+            if ( ref $dir ) {
+                ### @INC hook -- we invoke it and get the filehandle back
+                ### this is actually documented behaviour as of 5.8 ;)
+    
+                if (UNIVERSAL::isa($dir, 'CODE')) {
+                    ($fh) = $dir->($dir, $file);
+    
+                } elsif (UNIVERSAL::isa($dir, 'ARRAY')) {
+                    ($fh) = $dir->[0]->($dir, $file, @{$dir}{1..$#{$dir}})
+    
+                } elsif (UNIVERSAL::can($dir, 'INC')) {
+                    ($fh) = $dir->INC->($dir, $file);
+                }
+    
+                if (!UNIVERSAL::isa($fh, 'GLOB')) {
+                    warn loc(q[Cannot open file '%1': %2], $file, $!)
+                            if $args->{verbose};
+                    next;
+                }
+    
+                $filename = $INC{$file} || $file;
+    
+            } else {
+                $filename = File::Spec->catfile($dir, $file);
+                next unless -e $filename;
+    
+                $fh = new FileHandle;
+                if (!$fh->open($filename)) {
+                    warn loc(q[Cannot open file '%1': %2], $file, $!)
+                            if $args->{verbose};
+                    next;
+                }
+            }
+    
+            $href->{file} = $filename;
+    
+            ### user wants us to find the version from files
+            if( $FIND_VERSION ) {
+                
+                while (local $_ = <$fh> ) {
+    
+                    ### skip commented out lines, they won't eval to anything.
+                    next if /^\s*#/;
+        
+                    ### the following regexp comes from the ExtUtils::MakeMaker
+                    ### documentation.
+                    ### Following #18892, which tells us the original
+                    ### regex breaks under -T, we must modifiy it so
+                    ### it captures the entire expression, and eval /that/
+                    ### rather than $_, which is insecure.
+                    if ( /([\$*][\w\:\']*\bVERSION\b.*\=.*)/ ) {
+         
+                        ### this will eval the version in to $VERSION if it
+                        ### was declared as $VERSION in the module.
+                        ### else the result will be in $res.
+                        ### this is a fix on skud's Module::InstalledVersion
+         
+                        local $VERSION;
+                        my $res = eval $1;
+         
+                        ### default to '0.0' if there REALLY is no version
+                        ### all to satisfy warnings
+                        $href->{version} = $VERSION || $res || '0.0';
+        
+                        last DIR;
+                    }
                 }
             }
         }
     }
-
+    
     ### if we couldn't find the file, return undef ###
     return unless defined $href->{file};
 
@@ -257,7 +280,7 @@ sub check_install {
     return $href;
 }
 
-=head2 can_load
+=head2 $bool = can_load( modules => { NAME => VERSION [,NAME => VERSION] }, [verbose => BOOL, nocache => BOOL] )
 
 C<can_load> will take a list of modules, optionally with version
 numbers and determine if it is able to load them. If it can load *ALL*
@@ -398,7 +421,7 @@ sub can_load {
     }
 }
 
-=head2 requires
+=head2 @list = requires( MODULE );
 
 C<requires> can tell you what other modules a particular module
 requires. This is particularly useful when you're intending to write
@@ -461,6 +484,17 @@ This may be desirable from a security or performance point of view.
 Note that C<$FIND_VERSION> code runs safely under C<taint mode>.
 
 The default is 1;
+
+=head2 $Module::Load::Conditional::CHECK_INC_HASH
+
+This controls whether C<Module::Load::Conditional> checks your
+C<%INC> hash to see if a module is available. By default, only
+C<@INC> is scanned to see if a module is physically on your
+filesystem, or avialable via an C<@INC-hook>. Setting this variable
+to C<true> will trust any entries in C<%INC> and return them for
+you.
+
+The default is 0;
 
 =head2 $Module::Load::Conditional::CACHE
 

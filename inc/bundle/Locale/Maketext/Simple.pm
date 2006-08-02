@@ -1,10 +1,8 @@
-# $File: //member/autrijus/Locale-Maketext-Simple/lib/Locale/Maketext/Simple.pm $ $Author: autrijus $
-# $Revision: #17 $ $Change: 9922 $ $DateTime: 2004/02/06 11:13:31 $
-
 package Locale::Maketext::Simple;
-$Locale::Maketext::Simple::VERSION = "-1";
+$Locale::Maketext::Simple::VERSION = '0.16';
 
 use strict;
+use 5.004;
 
 =head1 NAME
 
@@ -12,8 +10,8 @@ Locale::Maketext::Simple - Simple interface to Locale::Maketext::Lexicon
 
 =head1 VERSION
 
-This document describes version 0.11 of Locale::Maketext::Simple,
-released February 6, 2004.
+This document describes version 0.16 of Locale::Maketext::Simple,
+released May 3, 2006.
 
 =head1 SYNOPSIS
 
@@ -30,11 +28,13 @@ More sophisticated example:
 
     package Foo::Bar;
     use Locale::Maketext::Simple (
-	Class	    => 'Foo',		# search in auto/Foo/
-	Style	    => 'gettext',	# %1 instead of [_1]
-	Export	    => 'maketext',	# maketext() instead of loc()
-	Subclass    => 'L10N',		# Foo::L10N instead of Foo::I18N
-	Decode	    => 1,		# decode entries to unicode-strings
+	Class	    => 'Foo',	    # search in auto/Foo/
+	Style	    => 'gettext',   # %1 instead of [_1]
+	Export	    => 'maketext',  # maketext() instead of loc()
+	Subclass    => 'L10N',	    # Foo::L10N instead of Foo::I18N
+	Decode	    => 1,	    # decode entries to unicode-strings
+	Encoding    => 'locale',    # but encode lexicons in current locale
+				    # (needs Locale::Maketext::Lexicon 0.36)
     );
     sub japh {
 	print maketext("Just another %1 hacker", "Perl");
@@ -90,6 +90,18 @@ caller's package (or the package specified by C<Class>), and stores
 lexicon data in its subclasses.  You can assign a name other than
 C<I18N> via this option.
 
+=head2 Decode
+
+If set to a true value, source entries will be converted into
+utf8-strings (available in Perl 5.6.1 or later).  This feature
+needs the B<Encode> or B<Encode::compat> module.
+
+=head2 Encoding
+
+Specifies an encoding to store lexicon entries, instead of
+utf8-strings.  If set to C<locale>, the encoding from the current
+locale setting is used.  Implies a true value for C<Decode>.
+
 =cut
 
 sub import {
@@ -115,7 +127,7 @@ sub reload_loc { %Loc = () }
 sub load_loc {
     my ($class, %args) = @_;
 
-    my $pkg = join('::', $args{Class}, $args{Subclass});
+    my $pkg = join('::', grep { defined and length } $args{Class}, $args{Subclass});
     return $Loc{$pkg} if exists $Loc{$pkg};
 
     eval { require Locale::Maketext::Lexicon; 1 }   or return;
@@ -125,6 +137,9 @@ sub load_loc {
     my $path = $args{Path} || $class->auto_path($args{Class}) or return;
     my $pattern = File::Spec->catfile($path, '*.[pm]o');
     my $decode = $args{Decode} || 0;
+    my $encoding = $args{Encoding} || undef;
+
+    $decode = 1 if $encoding;
 
     $pattern =~ s{\\}{/}g; # to counter win32 paths
 
@@ -136,6 +151,7 @@ sub load_loc {
 	    'i-default' => [ 'Auto' ],
 	    '*'	=> [ Gettext => \$pattern ],
 	    _decode => \$decode,
+	    _encoding => \$encoding,
 	});
 	*tense = sub { \$_[1] . ((\$_[2] eq 'present') ? 'ing' : 'ed') }
 	    unless defined &tense;
@@ -153,10 +169,21 @@ sub load_loc {
     elsif ($style eq 'gettext') {
 	$Loc{$pkg} = sub {
 	    my $str = shift;
-	    $str =~ s/[\~\[\]]/~$&/g;
-	    $str =~ s{(^|[^%\\])%([A-Za-z#*]\w*)\(([^\)]*)\)}
-		     {"$1\[$2,"._unescape($3)."]"}eg;
-	    $str =~ s/(^|[^%\\])%(\d+|\*)/$1\[_$2]/g;
+            $str =~ s{([\~\[\]])}{~$1}g;
+            $str =~ s{
+                ([%\\]%)                        # 1 - escaped sequence
+            |
+                %   (?:
+                        ([A-Za-z#*]\w*)         # 2 - function call
+                            \(([^\)]*)\)        # 3 - arguments
+                    |
+                        ([1-9]\d*|\*)           # 4 - variable
+                    )
+            }{
+                $1 ? $1
+                   : $2 ? "\[$2,"._unescape($3)."]"
+                        : "[_$4]"
+            }egx;
 	    return $lh->maketext($str, @_);
 	};
     }
@@ -176,10 +203,10 @@ sub default_loc {
     if ($style eq 'maketext') {
 	return sub {
 	    my $str = shift;
-	    $str =~ s/((?<!~)(?:~~)*)\[_(\d+)\]/$1%$2/g;
-	    $str =~ s{((?<!~)(?:~~)*)\[([A-Za-z#*]\w*),([^\]]+)\]}
-		     {"$1%$2("._escape($3).")"}eg;
-	    $str =~ s/~([\[\]])/$1/g;
+            $str =~ s{((?<!~)(?:~~)*)\[_([1-9]\d*|\*)\]}
+                     {$1%$2}g;
+            $str =~ s{((?<!~)(?:~~)*)\[([A-Za-z#*]\w*),([^\]]+)\]} 
+                     {"$1%$2(" . _escape($3) . ')'}eg;
 	    _default_gettext($str, @_);
 	};
     }
@@ -230,14 +257,14 @@ sub _default_gettext {
 
 sub _escape {
     my $text = shift;
-    $text =~ s/\b_(\d+)/%$1/;
+    $text =~ s/\b_([1-9]\d*)/%$1/g;
     return $text;
 }
 
 sub _unescape {
-    my $str = shift;
-    $str =~ s/(^|,)%(\d+|\*)(,|$)/$1_$2$3/g;
-    return $str;
+    join(',', map {
+        /\A(\s*)%([1-9]\d*|\*)(\s*)\z/ ? "$1_$2$3" : $_
+    } split(/,/, $_[0]));
 }
 
 sub auto_path {
@@ -278,15 +305,27 @@ L<Locale::Maketext>, L<Locale::Maketext::Lexicon>
 
 =head1 AUTHORS
 
-Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>
+Audrey Tang E<lt>cpan@audreyt.orgE<gt>
 
-=head1 COPYRIGHT
+=head1 COPYRIGHT (The "MIT" License)
 
-Copyright 2003, 2004 by Autrijus Tang E<lt>autrijus@autrijus.orgE<gt>.
+Copyright 2003, 2004, 2005, 2006 by Audrey Tang E<lt>cpan@audreyt.orgE<gt>.
 
-This program is free software; you can redistribute it and/or 
-modify it under the same terms as Perl itself.
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is fur-
+nished to do so, subject to the following conditions:
 
-See L<http://www.perl.com/perl/misc/Artistic.html>
+The above copyright notice and this permission notice shall be included in
+all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FIT-
+NESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.  IN NO EVENT SHALL THE X
+CONSORTIUM BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN
+ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
+WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 =cut

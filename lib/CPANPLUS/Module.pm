@@ -1029,6 +1029,11 @@ Returns a boolean indicating if this module is uptodate or not.
             #local @INC = CPANPLUS::inc->original_inc;
 
             my $self = shift;
+            
+            ### make sure check_install is not looking in %INC, as
+            ### that may contain some of our sneakily loaded modules
+            ### that aren't installed as such. -- kane
+            local $Module::Load::Conditional::CHECK_INC_HASH = 0;
             my $href = check_install(
                             module  => $self->module,
                             version => $self->version,

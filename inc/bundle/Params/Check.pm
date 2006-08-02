@@ -12,13 +12,13 @@ BEGIN {
     use vars        qw[ @ISA $VERSION @EXPORT_OK $VERBOSE $ALLOW_UNKNOWN
                         $STRICT_TYPE $STRIP_LEADING_DASHES $NO_DUPLICATES
                         $PRESERVE_CASE $ONLY_ALLOW_DEFINED $WARNINGS_FATAL
-                        $SANITY_CHECK_TEMPLATE
+                        $SANITY_CHECK_TEMPLATE $CALLER_DEPTH
                     ];
 
     @ISA        =   qw[ Exporter ];
     @EXPORT_OK  =   qw[check allow last_error];
 
-    $VERSION = "-1";
+    $VERSION                = '0.25';
     $VERBOSE                = $^W ? 1 : 0;
     $NO_DUPLICATES          = 0;
     $STRIP_LEADING_DASHES   = 0;
@@ -28,6 +28,7 @@ BEGIN {
     $ONLY_ALLOW_DEFINED     = 0;
     $SANITY_CHECK_TEMPLATE  = 1;
     $WARNINGS_FATAL         = 0;
+    $CALLER_DEPTH           = 0;
 }
 
 my %known_keys = map { $_ => 1 }
@@ -534,7 +535,7 @@ sub _safe_eq {
 sub _who_was_it {
     my $level = $_[0] || 0;
 
-    return (caller(2 + $level))[3] || 'ANON'
+    return (caller(2 + $CALLER_DEPTH + $level))[3] || 'ANON'
 }
 
 =head2 last_error()
@@ -653,6 +654,30 @@ Default is 1;
 
 If set to true, L<Params::Check> will C<croak> when an error during 
 template validation occurs, rather than return C<false>.
+
+Default is 0;
+
+=head2 $Params::Check::CALLER_DEPTH
+
+This global modifies the argument given to C<caller()> by
+C<Params::Check::check()> and is useful if you have a custom wrapper
+function around C<Params::Check::check()>. The value must be an
+integer, indicating the number of wrapper functions inserted between
+the real function call and C<Params::Check::check()>.
+
+Example wrapper function, using a custom stacktrace:
+
+    sub check {
+        my ($template, $args_in) = @_;
+
+        local $Params::Check::WARNINGS_FATAL = 1;
+        local $Params::Check::CALLER_DEPTH = $Params::Check::CALLER_DEPTH + 1;
+        my $args_out = Params::Check::check($template, $args_in);
+
+        my_stacktrace(Params::Check::last_error) unless $args_out;
+
+        return $args_out;
+    }
 
 Default is 0;
 

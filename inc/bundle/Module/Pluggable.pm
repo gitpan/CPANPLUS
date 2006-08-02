@@ -2,19 +2,73 @@ package Module::Pluggable;
 
 use strict;
 use vars qw($VERSION);
-use Cwd        ();
-use File::Find ();
-use File::Basename;
-use File::Spec::Functions qw(splitdir catdir abs2rel);
-use Carp qw(croak carp);
-
+use Module::Pluggable::Object;
 
 # ObQuote:
 # Bob Porter: Looks like you've been missing a lot of work lately. 
 # Peter Gibbons: I wouldn't say I've been missing it, Bob! 
 
 
-$VERSION = "-1";
+$VERSION = '3.1';
+
+sub import {
+    my $class        = shift;
+    my %opts         = @_;
+
+    my ($pkg, $file) = caller; 
+    # the default name for the method is 'plugins'
+    my $sub          = $opts{'sub_name'}  || 'plugins';
+    # get our package 
+    my ($package)    = $opts{'package'} || $pkg;
+    $opts{filename}  = $file;
+    $opts{package}   = $package;
+
+
+    my $finder       = Module::Pluggable::Object->new(%opts);
+    my $subroutine   = sub { my $self = shift; return $finder->plugins(@_) };
+
+    my $searchsub = sub {
+              my $self = shift;
+              my ($action,@paths) = @_;
+
+              $finder->{'search_path'} = ["${package}::Plugin"] if ($action eq 'add'  and not   $finder->{'search_path'} );
+              push @{$finder->{'search_path'}}, @paths      if ($action eq 'add');
+              $finder->{'search_path'}       = \@paths      if ($action eq 'new');
+              return $finder->{'search_path'};
+    };
+
+
+    my $onlysub = sub {
+        my ($self, $only) = @_;
+
+        if (defined $only) {
+            $finder->{'only'} = $only;
+        };
+        
+        return $finder->{'only'};
+    };
+
+    my $exceptsub = sub {
+        my ($self, $except) = @_;
+
+        if (defined $except) {
+            $finder->{'except'} = $except;
+        };
+        
+        return $finder->{'except'};
+    };
+
+
+    no strict 'refs';
+    no warnings 'redefine';
+    *{"$package\::$sub"}    = $subroutine;
+    *{"$package\::search_path"} = $searchsub;
+    *{"$package\::only"}        = $onlysub;
+    *{"$package\::except"}      = $exceptsub;
+
+}
+
+1;
 
 =pod
 
@@ -37,6 +91,52 @@ and then later ...
     my $mc = MyClass->new();
     # returns the names of all plugins installed under MyClass::Plugin::*
     my @plugins = $mc->plugins(); 
+
+=head1 EXAMPLE
+
+Why would you want to do this? Say you have something that wants to pass an
+object to a number of different plugins in turn. For example you may 
+want to extract meta-data from every email you get sent and do something
+with it. Plugins make sense here because then you can keep adding new 
+meta data parsers and all the logic and docs for each one will be 
+self contained and new handlers are easy to add without changing the 
+core code. For that, you might do something like ...
+
+    package Email::Examiner;
+
+    use strict;
+    use Email::Simple;
+    use Module::Pluggable require => 1;
+
+    sub handle_email {
+        my $self  = shift;
+        my $email = shift;
+
+        foreach my $plugin ($self->plugins) {
+            $plugin->examine($email);
+        }
+
+        return 1;
+    }
+
+
+
+.. and all the plugins will get a chance in turn to look at it.
+
+This can be trivally extended so that plugins could save the email
+somewhere and then no other plugin should try and do that. 
+Simply have it so that the C<examine> method returns C<1> if 
+it has saved the email somewhere. You might also wnat to be paranoid
+and check to see if the plugin has an C<examine> method.
+
+        foreach my $plugin ($self->plugins) {
+            next unless $plugin->can('examine');
+            last if     $plugin->examine($email);
+        }
+
+
+And so on. The sky's the limit.
+
 
 =head1 DESCRIPTION
 
@@ -118,14 +218,14 @@ and similarly for only which will only load plugins which match.
 
 Remember you can use the module more than once
 
-	package MyClass;
-	use Module::Pluggable search_path => 'MyClass::Filters' sub_name => 'filters';
-	use Module::Pluggable search_path => 'MyClass::Plugins' sub_name => 'plugins';
+    package MyClass;
+    use Module::Pluggable search_path => 'MyClass::Filters' sub_name => 'filters';
+    use Module::Pluggable search_path => 'MyClass::Plugins' sub_name => 'plugins';
 
 and then later ...
 
-	my @filters = $self->filters;
-	my @plugins = $self->plugins;
+    my @filters = $self->filters;
+    my @plugins = $self->plugins;
 
 =head1 INNER PACKAGES
 
@@ -189,6 +289,29 @@ This is for use by extension modules which build on C<Module::Pluggable>:
 passing a C<package> option allows you to place the plugin method in a
 different package other than your own.
 
+=head2 file_regex
+
+By default C<Module::Pluggable> only looks for I<.pm> files.
+
+By supplying a new C<file_regex> then you can change this behaviour e.g
+
+    file_regex => qr/\.plugin$/
+
+
+
+=head1 METHODs
+
+=head2 search_path
+
+The method C<search_path> is exported into you namespace as well. 
+You can call that at any time to change or replace the 
+search_path.
+
+    $self->search_path( add => "New::Path" ); # add
+    $self->search_path( new => "New::Path" ); # replace
+
+
+
 =head1 FUTURE PLANS
 
 This does everything I need and I can't really think of any other 
@@ -206,7 +329,7 @@ Simon Wistow <simon@thegestalt.org>
 
 =head1 COPYING
 
-Copyright, 2003 Simon Wistow
+Copyright, 2006 Simon Wistow
 
 Distributed under the same terms as Perl itself.
 
@@ -221,191 +344,3 @@ L<File::Spec>, L<File::Find>, L<File::Basename>, L<Class::Factory::Util>, L<Modu
 =cut 
 
 
-sub import {
-    my $class   = shift;
-    my %opts    = @_;
-
-    # override 'require'
-    $opts{'require'} = 1 if $opts{'inner'};
-
-
-    # automatically turn a scalr search path or namespace into a arrayref
-    for (qw(search_path search_dirs)) {
-        $opts{$_} = [ $opts{$_} ] if exists $opts{$_} && !ref($opts{$_});
-    }
-
-
-    # the default name for the method is 'plugins'
-    my $sub = $opts{'sub_name'} || 'plugins';
-  
-
-    # get our package 
-    my ($pkg) = $opts{'package'} || caller;
-
-    # have to turn off refs which makes me feel dirty but hey ho
-    no strict 'refs';
-    # export the subroutine
-    *{"$pkg\::$sub"} = sub {
-        my $self = shift;
-
-
-        # default search path is '<Module>::<Name>::Plugin'
-        $opts{'search_path'} = ["${pkg}::Plugin"] unless $opts{'search_path'}; 
-
-        # predeclare
-        my @plugins;
-
-        # check to see if we're running under test
-        my @SEARCHDIR = exists $INC{"blib.pm"} ? grep {/blib/} @INC : @INC;
-
-        # add any search_dir params
-        unshift @SEARCHDIR, @{$opts{'search_dirs'}} if defined $opts{'search_dirs'};
-
-
-        # go through our @INC
-        foreach my $dir (@SEARCHDIR) {
-
-            # and each directory in our search path
-            foreach my $searchpath (@{$opts{'search_path'}}) {
-                # create the search directory in a cross platform goodness way
-                my $sp = catdir($dir, (split /::/, $searchpath));
-                # if it doesn't exist or it's not a dir then skip it
-                next unless ( -e $sp && -d _ ); # Use the cached stat the second time
-
-
-                # find all the .pm files in it
-                # this isn't perfect and won't find multiple plugins per file
-                my $cwd = Cwd::getcwd;
-                my @files = ();
-                File::Find::find(
-                    sub { # Inlined from File::Find::Rule C< name => '*.pm' >
-                        return unless $File::Find::name =~ /\.pm$/;
-                        (my $path = $File::Find::name) =~ s#^\\./##;
-                        push @files, $path;
-                    },
-                    $sp );
-                chdir $cwd;
-
-                # foreach one we've found 
-                foreach my $file (@files) {
-                    next unless $file =~ m!\.pm$!;
-                    # parse the file to get the name
-                    my ($name, $directory) = fileparse($file, qr{\.pm});
-                    $directory = abs2rel($directory, $sp);
-                    # then create the class name in a cross platform way
-                    push @plugins, join "::", splitdir catdir($searchpath, $directory, $name);
-                }
-
-            }
-        }
-
-        # This code should allow us to have plugins which are inner packages
-        # some inner packages can only be found if we use other stuff first
-        if (defined $opts{'instantiate'} || $opts{'require'}) {
-            for (@plugins) {
-                eval "CORE::require $_";
-                carp "Couldn't require $_ : $@" if $@;
-            }
-        }
-
-
-        # now add stuff that may have been in package
-        # NOTE we should probably use all the stuff we've been given already
-        # but then we can't unload it :(
-        unless (exists $opts{inner} && !$opts{inner}) {
-            for my $path (@{$opts{'search_path'}}) {
-                for (list_packages($path)) {
-                    if (defined $opts{'instantiate'} || $opts{'require'}) {
-                        eval "CORE::require $_";
-                        # *No warnings here* 
-                    }    
-                    push @plugins, $_;
-                }
-            }
-        }
-
-        # push @plugins, map { print STDERR "$_\n"; $_->require } list_packages($_) for (@{$opts{'search_path'}});
-        
-        # return blank unless we've found anything
-        return () unless @plugins;
-
-    	# exceptions
-    	my %only;   
-    	my %except; 
-		my $only;
-		my $except;
-
-		if (defined $opts{'only'}) {
-			if (ref($opts{'only'}) eq 'ARRAY') {
-				%only   = map { $_ => 1 } @{$opts{'only'}};
-			} elsif (ref($opts{'only'}) eq 'Regexp') {
-				$only = $opts{'only'}
-			} elsif (ref($opts{'only'}) eq '') {
-				$only{$opts{'only'}} = 1;
-			}
-		}
-		
-
-		if (defined $opts{'except'}) {
-			if (ref($opts{'except'}) eq 'ARRAY') {
-				%except   = map { $_ => 1 } @{$opts{'except'}};
-			} elsif (ref($opts{'except'}) eq 'Regexp') {
-				$except = $opts{'except'}
-			} elsif (ref($opts{'except'}) eq '') {
-				$except{$opts{'except'}} = 1;
-			}
-		}
-
-
-
-
-
-        # remove duplicates
-        # probably not necessary but hey ho
-        my %plugins;
-        for(@plugins) {
-            next if (keys %only   && !$only{$_}     );
-			next unless (!defined $only || m!$only! );
-
-            next if (keys %except &&  $except{$_}   );
-            next if (defined $except &&  m!$except! );
-
-            $plugins{$_} = 1;
-        }
-
-        # are we instantiating or requring?
-        if (defined $opts{'instantiate'} || $opts{'require'}) {
-            my $method = $opts{'instantiate'};
-            return map {
-                            #$_->require or carp "Couldn't require $_ : $UNIVERSAL::require::ERROR";
-                            # instantiate with the options passed into the sub
-                            # unless just requiring
-                            $opts{require} ? $_ : $_->$method(@_);
-                        } keys %plugins;
-        } else { 
-            # no? just return the names
-            return keys %plugins;
-        }
-
-    };
-
-};
-
-
-sub list_packages {
-            my $pack = shift; $pack .= "::" unless $pack =~ m!::$!;
-
-            no strict 'refs';
-            my @packs;
-            for (grep !/^main::$/, grep /::$/, keys %{$pack})
-            {
-                s!::$!!;
-                my @children = list_packages($pack.$_);
-                 push @packs, "$pack$_" unless @children or /^::/; 
-                push @packs, @children;
-            }
-            return @packs;
-}
-
-
-1;

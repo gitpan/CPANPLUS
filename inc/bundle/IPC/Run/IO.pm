@@ -2,7 +2,7 @@ package IPC::Run::IO ;
 
 =head1 NAME
 
-   IPC::Run::IO -- I/O channels for IPC::Run.
+IPC::Run::IO -- I/O channels for IPC::Run.
 
 =head1 SYNOPSIS
 
@@ -544,10 +544,18 @@ sub _do_filters {
    my ( $saved_op, $saved_num ) =($IPC::Run::filter_op,$IPC::Run::filter_num) ;
    $IPC::Run::filter_op = $self ;
    $IPC::Run::filter_num = -1 ;
-   my $r = eval { IPC::Run::get_more_input() ; } ;
+   my $c = 0;
+   my $r;
+   {
+	   $@ = '';
+	   $r = eval { IPC::Run::get_more_input() ; } ;
+	   $c++;
+	   ##$@ and warn "redo ", substr($@, 0, 20) , " ";
+	   (($c < 200) and ($@||'')=~ m/^Resource temporarily/) and redo;
+   }
    ( $IPC::Run::filter_op, $IPC::Run::filter_num ) = ( $saved_op, $saved_num ) ;
    $self->{HARNESS} = undef ;
-   die $@ if $@ ;
+   die "ack ", $@ if $@ ;
    return $r ;
 }
 

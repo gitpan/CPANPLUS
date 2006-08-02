@@ -22,15 +22,6 @@ local $Params::Check::VERBOSE = 1;
 require CPANPLUS::Internals;
 $VERSION = $CPANPLUS::Internals::VERSION = $CPANPLUS::Internals::VERSION;
 
-### find plugins & extra configs
-### check $home/.cpanplus/lib as well
-use Module::Pluggable
-    search_path => ['CPANPLUS::Config'],
-    search_dirs => [ CONFIG_USER_LIB_DIR ],
-    except      => qr/::SUPER$/,
-    sub_name    => 'configs';
-
-
 ### can't use O::A as we're using our own AUTOLOAD to get to
 ### the config options.
 for my $meth ( qw[conf]) {
@@ -123,47 +114,69 @@ Called from C<new()> to load user/system configurations
 
 =cut
 
-sub init {
-    my $self    = shift;
-    my $obj     = $self->conf;
-    
-    ### make sure that the homedir is included now
-    local @INC = ( CONFIG_USER_LIB_DIR->(), @INC );
-    
-    ### do system config, user config, rest.. in that order
-    ### apparently, on a 2nd invocation of -->configs, a
-    ### ::ISA::CACHE package can appear.. that's bad...
-    my %confs = map  { $_ => $_ } 
-                grep { $_ !~ /::ISA::/ } __PACKAGE__->configs;
-    my @confs = grep { defined } 
-                map  { delete $confs{$_} } CONFIG_SYSTEM, CONFIG_USER;
-    push @confs, sort keys %confs;                    
+### move the Module::Pluggable detection to runtime, rather
+### than compile time, so that a simple 'require CPANPLUS'
+### doesn't start running over your filesystem for no good
+### reason. Make sure we only do the M::P call once though.
+### we use $loaded to mark it
+{   my $loaded;
 
-    for my $plugin ( @confs ) {
-        msg(loc("Found plugin '%1'", $plugin),0);
+    sub init {
+        my $self    = shift;
+        my $obj     = $self->conf;
         
-        ### if we already did this the /last/ time around dont 
-        ### run the setup agian.
-        next if Module::Loaded::is_loaded( $plugin );
-        msg(loc("Loading plugin '%1'", $plugin),0);
+        ### make sure that the homedir is included now
+        local @INC = ( CONFIG_USER_LIB_DIR->(), @INC );
         
-        eval { load $plugin };
+        ### only set it up once
+        unless( $loaded++ ) {   
+            ### find plugins & extra configs
+            ### check $home/.cpanplus/lib as well
+            require Module::Pluggable;
+            
+            Module::Pluggable->import(
+                search_path => ['CPANPLUS::Config'],
+                search_dirs => [ CONFIG_USER_LIB_DIR ],
+                except      => qr/::SUPER$/,
+                sub_name    => 'configs'
+            );
+        }
         
-        if( $@ ) {
-            error(loc("Could not load '%1': %2", $plugin, $@));
-            next;
-        }     
         
-        my $sub = $plugin->can('setup');
-        $sub->( $self ) if $sub;
+        ### do system config, user config, rest.. in that order
+        ### apparently, on a 2nd invocation of -->configs, a
+        ### ::ISA::CACHE package can appear.. that's bad...
+        my %confs = map  { $_ => $_ } 
+                    grep { $_ !~ /::ISA::/ } __PACKAGE__->configs;
+        my @confs = grep { defined } 
+                    map  { delete $confs{$_} } CONFIG_SYSTEM, CONFIG_USER;
+        push @confs, sort keys %confs;                    
+    
+        for my $plugin ( @confs ) {
+            msg(loc("Found plugin '%1'", $plugin),0);
+            
+            ### if we already did this the /last/ time around dont 
+            ### run the setup agian.
+            next if Module::Loaded::is_loaded( $plugin );
+            msg(loc("Loading plugin '%1'", $plugin),0);
+            
+            eval { load $plugin };
+            
+            if( $@ ) {
+                error(loc("Could not load '%1': %2", $plugin, $@));
+                next;
+            }     
+            
+            my $sub = $plugin->can('setup');
+            $sub->( $self ) if $sub;
+        }
+        
+        ### clean up the paths once more, just in case
+        $obj->_clean_up_paths;
+    
+        return 1;
     }
-    
-    ### clean up the paths once more, just in case
-    $obj->_clean_up_paths;
-
-    return 1;
 }
-
 =pod
 
 =head2 can_save( [$config_location] )

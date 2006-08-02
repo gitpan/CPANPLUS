@@ -495,7 +495,7 @@ sub create {
         return;
     }
     
-    my $fail; my $prereq_fail; 
+    my $fail; my $prereq_fail; my $test_fail;
     RUN: {
         ### this will set the directory back to the start
         ### dir, so we must chdir /again/           
@@ -595,6 +595,10 @@ sub create {
                 ### --higher level --kane.
                 $dist->status->test(0);
                
+                ### mark specifically *test* failure.. so we dont
+                ### send success on force...
+                $test_fail++;
+                
                 unless( $force ) {
                     $fail++; last RUN;     
                 }
@@ -611,7 +615,7 @@ sub create {
     if( $conf->get_conf('cpantest') and not $prereq_fail) {
         $cb->_send_report( 
             module  => $self,
-            failed  => $fail,
+            failed  => $test_fail || $fail,
             buffer  => CPANPLUS::Error->stack_as_string,
             verbose => $verbose,
             force   => $force,

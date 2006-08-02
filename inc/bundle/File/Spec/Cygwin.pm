@@ -4,7 +4,7 @@ use strict;
 use vars qw(@ISA $VERSION);
 require File::Spec::Unix;
 
-$VERSION = "-1";
+$VERSION = '1.1';
 
 @ISA = qw(File::Spec::Unix);
 
@@ -43,6 +43,18 @@ sub canonpath {
     return $self->SUPER::canonpath($path);
 }
 
+sub catdir {
+    my $self = shift;
+
+    # Don't create something that looks like a //network/path
+    if ($_[0] eq '/' or $_[0] eq '\\') {
+        shift;
+        return $self->SUPER::catdir('', @_);
+    }
+
+    $self->SUPER::catdir(@_);
+}
+
 =pod
 
 =item file_name_is_absolute
@@ -76,11 +88,17 @@ variables are tainted, they are not used.
 my $tmpdir;
 sub tmpdir {
     return $tmpdir if defined $tmpdir;
-    my $self = shift;
-    $tmpdir = $self->_tmpdir( $ENV{TMPDIR}, "/tmp", 'C:/temp' );
+    $tmpdir = $_[0]->_tmpdir( $ENV{TMPDIR}, "/tmp", 'C:/temp' );
 }
 
 =back
+
+=head1 COPYRIGHT
+
+Copyright (c) 2004 by the Perl 5 Porters.  All rights reserved.
+
+This program is free software; you can redistribute it and/or modify
+it under the same terms as Perl itself.
 
 =cut
 

@@ -2,7 +2,7 @@ package IPC::Run::Win32Pump;
 
 =head1 NAME
 
-IPC::Run::Win32Pumper - helper processes to shovel data to/from parent, child
+IPC::Run::Win32Pump - helper processes to shovel data to/from parent, child
 
 =head1 SYNOPSIS
 
