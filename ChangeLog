@@ -1,3 +1,15 @@
+Changes for 0.073_02    Thu Aug 17 21:15:58 CEST 2006
+=====================================================
+*   move away from Module::Install -- EU::MM can do what we need
+*   remove requires section from META.yml so CPAN.pm doesn't confuse itself
+*   remove module::install files
+*   update bundled modules
+*   depend on the newly released CPANPLUS::Dist::Build 0.04 if you prefer
+    Module::Build as your installer
+*   add --default-banlist and --default-ignorelist as options to cpan2dist
+    skipping often failing/troublesome modules 
+*   integrate pod with usage information to reduce overhead in cpan2dist
+
 Changes for 0.073_01    Wed Aug  2 15:40:38 CEST 2006
 =====================================================
 

@@ -21,11 +21,6 @@ CPANPLUS uses the standard perl module install process:
     $ make test
     $ make install
 
-You can give the 'perl Makefile.PL' stage the following options:
-
-    AUTOINSTALL=1   # dont ask any questions, just do it
-    SETUP=1         # force running setup -- default on a fresh install
-
 After installation you can start CPANPLUS' interactive client
 by running one of the following commands:
 

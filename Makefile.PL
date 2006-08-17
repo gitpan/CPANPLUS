@@ -48,36 +48,29 @@ We're sorry for the inconvenience.
     require 5.008001;
 }
 
-### dont use, we dont want the coderef in @INC
-### XXX other modules use it, so the coderef will still be there ;(
-require CPANPLUS::inc;              # XXX get rid of me!
 ### it spews warnings though, so grep those out
 ### also grep out the warnings we get from using Module::Loaded
 BEGIN { 
     $SIG{__WARN__} = sub {
         print STDERR "@_" if 
-            "@_" !~ /^CPANPLUS::inc/        and
             "@_" !~ /Constant subroutine/;
     };
 }
 
-use inc::Module::Install;
+use ExtUtils::MakeMaker;
 use Getopt::Long;
+use CPANPLUS::Backend;
+use CPANPLUS::Configure;
 use CPANPLUS::Configure::Setup;
 use CPANPLUS::Internals::Constants;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-
-use constant BASIC_TESTS =>     qq[t/00_CPANPLUS-Internals-Utils.t];
-
-
-my $Tests;
 my $Prereq = {};    
 my $RunSetup;
 GetOptions( 'setup' => \$RunSetup );
 
-my $Setup = CPANPLUS::Configure::Setup->new;
-
+my $Backend = CPANPLUS::Backend->new;
+my $Config  = CPANPLUS::Configure->new;
 
 ### no setup? this is easy.. print the message and move a long
 unless( $RunSetup ) {
@@ -110,7 +103,13 @@ We appologize for the inconvenience.
 
 ### ok, we're asked to run the setup stuff, let's do it
 } else {
-    $Setup->init;
+
+    my $setup = CPANPLUS::Configure::Setup->new(
+                    backend             => $Backend,
+                    configure_object    => $Config,
+                );
+
+    $setup->init;
 }    
     
 ### mention our prereqs
@@ -138,9 +137,7 @@ Or let your package manager take care of it.
 
 ### toss out the old source files, they might be compiled
 ### in an incompatilbe format (rt #18121)
-{   my $stored = $Setup->backend->__storable_file(
-                        $Setup->configure_object->get_conf('base')
-                    );      
+{   my $stored = $Backend->__storable_file( $Config->get_conf('base') );      
     1 while unlink $stored;
 }
 
@@ -172,7 +169,7 @@ Or let your package manager take care of it.
 
     ### depending on your choices, we might need to add some modules
     ### to your PREREQ_PM
-    {   if( !$Setup->configure_object->get_conf('prefer_makefile')  ) {
+    {   if( !$Config->get_conf('prefer_makefile')  ) {
             $Prereq->{ 'CPANPLUS::Dist::Build' } = '0.04';
         }
         
@@ -190,21 +187,6 @@ Or let your package manager take care of it.
         }            
     }
 
-
-    ### restore the original @INC, so proper probing of missing 
-    ### prereqs can be done
-    @INC = @ORIG_INC;
-    name            ('CPANPLUS');
-    author          ('Jos Boumans <kane@cpan.org>');
-    abstract        ('Ameliorated interface to the CPAN');
-    version_from    ('lib/CPANPLUS/Internals.pm');
-    license         ('perl');
-    no_index        ( directory => 'lib/CPANPLUS/inc' );
-    install_script  ($_) for glob('bin/*');
-    requires        (%$Prereq);
-    makemaker_args  ( test => { TESTS => $Tests } ) if $Tests;
-    makemaker_args  ( clean => { FILES => 't/.*.output .cpanplus t/dummy-cpanplus/* t/dummy-cpanplus/.cpanplus' } );
-
     ### write the makefile 
     ### this makes all prereqs rediscovered
     {   use Module::Loaded;
@@ -215,7 +197,23 @@ Or let your package manager take care of it.
         ### silence warnings about redefines... 
         ### this will still warn about redefine of CONSTANTS subs...
         no warnings; local $^W;
-        &WriteAll( check_nmake => 1 ); 
+
+        ### restore the original @INC, so proper probing of missing 
+        ### prereqs can be done
+        @INC = @ORIG_INC;
+
+        WriteMakefile (
+            NAME            => 'CPANPLUS',
+            VERSION_FROM    => 'lib/CPANPLUS/Internals.pm', 
+            dist            => { COMPRESS => 'gzip -9f', SUFFIX => 'gz' },
+            EXE_FILES       => [ glob('bin/*') ],
+            PREREQ_PM       => $Prereq,
+            #INSTALLDIRS     => ( $] >= 5.009003 ? 'perl' : 'site' ),
+            AUTHOR          => 'Jos Boumans <kane[at]cpan.org>',
+            ABSTRACT        => 'Ameliorated interface to the CPAN',
+            clean           => { FILES => 't/.*.output .cpanplus t/dummy-cpanplus/* t/dummy-cpanplus/.cpanplus' }
+        );      
+
     }
 }
 
