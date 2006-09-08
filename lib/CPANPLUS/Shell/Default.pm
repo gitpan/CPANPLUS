@@ -26,10 +26,11 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.073_02";
+    $VERSION = "0.074";
 }
 
 load CPANPLUS::Shell;
+
 
 my $map = {
     'm'     => '_search_module',
@@ -399,9 +400,12 @@ sub _format_version {
     ### fudge $version into the 'optimal' format
     $version = 0 if $version eq 'undef';
     $version =~ s/_//g; # everything after gets stripped off otherwise
-    $version = sprintf('%3.4f', $version);
+
+    ### allow 6 digits after the dot, as that's who perl stringifies
+    ### x.y.z numbers.
+    $version = sprintf('%3.6f', $version);
     $version = '' if $version == '0.00';
-    $version =~ s/(00?)$/' ' x (length $1)/e;
+    $version =~ s/(00{0,3})$/' ' x (length $1)/e;
 
     return $version;
 }
@@ -809,9 +813,41 @@ sub _install {
     for my $mod (@$mods) {
         print $prompt, $mod->module, "\n";
 
+        my $log_length = length CPANPLUS::Error->stack_as_string;
+    
         ### store the status for look up when we're done with all
         ### install calls
         $status->{$mod} = $mod->install( %$opts, target => $target );
+        
+        ### would you like a log file of what happened?
+        if( $conf->get_conf('write_install_logs') ) {
+
+            my $dir = File::Spec->catdir(
+                            $conf->get_conf('base'),
+                            $conf->_get_build('install_log_dir'),
+                        );
+            ### create the dir if it doesn't exit yet
+            $cb->_mkdir( dir => $dir ) unless -d $dir;
+
+            my $file = File::Spec->catfile( 
+                            $dir,
+                            INSTALL_LOG_FILE->( $mod ) 
+                        );
+            if ( open my $fh, ">$file" ) {
+                my $stack = CPANPLUS::Error->stack_as_string;
+                ### remove everything in the log that was there *before*
+                ### we started this install
+                substr( $stack, 0, $log_length );
+                
+                print $fh $stack;
+                close $fh;
+                
+                print loc("*** Install log written to:\n  %1\n\n", $file);
+            } else {                
+                warn "Could not open '$file': $!\n";
+                next;
+            }                
+        }
     }
 
     my $flag;
@@ -1158,13 +1194,13 @@ sub _uptodate {
 
     $self->_pager_open if scalar @rv >= $self->_term_rowcount;
 
-    my $format = "%5s %10s %10s %-40s %-10s\n";
+    my $format = "%5s %12s %12s %-36s %-10s\n";
 
     my $i = 1;
     for my $mod ( @rv ) {
         printf $format,
                 $i,
-                $self->_format_version( $mod->installed_version ) || 'None',
+                $self->_format_version($mod->installed_version) || 'Unparsable',
                 $self->_format_version( $mod->version ),
                 $mod->module,
                 $mod->author->cpanid();

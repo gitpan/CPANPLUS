@@ -1,29 +1,11 @@
-# http://module-build.sourceforge.net/META-spec.html
-#XXXXXXX This is a prototype!!!  It will change in the future!!! XXXXX#
-name:         CPANPLUS
-version:      0.073_02
-version_from: lib/CPANPLUS/Internals.pm
-installdirs:  site
-requires:
-    Archive::Extract:              0.11
-    Archive::Tar:                  1.23
-    File::Fetch:                   0.08
-    File::Spec:                    0.82
-    IO::Zlib:                      1.04
-    IPC::Cmd:                      0.24
-    Locale::Maketext::Simple:      0.01
-    Log::Message:                  0.01
-    Module::CoreList:              1.97
-    Module::Load:                  0.10
-    Module::Load::Conditional:     0.10
-    Module::Loaded:                0.01
-    Module::Pluggable:             2.4
-    Object::Accessor:              0.03
-    Package::Constants:            0.01
-    Params::Check:                 0.22
-    Term::UI:                      0.05
-    Test::Harness:                 2.62
-    Test::More:                    0.47
-
+name: CPANPLUS
+version: 0.074
+abstract: Ameliorated interface to the CPAN
+author: Jos Boumans <kane@cpan.org>
+license: perl
 distribution_type: module
-generated_by: ExtUtils::MakeMaker version 6.30
+no_index:
+  directory:
+    - lib/CPANPLUS/inc
+    - inc
+generated_by: Module::Install version 0.36

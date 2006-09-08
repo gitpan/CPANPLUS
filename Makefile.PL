@@ -48,16 +48,20 @@ We're sorry for the inconvenience.
     require 5.008001;
 }
 
+### dont use, we dont want the coderef in @INC
+### XXX other modules use it, so the coderef will still be there ;(
+require CPANPLUS::inc;              # XXX get rid of me!
 ### it spews warnings though, so grep those out
 ### also grep out the warnings we get from using Module::Loaded
 BEGIN { 
     $SIG{__WARN__} = sub {
         print STDERR "@_" if 
+            "@_" !~ /^CPANPLUS::inc/        and
             "@_" !~ /Constant subroutine/;
     };
 }
 
-use ExtUtils::MakeMaker;
+use inc::Module::Install;
 use Getopt::Long;
 use CPANPLUS::Backend;
 use CPANPLUS::Configure;
@@ -65,6 +69,11 @@ use CPANPLUS::Configure::Setup;
 use CPANPLUS::Internals::Constants;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
+
+use constant BASIC_TESTS =>     qq[t/00_CPANPLUS-Internals-Utils.t];
+
+
+my $Tests;
 my $Prereq = {};    
 my $RunSetup;
 GetOptions( 'setup' => \$RunSetup );
@@ -187,6 +196,21 @@ Or let your package manager take care of it.
         }            
     }
 
+
+    ### restore the original @INC, so proper probing of missing 
+    ### prereqs can be done
+    @INC = @ORIG_INC;
+    name            ('CPANPLUS');
+    author          ('Jos Boumans <kane@cpan.org>');
+    abstract        ('Ameliorated interface to the CPAN');
+    version_from    ('lib/CPANPLUS/Internals.pm');
+    license         ('perl');
+    no_index        ( directory => 'lib/CPANPLUS/inc' );
+    install_script  ($_) for glob('bin/*');
+    requires        (%$Prereq);
+    makemaker_args  ( test => { TESTS => $Tests } ) if $Tests;
+    makemaker_args  ( clean => { FILES => 't/.*.output .cpanplus t/dummy-cpanplus/* t/dummy-cpanplus/.cpanplus' } );
+
     ### write the makefile 
     ### this makes all prereqs rediscovered
     {   use Module::Loaded;
@@ -197,23 +221,7 @@ Or let your package manager take care of it.
         ### silence warnings about redefines... 
         ### this will still warn about redefine of CONSTANTS subs...
         no warnings; local $^W;
-
-        ### restore the original @INC, so proper probing of missing 
-        ### prereqs can be done
-        @INC = @ORIG_INC;
-
-        WriteMakefile (
-            NAME            => 'CPANPLUS',
-            VERSION_FROM    => 'lib/CPANPLUS/Internals.pm', 
-            dist            => { COMPRESS => 'gzip -9f', SUFFIX => 'gz' },
-            EXE_FILES       => [ glob('bin/*') ],
-            PREREQ_PM       => $Prereq,
-            #INSTALLDIRS     => ( $] >= 5.009003 ? 'perl' : 'site' ),
-            AUTHOR          => 'Jos Boumans <kane[at]cpan.org>',
-            ABSTRACT        => 'Ameliorated interface to the CPAN',
-            clean           => { FILES => 't/.*.output .cpanplus t/dummy-cpanplus/* t/dummy-cpanplus/.cpanplus' }
-        );      
-
+        &WriteAll( check_nmake => 1 ); 
     }
 }
 

@@ -369,7 +369,6 @@ sub usage {
     my $formats = join "\n", map { "\t\t$_" } sort keys %formats;
 
     my $usage = << '=cut';
-    
 =pod
 
 Usage: cpan2dist [--format FMT] [OPTS] Mod::Name [Mod::Name, ...]
@@ -392,7 +391,6 @@ $formats
     \n];
     
     $usage .= << '=cut';
-    
 =pod
     
 Options:
@@ -478,10 +476,11 @@ Examples:
 
 =cut
     
-    $usage .= 
-        qq[Builtin Lists:\n\n] .
-        qq[Ignore list:] . _default_ignore_list() . 
-        qq[Ban list:] .    _default_ban_list();
+    $usage .= qq[
+Builtin Lists:
+
+    Ignore list:] . _default_ignore_list() . qq[
+    Ban list:] .    _default_ban_list();
     
     ### strip the pod directives
     $usage =~ s/=pod\n//g;
@@ -519,7 +518,6 @@ Toggle it by supplying the C<--default-ignorelist> option.
 sub _default_ignore_list {
 
     my $list = << '=cut';
-
 =pod
 
     ^IO$                    # Provided with core anyway
@@ -547,7 +545,6 @@ Toggle it by supplying the C<--default-banlist> option.
 sub _default_ban_list {
 
     my $list = << '=cut';
-    
 =pod
 
     ^GD$                # Needs c libaries
