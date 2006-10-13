@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.075_01";
+    $VERSION = "0.076";
 }
 
 load CPANPLUS::Shell;
@@ -1118,6 +1118,11 @@ sub _set_conf {
 
         if ( $type eq 'program' or $type eq 'conf' ) {
 
+            my $format = {
+                conf    => '%-25s %s',
+                program => '%-12s %s',
+            }->{ $type };      
+
             unless( $key ) {
                 my @list =  grep { $_ ne 'hosts' }
                             $conf->options( type => $type );
@@ -1126,11 +1131,11 @@ sub _set_conf {
 
                 local $Data::Dumper::Indent = 0;
                 for my $name ( @list ) {
-                    my $val = $conf->$method($name);
+                    my $val = $conf->$method($name) || '';
                     ($val)  = ref($val)
                                 ? (Data::Dumper::Dumper($val) =~ /= (.*);$/)
                                 : "'$val'";
-                    printf  "    %-25s %s\n", $name, $val;
+                    printf  "    $format\n", $name, $val;
                 }
 
             } elsif ( $key eq 'hosts' ) {
