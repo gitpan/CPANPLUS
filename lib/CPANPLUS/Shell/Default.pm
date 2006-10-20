@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.076";
+    $VERSION = "0.77_02";
 }
 
 load CPANPLUS::Shell;
@@ -125,6 +125,7 @@ CPANPLUS::Shell::Default
     cpanp> s program         # show program settings
     cpanp> s edit            # edit config file
     cpanp> s reconfigure     # go through initial configuration again
+    cpanp> s selfupdate      # update your CPANPLUS install
     cpanp> s save            # save config to disk
     cpanp> s mirrors         # show currently selected mirrors
 
@@ -203,8 +204,10 @@ sub new {
 sub shell {
     my $self = shift;
     my $term = $self->term;
+    my $conf = $self->backend->configure_object;
 
     $self->_show_banner;
+    $self->_show_random_tip if $conf->get_conf('show_startup_tip');
     $self->_input_loop && print "\n";
     $self->_quit;
 }
@@ -499,6 +502,7 @@ loc('    s program [OPT VALUE]  # set program locations for this session'       
 loc('    s conf    [OPT VALUE]  # set config options for this session'              ),
 loc('    s mirrors              # show currently selected mirrors' ),
 loc('    s reconfigure          # reconfigure settings ' ),
+loc('    s selfupdate           # update your CPANPLUS install '),
 loc('    s save [user|system]   # save settings for this user or systemwide' ),
 loc('    s edit [user|system]   # open configuration file in editor and reload'     ),
 loc('    ! EXPR                 # evaluate a perl statement'                        ),
@@ -1038,7 +1042,7 @@ sub _set_conf {
 
     ### possible options
     ### XXX hard coded, not optimal :(
-    my @types   = qw[reconfigure save edit program conf mirrors];
+    my @types   = qw[reconfigure save edit program conf mirrors selfupdate];
 
 
     my $args; my $opts; my $input;
@@ -1112,8 +1116,24 @@ sub _set_conf {
             $i++;
             print "\t[$i] $uri\n";
         }
-        
 
+    } elsif ( $type eq 'selfupdate' ) {
+        my %valid = map { $_ => $_ } 
+                        qw|core dependencies enabled_features features all|;
+
+        unless( $valid{$key} ) {
+            print loc( "To update your current CPANPLUS installation, ".
+                        "choose one of the these options:\n%1",
+                        (join $/, map {"\ts selfupdate $_"} sort keys %valid) );          
+        } else {
+            print loc( "Updating your CPANPLUS installation\n" );
+            $cb->selfupdate_object->selfupdate( 
+                                    update  => $key, 
+                                    latest  => 1,
+                                    %$opts 
+                                );
+        }
+        
     } else {
 
         if ( $type eq 'program' or $type eq 'conf' ) {
@@ -1577,6 +1597,24 @@ sub _read_configuration_from_rc {
 
     return $href || {};
 }
+
+{   my @tips = (
+        loc( "You can update CPANPLUS by running: '%1'", 's selfupdate' ),
+        loc( "You can install modules by URL using '%1'", 'i URL' ),
+        loc( "You can turn off these tips using '%1'", 
+             's conf show_startup_tip 0' ),
+        loc( "You can use wildcards like '%1' and '%2' on search results",
+             '*', '..' ),
+        loc( "You can use plugins. Type '%1' to list available plugins",
+             '/plugins' ),
+    );
+    
+    sub _show_random_tip {
+        my $self = shift;
+        print $/, "Did you know...\n\t", $tips[ int rand scalar @tips ], $/;
+        return 1;
+    }
+}    
 
 1;
 
