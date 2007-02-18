@@ -1,22 +1,8 @@
+### make sure we can find our conf.pl file
 BEGIN { 
-    if( $ENV{PERL_CORE} ) {
-        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
-        unshift @INC, '../../../lib';
-    
-        ### fix perl location too
-        $^X = '../../../t/' . $^X;
-    }
-} 
-
-BEGIN { chdir 't' if -d 't' };
-
-### this is to make devel::cover happy ###
-BEGIN {
-    use File::Spec;
-    require lib;
-    for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    use FindBin; 
+    require "$FindBin::Bin/inc/conf.pl";
 }
-
 
 use strict;
 use Test::More 'no_plan';
@@ -24,10 +10,10 @@ use Data::Dumper;
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants;
 
-BEGIN { require 'conf.pl'; }
-my $conf    = gimme_conf();
-my $cb      = CPANPLUS::Backend->new($conf);
-my $mod     = $cb->module_tree('Text::Bastardize');
+my $Conf    = gimme_conf();
+my $CB      = CPANPLUS::Backend->new($Conf);
+my $ModName = TEST_CONF_MODULE;
+my $Mod     = $CB->module_tree( $ModName );
 
 
 ### search for modules ###
@@ -35,11 +21,11 @@ for my $type ( CPANPLUS::Module->accessors() ) {
 
     ### don't muck around with references/objects
     ### or private identifiers
-    next if ref $mod->$type() or $type =~/^_/;
+    next if ref $Mod->$type() or $type =~/^_/;
 
-    my @aref = $cb->search(
+    my @aref = $CB->search(
                     type    => $type,
-                    allow   => [$mod->$type()],
+                    allow   => [$Mod->$type()],
                 );
 
     ok( scalar @aref,       "Module found by '$type'" );
@@ -49,9 +35,9 @@ for my $type ( CPANPLUS::Module->accessors() ) {
 }
 
 ### search for authors ###
-my $auth = $mod->author;
+my $auth = $Mod->author;
 for my $type ( CPANPLUS::Module::Author->accessors() ) {
-    my @aref = $cb->search(
+    my @aref = $CB->search(
                     type    => $type,
                     allow   => [$auth->$type()],
                 );
@@ -67,15 +53,16 @@ for my $type ( CPANPLUS::Module::Author->accessors() ) {
     local $SIG{__WARN__} = sub { $warning .= "@_"; };
 
     {   ### try search that will yield nothing ###
-        my @list = $cb->search( type    => 'module',
-                                allow   => ['Foo::Bar'.$$] );
+        ### XXX SOURCEFILES FIX
+        my @list = $CB->search( type    => 'module',
+                                allow   => [$ModName.$$] );
 
         is( scalar(@list), 0,   "Valid search yields no results" );
         is( $warning, '',       "   No warnings issued" );
     }
 
     {   ### try bogus arguments ###
-        my @list = $cb->search( type => '', allow => ['foo'] );
+        my @list = $CB->search( type => '', allow => ['foo'] );
 
         is( scalar(@list), 0,   "Broken search yields no results" );
         like( $warning, qr/^Key 'type'.* is of invalid type for/,

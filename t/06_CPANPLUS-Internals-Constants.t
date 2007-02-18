@@ -1,20 +1,7 @@
+### make sure we can find our conf.pl file
 BEGIN { 
-    if( $ENV{PERL_CORE} ) {
-        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
-        unshift @INC, '../../../lib';
-    
-        ### fix perl location too
-        $^X = '../../../t/' . $^X;
-    }
-} 
-
-BEGIN { chdir 't' if -d 't' };
-
-### this is to make devel::cover happy ###
-BEGIN { 
-    use File::Spec;
-    require lib;
-    for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    use FindBin; 
+    require "$FindBin::Bin/inc/conf.pl";
 }
 
 use strict;
@@ -28,8 +15,6 @@ use CPANPLUS::Module::Author::Fake;
 use CPANPLUS::Configure;
 use CPANPLUS::Backend;
 
-BEGIN { require 'conf.pl'; }
-
 my $conf = gimme_conf();
 
 my $cb = CPANPLUS::Backend->new( $conf );
@@ -40,7 +25,7 @@ ok( IS_AUTHOBJ->( $f_auth ),        "   IS_AUTHOBJ recognizes it" );
 ok( IS_FAKE_AUTHOBJ->( $f_auth ),   "   IS_FAKE_AUTHOBJ recognizes it" );
 
 my $f_mod = CPANPLUS::Module::Fake->new(
-                module  => 'Foo::Bar',
+                module  => TEST_CONF_INST_MODULE ,
                 path    => 'some/where',
                 package => 'Foo-Bar-1.2.tgz',
                 _id     => $cb->_id,

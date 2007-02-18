@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.77_02";
+    $VERSION = "0.77_03";
 }
 
 load CPANPLUS::Shell;
@@ -82,13 +82,13 @@ CPANPLUS::Shell::Default
     $ perl -MCPANPLUS -eshell   # load the shell from the command line
 
 
-    use CPANPLUS::Shell qw[Default];    # load this shell via the API
-                                        # always done via CPANPLUS::Shell
+    use CPANPLUS::Shell qw[Default];        # load this shell via the API
+                                            # always done via CPANPLUS::Shell
 
     my $ui = CPANPLUS::Shell->new;
-    $ui->shell;                         # run the shell
-    $ui->dispatch_on_input('x');        # update the source using the
-                                        # dispatch method
+    $ui->shell;                             # run the shell
+    $ui->dispatch_on_input( input => 'x');  # update the source using the
+                                            # dispatch method
 
     ### when in the shell:
     ### Note that all commands can also take options.
@@ -144,6 +144,10 @@ CPANPLUS::Shell::Default
     cpanp> /plugins          # list avialable plugins
     cpanp> /? PLUGIN         # list help test of <PLUGIN>                  
 
+    ### common options:
+    cpanp> i ... --skiptest # skip tests
+    cpanp> i ... --force    # force all operations
+    cpanp> i ... --verbose  # run in verbose mode
 
 =head1 DESCRIPTION
 
@@ -157,11 +161,12 @@ sub new {
 
     my $cb      = new CPANPLUS::Backend;
     my $self    = $class->SUPER::_init(
-                            brand   => $Brand,
-                            term    => Term::ReadLine->new( $Brand ),
-                            prompt  => $Prompt,
-                            backend => $cb,
-                            format  => "%5s %-50s %8s %-10s\n",
+                            brand       => $Brand,
+                            term        => Term::ReadLine->new( $Brand ),
+                            prompt      => $Prompt,
+                            backend     => $cb,
+                            format      => "%4s %-55s %8s %-10s\n",
+                            dist_format => "%4s %-42s %-12s %8s %-10s\n",
                         );
     ### make it available package wide ###
     $Shell = $self;
@@ -207,6 +212,7 @@ sub shell {
     my $conf = $self->backend->configure_object;
 
     $self->_show_banner;
+    print "*** Type 'p' now to show start up log\n"; # XXX add to banner?
     $self->_show_random_tip if $conf->get_conf('show_startup_tip');
     $self->_input_loop && print "\n";
     $self->_quit;
@@ -271,10 +277,21 @@ sub dispatch_on_input {
             { $input =~ s|^\s*([!?/])|$1 |; }
 
             ### get the first letter of the input
-            $input =~ s|^\s*([\w\?\!/])\w*\s*||;
+            $input =~ s|^\s*([\w\?\!/])\w*||;
 
             chomp $input;
             $key =  lc($1);
+
+            ### we figured out what the command was...
+            ### if we have more input, that DOES NOT start with a white
+            ### space char, we misparsed.. like 'Test::Foo::Bar', which
+            ### would turn into 't', '::Foo::Bar'...
+            if( $input and $input !~ s/^\s+// ) {
+                print loc("Could not understand command: %1\n".
+                          "Possibly missing command before argument(s)?\n",
+                          $org_input); 
+                return;
+            }     
 
             ### allow overrides from the config file ###
             if( defined $rc->{$key} ) {
@@ -404,7 +421,7 @@ sub _format_version {
     $version = 0 if $version eq 'undef';
     $version =~ s/_//g; # everything after gets stripped off otherwise
 
-    ### allow 6 digits after the dot, as that's who perl stringifies
+    ### allow 6 digits after the dot, as that's how perl stringifies
     ### x.y.z numbers.
     $version = sprintf('%3.6f', $version);
     $version = '' if $version == '0.00';
@@ -428,11 +445,22 @@ sub __display_results {
             next unless $mod;   # first one is undef
                                 # humans start counting at 1
 
-            printf $self->format,
+            ### for dists only -- we have checksum info
+            if( $mod->mtime ) {
+                printf $self->dist_format,
+                            $i,
+                            $mod->module,
+                            $mod->mtime,
+                            $self->_format_version($mod->version),
+                            $mod->author->cpanid();
+
+            } else {
+                printf $self->format,
                             $i,
                             $mod->module,
                             $self->_format_version($mod->version),
                             $mod->author->cpanid();
+            }
             $i++;
         }
 
@@ -1397,6 +1425,7 @@ sub _reports {
 ### Load plugins
 {   my @PluginModules;
     my %Dispatch = ( 
+        showtip => [ __PACKAGE__, '_show_random_tip'], 
         plugins => [ __PACKAGE__, '_list_plugins'   ], 
         '?'     => [ __PACKAGE__, '_plugins_usage'  ],
     );        
@@ -1514,6 +1543,11 @@ sub _reports {
         return sprintf $help_format, 'plugins', loc("lists available plugins");
     }
 
+    ### registered as a plugin too
+    sub _show_random_tip_help {
+        return sprintf $help_format, 'showtip', loc("show usage tips" );
+    }   
+
     sub _plugins_usage {
         my $pkg     = shift;
         my $shell   = shift;
@@ -1607,11 +1641,17 @@ sub _read_configuration_from_rc {
              '*', '..' ),
         loc( "You can use plugins. Type '%1' to list available plugins",
              '/plugins' ),
+        loc( "You can show all your out of date modules using '%1'", 'o' ),  
+        loc( "Many operations take options, like '%1' or '%2'",
+             '--verbose', '--skiptest' ),
+        loc( "The documentation in %1 and %2 is very useful",
+             "CPANPLUS::Module", "CPANPLUS::Backend" ),
+        loc( "You can type '%1' for help and '%2' to exit", 'h', 'q' ),
     );
     
     sub _show_random_tip {
         my $self = shift;
-        print $/, "Did you know...\n\t", $tips[ int rand scalar @tips ], $/;
+        print $/, "Did you know...\n    ", $tips[ int rand scalar @tips ], $/;
         return 1;
     }
 }    

@@ -1,23 +1,8 @@
+### make sure we can find our conf.pl file
 BEGIN { 
-    if( $ENV{PERL_CORE} ) {
-        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
-        unshift @INC, '../../../lib';
-    
-        ### fix perl location too
-        $^X = '../../../t/' . $^X;
-    }
-} 
-
-BEGIN { chdir 't' if -d 't' };
-
-### this is to make devel::cover happy ###
-BEGIN {
-    use File::Spec;
-    require lib;
-    for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    use FindBin; 
+    require "$FindBin::Bin/inc/conf.pl";
 }
-
-BEGIN { require 'conf.pl'; }
 
 use strict;
 use Test::More 'no_plan';
@@ -37,25 +22,14 @@ my $CB      = CPANPLUS::Backend->new( $Conf );
     $Conf->set_conf( prefer_makefile => 0 );
 }
 
-### create a fake object, so we don't use the actual module tree
-my $Mod = CPANPLUS::Module::Fake->new(
-                module  => 'Foo::Bar',
-                path    => File::Spec->catdir(qw[src Build noxs]),
-                author  => CPANPLUS::Module::Author::Fake->new,
-                package => 'Foo-Bar-0.01.tar.gz',
-            );
-ok( $Mod,                   "Module object created" );        
+my $Mod = $CB->module_tree( 'Foo::Bar::MB::NOXS' );
+
+ok( $Mod,                   "Module object retrieved" );        
 ok( not grep { $_ eq INSTALLER_BUILD } CPANPLUS::Dist->dist_types,
                             "   Build installer not returned" );
             
-            
-### set the fetch location -- it's local
-{   my $where = File::Spec->rel2abs(
-                        File::Spec->catdir( $Mod->path, $Mod->package )
-                    );
-                    
-    $Mod->status->fetch( $where );
-
+### fetch the file first            
+{   my $where = $Mod->fetch;
     ok( -e $where,          "   Tarball '$where' exists" );
 }
     

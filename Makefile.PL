@@ -13,14 +13,12 @@ BEGIN {
     chdir $FindBin::Bin;
 
     use File::Spec;
+    use lib qw[lib];        # cpanplus modules
 
     ### add the directory to our bundled modules
     use vars qw[@ORIG_INC];
     @ORIG_INC = @INC;       # store for later use
-
-    require lib;
-    my $l = 'lib'; 
-    $l->import( qw[lib], File::Spec->catdir(qw[inc bundle]) );
+    lib->import( File::Spec->catdir(qw[inc bundle]) );
 }
 
 
@@ -148,7 +146,7 @@ Or let your package manager take care of it.
 ### toss out the old source files, they might be compiled
 ### in an incompatilbe format (rt #18121)
 {   my $stored = $Backend->__storable_file( $Config->get_conf('base') );      
-    1 while unlink $stored;
+    1 while $stored && unlink $stored;
 }
 
 ### write the makefile.pl
@@ -170,7 +168,13 @@ Or let your package manager take care of it.
     install_script  ($_) for glob('bin/*');
     requires        (%prereq);
     makemaker_args  ( test => { TESTS => $Tests } ) if $Tests;
-    makemaker_args  ( clean => { FILES => 't/.*.output .cpanplus t/dummy-cpanplus/* t/dummy-cpanplus/.cpanplus' } );
+    makemaker_args  ( clean => { FILES => 
+                        't/.*.output t/*.rpt ' . 
+                        't/dummy-cpanplus/* t/dummy-cpanplus/.cpanplus '.
+                        't/dummy-localmirror/* ' .
+                        't/dummy-perl/bin/* ' . 't/dummy-perl/lib/* ' .
+                        't/dummy-perl/man/man1/* ' . 't/dummy-perl/man/man3/*'
+                    } );
 
     ### write the makefile 
     ### this makes all prereqs rediscovered

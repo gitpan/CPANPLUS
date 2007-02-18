@@ -1,20 +1,7 @@
+### make sure we can find our conf.pl file
 BEGIN { 
-    if( $ENV{PERL_CORE} ) {
-        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
-        unshift @INC, '../../../lib';
-    
-        ### fix perl location too
-        $^X = '../../../t/' . $^X;
-    }
-} 
-
-BEGIN { chdir 't' if -d 't' };
-
-### this is to make devel::cover happy ###
-BEGIN { 
-    use File::Spec;
-    require lib;
-    for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    use FindBin; 
+    require "$FindBin::Bin/inc/conf.pl";
 }
 
 use strict;
@@ -25,7 +12,6 @@ use Data::Dumper;
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
 
-BEGIN { require 'conf.pl'; }
 my $conf = gimme_conf();
 
 ### purposely avert messages and errors to a file? ###
@@ -46,9 +32,10 @@ ok( scalar keys %$mt,       "Module tree has entries" );
 ok( scalar keys %$at,       "Author tree has entries" ); 
 
 ### module_tree tests ###
-my $Name = 'Text::Bastardize';
+my $Name = TEST_CONF_MODULE;
 my $mod  = $cb->module_tree($Name);
 
+### XXX SOURCEFILES FIX
 {   my @mods = $cb->module_tree($Name,$Name);
     my $none = $cb->module_tree('fnurk');
     
@@ -75,78 +62,97 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
 
 
 ### parse_module tests ###
-{
-    for my $guess ( qw[
-                    Text::Bastardize
-                    Text-Bastardize
-                    Text-Bastardize-1.06
-                    AYRNIEU/Text-Bastardize
-                    AYRNIEU/Text-Bastardize-1.06],
-                    $mod
-    ) {
-        my $obj = $cb->parse_module( module => $guess );
-        my ($auth) = $guess =~ m|(.+?)/| ? $1 : $obj->author->cpanid;
+{   my @map = (     # author                package             version
+        $Name   => [ $mod->author->cpanid,  $mod->package_name, $mod->version ],
+        $mod    => [ $mod->author->cpanid,  $mod->package_name, $mod->version ],
+        'Foo-Bar-EU-NOXS'
+                => [ $mod->author->cpanid,  $mod->package_name, $mod->version ],
+        'Foo-Bar-EU-NOXS-0.01'
+                => [ $mod->author->cpanid,  $mod->package_name, '0.01' ],
+        'EUNOXS/Foo-Bar-EU-NOXS'
+                => [ 'EUNOXS',              $mod->package_name, $mod->version ],
+        'EUNOXS/Foo-Bar-EU-NOXS-0.01'
+                => [ 'EUNOXS',              $mod->package_name, '0.01' ],
+        'Foo-Bar-EU-NOXS-0.09'
+                => [ $mod->author->cpanid,  $mod->package_name, '0.09' ],
+        'MBXS/Foo-Bar-EU-NOXS-0.01'
+                => [ 'MBXS',                $mod->package_name, '0.01' ],
+        'EUNOXS/Foo-Bar-EU-NOXS-0.09'
+                => [ 'EUNOXS',              $mod->package_name, '0.09' ],
+        'EUNOXS/Foo-Bar-EU-NOXS-0.09.zip'
+                => [ 'EUNOXS',              $mod->package_name, '0.09' ],
+        'FROO/Flub-Flob-1.1.zip'
+                => [ 'FROO',                'Flub-Flob',        '1.1' ],
+        'G/GO/GOYALI/SMS_API_3_01.tar.gz'
+                => [ 'GOYALI',              'SMS_API',          '3_01' ],
+        'E/EY/EYCK/Net/Lite/Net-Lite-FTP-0.091'
+                => [ 'EYCK',                'Net-Lite-FTP',     '0.091' ],
+        'EYCK/Net/Lite/Net-Lite-FTP-0.091'
+                => [ 'EYCK',                'Net-Lite-FTP',     '0.091' ],
+        'M/MA/MAXDB/DBD-MaxDB-7.5.00.24a'
+                => [ 'MAXDB',               'DBD-MaxDB',        '7.5.00.24a' ],
+        'EUNOXS/perl5.005_03.tar.gz'
+                => [ 'EUNOXS',              'perl',             '5.005_03' ],
+        'FROO/Flub-Flob-v1.1.0.tbz'
+                => [ 'FROO',                'Flub-Flob',        'v1.1.0' ],
+        'FROO/Flub-Flob-1.1_2.tbz'
+                => [ 'FROO',                'Flub-Flob',        '1.1_2' ],                        
+    );       
 
-        ok( IS_MODOBJ->( mod => $obj ), "parse_module success by '$guess'" );     
-        like( $obj->author->cpanid, "/$auth/i", "   proper author found");
-        like( $obj->path,           "/$auth/i", "   proper path found" );
-    }
-
-    for my $guess ( qw[
-                    CWEST/Text-Bastardize-1.04
-                    AYRNIEU/Text-Bastardize-1.03
-                    Text-Bastardize-1.03
-                    TIMB/DBI-1.20
-                    TIMB/DBI-1.20.zip
-                    FROO/Flub-Flob-1.1.zip
-                    G/GO/GOYALI/SMS_API_3_01.tar.gz
-    ] ) {
-        my $obj = $cb->parse_module( module => $guess );
-        my ($auth) = $guess =~ m|^(.+?)/| ? $1 : $obj->author->cpanid;
+    while ( my($guess, $attr) = splice @map, 0, 2 ) {
+        my( $author, $pkg, $version ) = @$attr;
         
-        ok( IS_FAKE_MODOBJ->(mod => $obj), "parse_module success by '$guess'" );     
-        like( $obj->author->cpanid, "/$auth/i", "   proper author found" );
-        like( $obj->path,           "/$auth/i", "   proper path found" );
+        ok( $guess,             "Attempting to parse $guess" );
 
+        my $obj = $cb->parse_module( module => $guess );
+        
+        ok( IS_MODOBJ->( mod => $obj ), 
+                                "   parse_module success by '$guess'" );     
+        
+        is( $obj->version, $version,
+                                "   Proper version found: $version" );
+        is( $obj->package_version, $version,
+                                "       Found in package_version as well" );
+        is( $obj->package_name, $pkg,
+                                "   Proper package found: $pkg" );
+        unlike( $obj->package_name, qr/\d/,
+                                "       No digits in package name" );
+        like( $obj->author->cpanid, "/$author/i", 
+                                "   Proper author found: $author");
+        like( $obj->path,           "/$author/i", 
+                                "   Proper path found: " . $obj->path );
     }
 
-    ### more complicated ones 
-    for my $guess ( qw[ E/EY/EYCK/Net/Lite/Net-Lite-FTP-0.091
-                        EYCK/Net/Lite/Net-Lite-FTP-0.091
-                        M/MA/MAXDB/DBD-MaxDB-7.5.00.24a
-                    ] 
-    ) {
-        my $obj     = $cb->parse_module( module => $guess );
-        my ($ver)   = $guess =~ m|-([^-]+)$|            ? $1 : '';
-        my ($auth)  = $guess =~ m|(?:./../)?(.+?)/|     ? $1 : '';
-        my ($path)  = $guess =~ m|^(.+)/|               ? $1 : '';
-
-        ok( IS_FAKE_MODOBJ->(mod => $obj), "parse_module success by '$guess'" );
-
-        ok( $auth,                  "   Author '$auth' parsed from '$guess'");
-        ok( $path,                  "   Path '$path' parsed from '$guess'");
-        ok( $ver,                   "   Version '$ver' parsed from '$guess'");
-
-        like( $obj->author->cpanid, qr/^$auth$/i, 
-                                    "   proper author found" );
-        like( $obj->path,           qr/$path$/i, 
-                                    "   proper path found" );
-        is( $obj->version, $ver,    "   proper version found" );        
-    }
 
     ### test for things that look like real modules, but aren't ###
     {   local $CPANPLUS::Error::MSG_FH    = output_handle() if $Trap_Output;
         local $CPANPLUS::Error::ERROR_FH  = output_handle() if $Trap_Output;
         
-        my $none = $cb->parse_module( module => 'Foo::Bar'.$$ );
-        ok( !IS_MODOBJ->(mod => $none),     "Non-existant module detected" );
-        ok( !IS_FAKE_MODOBJ->(mod => $none),"Non-existant module detected" );
+        my @map = (
+            [  $Name . $$ => [
+                [qr/does not contain an author/,"Missing author part detected"],
+                [qr/Cannot find .+? in the module tree/,"Unable to find module"]
+            ] ],
+            [ {}, => [
+                [ qr/module string from reference/,"Unable to parse ref"] 
+            ] ],
+        );
+
+        for my $entry ( @map ) {
+            my($mod,$aref) = @$entry;
+            
+            my $none = $cb->parse_module( module => $mod );
+            ok( !IS_MODOBJ->(mod => $none),     
+                                "Non-existant module detected" );
+            ok( !IS_FAKE_MODOBJ->(mod => $none),
+                                "Non-existant fake module detected" );
         
-        my $warning = CPANPLUS::Error->stack_as_string;
-        like( $warning, qr/does not contain an author part/,
-                                        "   Missing author part detected" );
-        like( $warning, qr/Cannot find .+? in the module tree/,
-                                        "   Unable to find module" );
+            my $str = CPANPLUS::Error->stack_as_string;
+            for my $pair (@$aref) {
+                my($re,$diag) = @$pair;
+                like( $str, $re,"   $diag" );
+            }
+        }    
     }
     
     ### test parsing of arbitrary URI
@@ -183,9 +189,14 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
     ok( $cb->reload_indices( update_source => 0 ),  "Rebuilding trees" );                              
     my $age = -M $file;
     
+    ### make sure we are 'newer' on faster machines with a sleep..
+    ### apparently Win32's FAT isn't granual enough on intervals
+    ### < 2 seconds, so it may give the same answer before and after
+    ### the sleep, causing the test to fail. so sleep atleast 2 seconds.
+    sleep 2;
     ok( $cb->reload_indices( update_source => 1 ),  
                                     "Rebuilding and refetching trees" );
-    cmp_ok( $age, '>', -M $file,    "    Source file updated" );                                      
+    cmp_ok( $age, '>', -M $file,    "    Source file '$file' updated" );                                      
 }
 
 ### flush tests ###
@@ -196,7 +207,7 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
 }
 
 ### installed tests ###
-{
+{   
     ok( scalar $cb->installed,    "Found list of installed modules" );
 }    
                 
@@ -223,9 +234,9 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
                         dirname($mod->status->fetch),
                         CHECKSUMS );
         ok( -e $mod->status->fetch, "   Module '$name' fetched" );
-        ok( -s _,                   "   Module '$name' has size" );
+        ok( -s _,                   "       Module '$name' has size" );
         ok( -e $cksum,              "   Checksum fetched for '$name'" );
-        ok( -s _,                   "   Checksum for '$name' has size" );
+        ok( -s _,                   "       Checksum for '$name' has size" );
     }      
 
     $conf->set_conf( md5 => $old_md5 );

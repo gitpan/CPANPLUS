@@ -100,9 +100,13 @@ my $Conf = {
         ### and not for module::build
         #'perl'      => '',
         'shell'     => ( $^O eq 'MSWin32' ? $ENV{COMSPEC} : $ENV{SHELL} ),
-        'sudo'      => ( $>    # check for all install dirs!
+        'sudo'      => ( $> # check for all install dirs!
+                            # installsiteman3dir is a 5.8'ism.. don't check
+                            # it on 5.6.x...
                             ? ( -w $Config{'installsitelib'} &&
-                                -w $Config{'installsiteman3dir'} &&
+                                ( defined $Config{'installsiteman3dir'} &&
+                                       -w $Config{'installsiteman3dir'}
+                                ) &&
                                 -w $Config{'installsitebin'} 
                                     ? undef
                                     : can_run('sudo') 
@@ -131,11 +135,58 @@ my $Conf = {
                                      );
                                     -e $f ? $f : undef
                                 } ||
-                                
+                                ### you installed CPANPLUS in a custom prefix,
+                                ### so go paralel to /that/. PREFIX=/tmp/cp
+                                ### would put cpanp-run-perl in /tmp/cp/bin and
+                                ### CPANPLUS.pm in
+                                ### /tmp/cp/lib/perl5/site_perl/5.8.8
+                                do { my $f = File::Spec->rel2abs(
+                                        File::Spec->catdir( 
+                                            dirname( $INC{'CPANPLUS.pm'} ),
+                                            '..', '..', '..', '..', # 4x updir
+                                            'bin',                  # bin dir
+                                            'cpanp-run-perl' 
+                                        )
+                                     );
+                                    -e $f ? $f : undef
+                                } ||
+
                                 ### in your path -- take this one last, the
                                 ### previous two assume extracted tarballs
                                 ### or user installs
-                                can_run('cpanp-run-perl'),
+                                ### note that we don't use 'can_run' as it's
+                                ### not an executable, just a wrapper...
+                                do { my $rv;
+                                     for (split(/\Q$Config::Config{path_sep}\E/, 
+                                                $ENV{PATH}), File::Spec->curdir
+                                     ) {           
+                                        my $path = File::Spec->catfile(
+                                                    $_, 'cpanp-run-perl' );
+                                        if( -e $path ) {
+                                            $rv = $path;
+                                            last;
+                                        }     
+                                    }
+                                    
+                                    $rv || undef;
+                                } ||       
+
+                                ### XXX try to be a no-op instead then.. 
+                                ### cross your fingers...
+                                ### pass '-P' to perl: "run program through C 
+                                ### preprocessor before compilation"
+                                do { 
+                                    error(loc(
+                                        "Could not find the '%1' in your path".
+                                        "--this may be a problem.\n".
+                                        "Please locate this program and set ".
+                                        "your '%1' config entry to its path.\n".                
+                                        "Attempting to provide a reasonable ".
+                                        "fallback...",
+                                        'cpanp-run-perl', 'perlwrapper'
+                                     ));                                        
+                                    '-P'
+                                },   
                         ),         
     },
 

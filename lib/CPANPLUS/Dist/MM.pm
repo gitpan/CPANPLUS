@@ -144,8 +144,11 @@ sub format_available {
     
     for my $pgm ( qw[make perlwrapper] ) {
         unless( $conf->get_program( $pgm ) ) { 
-            error(loc("You do not have '%1'in your path -- '%2' not available",
-                        $pgm, __PACKAGE__ )); 
+            error(loc(
+                "You do not have '%1' in your path -- '%2' not available\n" .
+                "Please check your config entry for '%1'", 
+                $pgm, __PACKAGE__ , $pgm
+            )); 
             return;
         }
     }
@@ -279,7 +282,13 @@ sub prepare {
             ### make sure it's a string, so that mmflags that have more than
             ### one key value pair are passed as is, rather than as:
             ### perl Makefile.PL "key=val key=>val"
-            my $captured; my $makefile_pl = MAKEFILE_PL->();
+            my $captured; 
+            
+            #### XXX this needs to be the absolute path to the Makefile.PL
+            ### since cpanp-run-perl uses 'do' to execute the file, and do()
+            ### checks your @INC.. so, if there's _another_ makefile.pl in
+            ### your @INC, it will execute that one...
+            my $makefile_pl = MAKEFILE_PL->( $dir );
             
             ### setting autoflush to true fixes issue from rt #8047
             ### XXX this means that we need to keep the path to CPANPLUS
@@ -671,8 +680,8 @@ sub install {
     
     
     unless( $dist->status->created ) {
-        error( loc( "You have not successfully created a '%2' distribution yet " .
-                    "-- cannot install yet", __PACKAGE__ ) );
+        error(loc("You have not successfully created a '%2' distribution yet " .
+                  "-- cannot install yet", __PACKAGE__ ));
         return;
     }
  
@@ -725,7 +734,8 @@ sub install {
     my $cmd     = [$make, 'install', $makeflags];
     my $sudo    = $conf->get_program('sudo');
     unshift @$cmd, $sudo if $sudo and $>;
-    
+
+    $cb->flush('lib');
     unless(scalar run(  command => $cmd,
                         verbose => $verbose,
                         buffer  => \$captured,

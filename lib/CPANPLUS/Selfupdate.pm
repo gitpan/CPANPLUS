@@ -21,14 +21,14 @@ CPANPLUS::Selfupdate
     @feats  = $su->list_features;
     @feats  = $su->list_enabled_features;
     
-    @mods   = $su->modules_for_feature( $_ ) for @feats;
+    @mods   = map { $su->modules_for_feature( $_ ) } @feats;
     @mods   = $su->list_core_dependencies;
     @mods   = $su->list_core_modules;
     
     for ( @mods ) {
         print $_->name " should be version " . $_->version_required;
         print "Installed version is not uptodate!" 
-            unless $_->is_version_sufficient;
+            unless $_->is_installed_version_sufficient;
     }
     
     $ok     = $su->selfupdate( update => 'all', latest => 0 );
@@ -42,20 +42,23 @@ CPANPLUS::Selfupdate
         dependencies => {
             'File::Fetch'               => '0.08', # win32 ftp support
             'File::Spec'                => '0.82',
-            'IPC::Cmd'                  => '0.34', # win32/ipc::open3 support
+            'IPC::Cmd'                  => '0.36', # 5.6.2 compat: 2-arg open
             'Locale::Maketext::Simple'  => '0.01',
             'Log::Message'              => '0.01',
             'Module::Load'              => '0.10',
-            'Module::Load::Conditional' => '0.10', # %INC lookup support
+            'Module::Load::Conditional' => '0.16', # Better parsing: #23995
+            'version'                   => '0.70', # needed for M::L::C
+                                                   # addresses #24630 and 
+                                                   # #24675
             'Params::Check'             => '0.22',
             'Package::Constants'        => '0.01',
             'Term::UI'                  => '0.05',
             'Test::Harness'             => '2.62', # due to bug #19505
                                                    # only 2.58 and 2.60 are bad
             'Test::More'                => '0.47', # to run our tests
-            'Archive::Extract'          => '0.11', # bzip2 support
+            'Archive::Extract'          => '0.16', # ./Dir bug fix
             'Archive::Tar'              => '1.23',
-            'IO::Zlib'                  => '1.04',
+            'IO::Zlib'                  => '1.04', # needed for Archive::Tar
             'Object::Accessor'          => '0.32', # overloaded stringification
             'Module::CoreList'          => '2.09',
             'Module::Pluggable'         => '2.4',
@@ -63,11 +66,15 @@ CPANPLUS::Selfupdate
         },
     
         features => {
+            # config_key_name => [
+            #     sub { } to list module key/value pairs
+            #     sub { } to check if feature is enabled
+            # ]
             prefer_makefile => [
                 sub {
                     my $cb = shift;
                     $cb->configure_object->get_conf('prefer_makefile') 
-                        ? { 'CPANPLUS::Dist::MM'    => '0.0'   }
+                        ? { }
                         : { 'CPANPLUS::Dist::Build' => '0.04'  };
                 },
                 sub { return 1 },   # always enabled
@@ -133,7 +140,7 @@ CPANPLUS::Selfupdate
                 { 'Storable' => '0.0' },         
                 sub { 
                     my $cb = shift;
-                    return $cb->configure_object->get_conf('cpantest');
+                    return $cb->configure_object->get_conf('storable');
                 },
             ],
         },
@@ -357,7 +364,7 @@ sub _hashref_to_module {
 C<CPANPLUS::Selfupdate::Module> extends C<CPANPLUS::Module> objects
 by providing accessors to aid in selfupdating CPANPLUS.
 
-These objects are returned by all methods on C<CPANPLUS::Selfupdate>
+These objects are returned by all methods of C<CPANPLUS::Selfupdate>
 that return module objects.
 
 =cut

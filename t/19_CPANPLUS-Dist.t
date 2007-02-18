@@ -1,22 +1,7 @@
+### make sure we can find our conf.pl file
 BEGIN { 
-    if( $ENV{PERL_CORE} ) {
-        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
-        unshift @INC, '../../../lib';
-    
-        ### fix perl location too
-        $^X = '../../../t/' . $^X;
-    }
-} 
-
-#!/usr/bin/perl -w
-
-BEGIN { chdir 't' if -d 't' };
-
-### this is to make devel::cover happy ###
-BEGIN {
-    use File::Spec;
-    require lib;
-    for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    use FindBin; 
+    require "$FindBin::Bin/inc/conf.pl";
 }
 
 ### dummy class for testing dist api ###
@@ -36,8 +21,9 @@ BEGIN {
     require CPANPLUS::Dist;
     CPANPLUS::Dist->_add_dist_types( __PACKAGE__ );
 
-    sub init                { $_[0]->status->mk_accessors( qw[prepared created installed
-                                     _prepare_args _install_args _create_args]);
+    sub init                { $_[0]->status->mk_accessors( 
+                                qw[prepared created installed
+                                   _prepare_args _install_args _create_args]);
                               return $Init };
     sub format_available    { return $Available }
     sub prepare             { return shift->status->prepared($Prepare) }
@@ -58,8 +44,6 @@ use File::Basename ();
 use File::Spec ();
 use Module::Load::Conditional qw[check_install];
 
-BEGIN { require 'conf.pl'; }
-
 my $conf = gimme_conf();
 my $cb   = CPANPLUS::Backend->new( $conf );
 
@@ -69,10 +53,11 @@ local $CPANPLUS::Error::MSG_FH   = output_handle() unless @ARGV;
 
 ### obsolete
 #my $Format = '_test';
-my $Module = 'CPANPLUS::Dist::_Test';
-
+my $Module      = 'CPANPLUS::Dist::_Test';
+my $ModName     = TEST_CONF_MODULE; 
+my $ModPrereq   = TEST_CONF_INST_MODULE;
 ### XXX this version doesn't exist, but we don't check for it either ###
-my $Prereq = { 'Foo::Bar' => '1000' };
+my $Prereq      = { $ModPrereq => '1000' };
 
 ### since it's in this file, not in it's own module file,
 ### make M::L::C think it already was loaded
@@ -85,7 +70,7 @@ use_ok('CPANPLUS::Dist');
 ok( $cb->reload_indices( update_source => 0 ),
                                 "Rebuilding trees" );
 
-my $Mod  = $cb->module_tree('Text::Bastardize');
+my $Mod  = $cb->module_tree( $ModName );
 ok( $Mod,                       "Got module object" );
 
 
@@ -161,12 +146,11 @@ ok( $Mod,                       "Got module object" );
 
 ### test _resolve prereqs, in a somewhat simulated set of circumstances
 {   my $old_prereq = $conf->get_conf('prereqs');
-    my $Mod_prereq = 'Foo::Bar';
-
+    
     my $map = {
         0 => {
             'Previous install failed' => [
-                sub { $cb->module_tree($Mod_prereq)->status->installed(0);
+                sub { $cb->module_tree($ModPrereq)->status->installed(0);
                                                                 'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/failed to install before in this session/s,
@@ -179,7 +163,7 @@ ok( $Mod,                       "Got module object" );
                       qr/Unable to create a new distribution object/s,
                             "   Dist creation failed recorded ok" ) },
                 sub { like( CPANPLUS::Error->stack_as_string,
-                      qr/Failed to install '$Mod_prereq' as prerequisite/s,
+                      qr/Failed to install '$ModPrereq' as prerequisite/s,
                             "   Dist creation failed recorded ok" ) },
             ],
 
@@ -189,22 +173,22 @@ ok( $Mod,                       "Got module object" );
                       qr/Unable to create a new distribution object/s,
                             "   Dist creation failed recorded ok" ) },
                 sub { like( CPANPLUS::Error->stack_as_string,
-                      qr/Failed to install '$Mod_prereq' as prerequisite/s,
+                      qr/Failed to install '$ModPrereq' as prerequisite/s,
                             "   Dist creation failed recorded ok" ) },
             ],
 
             "Set $Module->install to false" => [
                 sub { $CPANPLUS::Dist::_Test::Install = 0;      'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
-                      qr/Failed to install '$Mod_prereq' as/s,
+                      qr/Failed to install '$ModPrereq' as/s,
                             "   Dist installation failed recorded ok" ) },
             ],
 
             "Set dependency to be perl-core" => [
-                sub { $cb->module_tree( $Mod_prereq )->package(
+                sub { $cb->module_tree( $ModPrereq )->package(
                                         'perl-5.8.1.tar.gz' );  'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
-                      qr/Prerequisite '$Mod_prereq' is perl-core/s,
+                      qr/Prerequisite '$ModPrereq' is perl-core/s,
                             "   Dist installation failed recorded ok" ) },
             ],
             'Simple ignore'     => [
@@ -293,14 +277,14 @@ ok( $Mod,                       "Got module object" );
                 sub { ok( !$_[0]->status->installed,
                             "   Module status says not installed" ) },
                 sub { like( CPANPLUS::Error->stack_as_string,
-                      qr/Will not install prerequisite '$Mod_prereq' -- Note/,
+                      qr/Will not install prerequisite '$ModPrereq' -- Note/,
                             "   Install skipped, recorded ok" ) },
                 ### set the conf back ###
                 sub { $conf->set_conf(prereqs => PREREQ_INSTALL); },
             ],
 
             "Set recursive dependency" => [
-                sub { $cb->_status->pending_prereqs({ $Mod_prereq => 1 });
+                sub { $cb->_status->pending_prereqs({ $ModPrereq => 1 });
                                                                 'install' },
                 sub { like( CPANPLUS::Error->stack_as_string,
                       qr/Recursive dependency detected/,
@@ -332,7 +316,7 @@ ok( $Mod,                       "Got module object" );
             ### get a new dist from Text::Bastardize ###
             my $dist = CPANPLUS::Dist->new(
                         format => $Module,
-                        module => $cb->module_tree('Text::Bastardize'),
+                        module => $cb->module_tree( $ModName ),
                     );
 
             ### first sub returns target ###
@@ -348,7 +332,7 @@ ok( $Mod,                       "Got module object" );
             is( !!$flag, !!$bool,   $txt );
 
             ### any extra tests ###
-            $_->($cb->module_tree($Mod_prereq)) for @$aref;
+            $_->($cb->module_tree($ModPrereq)) for @$aref;
 
         }
     }

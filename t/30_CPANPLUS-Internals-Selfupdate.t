@@ -1,21 +1,7 @@
-### running under perl core?
+### make sure we can find our conf.pl file
 BEGIN { 
-    if( $ENV{PERL_CORE} ) {
-        chdir '../lib/CPANPLUS' if -d '../lib/CPANPLUS';
-        unshift @INC, '../../../lib';
-    
-        ### fix perl location too
-        $^X = '../../../t/' . $^X;
-    }
-} 
-
-BEGIN { chdir 't' if -d 't' };
-
-### this is to make devel::cover happy ###
-BEGIN { 
-    use File::Spec;
-    require lib;
-    for (qw[../lib inc]) { my $l = 'lib'; $l->import(File::Spec->rel2abs($_)) }
+    use FindBin; 
+    require "$FindBin::Bin/inc/conf.pl";
 }
 
 use strict;
@@ -23,8 +9,6 @@ use strict;
 use CPANPLUS::Backend;
 use Test::More 'no_plan';
 use Data::Dumper;
-
-BEGIN { require 'conf.pl'; }
 
 my $conf = gimme_conf();
 $conf->set_conf( verbose => 0 );
@@ -34,7 +18,7 @@ my $ModClass    = "CPANPLUS::Selfupdate::Module";
 my $CB          = CPANPLUS::Backend->new( $conf );
 my $Acc         = 'selfupdate_object';
 my $Conf        = $Class->_get_config;
-my $Dep         = 'B::Deparse';   # has to be in our package file && core!
+my $Dep         = TEST_CONF_PREREQ;   # has to be in our package file && core!
 my $Feat        = 'some_feature';
 my $Prereq      = { $Dep => 0 };
 
@@ -46,7 +30,7 @@ my $Prereq      = { $Dep => 0 };
 
     my $su = $CB->$Acc;
     ok( $su,                    "Selfupdate object retrieved" );
-    isa_ok( $su,                "CPANPLUS::Selfupdate" );
+    isa_ok( $su,                $Class );
 }
 
 ### test the feature list

@@ -84,6 +84,7 @@ user configurations are to be loaded or not. Defaults to C<true>.
         my $class   = shift;
         my %hash    = @_;
         
+        ### XXX pass on options to ->init() like rescan?
         my ($load);
         my $tmpl    = {
             load_configs    => { default => 1, store => \$load },
@@ -105,12 +106,18 @@ user configurations are to be loaded or not. Defaults to C<true>.
     }
 }
 
-=head2 $bool = $Configure->init
+=head2 $bool = $Configure->init( [rescan => BOOL])
 
 Initialize the configure with other config files than just
 the default 'CPANPLUS::Config'.
 
 Called from C<new()> to load user/system configurations
+
+If the C<rescan> option is provided, your disk will be
+examined again to see if there are new config files that
+could be read. Defaults to C<false>.
+
+Returns true on success, false on failure.
 
 =cut
 
@@ -120,16 +127,39 @@ Called from C<new()> to load user/system configurations
 ### reason. Make sure we only do the M::P call once though.
 ### we use $loaded to mark it
 {   my $loaded;
-
+    my $warned;
     sub init {
         my $self    = shift;
         my $obj     = $self->conf;
+        my %hash    = @_;
+        
+        my ($rescan);
+        my $tmpl    = {
+            rescan  => { default => 0, store => \$rescan },
+        };
+        
+        check( $tmpl, \%hash ) or (
+            warn Params::Check->last_error, return
+        );        
+        
+        ### warn if we find an old style config specified
+        ### via environment variables
+        {   my $env = ENV_CPANPLUS_CONFIG;
+            if( $ENV{$env} and not $warned ) {
+                $warned++;
+                error(loc("Specifying a config file in your environment " .
+                          "using %1 is obsolete.\nPlease follow the ".
+                          "directions outlined in %2 or use the '%3' command\n".
+                          "in the default shell to use custom config files.",
+                          $env, "CPANPLUS::Configure->save", 's save'));
+            }
+        }            
         
         ### make sure that the homedir is included now
         local @INC = ( CONFIG_USER_LIB_DIR->(), @INC );
         
         ### only set it up once
-        unless( $loaded++ ) {   
+        if( !$loaded++ or $rescan ) {   
             ### find plugins & extra configs
             ### check $home/.cpanplus/lib as well
             require Module::Pluggable;
@@ -153,14 +183,20 @@ Called from C<new()> to load user/system configurations
         push @confs, sort keys %confs;                    
     
         for my $plugin ( @confs ) {
-            msg(loc("Found plugin '%1'", $plugin),0);
+            msg(loc("Found config '%1'", $plugin),0);
             
             ### if we already did this the /last/ time around dont 
             ### run the setup agian.
-            next if Module::Loaded::is_loaded( $plugin );
-            msg(loc("Loading plugin '%1'", $plugin),0);
+            if( my $loc = Module::Loaded::is_loaded( $plugin ) ) {
+                msg(loc("  Already loaded '%1' (%2)", $plugin, $loc), 0);
+                next;
+            } else {
+                msg(loc("  Loading config '%1'", $plugin),0);
             
-            eval { load $plugin };
+                eval { load $plugin };
+                msg(loc("  Loaded '%1' (%2)", 
+                        $plugin, Module::Loaded::is_loaded( $plugin ) ), 0);
+            }                   
             
             if( $@ ) {
                 error(loc("Could not load '%1': %2", $plugin, $@));
@@ -200,7 +236,7 @@ sub can_save {
 
 =pod
 
-=head2 save( [$package_name] )
+=head2 $file = $conf->save( [$package_name] )
 
 Saves the configuration to the package name you provided.
 If this package is not C<CPANPLUS::Config::System>, it will
@@ -210,7 +246,8 @@ be attempted to be saved in the system wide directory.
 If no argument is provided, it will default to your personal
 config.
 
-Returns true if the file was saved, false otherwise.
+Returns the full path to the file if the config was saved, 
+false otherwise.
 
 =cut
 
@@ -344,7 +381,7 @@ _END_OF_CONFIG_
     $fh->print($msg);
     $fh->close;
 
-    return 1;
+    return $file;
 }
 
 =pod

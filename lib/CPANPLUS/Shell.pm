@@ -100,7 +100,7 @@ use strict;
 use vars qw($AUTOLOAD $TMPL);
 
 use FileHandle;
-
+use CPANPLUS::Error;
 use Params::Check               qw[check];
 use Module::Load::Conditional   qw[can_load];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
@@ -115,6 +115,7 @@ $TMPL = {
     backend         => { default => '' },
     term            => { default => '' },
     format          => { default => '' },
+    dist_format     => { default => '' },
     remote          => { default => undef },
     noninteractive  => { default => '' },
     cache           => { default => [ ] },

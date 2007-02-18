@@ -72,6 +72,7 @@ my $tmpl = {
     _status     => { no_override => 1 },                # stores status object
     author      => { default => '', required => 1,
                      allow => IS_AUTHOBJ },             # module author
+    mtime       => { default => '' },
 };
 
 ### autogenerate accessors ###
@@ -93,7 +94,8 @@ Returns a list of all accessor methods to the object
 
 =cut
 
-sub accessors { return keys %$tmpl };
+### *name is an alias, include it explicitly
+sub accessors { return ('name', keys %$tmpl) };
 
 =head1 ACCESSORS
 
@@ -359,21 +361,28 @@ L<Module::ThirdParty> for more details.
 
 =cut
 
-{
-    my $regex = qr/^(.+)-(.+)\.((?:tar\.gz|zip|tgz))/i;
-
-    ### fetches the test reports for a certain module ###
-    sub package_name {
-        return $1 if shift->package() =~ $regex;
-    }
-
-    sub package_version {
-        return $2 if shift->package() =~ $regex;
-    }
-
-    sub package_extension {
-        return $3 if shift->package() =~ $regex;
-    }
+{   ### fetches the test reports for a certain module ###
+    my %map = (
+        name        => 0,
+        version     => 1,
+        extension   => 2,
+    );        
+    
+    while ( my($type, $index) = each %map ) {
+        my $name    = 'package_' . $type;
+        
+        no strict 'refs';
+        *$name = sub {
+            my $self = shift;
+            my @res  = $self->parent->_split_package_string(     
+                            package => $self->package 
+                       );
+     
+            ### return the corresponding index from the result
+            return $res[$index] if @res;
+            return;
+        };
+    }        
 
     sub package_is_perl_core {
         my $self = shift;
@@ -1104,9 +1113,11 @@ this:
     Author                  Jarkko Hietaniemi (jhi@iki.fi)
     Description             High resolution time, sleep, and alarm
     Development Stage       Released
+    Installed File          /usr/local/perl/lib/Time/Hires.pm
     Interface Style         plain Functions, no references used
     Language Used           C and perl, a C compiler will be needed
     Package                 Time-HiRes-1.65.tar.gz
+    Public License          Unknown
     Support Level           Developer
     Version Installed       1.52
     Version on CPAN         1.65
@@ -1131,6 +1142,7 @@ sub details {
     ### if so, add version have and version on cpan
     $res->{'Version Installed'} = $self->installed_version
                                     if $self->installed_version;
+    $res->{'Installed File'} = $self->installed_file if $self->installed_file;
 
     my $i = 0;
     for my $item( split '', $self->dslip ) {
