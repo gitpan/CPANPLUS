@@ -274,6 +274,8 @@ for my $name (@modules) {
                         if $timeout;
                         
                     alarm $timeout || 0;
+
+                    my $dist_opts = $opts->{'dist-opts'} || {};
                     
                     my $dist_opts = $opts->{'dist-opts'} || {};
 
