@@ -21,7 +21,7 @@ my $conf    = $cb->configure_object;
 
 my %formats = map { $_ => $_ } CPANPLUS::Dist->dist_types;
 
-my $opts = {};
+my $opts    = {};
 GetOptions( $opts,
             'format=s',     'archive',
             'verbose!',     'force!',
@@ -32,10 +32,11 @@ GetOptions( $opts,
             'ignore=s@',    'ignorelist=s@',
             'defaults',     'modulelist=s@',
             'logfile=s',    'timeout=s',
+            'dist-opts=s%',
             'default-banlist!',
             'default-ignorelist!',
         );
-
+        
 die usage() if exists $opts->{'help'};
 
 ### parse options
@@ -60,29 +61,17 @@ my $format;
     die loc("Invalid format: " . ($format || "[NONE]") ) . usage() 
         unless $formats{$format};
 
-    
-    my $verbose     = exists $opts->{'verbose'}    
-                            ? $opts->{'verbose'} 
-                            : $conf->get_conf('verbose');
-    $conf->set_conf( verbose    => $verbose );
-
-                        
-    my $force       = exists $opts->{'force'}      
-                            ? $opts->{'force'}   
-                            : $conf->get_conf('force');
-    $conf->set_conf( force      => $force );                            
-
-                            
-    my $skiptest    = exists $opts->{'skiptest'}   
-                            ? $opts->{'skiptest'} 
-                            : $conf->get_conf('skiptest');
-    $conf->set_conf( skiptest   => $skiptest );                            
-
-
-    my $makefile    = exists $opts->{'makefile'}   
-                            ? $opts->{'makefile'} 
-                            : $conf->get_conf('prefer_makefile');
-    $conf->set_conf( prefer_makefile => $makefile );
+    my %map = ( verbose     => 'verbose',
+                force       => 'force',
+                skiptest    => 'skiptest',
+                makefile    => 'prefer_makefile'
+            );
+            
+    ### set config options from arguments        
+    while (my($key,$val) = each %map) {
+        my $bool = exists $opts->{$key} ? $opts->{$key} : $conf->get_conf($val);
+        $conf->set_conf( $val => $bool );
+    }    
 }
 
 my @modules = @ARGV;
@@ -286,13 +275,21 @@ for my $name (@modules) {
                         
                     alarm $timeout || 0;
                     
-                    $obj->install(   
+                    my $dist_opts = $opts->{'dist-opts'} || {};
+
+                    my $rv = $obj->install(   
                             prereq_target   => 'create',
                             target          => 'create',
                             keep_source     => $keep,
-                            prereq_build    => $prereqbuild );
-    
-                    alarm 0;                            
+                            prereq_build    => $prereqbuild,
+
+                            ### any passed arbitrary options
+                            %$dist_opts,
+                    );
+                    
+                    alarm 0; 
+
+                    $rv;
                 }; 
                 
     ### set here again, in case the install dies
@@ -317,10 +314,10 @@ for my $name (@modules) {
     }        
 
     ### we didn't get a dist object back?
-    ($dist and $obj->status->dist) or (
-        warn loc("Unable to create '%1' dist of '%2'", $format, $obj->module),
+    unless ($dist and $obj->status->dist) {
+        warn loc("Unable to create '%1' dist of '%2'", $format, $obj->module);
         next
-    );
+    }
 
     print "Created '$format' distribution for ", $obj->module,
                 " to:\n\t", $obj->status->dist->status->dist, "\n";
@@ -439,6 +436,8 @@ Options:
                   hang or happen to be interactive despite being told not 
                   to be. Defaults to 300 seconds. To turn off, you can 
                   set it to 0.
+    --dist-opts   Arbitrary options passed along to the chosen installer
+                  format's prepare()/create() routine.
 
     ### builtin lists
     --default-banlist    Use our builtin banlist. Works just like --ban
@@ -472,7 +471,9 @@ Examples:
     cpan2dist --ignorelist /tmp/modules.ignore --banlist /tmp/modules.ban 
       --modulelist /tmp/modules.list --buildprereq --flushcache 
       --makefile --defaults
-      
+    
+    ### pass arbitrary options to the format's prepare()/create() routine
+    cpan2dist --dist-opts deb_version=3 --dist-opts prefix=corp
 
 =cut
     

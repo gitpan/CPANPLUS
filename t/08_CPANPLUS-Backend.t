@@ -37,7 +37,7 @@ my $mod  = $cb->module_tree($Name);
 
 ### XXX SOURCEFILES FIX
 {   my @mods = $cb->module_tree($Name,$Name);
-    my $none = $cb->module_tree('fnurk');
+    my $none = $cb->module_tree( TEST_CONF_INVALID_MODULE );
     
     ok( IS_MODOBJ->(mod => $mod),           "Module object found" );
     is( scalar(@mods), 2,                   "   Module list found" );
@@ -96,16 +96,19 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
         'FROO/Flub-Flob-v1.1.0.tbz'
                 => [ 'FROO',                'Flub-Flob',        'v1.1.0' ],
         'FROO/Flub-Flob-1.1_2.tbz'
-                => [ 'FROO',                'Flub-Flob',        '1.1_2' ],                        
+                => [ 'FROO',                'Flub-Flob',        '1.1_2' ],   
+        'LDS/CGI.pm-3.27.tar.gz'
+                => [ 'LDS',                 'CGI',              '3.27' ],
     );       
 
     while ( my($guess, $attr) = splice @map, 0, 2 ) {
         my( $author, $pkg, $version ) = @$attr;
-        
+
         ok( $guess,             "Attempting to parse $guess" );
 
         my $obj = $cb->parse_module( module => $guess );
         
+        ok( $obj,               "   Result returned" );
         ok( IS_MODOBJ->( mod => $obj ), 
                                 "   parse_module success by '$guess'" );     
         
@@ -243,9 +246,19 @@ ok( IS_CONFOBJ->(conf => $conf_obj),    "Configure object found" );
 }    
 
 ### check ENV variable
-{   my $name = 'PERL5_CPANPLUS_IS_RUNNING';
-    ok( $ENV{$name},                "Env var '$name' set" );
-    is( $ENV{$name}, $$,            "   Set to current process id" );
+{   ### process id
+    {   my $name = 'PERL5_CPANPLUS_IS_RUNNING';
+        ok( $ENV{$name},            "Env var '$name' set" );
+        is( $ENV{$name}, $$,        "   Set to current process id" );
+    }
+
+    ### Version    
+    {   my $name = 'PERL5_CPANPLUS_IS_VERSION';
+        ok( $ENV{$name},            "Env var '$name' set" );
+        is( $ENV{$name}, $Class->VERSION,        
+                                    "   Set to current process version" );
+    }
+    
 }
 
 __END__    

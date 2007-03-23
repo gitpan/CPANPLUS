@@ -6,24 +6,15 @@ use CPANPLUS::Error;
 use File::Spec;
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
-BEGIN {
+require Exporter;
+use vars    qw[$VERSION @ISA @EXPORT];
 
-    require Exporter;
-    use vars    qw[$VERSION @ISA @EXPORT];
+use Package::Constants;
 
-    $VERSION    = 0.01;
-    @ISA        = qw[Exporter];
-    @EXPORT     = qw[
-                    CPAN_MAIL_ACCOUNT RELEVANT_TEST_RESULT GRADE_FAIL GRADE_NA
-                    GRADE_PASS GRADE_UNKNOWN NO_TESTS_DEFINED MAX_REPORT_SEND
-                    REPORT_MESSAGE_HEADER REPORT_MESSAGE_FAIL_HEADER
-                    TEST_FAIL_STAGE REPORT_MISSING_TESTS CPAN_TESTERS_EMAIL
-                    REPORT_MISSING_PREREQS MISSING_PREREQS_LIST 
-                    REPORT_MESSAGE_FOOTER MISSING_EXTLIBS_LIST
-                    PERL_VERSION_TOO_LOW REPORT_LOADED_PREREQS UNSUPPORTED_OS
-                    REPORT_TESTS_SKIPPED
-                ];
-}
+
+$VERSION    = 0.01;
+@ISA        = qw[Exporter];
+@EXPORT     = Package::Constants->list( __PACKAGE__ );
 
 ### for the version
 require CPANPLUS::Internals;
@@ -40,7 +31,7 @@ my %OS = (
     EBCDIC      => 'os390|os400|posix-bc|vmesa',
     HPUX        => 'hpux',
     Linux       => 'linux',
-    MSDOS       => 'dos',
+    MSDOS       => 'dos|os2|MSWin32|cygwin',
     'bin\\d*Mac'=> 'MacOS|darwin', # binMac, bin56Mac, bin58Mac...
     Mac         => 'MacOS|darwin',
     MacPerl     => 'MacOS',
@@ -149,6 +140,7 @@ use constant TEST_FAIL_STAGE
                                     ? lc $1 :
                                     'fetch';
                             };
+
 
 use constant MISSING_PREREQS_LIST
                             => sub {
@@ -305,10 +297,19 @@ managed to load:
                                 
 .
                                 $str .= join '', 
-                                        map { sprintf "\t%-30s %8s\n", $_->name,
-                                              $_->installed_version } 
-                                        grep { $_ } @prq;   # might be empty
-                                                            # entries in there
+                                        map { my $want = $prq->{$_->name};
+                                              
+                                              sprintf "\t%s %-30s %8s %8s\n", 
+                                              do { $_->is_uptodate( 
+                                                    version => $want
+                                                   ) ? ' ' : '!' 
+                                              },
+                                              $_->name,
+                                              $_->installed_version,
+                                              $want
+                                              
+                                        ### might be empty entries in there
+                                        } grep { defined $_ } @prq;   
                                 
                                 return $str;
                             };
