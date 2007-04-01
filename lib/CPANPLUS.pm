@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION = "0.77_07";     #have to hardcode or cpan.org gets unhappy
+    $VERSION = "0.78";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -228,25 +228,21 @@ perl bin.
 For frequently asked questions and answers, please consult the
 C<CPANPLUS::FAQ> manual.
 
+=head1 BUG REPORTS
+
+Please report bugs or other issues to E<lt>bug-cpanplus@rt.cpan.org<gt>.
+
 =head1 AUTHOR
 
-This module by
-Jos Boumans E<lt>kane@cpan.orgE<gt>.
+This module by Jos Boumans E<lt>kane@cpan.orgE<gt>.
 
 =head1 COPYRIGHT
 
-The CPAN++ interface (of which this module is a part of) is
-copyright (c) 2001-2006 Jos Boumans E<lt>kane@cpan.orgE<gt>.
-All rights reserved.
+The CPAN++ interface (of which this module is a part of) is copyright (c) 
+2001 - 2007, Jos Boumans E<lt>kane@cpan.orgE<gt>. All rights reserved.
 
-This library is free software;
-you may redistribute and/or modify it under the same
-terms as Perl itself.
-
-=head1 ACKNOWLEDGEMENTS
-
-Please see the F<AUTHORS> file in the CPANPLUS distribution
-for a list of Credits and Contributors.
+This library is free software; you may redistribute and/or modify it 
+under the same terms as Perl itself.
 
 =head1 SEE ALSO
 
@@ -256,13 +252,10 @@ L<CPANPLUS::Shell::Default>, L<CPANPLUS::FAQ>, L<CPANPLUS::Backend>, L<CPANPLUS:
 
 =over 4
 
-=item * General questions & suggestions:
-I<cpanplus-info@lists.sourceforge.net>
-
 =item * Bug reporting:
 I<bug-cpanplus@rt.cpan.org>
 
-=item * Development list:
+=item * Questions & suggestions:
 I<cpanplus-devel@lists.sourceforge.net>
 
 =back
