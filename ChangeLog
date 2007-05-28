@@ -1,3 +1,32 @@
+Changes for 0.79_03     Fri May 18 19:44:35 2007
+================================================
+* address: #27057: Dry runs and dep tree. Make it possible to view 
+  which modules will be updated for what reasons when running
+  'selfupdate'. 's selfupdate' in the shell now prints this 
+  dependency tree out and also offers a --dryrun option
+* address: #27174: No way to pass case-insensitive patterns to
+  ignorelist; All --ignore/--ban options for cpan2dist are now case 
+  insensitive
+* address: #26583: display of installed/required in report is
+  confusing; Add a header to the columns generated for clarity
+* tweak test conf to play nicer with perl core
+* show version number when testing/installing
+* add callback to allow to continue after a failed 'make test' 
+  or 'build test'
+* reapply core patch #31028 -- it got lost somehow
+  this fixes test setups under perl_core
+* add --set-config and --set-program to cpan2dist to overwrite
+  random config entries for this invocation only
+* document all the options in CPANPLUS::Config
+* make saving cpanp-boxed config Just Work and add a banner to 
+  cpanp-boxed to tell you how to
+* expand the help text for 's' with options where applicable
+* clarify * and .. hint in default shell
+* silence warning in config.pm when a path to an .exe is not defined
+* The test suite now adds the '/nologo' option when the user
+  has 'nmake.exe' configured as their 'make' program, to limit
+  the amount of noise on the terminal.
+
 Changes for 0.79_02     Tue May  8 13:14:12 2007
 ================================================
 * address #26914 : CPANPLUS depending on Crypt::OpenPGP even when gpg

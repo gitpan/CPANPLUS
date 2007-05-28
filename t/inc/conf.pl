@@ -113,6 +113,17 @@ sub gimme_conf {
     $conf->set_conf( dist_type  => '' );
     $conf->set_conf( signature  => 0 );
 
+    ### dmq tells us that we should run with /nologo
+    ### if using nmake, as it's very noise otherwise.
+    {   my $make = $conf->get_program('make');
+        if( $make and basename($make) =~ /^nmake/i and
+            $make !~ m|/nologo|
+        ) {
+            $make .= ' /nologo';
+            $conf->set_program( make => $make );
+        }
+    }
+    
     _clean_test_dir( [
         $conf->get_conf('base'),     
         TEST_CONF_MIRROR_DIR,
@@ -120,7 +131,7 @@ sub gimme_conf {
 #         TEST_INSTALL_DIR_BIN,
 #         TEST_INSTALL_DIR_MAN1, 
 #         TEST_INSTALL_DIR_MAN3,
-    ], 1 );
+    ], (  $ENV{PERL_CORE} ? 0 : 1 ) );
         
     return $conf;
 };
@@ -154,7 +165,7 @@ END {
     #         TEST_INSTALL_DIR_BIN,
     #         TEST_INSTALL_DIR_MAN1, 
     #         TEST_INSTALL_DIR_MAN3,
-        ], 1 );
+        ], 0 ); # DO NOT be verbose under perl core -- makes tests fail
     }
 }
 
@@ -168,6 +179,9 @@ sub _clean_test_dir {
 
     for my $dir ( @$dirs ) {
 
+        ### no point if it doesn't exist;
+        next unless -d $dir;
+
         my $dh;
         opendir $dh, $dir or die "Could not open basedir '$dir': $!";
         while( my $file = readdir $dh ) { 
@@ -177,7 +191,7 @@ sub _clean_test_dir {
             
             ### directory, rmtree it
             if( -d $path ) {
-                print "Deleting directory '$path'\n" if $verbose;
+                print "# Deleting directory '$path'\n" if $verbose;
                 eval { rmtree( $path ) };
                 warn "Could not delete '$path' while cleaning up '$dir'" if $@;
            
