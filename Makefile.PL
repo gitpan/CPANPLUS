@@ -93,8 +93,7 @@ If you wish to configure CPANPLUS to your environment, you can
 either do that from the interactive shell after installation:
 
     \$ cpanp
-    CPAN Terminal> s conf user      # per user config
-    CPAN Terminal> s conf system    # system wide config
+    CPAN Terminal> s reconfigure
     
 Or you can invoke this program as follows, to do it now:
 
@@ -119,21 +118,22 @@ We appologize for the inconvenience.
 }    
     
 ### mention our prereqs
+if ($] < 5.009005)
 {   print loc("
 ### PLEASE NOTE ###################################################
 
-Since CPANPLUS 0.050 has a few prerequisites that are not core
-perl (yet), they are bundled with the distribution for boot-
-strapping purposes.
+Since CPANPLUS has a few prerequisites that are not included
+in versions of perl prior to 5.9.5, they are bundled with the 
+distribution for boot-strapping purposes.
 
-You should install these prerequisites before continueing to
-install CPANPLUS. You can use the bootstrapped CPANPLUS to do
-this for you with the following commands:
+You should install these prerequisites before continuing to
+install CPANPLUS. You can do this from the build directory
+with the following commands:
 
-    %1
-    %2
+    \$ %1
+    \$ %2
 
-Or let your package manager take care of it.
+Or you may install them using your system's package manager.
 
 ###################################################################
     
