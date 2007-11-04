@@ -13,7 +13,7 @@ BEGIN {
                         $USE_IPC_RUN $USE_IPC_OPEN3 $WARN
                     ];
 
-    $VERSION        = '0.36';
+    $VERSION        = '0.40';
     $VERBOSE        = 0;
     $DEBUG          = 0;
     $WARN           = 1;
@@ -439,6 +439,8 @@ sub _open3_run {
 
     ### add an epxlicit break statement
     ### code courtesy of theorbtwo from #london.pm
+    my $stdout_done = 0;
+    my $stderr_done = 0;
     OUTER: while ( my @ready = $selector->can_read ) {
 
         for my $h ( @ready ) {
@@ -459,9 +461,12 @@ sub _open3_run {
             ### if we would print anyway, we'd provide bogus information
             $_out_handler->( "$buf" ) if $len && $h == $kidout;
             $_err_handler->( "$buf" ) if $len && $h == $kiderror;
-            
-            ### child process is done printing.
-            last OUTER if $h == $kidout and $len == 0
+
+            ### Wait till child process is done printing to both
+            ### stdout and stderr.
+            $stdout_done = 1 if $h == $kidout   and $len == 0;
+            $stderr_done = 1 if $h == $kiderror and $len == 0;
+            last OUTER if ($stdout_done && $stderr_done);
         }
     }
 
@@ -600,8 +605,10 @@ sub _system_run {
                 
             ### we should re-open this filehandle right now, not
             ### just dup it
+            ### Use 2-arg version of open, as 5.5.x doesn't support
+            ### 3-arg version =/
             if( $redir eq '>&' ) {
-                open( $fh, '>', File::Spec->devnull ) or (
+                open( $fh, '>' . File::Spec->devnull ) or (
                     Carp::carp(loc("Could not reopen '$name': %1", $!)),
                     return
                 );

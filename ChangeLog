@@ -1,3 +1,54 @@
+Changes for 0.83_08     Sat Nov  3 18:35:54 2007
+================================================
+* Apply adapted version of dmq's Win32 fixes for fetching
+  file:// URIs. This depends on File::Fetch 0.13_01 or greater.
+
+Changes for 0.83_07     Wed Oct 24 17:42:43 2007
+================================================
+* VMS patch from John M:
+  _safe_path must be called before catdir because catdir on 
+  VMS currently will not handle the extra dots in the directories.
+* Make sure we clean up tempdirs when writing custom index files.
+
+Changes for 0.83_06     Tue Oct 23 11:31:10 2007
+================================================
+More VMS fixes from John M:
+  * C::I::Utils->_safe_path should do nothing if it is given a path 
+    in VMS format already.
+  * In 15_CPANPLUS-Shell.t, two regex's needed to be case insensitive.
+  * In C::Dist::MM, do the _safe_path on the $dir path, not the path with
+    a file. The _safe_path must be done before the catfile() builds the path.
+  * In C::Shell::Default::Plugins::CustomSource, try the hash lookup with a
+    lower case key on VMS if the exact case key failed.  
+
+Changes for 0.83_05     Wed Oct 17 15:21:01 2007
+================================================
+* Address #29904: make test should not use sudo. Don't try to install if
+  the configuration thinks sudo is needed -- that's no guarantee it will work
+* More VMS fixes from John M:
+  * Make sure file look ups are done case insensitively for custom sources
+  * Make ->module_tree work case insensitive on VMS by calling ->search 
+    under the hood
+  * Revert back to old behaviour in ->_all_installed now that ->module_tree 
+    is fixed for vms
+* Depend on version 0.73, for ~0 bugfixes
+* Don't depend on File::Fetch for test reporting -- it's already part of 
+  the core cpanplus chain
+* Update bundled modules
+
+Changes for 0.83_04     Mon Oct 15 14:18:40 2007
+================================================
+* Set ENV COLUMNS & LINES to make sure Term::ReadKey can figure 
+  out dimensions and stop it from dying in the test suite.
+* More VMS fixes from John Malmberg
+
+Changes for 0.83_03     Mon Oct 15 11:38:39 2007
+================================================
+* Make $mod->dslip() query other modules in the same package if there's no
+  dslip entry for this particular module. 
+* Add an --install option to cpan2dist
+* More VMS fixes from John Malmberg
+
 Changes for 0.83_02     Tue Oct  9 13:46:48 2007
 ================================================
 * Add a /cs plugin to CPANPLUS::Shell::Default allowing you to add custom
@@ -64,7 +115,7 @@ Changes for 0.83_02     Tue Oct  9 13:46:48 2007
 * Be case tolerant -- especially VMS seems to suffer from this. In 
   the end, almost all FS, except some UNIX ones are case tolerant,
   so just use a qr//i
-* ApplyChange 31776 by craigb@craigb-brianor on 2007/08/31 22:42:43
+* Apply Change 31776 by craigb@craigb-brianor on 2007/08/31 22:42:43
   catdir was used where catfile was meant in C::I::Extract
 
 Changes for 0.82        Wed Aug 15 15:36:57 2007
