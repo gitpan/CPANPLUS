@@ -557,7 +557,7 @@ sub parse_module {
         $author = shift @parts || '';
     }
     
-    my($pkg, $version, $ext) = 
+    my($pkg, $version, $ext, $full) = 
         $self->_split_package_string( package => $dist );
     
     ### translate a distribution into a module name ###
@@ -599,8 +599,7 @@ sub parse_module {
                 my $modobj = CPANPLUS::Module::Fake->new(
                     module  => $maybe->module,
                     version => $version,
-                    package => $pkg . '-' . $version . '.' .
-                                    $maybe->package_extension,
+                    package => $full,
                     path    => $path,
                     author  => $auth_obj,
                     _id     => $maybe->_id
@@ -941,7 +940,14 @@ sub local_mirror {
 
 Writes out a snapshot of your current installation in C<CPAN> bundle
 style. This can then be used to install the same modules for a
-different or on a different machine.
+different or on a different machine by issuing the following commands:
+
+    ### using the default shell:
+    CPAN Terminal> i file://path/to/Snapshot_XXYY.pm
+    
+    ### using the API
+    $modobj = $cb->parse_module( module => 'file://path/to/Snapshot_XXYY.pm' );
+    $modobj->install;
 
 It will, by default, write to an 'autobundle' directory under your
 cpanplus homedirectory, but you can override that by supplying a
@@ -1022,7 +1028,7 @@ sub autobundle {
     my $perl_v  = join '', `$^X -V`;
 
     print $fh <<EOF;
-package $name
+package $name;
 
 \$VERSION = '0.01';
 
@@ -1036,7 +1042,7 @@ $name - Snapshot of your installation at $now
 
 $head SYNOPSIS
 
-perl -MCPANPLUS -e "install $name"
+perl -MCPANPLUS -e "install file://full/path/to/$name"
 
 $head CONTENTS
 

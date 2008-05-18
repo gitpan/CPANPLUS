@@ -26,7 +26,9 @@ use constant INSTALLER_BUILD
 use constant INSTALLER_MM   => 'CPANPLUS::Dist::MM';    
 use constant INSTALLER_SAMPLE   
                             => 'CPANPLUS::Dist::Sample';
-use constant INSTALLER_BASE => 'CPANPLUS::Dist::Base';                            
+use constant INSTALLER_BASE => 'CPANPLUS::Dist::Base';  
+use constant INSTALLER_AUTOBUNDLE
+                            => 'CPANPLUS::Dist::Autobundle';
 
 use constant SHELL_DEFAULT  => 'CPANPLUS::Shell::Default';
 use constant SHELL_CLASSIC  => 'CPANPLUS::Shell::Classic';
@@ -139,7 +141,12 @@ use constant BUILD_PL       => sub { return @_
                                                             'Build.PL' )
                                         : 'Build.PL';
                             };
-                            
+                      
+use constant META_YML       => sub { return @_
+                                        ? File::Spec->catfile( @_, 'META.yml' )
+                                        : 'META.yml';
+                            }; 
+
 use constant BLIB           => sub { return @_
                                         ? File::Spec->catfile(@_, 'blib')
                                         : 'blib';
@@ -203,6 +210,15 @@ use constant README         => sub { my $obj = $_[0];
                                              '.readme';
                                      return $pkg;
                             };
+use constant META_EXT       => 'meta';
+
+use constant META           => sub { my $obj = $_[0];
+                                     my $pkg = $obj->package_name;
+                                     $pkg .= '-' . $obj->package_version .
+                                             '.' . META_EXT;
+                                     return $pkg;
+                            };                          
+                            
 use constant OPEN_FILE      => sub {
                                     my($file, $mode) = (@_, '');
                                     my $fh;

@@ -40,7 +40,7 @@ CPANPLUS::Selfupdate
 
     my $Modules = {
         dependencies => {
-            'File::Fetch'               => '0.13_04', # win32 & VMS file://
+            'File::Fetch'               => '0.15_02', # lynx & 404 handling
             'File::Spec'                => '0.82',
             'IPC::Cmd'                  => '0.36', # 5.6.2 compat: 2-arg open
             'Locale::Maketext::Simple'  => '0.01',
@@ -65,6 +65,8 @@ CPANPLUS::Selfupdate
             'Module::CoreList'          => '2.09',
             'Module::Pluggable'         => '2.4',
             'Module::Loaded'            => '0.01',
+            'Parse::CPAN::Meta'         => '0.02', # config_requires support
+            'ExtUtils::Install'         => '1.42', # uninstall outside @INC
         },
     
         features => {
@@ -82,9 +84,8 @@ CPANPLUS::Selfupdate
                 sub { return 1 },   # always enabled
             ],            
             cpantest        => [
-                {
-                    'YAML::Tiny'     => '0.0',
-                    'Test::Reporter' => '1.34',
+                { 'Test::Reporter'  => '1.34',
+                  'YAML::Tiny'      => '0.0'
                 },
                 sub { 
                     my $cb = shift;

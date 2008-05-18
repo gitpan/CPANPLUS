@@ -23,7 +23,7 @@ use vars    qw[ $VERBOSE $PREFER_BIN $FROM_EMAIL $USER_AGENT
 use constant QUOTE  => do { $^O eq 'MSWin32' ? q["] : q['] };            
             
 
-$VERSION        = '0.13_04';
+$VERSION        = '0.15_02';
 $VERSION        = eval $VERSION;    # avoid warnings with development releases
 $PREFER_BIN     = 0;                # XXX TODO implement
 $FROM_EMAIL     = 'File-Fetch@example.com';
@@ -626,11 +626,14 @@ sub _wget_fetch {
         push @$cmd, '--passive-ftp' if $FTP_PASSIVE;
 
         ### set the output document, add the uri ###
-        push @$cmd, '--output-document', 
-                    ### DO NOT quote things for IPC::Run, it breaks stuff.
-                    $IPC::Cmd::USE_IPC_RUN
-                        ? ($to, $self->uri)
-                        : (QUOTE. $to .QUOTE, QUOTE. $self->uri .QUOTE);
+        push @$cmd, '--output-document', $to, $self->uri;
+
+        ### with IPC::Cmd > 0.41, this is fixed in teh library,
+        ### and there's no need for special casing any more.
+        ### DO NOT quote things for IPC::Run, it breaks stuff.
+        # $IPC::Cmd::USE_IPC_RUN
+        #    ? ($to, $self->uri)
+        #    : (QUOTE. $to .QUOTE, QUOTE. $self->uri .QUOTE);
 
         ### shell out ###
         my $captured;
@@ -717,6 +720,33 @@ sub _lynx_fetch {
                 'lynx' ));
         }            
 
+        ### check if the HTTP resource exists ###
+        if ($self->uri =~ /^https?:\/\//i) {
+            my $cmd = [
+                $lynx,
+                '-head',
+                '-source',
+                "-auth=anonymous:$FROM_EMAIL",
+            ];
+
+            push @$cmd, "-connect_timeout=$TIMEOUT" if $TIMEOUT;
+
+            push @$cmd, $self->uri;
+
+            ### shell out ###
+            my $head;
+            unless(run( command => $cmd,
+                        buffer  => \$head,
+                        verbose => $DEBUG )
+            ) {
+                return $self->_error(loc("Command failed: %1", $head || ''));
+            }
+
+            unless($head =~ /^HTTP\/\d+\.\d+ 200\b/) {
+                return $self->_error(loc("Command failed: %1", $head || ''));
+            }
+        }
+
         ### write to the output file ourselves, since lynx ass_u_mes to much
         my $local = FileHandle->new(">$to")
                         or return $self->_error(loc(
@@ -732,9 +762,14 @@ sub _lynx_fetch {
         push @$cmd, "-connect_timeout=$TIMEOUT" if $TIMEOUT;
 
         ### DO NOT quote things for IPC::Run, it breaks stuff.
-        push @$cmd, $IPC::Cmd::USE_IPC_RUN
-                        ? $self->uri
-                        : QUOTE. $self->uri .QUOTE;
+        push @$cmd, $self->uri;
+        
+        ### with IPC::Cmd > 0.41, this is fixed in teh library,
+        ### and there's no need for special casing any more.
+        ### DO NOT quote things for IPC::Run, it breaks stuff.
+        # $IPC::Cmd::USE_IPC_RUN
+        #    ? $self->uri
+        #    : QUOTE. $self->uri .QUOTE;
 
 
         ### shell out ###
@@ -842,11 +877,15 @@ sub _curl_fetch {
 
         ### curl doesn't follow 302 (temporarily moved) etc automatically
         ### so we add --location to enable that.
-        push @$cmd, '--fail', '--location', '--output', 
-                    ### DO NOT quote things for IPC::Run, it breaks stuff.
-                    $IPC::Cmd::USE_IPC_RUN
-                        ? ($to, $self->uri)
-                        : (QUOTE. $to .QUOTE, QUOTE. $self->uri .QUOTE);
+        push @$cmd, '--fail', '--location', '--output', $to, $self->uri;
+
+        ### with IPC::Cmd > 0.41, this is fixed in teh library,
+        ### and there's no need for special casing any more.
+        ### DO NOT quote things for IPC::Run, it breaks stuff.
+        # $IPC::Cmd::USE_IPC_RUN
+        #    ? ($to, $self->uri)
+        #    : (QUOTE. $to .QUOTE, QUOTE. $self->uri .QUOTE);
+
 
         my $captured;
         unless(run( command => $cmd,
@@ -960,9 +999,14 @@ sub _rsync_fetch {
         push(@$cmd, '--quiet') unless $DEBUG;
 
         ### DO NOT quote things for IPC::Run, it breaks stuff.
-        push @$cmd, $IPC::Cmd::USE_IPC_RUN
-                        ? ($self->uri, $to)
-                        : (QUOTE. $self->uri .QUOTE, QUOTE. $to .QUOTE);
+        push @$cmd, $self->uri, $to;
+
+        ### with IPC::Cmd > 0.41, this is fixed in teh library,
+        ### and there's no need for special casing any more.
+        ### DO NOT quote things for IPC::Run, it breaks stuff.
+        # $IPC::Cmd::USE_IPC_RUN
+        #    ? ($to, $self->uri)
+        #    : (QUOTE. $to .QUOTE, QUOTE. $self->uri .QUOTE);
 
         my $captured;
         unless(run( command => $cmd,

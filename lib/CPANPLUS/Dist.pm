@@ -2,14 +2,16 @@ package CPANPLUS::Dist;
 
 use strict;
 
-
 use CPANPLUS::Error;
 use CPANPLUS::Internals::Constants;
+
+use Cwd ();
+use Object::Accessor;
+use Parse::CPAN::Meta;
 
 use Params::Check               qw[check];
 use Module::Load::Conditional   qw[can_load check_install];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
-use Object::Accessor;
 
 local $Params::Check::VERBOSE = 1;
 
@@ -255,11 +257,78 @@ sub prereq_satisfied {
     return;
 }
 
-=head2 _resolve_prereqs
+=head2 $configure_requires = $dist->find_configure_requires( [file => /path/to/META.yml] )
+
+Reads the configure_requires for this distribution from the META.yml
+file in the root directory and returns a hashref with module names
+and versions required.
+
+=cut
+
+sub find_configure_requires {
+    my $self = shift;
+    my $mod  = $self->parent;
+    my %hash = @_;
+    
+    my $meta;
+    my $tmpl = {
+        file    => { default => META_YML->( $mod->status->extract ),
+                     store   => \$meta,
+                },
+    };                
+    
+    check( $tmpl, \%hash ) or return;
+    
+    ### default is an empty hashref
+    my $configure_requires = $mod->status->configure_requires || {};
+    
+    ### if there's a meta file, we read it;
+    if( -e $meta ) {
+
+        ### Parse::CPAN::Meta uses exceptions for errors
+        ### hash returned in list context!!!
+        my ($doc) = eval { Parse::CPAN::Meta::LoadFile( $meta ) };
+  
+        unless( $doc ) {
+            error(loc( "Could not read %1: '%2'", $meta, $@ ));
+            return;
+        }
+
+        ### read the configure_requires key, make sure not to throw
+        ### away anything that was already added
+        $configure_requires = {
+            %$configure_requires,
+            %{ $doc->{'configure_requires'} },
+        } if $doc->{'configure_requires'};
+    }
+    
+    ### and store it in the module
+    $mod->status->configure_requires( $configure_requires );
+    
+    ### and return a copy
+    return \%{$configure_requires};
+}
+
+=head2 $bool = $dist->_resolve_prereqs( ... )
 
 Makes sure prerequisites are resolved
 
-XXX Need docs, internal use only
+    format          The dist class to use to make the prereqs
+                    (ie. CPANPLUS::Dist::MM)
+
+    prereqs         Hash of the prerequisite modules and their versions
+
+    target          What to do with the prereqs.
+                        create  => Just build them
+                        install => Install them
+                        ignore  => Ignore them
+
+    prereq_build    If true, always build the prereqs even if already
+                    resolved
+
+    verbose         Be verbose
+
+    force           Force the prereq to be built, even if already resolved
 
 =cut
 
@@ -296,6 +365,9 @@ sub _resolve_prereqs {
 
     ### so there are no prereqs? then don't even bother
     return 1 unless keys %$prereqs;
+
+    ### Make sure we wound up where we started.
+    my $original_wd = Cwd::cwd;
 
     ### so you didn't provide an explicit target.
     ### maybe your config can tell us what to do.
@@ -453,7 +525,6 @@ sub _resolve_prereqs {
         $pending->{ $modobj->module } = $modobj;
         $cb->_status->pending_prereqs( $pending );
 
-
         ### call $modobj->install rather than doing
         ### CPANPLUS::Dist->new and the like ourselves,
         ### since ->install will take care of fetch &&
@@ -493,6 +564,9 @@ sub _resolve_prereqs {
 
     ### reset the $prereqs iterator, in case we bailed out early ###
     keys %$prereqs;
+
+    ### chdir back to where we started
+    chdir $original_wd;
 
     return 1 unless $flag;
     return;
