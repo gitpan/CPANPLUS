@@ -38,6 +38,9 @@ use constant CONFIG_USER    => 'CPANPLUS::Config::User';
 use constant CONFIG_SYSTEM  => 'CPANPLUS::Config::System';
 use constant CONFIG_BOXED   => 'CPANPLUS::Config::Boxed';
 
+use constant DEFAULT_SOURCE_ENGINE
+                            => 'CPANPLUS::Internals::Source::Memory';
+
 use constant TARGET_CREATE  => 'create';
 use constant TARGET_PREPARE => 'prepare';
 use constant TARGET_INSTALL => 'install';
@@ -301,6 +304,9 @@ use constant CUSTOM_AUTHOR_ID
 
 use constant DOT_SHELL_DEFAULT_RC
                             => '.shell-default.rc';
+                            
+use constant SOURCE_SQLITE_DB
+                            => 'db.sql';
 
 use constant PREREQ_IGNORE  => 0;                
 use constant PREREQ_INSTALL => 1;

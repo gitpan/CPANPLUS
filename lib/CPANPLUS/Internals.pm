@@ -12,7 +12,6 @@ use CPANPLUS::Error;
 
 use CPANPLUS::Selfupdate;
 
-use CPANPLUS::Internals::Source;
 use CPANPLUS::Internals::Extract;
 use CPANPLUS::Internals::Fetch;
 use CPANPLUS::Internals::Utils;
@@ -20,9 +19,13 @@ use CPANPLUS::Internals::Constants;
 use CPANPLUS::Internals::Search;
 use CPANPLUS::Internals::Report;
 
+
+require base;
 use Cwd                         qw[cwd];
+use Module::Load                qw[load];
 use Params::Check               qw[check];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
+use Module::Load::Conditional   qw[can_load];
 
 use Object::Accessor;
 
@@ -32,7 +35,6 @@ local $Params::Check::VERBOSE = 1;
 use vars qw[@ISA $VERSION];
 
 @ISA = qw[
-            CPANPLUS::Internals::Source
             CPANPLUS::Internals::Extract
             CPANPLUS::Internals::Fetch
             CPANPLUS::Internals::Utils
@@ -40,7 +42,7 @@ use vars qw[@ISA $VERSION];
             CPANPLUS::Internals::Report
         ];
 
-$VERSION = "0.85_02";
+$VERSION = "0.85_03";
 
 =pod
 
@@ -78,7 +80,7 @@ Get/set the id
 
 ### autogenerate accessors ###
 for my $key ( qw[_conf _id _modules _hosts _methods _status
-                 _callbacks _selfupdate]
+                 _callbacks _selfupdate _mtree _atree]
 ) {
     no strict 'refs';
     *{__PACKAGE__."::$key"} = sub {
@@ -195,6 +197,27 @@ Returns the object on success, or dies on failure.
                         $id, $args->_id) );
         }
 
+        ### different source engines available now, so set them here
+        {   my $store = $conf->get_conf( 'source_engine' ) 
+                            || DEFAULT_SOURCE_ENGINE;
+
+            unless( can_load( modules => { $store => '0.0' }, verbose => 1 ) ) {
+                error( loc( "Could not load source engine '%1'", $store ) );
+            
+                if( $store ne DEFAULT_SOURCE_ENGINE ) {
+                    msg( loc("Falling back to %1", DEFAULT_SOURCE_ENGINE), 1 );
+                   
+                    load DEFAULT_SOURCE_ENGINE;
+                    
+                    base->import( DEFAULT_SOURCE_ENGINE );
+                } else {
+                    return;
+                }     
+            } else {
+                 base->import( $store );
+            }                
+        }
+
         return $args;
     }
 
@@ -236,6 +259,7 @@ be flushed.
             ### forgotten --kane
             } elsif ( $what eq 'modules' ) {
                 for my $modobj ( values %{$self->module_tree} ) {
+
                     $modobj->_flush;
                 }
 

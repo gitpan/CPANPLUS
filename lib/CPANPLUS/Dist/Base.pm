@@ -2,9 +2,10 @@ package CPANPLUS::Dist::Base;
 
 use strict;
 
-use vars    qw[@ISA $VERSION];
-@ISA =      qw[CPANPLUS::Dist];
+use base    qw[CPANPLUS::Dist];
+use vars    qw[$VERSION];
 $VERSION =  '0.01';
+
 
 =head1 NAME
 
@@ -56,6 +57,16 @@ class are called:
 
 =cut
 
+=head2 @subs = $Class->methods
+
+Returns a list of methods that this class implements that you can
+override.
+
+=cut
+
+sub methods { 
+    return qw[format_available init prepare create install uninstall] 
+}
 
 =head2 $bool = $Class->format_available
 

@@ -38,13 +38,13 @@ GetOptions( $opts,
             'dist-opts=s%',         'set-config=s%',
             'default-banlist!',     'set-program=s%',
             'default-ignorelist!',  'edit-metafile!',
-            'install!',             
+            'install!'
         );
         
 die usage() if exists $opts->{'help'};
 
 ### parse options
-my $archive     = $opts->{'archive'}    || 0;
+my $tarball     = $opts->{'archive'}    || 0;
 my $keep        = $opts->{'keepsource'} ? 1 : 0;
 my $prereqbuild = exists $opts->{'buildprereq'}
                     ? $opts->{'buildprereq'}
@@ -113,23 +113,23 @@ die usage() unless @modules;
             $cb->_register_callback(
                 name    => 'munge_dist_metafile',
                 code    => sub {
-                            my $self = shift;
-                            my $text = shift or return;
-                        
-                            my($fh,$file) = tempfile( UNLINK => 1 );
+                                my $self = shift;
+                                my $text = shift or return;
                             
-                            unless( print $fh $text ) {
-                                warn "Could not print metafile information: $!";
-                                return;
-                            }
-                            
-                            close $fh;
-                            
-                            system( $editor => $file );
-                            
-                            my $cont = $cb->_get_file_contents( file => $file );
-                            
-                            return $cont;
+                                my($fh,$file) = tempfile( UNLINK => 1 );
+                                
+                                unless( print $fh $text ) {
+                                    warn "Could not print metafile information: $!";
+                                    return;
+                                }
+                                
+                                close $fh;
+                                
+                                system( $editor => $file );
+                                
+                                my $cont = $cb->_get_file_contents( file => $file );
+                                
+                                return $cont;
                             },
             );
             
@@ -272,9 +272,9 @@ for my $name (@modules) {
 
     my $obj;
     
-    ### is it a tarball or dir?? then we get it locally and transform it
+    ### is it a tarball? then we get it locally and transform it
     ### and it's dependencies into .debs
-    if( $archive ) {
+    if( $tarball ) {
         ### make sure we use an absolute path, so chdirs() dont
         ### mess things up
         $name = File::Spec->rel2abs( $name ); 
@@ -300,9 +300,6 @@ for my $name (@modules) {
 
         ### set the location of the tarball
         $obj->status->fetch($name);
-
-        ### if it's already extracted, then set the extract dir too
-        $obj->status->extract( $name ) if -d $name;
 
     ### plain old cpan module?    
     } else {

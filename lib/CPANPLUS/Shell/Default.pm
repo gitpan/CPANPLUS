@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.85_02";
+    $VERSION = "0.85_03";
 }
 
 load CPANPLUS::Shell;
@@ -1260,6 +1260,9 @@ sub _set_conf {
             $i++;
             $self->__print( "\t[$i] $uri\n" );
         }
+        
+        $self->__print(
+            loc("\nTo edit this list, please type: '%1'\n", 's edit') );
 
     } elsif ( $type eq 'selfupdate' ) {
         my %valid = map { $_ => $_ } 

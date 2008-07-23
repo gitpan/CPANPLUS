@@ -6,10 +6,16 @@ BEGIN {
 
 use strict;
 
+use Module::Load;
+use Test::More eval { 
+            load $ENV{CPANPLUS_SOURCE_ENGINE} if $ENV{CPANPLUS_SOURCE_ENGINE}; 1 
+        } ? 'no_plan'
+          : skip_all => "SQLite engine not available";
+
+
 use CPANPLUS::Backend;
 use CPANPLUS::Internals::Constants;
 
-use Test::More 'no_plan';
 use Data::Dumper;
 use File::Basename qw[dirname];
 
@@ -33,8 +39,10 @@ for my $name (qw[auth mod dslip] ) {
     ok( (-e $file && -f _ && -s _), "$file exists" );
 }    
 
-ok( scalar keys %$at,           "Authortree loaded successfully" );
-ok( scalar keys %$mt,           "Moduletree loaded successfully" );
+ok( $at,                        "Authortree loaded successfully" );
+ok( scalar keys %$at,           "   Authortree has items in it" );
+ok( $mt,                        "Moduletree loaded successfully" );
+ok( scalar keys %$mt,           "   Moduletree has items in it" );
 
 ### test lookups
 {   my $auth    = $at->{'EUNOXS'};
