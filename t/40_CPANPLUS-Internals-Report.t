@@ -146,7 +146,7 @@ my $map = {
         failed      => 1,
         match       => ['/This distribution has been tested/',
                         '/http://testers.cpan.org/',
-                        '/FAIL/',
+                        '/UNKNOWN/',
                     ],
         check       => 0,    
     },
@@ -375,15 +375,19 @@ SKIP: {
                     ? $map->{$type}->{'pre_hook'}->( $Mod )
                     : $Mod;
 
-        my $file = $CB->_send_report(
+        my $file = do {
+            ### so T::R does not try to resolve our maildomain, which can 
+            ### lead to large timeouts for *every* invocation in T::R < 1.51_01
+            ### see: http://code.google.com/p/test-reporter/issues/detail?id=15
+            local $ENV{MAILDOMAIN} ||= 'example.com';
+            $CB->_send_report(
                         module        => $mod,
                         buffer        => $map->{$type}{'buffer'},
                         failed        => $map->{$type}{'failed'},
                         tests_skipped => ($map->{$type}{'skiptests'} ? 1 : 0),
                         save          => 1,
-                        dontcc        => 1, # no need to send, and also skips
-                                            # fetching reports from testers.cpan
                     );
+        };
 
         ok( $file,              "Type '$type' written to file" );
         ok( -e $file,           "   File exists" );
@@ -426,7 +430,6 @@ SKIP: {
 #                            buffer  => $map->{$type}->{'buffer'},
 #                            failed  => $map->{$type}->{'failed'},
 #                            address => NOBODY,
-#                            dontcc  => 1,
 #                        );
 #            ok( $ok,                "   Mailed report to NOBODY" );
 #       }
