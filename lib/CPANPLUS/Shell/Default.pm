@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.85_04";
+    $VERSION = "0.85_05";
 }
 
 load CPANPLUS::Shell;
@@ -1081,7 +1081,8 @@ sub _details {
     $self->_pager_open if scalar @$mods * 10 > $self->_term_rowcount;
 
 
-    my $format = "%-30s %-30s\n";
+    my $format  = "%-24s %-45s\n";
+    my $cformat = "%-24s %-45s %-10s\n";
     for my $mod (@$mods) {
         my $href = $mod->details( %$opts );
         my @list = sort { $a->module cmp $b->module } $mod->contains;
@@ -1101,7 +1102,8 @@ sub _details {
             my $showed;
             for my $item ( @list ) {
                 $self->__printf(
-                    $format, ($showed ? '' : 'Contains:'), $item->module
+                    $cformat, ($showed ? '' : 'Contains:'), 
+                             $item->module, $item->version
                 );
                 $showed++;
             }
@@ -1199,7 +1201,7 @@ sub _set_conf {
             boxed   => CONFIG_BOXED,
         }->{ $key } || CONFIG_USER;      
         
-        ### boxed is special, so let's get it's value from %INC
+        ### boxed is special, so let's get its value from %INC
         ### so we can tell it where to save
         ### XXX perhaps this logic should be generic for all
         ### types, and put in the ->save() routine
@@ -1656,7 +1658,7 @@ sub _reports {
         }
     }
     
-    ### dispatch a plugin command to it's function
+    ### dispatch a plugin command to its function
     sub _meta {
         my $self = shift;
         my %hash = @_;
@@ -1841,6 +1843,10 @@ sub _read_configuration_from_rc {
         loc( "You can run an interactive setup using '%1'", 's reconfigure' ),    
         loc( "You can add custom sources to your index. See '%1' for details",
              '/cs --help' ),
+        loc( "CPANPLUS now has an experimental SQLite backend. You can enable ".
+             "it via: '%1'. Update dependencies via '%2'",
+             's conf source_engine CPANPLUS::Internals::Source::SQLite; s save',
+             's selfupdate enabled_features ' ),             
     );
     
     sub _show_random_tip {

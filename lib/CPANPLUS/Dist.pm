@@ -9,6 +9,7 @@ use Cwd ();
 use Object::Accessor;
 use Parse::CPAN::Meta;
 
+use IPC::Cmd                    qw[run];
 use Params::Check               qw[check];
 use Module::Load::Conditional   qw[can_load check_install];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
@@ -108,8 +109,6 @@ sub new {
     my $class   = ref $self || $self;
     my %hash    = @_;
 
-
-
     ### first verify we got a module object ###
     my( $mod, $format );
     my $tmpl = {
@@ -182,6 +181,7 @@ Returns a list of the CPANPLUS::Dist::* classes available
     
     ### backdoor method to exclude dist types
     sub _ignore_dist_types  { my $self = shift; push @Ignore, @_ };
+    sub _reset_dist_ignore  { @Ignore = () };
 
     ### locally add the plugins dir to @INC, so we can find extra plugins
     #local @INC = @INC, File::Spec->catdir(
@@ -216,9 +216,36 @@ Returns a list of the CPANPLUS::Dist::* classes available
 
         return @Dists;
     }
+
+=head2 $bool = CPANPLUS::Dist->rescan_dist_types;
+
+Rescans C<@INC> for available dist types. Useful if you've installed new
+C<CPANPLUS::Dist::*> classes and want to make them available to the
+current process.
+
+=cut
+    
+    sub rescan_dist_types {
+        my $dist    = shift;
+        $Loaded     = 0;    # reset the flag;
+        return $dist->dist_types;
+    }        
 }
 
-=head2 prereq_satisfied( modobj => $modobj, version => $version_spec )
+=head2 $bool = CPANPLUS::Dist->has_dist_type( $type )
+
+Returns true if distribution type C<$type> is loaded/supported.
+
+=cut
+
+sub has_dist_type {
+    my $dist = shift;
+    my $type = shift or return;
+    
+    return scalar grep { $_ eq $type } CPANPLUS::Dist->dist_types;
+}    
+
+=head2 $bool = $dist->prereq_satisfied( modobj => $modobj, version => $version_spec )
 
 Returns true if this prereq is satisfied.  Returns false if it's not.
 Also issues an error if it seems "unsatisfiable," i.e. if it can't be
@@ -269,8 +296,11 @@ sub find_configure_requires {
     my %hash = @_;
     
     my $meta;
-    my $tmpl = {
-        file    => { default => META_YML->( $mod->status->extract ),
+    my $tmpl = {                ### check if we have an extract path. if not, we 
+                                ### get 'undef value' warnings from file::spec
+        file    => { default => do { defined $mod->status->extract
+                                        ? META_YML->( $mod->status->extract )
+                                        : '' },
                      store   => \$meta,
                 },
     };                
@@ -410,6 +440,25 @@ sub _resolve_prereqs {
     
     for my $mod ( @sorted_prereqs ) {
         my $version = $prereqs->{$mod};
+        
+        ### 'perl' is a special case, there's no mod object for it
+        if( $mod eq PERL_CORE ) {
+            
+            ### run a CLI invocation to see if the perl you specified is
+            ### uptodate
+            my $ok = run( command => "$^X -M$version -e1", verbose => 0 );
+
+            unless( $ok ) {
+                error(loc(  "Module '%1' needs perl version '%2', but you ".
+                            "only have version '%3' -- can not proceed",
+                            $self->module, $version, 
+                            $cb->_perl_version( perl => $^X ) ) );
+                return;                            
+            }
+
+            next;
+        }
+        
         my $modobj  = $cb->module_tree($mod);
 
         #### XXX we ignore the version, and just assume that the latest

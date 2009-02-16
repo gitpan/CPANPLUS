@@ -472,7 +472,7 @@ sub _safe_path {
 
 =head2 ($pkg, $version, $ext) = $cb->_split_package_string( package => PACKAGE_STRING );
 
-Splits the name of a CPAN package string up in it's package, version 
+Splits the name of a CPAN package string up into its package, version 
 and extension parts.
 
 For example, C<Foo-Bar-1.2.tar.gz> would return the following parts:
@@ -495,8 +495,8 @@ For example, C<Foo-Bar-1.2.tar.gz> would return the following parts:
                     )*
                 /xi;   
     
-    my $ver_re = qr/[a-z]*\d+[a-z]*     # contains a digit and possibly letters
-                    (?:
+    my $ver_re = qr/[a-z]*\d*?[a-z]*    # contains a digit and possibly letters
+                    (?:                 # however, some start with a . only :(
                         [-._]           # followed by a delimiter
                         [a-z\d]+        # and more digits and or letters
                     )*?

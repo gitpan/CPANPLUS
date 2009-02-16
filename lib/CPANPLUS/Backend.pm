@@ -558,7 +558,7 @@ sub parse_module {
     } else {
         $author = shift @parts || '';
     }
-    
+
     my($pkg, $version, $ext, $full) = 
         $self->_split_package_string( package => $dist );
     
@@ -601,7 +601,12 @@ sub parse_module {
                 my $modobj = CPANPLUS::Module::Fake->new(
                     module  => $maybe->module,
                     version => $version,
-                    package => $full,
+                    ### no extension? use the extension the original package
+                    ### had instead
+                    package => do { $ext 
+                                        ? $full 
+                                        : $full .'.'. $maybe->package_extension 
+                                },
                     path    => $path,
                     author  => $auth_obj,
                     _id     => $maybe->_id
@@ -1065,6 +1070,31 @@ EOF
 
     return $file;
 }
+
+=head2 $bool = $cb->save_state
+
+Explicit command to save memory state to disk. This can be used to save
+information to disk about where a module was extracted, the result of 
+C<make test>, etc. This will then be re-loaded into memory when a new
+session starts.
+
+The capability of saving state to disk depends on the source engine
+being used (See C<CPANPLUS::Config> for the option to choose your
+source engine). The default storage engine supports this option.
+
+Most users will not need this command, but it can handy for automated
+systems like setting up CPAN smoke testers.
+
+The method will return true if it managed to save the state to disk, 
+or false if it did not.
+
+=cut
+
+sub save_state {
+    my $self = shift;
+    return $self->_save_state( @_ );
+}
+
 
 ### XXX these wrappers are not individually tested! only the underlying
 ### code through source.t and indirectly trought he CustomSource plugin.

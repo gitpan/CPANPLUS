@@ -26,6 +26,23 @@ use Module::Load::Conditional   qw[check_install];
 
 CPANPLUS::Config
 
+=head1 SYNOPSIS
+
+    ### conf object via CPANPLUS::Backend;
+    $cb   = CPANPLUS::Backend->new;
+    $conf = $cb->configure_object;
+    
+    ### or as a standalone object
+    $conf = CPANPLUS::Configure->new;
+
+    ### values in 'conf' section
+    $verbose = $conf->get_conf( 'verbose' );    
+    $conf->set_conf( verbose => 1 );
+
+    ### values in 'program' section
+    $editor = $conf->get_program( 'editor' );
+    $conf->set_program( editor => '/bin/vi' );
+
 =head1 DESCRIPTION
 
 This module contains defaults and heuristics for configuration 
@@ -134,7 +151,7 @@ are run interactively or not. Defaults to 'true'.
 
 =item base
 
-The directory CPANPLUS keeps all it's build and state information in.
+The directory CPANPLUS keeps all its build and state information in.
 Defaults to ~/.cpanplus.
 
 =cut
@@ -523,7 +540,6 @@ remains empty if you do not require super user permissiosn to install.
 =cut
 
         $Conf->{'program'}->{'sudo'} = do {
-
             ### let's assume you dont need sudo,
             ### unless one of the below criteria tells us otherwise
             my $sudo = undef;
@@ -532,17 +548,20 @@ remains empty if you do not require super user permissiosn to install.
             if( $> ) {
     
                 ### check for all install dirs!
-                ### installsiteman3dir is a 5.8'ism.. don't check
-                ### it on 5.6.x...            
                 ### you have write permissions to the installdir,
                 ### you don't need sudo
-                if( -w $Config{'installsitelib'} &&
-                    ( defined $Config{'installsiteman3dir'} && 
-                      -w $Config{'installsiteman3dir'} 
-                    ) && -w $Config{'installsitebin'} 
-                ) {                    
-                    $sudo = undef;
+                if( -w $Config{'installsitelib'} && -w $Config{'installsitebin'} ) {                    
                     
+                    ### installsiteman3dir is a 5.8'ism.. don't check
+                    ### it on 5.6.x...            
+                    if( defined $Config{'installsiteman3dir'} ) {
+                        $sudo = -w $Config{'installsiteman3dir'} 
+                            ? undef
+                            : can_run('sudo');
+                    } else {
+                        $sudo = undef;
+                    }
+
                 ### you have PERL_MM_OPT set to some alternate
                 ### install place. You probably have write permissions
                 ### to that

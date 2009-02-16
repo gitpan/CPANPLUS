@@ -23,7 +23,7 @@ $Params::Check::VERBOSE = 1;
 ### list of methods the parent class must implement
 {   for my $sub ( qw[_init_trees _finalize_trees 
                      _standard_trees_completed _custom_trees_completed
-                     _add_module_object _add_author_object
+                     _add_module_object _add_author_object _save_state
                     ] 
     ) {
         no strict 'refs';
@@ -1223,7 +1223,7 @@ sub __update_custom_module_source {
             #msg(loc("Index file written to '%1'", $to), $verbose);
         }
     
-    ### copy it to the real spot and update it's timestamp
+    ### copy it to the real spot and update its timestamp
     } else {            
         $self->_move( file => $res, to => $local ) or return;
         $self->_update_timestamp( file => $local );

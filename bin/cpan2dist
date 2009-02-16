@@ -21,6 +21,7 @@ $|++;
 my $cb      = CPANPLUS::Backend->new
                 or die loc("Could not create new CPANPLUS::Backend object");
 my $conf    = $cb->configure_object;
+
 my %formats = map { $_ => $_ } CPANPLUS::Dist->dist_types;
 
 my $opts    = {};
@@ -37,13 +38,13 @@ GetOptions( $opts,
             'dist-opts=s%',         'set-config=s%',
             'default-banlist!',     'set-program=s%',
             'default-ignorelist!',  'edit-metafile!',
-            'install!',             
+            'install!'
         );
         
 die usage() if exists $opts->{'help'};
 
 ### parse options
-my $archive     = $opts->{'archive'}    || 0;
+my $tarball     = $opts->{'archive'}    || 0;
 my $keep        = $opts->{'keepsource'} ? 1 : 0;
 my $prereqbuild = exists $opts->{'buildprereq'}
                     ? $opts->{'buildprereq'}
@@ -112,23 +113,23 @@ die usage() unless @modules;
             $cb->_register_callback(
                 name    => 'munge_dist_metafile',
                 code    => sub {
-                            my $self = shift;
-                            my $text = shift or return;
-                        
-                            my($fh,$file) = tempfile( UNLINK => 1 );
+                                my $self = shift;
+                                my $text = shift or return;
                             
-                            unless( print $fh $text ) {
-                                warn "Could not print metafile information: $!";
-                                return;
-                            }
-                            
-                            close $fh;
-                            
-                            system( $editor => $file );
-                            
-                            my $cont = $cb->_get_file_contents( file => $file );
-                            
-                            return $cont;
+                                my($fh,$file) = tempfile( UNLINK => 1 );
+                                
+                                unless( print $fh $text ) {
+                                    warn "Could not print metafile information: $!";
+                                    return;
+                                }
+                                
+                                close $fh;
+                                
+                                system( $editor => $file );
+                                
+                                my $cont = $cb->_get_file_contents( file => $file );
+                                
+                                return $cont;
                             },
             );
             
@@ -271,9 +272,9 @@ for my $name (@modules) {
 
     my $obj;
     
-    ### is it a tarball or dir?? then we get it locally and transform it
-    ### and it's dependencies into .debs
-    if( $archive ) {
+    ### is it a tarball? then we get it locally and transform it
+    ### and its dependencies into .debs
+    if( $tarball ) {
         ### make sure we use an absolute path, so chdirs() dont
         ### mess things up
         $name = File::Spec->rel2abs( $name ); 
@@ -299,9 +300,6 @@ for my $name (@modules) {
 
         ### set the location of the tarball
         $obj->status->fetch($name);
-
-        ### if it's already extracted, then set the extract dir too
-        $obj->status->extract( $name ) if -d $name;
 
     ### plain old cpan module?    
     } else {
@@ -436,7 +434,7 @@ sub usage {
     specified on the command line, and all their prerequisites.
     
     Can also create a distribution of type FMT from a local
-    archive and all it's prerequisites
+    archive and all of its prerequisites.
 
 =cut
 
@@ -522,11 +520,11 @@ Options:
 
 Examples:
 
-    ### build a debian package of DBI and it's prerequisites, 
+    ### build a debian package of DBI and its prerequisites, 
     ### don't bother running tests
     cpan2dist --format CPANPLUS::Dist::Deb --buildprereq --skiptest DBI
     
-    ### build a debian package of DBI and it's prerequisites and install them
+    ### build a debian package of DBI and its prerequisites and install them
     cpan2dist --format CPANPLUS::Dist::Deb --buildprereq --install DBI
     
     ### Build a package, whose format is determined by your config, of 
@@ -539,7 +537,7 @@ Examples:
     ### patterns mentioned in /tmp/ban
     cpan2dist --ban Foo --ban Bar --banlist /tmp/ban Net::FTP
     
-    ### build a package from Net::FTP, but ignore it's listed dependency
+    ### build a package from Net::FTP, but ignore its listed dependency
     ### on IO::Socket, as it's shipped per default with the OS we're on
     cpan2dist --ignore IO::Socket Net::FTP
     
