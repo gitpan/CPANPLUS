@@ -436,19 +436,24 @@ L<Module::ThirdParty> for more details.
 
     sub package_is_perl_core {
         my $self = shift;
+        my $cb   = $self->parent;
 
         ### check if the package looks like a perl core package
         return 1 if $self->package_name eq PERL_CORE;
+
+        ### address #44562: ::Module->package_is_perl_code : problem comparing 
+        ### version strings -- use $cb->_vcmp to avoid warnings when version 
+        ### have _ in them
 
         my $core = $self->module_is_supplied_with_perl_core;
         ### ok, so it's found in the core, BUT it could be dual-lifed
         if ($core) {
             ### if the package is newer than installed, then it's dual-lifed
-            return if $self->version > $self->installed_version;
+            return if $cb->_vcmp($self->installed_version, $self->version) > 0;
 
             ### if the package is newer or equal to the corelist, 
             ### then it's dual-lifed
-            return if $self->version >= $core;
+            return if $cb->_vcmp( $core, $self->version ) >= 0;
 
             ### otherwise, it's older than corelist, thus unsuitable.
             return 1;
@@ -777,15 +782,26 @@ sub dist {
         }            
     }
 
-    my $dist = $type->new( module => $self ) or return;
-
-    my $dist_cpan = $type eq $self->status->installer_type
-                        ? $dist
+    ### make sure we don't overwrite it, just in case we came 
+    ### back from a ->save_state. This allows restoration to
+    ### work correctly    
+    my( $dist, $dist_cpan );
+    
+    unless( $dist = $self->status->dist ) {
+        $dist = $type->new( module => $self ) or return;
+        $self->status->dist( $dist );
+    }
+    
+    unless( $dist_cpan = $self->status->dist_cpan ) {
+        
+        $dist_cpan = $type eq $self->status->installer_type
+                        ? $self->status->dist
                         : $self->status->installer_type->new( module => $self );           
 
-    ### store the dists
-    $self->status->dist_cpan(   $dist_cpan );
-    $self->status->dist(        $dist );
+
+        $self->status->dist_cpan(   $dist_cpan );
+    }
+    
     
     DIST: {
         ### first prepare the dist
@@ -992,6 +1008,7 @@ sub install {
 
 
     ### do SIGNATURE checks? ###
+    ### XXX check status and not recheck EVERY time?
     if( $conf->get_conf('signature') ) {
         unless( $self->check_signature( verbose => $args->{verbose} ) ) {
             error( loc( "Signature check failed for module '%1' ".
@@ -1580,6 +1597,24 @@ sub _extutils_installed {
                         verbose     => $verbose,
                     );
 
+    my @config_names = (
+        ### lib
+        {   lib     => 'privlib',       # perl-only
+            arch    => 'archlib',       # compiled code
+            prefix  => 'prefix',        # prefix to both
+        },
+        ### site
+        {   lib      => 'sitelib',
+            arch     => 'sitearch',
+            prefix   => 'siteprefix',
+        },
+        ### vendor
+        {   lib     => 'vendorlib',
+            arch    => 'vendorarch',
+            prefix  => 'vendorprefix',
+        },
+    );
+
     ### search in your regular @INC, and anything you added to your config.
     ### this lets EU::Installed find .packlists that are *not* in the standard
     ### compiled in @INC path. Requires EU::I 1.42 or up. this addresses #33438
@@ -1588,30 +1623,42 @@ sub _extutils_installed {
     my @libs;
     for my $lib ( @{ $conf->get_conf('lib') } ) {
         require Config;
-        
+  
+        ### and just the standard dir
+        push @libs, $lib;
+  
         ### figure out what an MM prefix expands to. Basically, it's the
         ### site install target from %Config, ie: /opt/lib/perl5/site_perl/5.8.8 
         ### minus the site wide prefix, ie: /opt
         ### this lets users add the dir they have set as their EU::MM PREFIX
         ### to our 'lib' config and it Just Works
-        ### XXX is this the right thing to do?
-        push @libs, do {   
-            my $site    = $Config::Config{sitelib};
-            my $prefix  = quotemeta $Config::Config{prefix};
-        
-            ### strip the prefix from the site dir
-            $site =~ s/^$prefix//;
-            
-            File::Spec->catdir( $lib, $site ), 
-            File::Spec->catdir( $lib, $site, $Config::Config{'archname'} );
-        };
-
         ### the arch specific dir, ie:
         ### /opt/lib/perl5/site_perl/5.8.8/darwin-2level        
-        push @libs, File::Spec->catdir( $lib, $Config::Config{'archname'} );
-    
-        ### and just the standard dir
-        push @libs, $lib;
+        ### XXX is this the right thing to do?
+        
+        ### we add all 6 dir combos for prefixes:
+        ### /foo/lib
+        ### /foo/lib/arch
+        ### /foo/site/lib
+        ### /foo/site/lib/arch
+        ### /foo/vendor/lib
+        ### /foo/vendor/lib/arch
+        for my $href ( @config_names ) {
+            for my $key ( qw[lib arch] ) {
+            
+                ### look up the config value -- use EXP for the EXPANDED
+                ### version, so no ~ etc are found in there
+                my $dir     = $Config::Config{ $href->{ $key } .'exp' } or next;
+                my $prefix  = $Config::Config{ $href->{prefix} };
+
+                ### remove the prefix from it, so we can append to our $lib
+                $dir        =~ s/^\Q$prefix\E//;
+                
+                ### do the appending
+                push @libs, File::Spec->catdir( $lib, $dir );
+                
+            }
+        }
     }        
 
     my $inst;    
