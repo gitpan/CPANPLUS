@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.89_09";
+    $VERSION = "0.89_10";
 }
 
 load CPANPLUS::Shell;
@@ -1220,7 +1220,8 @@ sub _set_conf {
         $args = check( $tmpl, \%hash ) or return;
     }
 
-    my ($type,$key,$value) = $input =~ m/(\w+)\s*(\w*)\s*(.*?)\s*$/;
+    my ($type,$key,$value) = $input =~ m/(\w+)\s*(\w*)\s*(.*?)$/;
+    $value =~ s/\s+$//g if $value;
     $type = lc $type;
 
     if( $type eq 'reconfigure' ) {
