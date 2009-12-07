@@ -26,7 +26,7 @@ local $Data::Dumper::Indent     = 1; # for dumpering from !
 BEGIN {
     use vars        qw[ $VERSION @ISA ];
     @ISA        =   qw[ CPANPLUS::Shell::_Base::ReadLine ];
-    $VERSION = "0.89_11";
+    $VERSION = "0.89_12";
 }
 
 load CPANPLUS::Shell;
@@ -1564,7 +1564,7 @@ should use the same package manager to uninstall them
             loc("All modules %tense(uninstall,past) successfully"), "\n" );
     } else {
         $self->__print( 
-            loc("Problem %tense(uninstalling,present) one or more modules" ),
+            loc("Problem %tense(uninstall,present) one or more modules" ),
             "\n" );
             
         $self->__print( 
