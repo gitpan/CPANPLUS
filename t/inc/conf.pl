@@ -30,8 +30,14 @@ BEGIN {
     ### add our own path to the front of $ENV{PATH}, so that cpanp-run-perl
     ### and friends get picked up
     $old_env_path = $ENV{PATH};
-    $ENV{'PATH'}  = join $Config{'path_sep'}, 
+    if ( $ENV{PERL_CORE} ) {
+      $ENV{'PATH'}  = join $Config{'path_sep'}, 
+                    grep { defined } "$FindBin::Bin/../../../utils", $ENV{'PATH'};
+    }
+    else {
+      $ENV{'PATH'}  = join $Config{'path_sep'}, 
                     grep { defined } "$FindBin::Bin/../bin", $ENV{'PATH'};
+    }
 
     ### Fix up the path to perl, as we're about to chdir
     ### but only under perlcore, or if the path contains delimiters,
@@ -148,6 +154,24 @@ sub gimme_conf {
         if( $make and basename($make) =~ /^nmake/i ) {
             $conf->set_conf( makeflags => '/nologo' );
         }
+    }
+
+    ### CPANPLUS::Config checks 3 specific scenarios first
+    ### when looking for cpanp-run-perl: parallel to cpanp,
+    ### parallel to CPANPLUS.pm, or installed into a custom
+    ### prefix like /tmp/foo. Only *THEN* does it check the
+    ### the path.
+    ### If the perl core is extracted to a directory that has
+    ### cpanp-run-perl installed the same amount of 'uplevels'
+    ### as the /tmp/foo prefix, we'll pull in the wrong script
+    ### by accident.
+    ### Since we set the path to cpanp-run-perl explicitily
+    ### at the top of this script, it's best to update the config
+    ### ourselves with a path lookup, rather than rely on its
+    ### heuristics. Thanks to David Wheeler, Josh Jore and Vincent
+    ### Pit for helping to track this down.
+    if( $ENV{PERL_CORE} ) {
+        $conf->set_program( "perlwrapper" => IPC::Cmd::can_run('cpanp-run-perl') );
     }
 
     $conf->set_conf( source_engine =>  $ENV{CPANPLUS_SOURCE_ENGINE} )
