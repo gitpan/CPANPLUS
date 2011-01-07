@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION = "0.9010";     #have to hardcode or cpan.org gets unhappy
+    $VERSION = "0.9011";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -157,7 +157,7 @@ the two following commands:
 
     $ perl -MCPANPLUS -eshell
 
-All commans available are listed in the interactive shells
+All commands available are listed in the interactive shells
 help menu. See C<cpanp -h> or L<CPANPLUS::Shell::Default> 
 for instructions on using the default shell.  
     
