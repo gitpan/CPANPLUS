@@ -1,3 +1,8 @@
+Changes for 0.9102      Mon Feb 28 11:35:43 2011
+================================================
+* Only send NAs for a 'perl' prereq when it actually is 
+  Not Applicable
+
 Changes for 0.9101      Tue Feb 15 20:58:30 2011
 ================================================
 * Only a version change for downstream maintainers
