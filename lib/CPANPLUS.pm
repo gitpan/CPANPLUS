@@ -13,7 +13,7 @@ BEGIN {
     use vars        qw( @EXPORT @ISA $VERSION );
     @EXPORT     =   qw( shell fetch get install );
     @ISA        =   qw( Exporter );
-    $VERSION = "0.9104";     #have to hardcode or cpan.org gets unhappy
+    $VERSION = "0.9105";     #have to hardcode or cpan.org gets unhappy
 }
 
 ### purely for backward compatibility, so we can call it from the commandline:
@@ -256,7 +256,7 @@ L<CPANPLUS::Shell::Default>, L<CPANPLUS::FAQ>, L<CPANPLUS::Backend>, L<CPANPLUS:
 I<bug-cpanplus@rt.cpan.org>
 
 =item * Questions & suggestions:
-I<cpanplus-devel@lists.sourceforge.net>
+I<bug-cpanplus@rt.cpan.org>
 
 =back
 
