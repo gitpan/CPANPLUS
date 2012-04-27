@@ -647,6 +647,8 @@ sub _create_mod_tree {
 
     my $dslip_tree = $self->__create_dslip_tree( %$args );
 
+    my $author_tree = $self->author_tree;
+
     ### extract the file ###
     my $ae      = Archive::Extract->new( archive => $file ) or return;
     my $out     = STRIP_GZ_SUFFIX->($file);
@@ -673,39 +675,39 @@ sub _create_mod_tree {
    and print "\t0%";
 
     for ( split /\n/, $content ) {
-        ### quick hack to read past the header of the file ###
-        ### this is still rather evil... fix some time - Kane
-        if( m|^\s*$| ) {
-            unless( $count ) {
-                error(loc("Could not determine line count from %1", $file));
-                return;
-            }
-            $past_header = 1;
-        }
 
         ### we're still in the header -- find the amount of lines we expect
         unless( $past_header ) {
 
-            ### if the line count doesn't match what we expect, bail out
-            ### this should address: #45644: detect broken index
-            $count = $1 if /^Line-Count:\s+(\d+)/;
-            if( $count ) {
-                if( $lines < $count ) {
-                    error(loc("Expected to read at least %1 lines, but %2 ".
-                              "contains only %3 lines!",
-                              $count, $file, $lines ));
+            ### header has ended -- did we get the line count?
+            if( m|^\s*$| ) {
+                unless( $count ) {
+                    error(loc("Could not determine line count from %1", $file));
                     return;
                 }
+                $past_header = 1;
+
+            ### if the line count doesn't match what we expect, bail out
+            ### this should address: #45644: detect broken index
+            } else {
+                $count = $1 if /^Line-Count:\s+(\d+)/;
+                if( $count ) {
+                    if( $lines < $count ) {
+                        error(loc("Expected to read at least %1 lines, but %2 ".
+                                  "contains only %3 lines!",
+                                  $count, $file, $lines ));
+                        return;
+                    }
+                }
             }
+
             ### still in the header, keep moving
             next;
         }
 
-        ### skip empty lines ###
-        next unless /\S/;
-        chomp;
-
         my @data = split /\s+/;
+        ### three fields expected on each line
+        next unless @data == 3;
 
         ### filter out the author and filename as well ###
         ### authors can apparently have digits in their names,
@@ -720,7 +722,7 @@ sub _create_mod_tree {
         ### remove file name from the path
         $data[2] =~ s|/[^/]+$||;
 
-        my $aobj = $self->author_tree($author);
+        my $aobj = $author_tree->{$author};
         unless( $aobj ) {
             error( loc( "No such author '%1' -- can't make module object " .
                         "'%2' that is supposed to belong to this author",
@@ -728,15 +730,14 @@ sub _create_mod_tree {
             next;
         }
 
+        my $dslip_mod = $dslip_tree->{ $data[0] };
+
         ### adding the dslip info
-        ### probably can use some optimization
         my $dslip;
         for my $item ( qw[ statd stats statl stati statp ] ) {
             ### checking if there's an entry in the dslip info before
             ### catting it on. appeasing warnings this way
-            $dslip .=   $dslip_tree->{ $data[0] }->{$item}
-                            ? $dslip_tree->{ $data[0] }->{$item}
-                            : ' ';
+            $dslip .= $dslip_mod->{$item} || ' ';
         }
 
         ### XXX this could be sped up if we used author names, not author
@@ -759,7 +760,7 @@ sub _create_mod_tree {
             author      => $aobj,
             package     => $package,    # package name, like
                                         # 'foo-bar-baz-1.03.tar.gz'
-            description => $dslip_tree->{ $data[0] }->{'description'},
+            description => $dslip_mod->{'description'},
             dslip       => $dslip,
             mtime       => '',
         ) or error( loc( "Could not add module '%1'", $data[0] ) );
