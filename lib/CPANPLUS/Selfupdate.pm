@@ -10,7 +10,7 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 use CPANPLUS::Internals::Constants;
 
 use vars qw[$VERSION];
-$VERSION = "0.9134";
+$VERSION = "0.9136";
 
 $Params::Check::VERBOSE = 1;
 
@@ -72,6 +72,7 @@ CPANPLUS::Selfupdate - self-updating for CPANPLUS
             'Parse::CPAN::Meta'         => '1.4200', # config_requires support
             'ExtUtils::Install'         => '1.42', # uninstall outside @INC
             ( check_install( module => 'CPANPLUS::Dist::Build' )
+                && !check_install( module => 'CPANPLUS::Dist::Build', version => '0.60' )
               ? ( 'CPANPLUS::Dist::Build' => '0.60' ) : () ),
         },
 

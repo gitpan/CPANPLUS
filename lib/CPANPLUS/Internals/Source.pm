@@ -19,7 +19,7 @@ use Module::Load::Conditional   qw[can_load];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 use vars qw[$VERSION];
-$VERSION = "0.9134";
+$VERSION = "0.9136";
 
 $Params::Check::VERBOSE = 1;
 
@@ -823,6 +823,8 @@ sub __create_dslip_tree {
     my $self = shift;
     my %hash = @_;
     my $conf = $self->configure_object;
+
+    return {}; # Quick hack
 
     my $tmpl = {
         path     => { default => $conf->get_conf('base') },
