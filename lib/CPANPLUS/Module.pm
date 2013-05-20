@@ -2,7 +2,7 @@ package CPANPLUS::Module;
 
 use strict;
 use vars qw[@ISA $VERSION];
-$VERSION = "0.9136";
+$VERSION = "0.9138";
 
 use CPANPLUS::Dist;
 use CPANPLUS::Error;
@@ -1087,7 +1087,9 @@ sub install {
     return;
 }
 
-=pod @list = $self->bundle_modules()
+=pod
+
+=head2 @list = $self->bundle_modules()
 
 Returns a list of module objects the Bundle specifies.
 

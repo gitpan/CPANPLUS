@@ -20,7 +20,7 @@ use Module::Load::Conditional   qw[check_install];
 use version;
 
 use vars qw[$VERSION];
-$VERSION = "0.9136";
+$VERSION = "0.9138";
 
 =pod
 
@@ -168,7 +168,7 @@ Defaults to C<true>.
 
 The directory CPANPLUS keeps all its build and state information in.
 Defaults to ~/.cpanplus. If L<File::HomeDir> is available, that will
-be used to work out your C<HOME> directory. This may be overriden by
+be used to work out your C<HOME> directory. This may be overridden by
 setting the C<PERL5_CPANPLUS_HOME> environment variable, see
 L<CPANPLUS::Config::HomeEnv> for more details.
 
