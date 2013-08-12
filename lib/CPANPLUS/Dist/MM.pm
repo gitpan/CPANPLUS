@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use vars    qw[@ISA $STATUS $VERSION];
 use base    'CPANPLUS::Dist::Base';
-$VERSION = "0.9140";
+$VERSION = "0.9142";
 
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Internals::Constants::Report;
@@ -666,7 +666,7 @@ sub create {
             ### add this directory to your lib ###
             $self->add_to_includepath();
 
-            ### dont bail out here, there's a conditional later on
+            ### don't bail out here, there's a conditional later on
             #last RUN if $skiptest;
         }
 
@@ -722,7 +722,7 @@ sub create {
                 ### --higher level --kane.
                 $dist->status->test(0);
 
-                ### mark specifically *test* failure.. so we dont
+                ### mark specifically *test* failure.. so we don't
                 ### send success on force...
                 $test_fail++;
 

@@ -20,7 +20,7 @@ local $Params::Check::VERBOSE = 1;
 
 ### require, avoid circular use ###
 require CPANPLUS::Internals;
-$VERSION = "0.9140";
+$VERSION = "0.9142";
 
 ### can't use O::A as we're using our own AUTOLOAD to get to
 ### the config options.
@@ -201,8 +201,8 @@ Returns true on success, false on failure.
             for my $plugin ( @confs ) {
                 msg(loc("Found config '%1'", $plugin),0);
 
-                ### if we already did this the /last/ time around dont
-                ### run the setup agian.
+                ### if we already did this the /last/ time around don't
+                ### run the setup again.
                 if( my $loc = Module::Loaded::is_loaded( $plugin ) ) {
                     msg(loc("  Already loaded '%1' (%2)", $plugin, $loc), 0);
                     next;

@@ -13,7 +13,7 @@ use Params::Check               qw[check];
 use Module::Load::Conditional   qw[can_load];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 use vars qw[$VERSION];
-$VERSION = "0.9140";
+$VERSION = "0.9142";
 
 $Params::Check::VERBOSE = 1;
 
@@ -294,7 +294,7 @@ sub _fetch {
                             ### this comes straight from dmq's file:// patches
                             ### for win32. --kane
                             ### According to dmq, the best summary is:
-                            ### "if file:// urls dont look right on VMS reuse
+                            ### "if file:// urls don't look right on VMS reuse
                             ### the win32 logic and see if that fixes things"
 
                             ### first element not empty? Might happen on VMS.

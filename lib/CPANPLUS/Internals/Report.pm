@@ -14,7 +14,7 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 use version;
 
 use vars qw[$VERSION];
-$VERSION = "0.9140";
+$VERSION = "0.9142";
 
 $Params::Check::VERBOSE = 1;
 
@@ -430,7 +430,7 @@ sub _send_report {
 
             $grade = GRADE_NA;
 
-        ### you dont have a high enough perl version?
+        ### you don't have a high enough perl version?
         } elsif ( PERL_VERSION_TOO_LOW->( $buffer ) ) {
             msg(loc("'%1' requires a higher version of perl than your current ".
                     "version -- sending N/A grade.", $name), $verbose);
@@ -577,7 +577,7 @@ sub _send_report {
     $reporter->from( $conf->get_conf('email') )
         if $conf->get_conf('email') !~ /\@example\.\w+$/i;
 
-    ### give the user a chance to programatically alter the message
+    ### give the user a chance to programmatically alter the message
     $message = $self->_callbacks->munge_test_report->($mod, $message, $grade);
 
     ### add the body if we have any ###

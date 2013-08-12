@@ -13,7 +13,7 @@ use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 use version;
 
 use vars qw[$VERSION];
-$VERSION = "0.9140";
+$VERSION = "0.9142";
 
 local $Params::Check::VERBOSE = 1;
 
@@ -448,7 +448,7 @@ sub _safe_path {
         ### XXX According to John Malmberg, there's an VMS issue:
         ### catdir on VMS can not currently deal with directory components
         ### with dots in them.
-        ### Fixing this is a a three step procedure, which will work for
+        ### Fixing this is a three step procedure, which will work for
         ### VMS in its traditional ODS-2 mode, and it will also work if
         ### VMS is in the ODS-5 mode that is being implemented.
         ### If the path is already in VMS syntax, assume that we are done.
