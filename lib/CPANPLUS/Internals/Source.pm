@@ -19,7 +19,7 @@ use Module::Load::Conditional   qw[can_load];
 use Locale::Maketext::Simple    Class => 'CPANPLUS', Style => 'gettext';
 
 use vars qw[$VERSION];
-$VERSION = "0.9142";
+$VERSION = "0.9144";
 
 $Params::Check::VERBOSE = 1;
 
@@ -307,7 +307,7 @@ sub _check_trees {
 
     my $uptodate = 1; # default return value
 
-    for my $name (qw[auth dslip mod]) {
+    for my $name (qw[auth mod]) {
         for my $file ( $conf->_get_source( $name ) ) {
             $self->__check_uptodate(
                 file            => File::Spec->catfile( $path, $file ),
