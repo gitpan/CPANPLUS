@@ -4,7 +4,7 @@ use strict;
 use warnings;
 use vars    qw[@ISA $STATUS $VERSION];
 use base    'CPANPLUS::Dist::Base';
-$VERSION = "0.9150";
+$VERSION = "0.9152";
 
 use CPANPLUS::Internals::Constants;
 use CPANPLUS::Internals::Constants::Report;
@@ -690,6 +690,7 @@ sub create {
 
             ### XXX need to add makeflags here too?
             ### yes, but they should really be split out -- see bug #4143
+            local $ENV{PERL_INSTALL_QUIET}; # shield tests from ExtUtils::Install
             if( scalar run(
                         command => [$make, 'test', @makeflags],
                         buffer  => \$captured,
